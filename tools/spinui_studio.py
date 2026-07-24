@@ -48,17 +48,22 @@ from spinui_theme import (DEFAULT_ACCENTS, accent_palette, hex_from_rgb,  # noqa
 
 
 APP_NAME = "SpinUI Studio"
-PROJECT_SCHEMA = 2
-DEFAULT_SCREEN = (3440, 1440)
+PROJECT_SCHEMA = 3
+DEFAULT_SCREEN = (
+    layout.RESOLUTION_PROFILES[layout.DEFAULT_RESOLUTION_PROFILE].width,
+    layout.RESOLUTION_PROFILES[layout.DEFAULT_RESOLUTION_PROFILE].height,
+)
 # Every supported canvas maps to an audited placement table in
 # generate_spinui_layout, so the offline composition is the same geometry the
 # release ships for that game resolution.
-RESOLUTIONS = {
-    (3440, 1440): "3440 × 1440 · ultrawide",
-    (2560, 1440): "2560 × 1440 · standard",
-    (3840, 2160): "3840 × 2160 · 4K",
+PROFILE_LABEL_TO_KEY = {
+    profile.label: profile.key
+    for profile in layout.RESOLUTION_PROFILES.values()
 }
-RESOLUTION_BY_LABEL = {label: size for size, label in RESOLUTIONS.items()}
+PROFILE_KEY_TO_LABEL = {
+    profile.key: profile.label
+    for profile in layout.RESOLUTION_PROFILES.values()
+}
 # Presentation keys the audited tables force onto fresh presets. When the
 # base INI is the player's own imported file these stay untouched so exported
 # transparency/fade choices survive exactly.
@@ -148,6 +153,34 @@ def discover_character_inis(extra_roots: Iterable[Path] = ()) -> list[Path]:
         key=lambda path: path.stat().st_mtime if path.exists() else 0,
         reverse=True,
     )
+
+
+def detect_client_resolution(eq_root: Path) -> tuple[int, int] | None:
+    """Read the game resolution from eqclient.ini without modifying it."""
+    path = eq_root / "eqclient.ini"
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    widths: list[tuple[int, int]] = []
+    heights: list[tuple[int, int]] = []
+    for line in text.splitlines():
+        if "=" not in line:
+            continue
+        key, _, raw = line.partition("=")
+        key = key.strip().lower()
+        try:
+            value = int(raw.strip())
+        except ValueError:
+            continue
+        rank = 1 if "fullscreen" in key else 0
+        if ("width" in key or "xres" in key) and 640 <= value <= 7680:
+            widths.append((rank, value))
+        elif ("height" in key or "yres" in key) and 480 <= value <= 4320:
+            heights.append((rank, value))
+    if not widths or not heights:
+        return None
+    return max(widths)[1], max(heights)[1]
 
 
 def write_crash_log(message: str) -> Path:
@@ -323,7 +356,8 @@ IMPLICIT_IMPORT_VISIBLE = {
 
 class StudioModel:
     def __init__(self, root: Path | None = None, *,
-                 resolution: tuple[int, int] = DEFAULT_SCREEN,
+                 resolution: tuple[int, int] | None = None,
+                 profile_key: str = layout.DEFAULT_RESOLUTION_PROFILE,
                  preset: str = layout.DEFAULT_PRESET):
         self.root = (root or release_root()).resolve()
         self.source_skin = self.root / "spinui_reloaded"
@@ -335,7 +369,13 @@ class StudioModel:
                 "unpacked SpinUI release folder) instead of moving "
                 "SpinUIStudio.exe out on its own."
             )
-        self.screen_width, self.screen_height = resolution
+        if resolution is not None:
+            profile_key = layout.recommended_profile(*resolution).key
+        if profile_key not in layout.RESOLUTION_PROFILES:
+            raise ValueError(f"unknown resolution profile: {profile_key}")
+        self.profile_key = profile_key
+        profile = layout.RESOLUTION_PROFILES[profile_key]
+        self.screen_width, self.screen_height = profile.width, profile.height
         self.preset = preset
         self.skin_name = DEFAULT_SKIN_NAME
         self.ini_name = DEFAULT_INI_NAME
@@ -355,35 +395,25 @@ class StudioModel:
         self.custom_skin_sizes: dict[str, tuple[int, int]] = {}
         self.reset_preset(preset)
 
-    def is_ultrawide(self) -> bool:
-        return (self.screen_width, self.screen_height) == DEFAULT_SCREEN
-
     def base_placements(self) -> dict[str, dict]:
-        """Audited placement table for the current game resolution.
-
-        Chat presets only rearrange the 3440x1440 chat row; the 2560x1440 and
-        3840x2160 canvases use their separately-authored release tables.
-        """
-        size = (self.screen_width, self.screen_height)
-        if size == (2560, 1440):
-            return layout.standard_1440_placements()
-        if size == (3840, 2160):
-            return layout.standard_2160_placements()
-        return layout.preset_placements(self.preset)
+        """Audited placement table for the current profile and chat preset."""
+        return layout.profile_placements(self.profile_key, self.preset)
 
     def chat_font(self) -> int:
-        return (layout.CHAT_FONT_2160 if self.screen_height >= 2160
+        return (layout.CHAT_FONT_2160 if self.screen_height >= 2000
                 else layout.CHAT_FONT_1440)
 
-    def set_resolution(self, width: int, height: int) -> None:
-        if (width, height) not in RESOLUTIONS:
-            supported = ", ".join(
-                f"{w}x{h}" for w, h in RESOLUTIONS)
-            raise ValueError(
-                f"unsupported resolution {width}x{height}; "
-                f"supported: {supported}")
-        self.screen_width, self.screen_height = width, height
+    def set_profile(self, profile_key: str) -> None:
+        if profile_key not in layout.RESOLUTION_PROFILES:
+            raise ValueError(f"unknown resolution profile: {profile_key}")
+        self.profile_key = profile_key
+        profile = layout.RESOLUTION_PROFILES[profile_key]
+        self.screen_width, self.screen_height = profile.width, profile.height
         self.reset_preset(self.preset)
+
+    def set_resolution(self, width: int, height: int) -> None:
+        """Adopt the validated profile closest to an arbitrary resolution."""
+        self.set_profile(layout.recommended_profile(width, height).key)
 
     def reset_preset(self, preset: str) -> None:
         if preset not in layout.CHAT_PRESETS:
@@ -579,6 +609,8 @@ class StudioModel:
             return self.base_ini_text
         candidates = (
             self.root / "layouts" / "spin-live" / DEFAULT_INI_NAME,
+            self.root / "layouts" / "profiles" / self.profile_key
+            / self.preset / DEFAULT_INI_NAME,
             self.root / "layouts" / self.preset / DEFAULT_INI_NAME,
             self.root / DEFAULT_INI_NAME,
         )
@@ -596,8 +628,12 @@ class StudioModel:
             skin_name=self.skin_name,
             rebuild_chat=not self.preserve_imported_chat,
         )
-        default_name = (
-            "default4k.ini" if self.screen_height >= 2160 else "default1440.ini")
+        if self.screen_height <= 1080:
+            default_name = "default1080.ini"
+        elif self.screen_height >= 2000:
+            default_name = "default4k.ini"
+        else:
+            default_name = "default1440.ini"
         default_path = self.source_skin / default_name
         if default_path.is_file():
             transformed = layout.merge_missing(
@@ -684,6 +720,7 @@ class StudioModel:
         return {
             "schema": PROJECT_SCHEMA,
             "resolution": [self.screen_width, self.screen_height],
+            "profile": self.profile_key,
             "preset": self.preset,
             "skin_name": self.skin_name,
             "ini_name": self.ini_name,
@@ -715,15 +752,18 @@ class StudioModel:
     def load_project(self, path: Path) -> None:
         payload = json.loads(path.read_text(encoding="utf-8"))
         schema = payload.get("schema")
-        if schema not in {1, PROJECT_SCHEMA}:
+        if schema not in {1, 2, PROJECT_SCHEMA}:
             raise ValueError("Unsupported SpinUI Studio project schema.")
         width, height = payload["resolution"]
-        if (int(width), int(height)) not in RESOLUTIONS:
-            supported = ", ".join(f"{w}x{h}" for w, h in RESOLUTIONS)
-            raise ValueError(
-                f"Project resolution {width}x{height} is not supported; "
-                f"supported: {supported}.")
-        self.screen_width, self.screen_height = int(width), int(height)
+        profile_key = payload.get("profile")
+        if profile_key not in layout.RESOLUTION_PROFILES:
+            # Older projects stored only a resolution; adopt the closest
+            # validated profile for it.
+            profile_key = layout.recommended_profile(
+                int(width), int(height)).key
+        self.profile_key = profile_key
+        profile = layout.RESOLUTION_PROFILES[profile_key]
+        self.screen_width, self.screen_height = profile.width, profile.height
         self.reset_preset(payload["preset"])
         self.skin_name = safe_skin_name(payload["skin_name"])
         self.ini_name = safe_ini_name(payload["ini_name"])
@@ -1225,8 +1265,8 @@ class StudioApp:
         self.rendered_key = None
         self.rendered_target = None
         self.status = tk.StringVar(value="Ready")
-        self.resolution_var = tk.StringVar(
-            value=RESOLUTIONS[(model.screen_width, model.screen_height)])
+        self.profile_var = tk.StringVar(
+            value=PROFILE_KEY_TO_LABEL[model.profile_key])
         self.preset_var = tk.StringVar(value=model.preset)
         self.skin_var = tk.StringVar(value=model.skin_name)
         self.ini_var = tk.StringVar(value=model.ini_name)
@@ -1265,23 +1305,22 @@ class StudioApp:
                 activebackground=CYAN, activeforeground=BG, relief="flat",
                 padx=10, pady=5,
             ).pack(side="left", padx=3)
-        tk.Label(toolbar, text="Game resolution", bg=PANEL, fg=DIM).pack(
-            side="left", padx=(18, 5))
-        resolution = ttk.Combobox(
-            toolbar, textvariable=self.resolution_var, state="readonly",
-            width=20, values=tuple(RESOLUTIONS.values()),
-        )
-        resolution.pack(side="left")
-        resolution.bind("<<ComboboxSelected>>", self.change_resolution)
-        tk.Label(toolbar, text="Chat preset", bg=PANEL, fg=DIM).pack(
+        tk.Label(toolbar, text="Screen", bg=PANEL, fg=DIM).pack(
             side="left", padx=(14, 5))
+        profile = ttk.Combobox(
+            toolbar, textvariable=self.profile_var, state="readonly",
+            width=24, values=tuple(PROFILE_LABEL_TO_KEY),
+        )
+        profile.pack(side="left")
+        profile.bind("<<ComboboxSelected>>", self.change_profile)
+        tk.Label(toolbar, text="Chat preset", bg=PANEL, fg=DIM).pack(
+            side="left", padx=(10, 5))
         self.preset_combo = ttk.Combobox(
             toolbar, textvariable=self.preset_var, state="readonly", width=14,
             values=(CUSTOM_PRESET_LABEL, *tuple(layout.CHAT_PRESETS)),
         )
         self.preset_combo.pack(side="left")
         self.preset_combo.bind("<<ComboboxSelected>>", self.change_preset)
-        self._sync_preset_availability()
 
         body = tk.PanedWindow(
             self.root, orient="horizontal", bg=BG, sashwidth=6,
@@ -1802,37 +1841,36 @@ class StudioApp:
             except Exception as exc:
                 self._error(str(exc))
 
-    def _sync_preset_availability(self) -> None:
-        """Chat presets rearrange the 3440x1440 chat row only."""
-        self.preset_combo.configure(
-            state="readonly" if self.model.is_ultrawide() else "disabled")
-
     def _sync_resolution_controls(self) -> None:
-        self.resolution_var.set(RESOLUTIONS[
-            (self.model.screen_width, self.model.screen_height)])
-        self._sync_preset_availability()
+        self.profile_var.set(PROFILE_KEY_TO_LABEL[self.model.profile_key])
 
-    def change_resolution(self, _event=None) -> None:
+    def change_profile(self, _event=None) -> None:
         from tkinter import messagebox
-        current = (self.model.screen_width, self.model.screen_height)
-        size = RESOLUTION_BY_LABEL.get(self.resolution_var.get(), current)
-        if size == current:
+        profile_key = PROFILE_LABEL_TO_KEY.get(self.profile_var.get())
+        if profile_key is None:
+            self._sync_resolution_controls()
             return
+        if profile_key == self.model.profile_key:
+            return
+        profile = layout.RESOLUTION_PROFILES[profile_key]
         if not messagebox.askyesno(
                 APP_NAME,
-                "Switch the canvas to this game resolution?\n\n"
+                "Reflow every window into the "
+                f"{profile.width}×{profile.height} profile?\n\n"
                 "Window geometry resets to the audited release layout for "
-                "that resolution. Import your character INI again (or open a "
-                "project) to continue from saved positions.",
+                "that screen. Save the current project first if you want to "
+                "retain manual geometry, or import your character INI again "
+                "afterwards.",
                 parent=self.root):
-            self.resolution_var.set(RESOLUTIONS[current])
+            self._sync_resolution_controls()
             return
-        self.model.set_resolution(*size)
+        self.model.set_profile(profile_key)
         self.selected = None
         self.preset_var.set(self.model.preset)
-        self._sync_preset_availability()
         self.refresh_tree()
         self.schedule_render()
+        self.status.set(
+            f"Applied {profile.label}; geometry is validated for this screen.")
 
     def change_preset(self, _event=None) -> None:
         from tkinter import messagebox
@@ -1899,12 +1937,25 @@ class StudioApp:
         if not candidates:
             return
         current = candidates[0]
+        detected = detect_client_resolution(current.parent)
+        recommendation = (
+            layout.recommended_profile(*detected) if detected is not None
+            else None
+        )
+        profile_copy = (
+            f"\n\nDetected {detected[0]}×{detected[1]}; Studio will use "
+            f"{recommendation.label}."
+            if detected is not None and recommendation is not None else ""
+        )
         if messagebox.askyesno(
                 APP_NAME,
                 "Use your current in-game layout as the starting point?\n\n"
-                f"{current}\n\n"
+                f"{current}{profile_copy}\n\n"
                 "Studio reads this file only. It will not modify EverQuest.",
                 parent=self.root):
+            if recommendation is not None:
+                self.model.set_profile(recommendation.key)
+                self._sync_resolution_controls()
             self._load_ini_path(current)
 
     def import_ini(self) -> None:
@@ -1996,7 +2047,8 @@ class StudioApp:
         from tkinter import filedialog
         selected = filedialog.asksaveasfilename(
             parent=self.root, title="Save full-resolution SpinUI preview",
-            initialfile="spinui-preview-3440x1440.png", defaultextension=".png",
+            initialfile=f"spinui-preview-{self.model.profile_key}.png",
+            defaultextension=".png",
             filetypes=(("PNG image", "*.png"),))
         if not selected:
             return
@@ -2086,7 +2138,7 @@ def selftest() -> int:
     assert venom_only["GOLD_BRIGHT"] == DEFAULT_ACCENTS["GOLD_BRIGHT"]
     model = StudioModel()
     assert (model.screen_width, model.screen_height) == DEFAULT_SCREEN
-    assert model.windows["MainChat"].width == 820
+    assert model.windows["MainChat"].width == 700
     assert model.windows["PetInfoWindow"].height == 181
     model.move("PlayerWindow", -100, 99999)
     player = model.windows["PlayerWindow"]
@@ -2203,35 +2255,48 @@ def selftest() -> int:
                        if line.startswith(key)]
                 assert got == wanted, (section, key, got, wanted)
 
-        # Every supported game resolution drives its audited release table,
-        # exports with the matching chat font, and round-trips exactly.
-        for size, expected_player, font in (
-                ((2560, 1440), (956, 770), layout.CHAT_FONT_1440),
-                ((3840, 2160), (1388, 1470), layout.CHAT_FONT_2160)):
-            scaled = StudioModel(resolution=size)
-            assert (scaled.screen_width, scaled.screen_height) == size
+        # Every validated screen profile drives its audited release table,
+        # exports with the matching chat font, and round-trips exactly
+        # through both the INI and the project file.
+        for profile_key, profile in layout.RESOLUTION_PROFILES.items():
+            scaled = StudioModel(profile_key=profile_key)
+            assert (scaled.screen_width, scaled.screen_height) == (
+                profile.width, profile.height)
+            table = layout.profile_placements(profile_key, scaled.preset)
+            expected_x, expected_y = table["PlayerWindow"]["_rect"][:2]
             scaled_player = scaled.windows["PlayerWindow"]
-            assert (scaled_player.x, scaled_player.y) == expected_player, size
-            assert not [problem for problem in scaled.validation()
-                        if "off-screen" in problem], size
+            assert (scaled_player.x, scaled_player.y) == (
+                round(expected_x), round(expected_y)), profile_key
+            assert not scaled.validation(), (profile_key, scaled.validation())
+            assert [name for name in scaled.visible_names()
+                    if name.startswith("HotButtonWnd")] == [
+                        "HotButtonWnd", "HotButtonWnd2"], profile_key
+            font = (layout.CHAT_FONT_2160 if profile.height >= 2000
+                    else layout.CHAT_FONT_1440)
             scaled_text = scaled.export_ini_text()
             assert f"ChatWindow0_FontStyle={font}" in scaled_text
-            scaled_path = root / f"scaled-{size[0]}x{size[1]}.ini"
+            scaled_path = root / f"scaled-{profile_key}.ini"
             scaled.export_ini(scaled_path)
-            reimport = StudioModel(resolution=size)
+            reimport = StudioModel(profile_key=profile_key)
             reimport.import_ini(scaled_path)
             for name, expected_state in scaled.windows.items():
                 actual = reimport.windows[name]
                 assert (actual.x, actual.y, actual.width, actual.height) == (
                     expected_state.x, expected_state.y,
-                    expected_state.width, expected_state.height), (size, name)
-            scaled_project = root / f"scaled-{size[0]}x{size[1]}.json"
+                    expected_state.width, expected_state.height,
+                ), (profile_key, name)
+            scaled_project = root / f"scaled-{profile_key}.json"
             scaled.save_project(scaled_project)
             restored = StudioModel()
             restored.load_project(scaled_project)
-            assert (restored.screen_width, restored.screen_height) == size
-            assert restored.windows["PlayerWindow"].x == expected_player[0]
-            assert render_scene(scaled).size == size
+            assert restored.profile_key == profile_key
+            assert restored.windows["PlayerWindow"].x == scaled_player.x
+        # Full-resolution renders are heavy; sample each new aspect family.
+        for profile_key in ("1920x1080", "2560x1080", "3840x1600"):
+            profile = layout.RESOLUTION_PROFILES[profile_key]
+            sample = StudioModel(profile_key=profile_key)
+            assert render_scene(sample).size == (
+                profile.width, profile.height)
 
         # Downloaded third-party UI support: Studio adopts the skin's declared
         # window footprints, targets its UISkin=, survives preset/resolution
@@ -2316,13 +2381,19 @@ def selftest() -> int:
         assert (eq_main.x, eq_main.y) == (
             3440 - 8 - eq_main.width, 1440 - 4 - eq_main.height)
         ultra.set_resolution(2560, 1440)
-        assert ultra.windows["PlayerWindow"].x == 956
+        assert ultra.profile_key == "2560x1440"
+        # Arbitrary sizes adopt the closest validated profile.
+        ultra.set_resolution(1912, 1085)
+        assert ultra.profile_key == "1920x1080"
         try:
-            ultra.set_resolution(1920, 1080)
+            ultra.set_profile("800x600")
         except ValueError:
             pass
         else:
-            raise AssertionError("unsupported resolution accepted")
+            raise AssertionError("unknown profile accepted")
+        clone2 = StudioModel()
+        clone2.load_project(project)
+        assert clone2.profile_key == model.profile_key
 
         image = render_scene(model)
         assert image.size == DEFAULT_SCREEN
@@ -2381,9 +2452,9 @@ def selftest() -> int:
 
     print(
         "SpinUI Studio selftest: ALL PASS\n"
-        "  63 window toggles | exact INI round-trip at 3440/2560/4K | "
-        "imported styling preserved | downloaded-UI geometry | project | "
-        "palette XML/TGA | bundle"
+        "  63 window toggles | exact INI round-trip across 7 screen "
+        "profiles | imported styling preserved | downloaded-UI geometry | "
+        "project | palette XML/TGA | bundle"
     )
     return 0
 
@@ -2395,9 +2466,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--project", type=Path)
     parser.add_argument("--ini", type=Path,
                         help="start from an EverQuest character UI INI")
-    supported = ", ".join(f"{w}x{h}" for w, h in RESOLUTIONS)
-    parser.add_argument("--resolution", metavar="WxH",
-                        help=f"canvas game resolution ({supported})")
+    parser.add_argument(
+        "--profile",
+        choices=tuple(layout.RESOLUTION_PROFILES),
+        help="screen profile used for a new project",
+    )
+    parser.add_argument(
+        "--resolution", metavar="WxH",
+        help="arbitrary game resolution; the closest validated profile "
+             "is adopted")
     parser.add_argument("--skin", type=Path, metavar="FOLDER",
                         help="adopt a downloaded UI folder's window geometry")
     args = parser.parse_args(argv)
@@ -2408,7 +2485,8 @@ def main(argv: list[str] | None = None) -> int:
         # packaged --windowed build reports startup problems (for example a
         # SpinUIStudio.exe moved away from its release assets) instead of
         # exiting silently.
-        model = StudioModel()
+        model = StudioModel(
+            profile_key=args.profile or layout.DEFAULT_RESOLUTION_PROFILE)
         if args.resolution is not None:
             match = re.fullmatch(r"(\d{3,4})\s*[xX×]\s*(\d{3,4})",
                                  args.resolution.strip())
