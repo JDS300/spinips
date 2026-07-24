@@ -31,10 +31,13 @@ reads them to render pixel-accurate previews and to build your custom skin.
    `UI_<Character>_<server>_LO#.ini`, so the canvas begins exactly at your
    current in-game positions, sizes, hotbar/spell-gem orientation, and
    show-on-load states.
-3. Pick your **game resolution** in the toolbar — 3440×1440 ultrawide,
-   2560×1440 standard, or 3840×2160 4K. The canvas, the audited starting
-   layout, and every exported coordinate use that resolution, so what you
-   compose is what the client draws.
+3. Pick your screen under **Screen** in the toolbar — seven validated
+   profiles: 1920×1080, 2048×1080, 2560×1080, 2560×1440, 3440×1440,
+   3840×1600, and 3840×2160. Studio also reads your resolution from
+   `eqclient.ini` when it detects an install and recommends the matching
+   profile. The canvas, the audited starting layout, and every exported
+   coordinate use that profile, so what you compose is what the client
+   draws.
 4. Edit (see below), then either **EXPORT INI** for a game-ready character
    layout, or **BUILD FINAL UI** to produce a complete custom skin + INI
    bundle with installation notes.
@@ -48,7 +51,7 @@ reads them to render pixel-accurate previews and to build your custom skin.
 | Resize | Drag the gold lower-right handle, or edit W/H in the inspector. Windows the client sizes from XML are labeled "fixed size" and refuse resizing, exactly like the game. |
 | Preview a hidden window | Double-click its row (or press Space with it selected). This changes the preview only. |
 | Control the in-game start state | The **IN-GAME START STATE** selector writes `Show=` on export: preserve the imported INI's value, force show, or force hide. Preview and start state are deliberately separate controls. |
-| Change chat arrangement | The chat preset picker (Combat Focus / Social Focus / Hybrid) offers deliberate resets of the 3440×1440 chat row. At other resolutions the release's audited arrangement for that resolution is used. |
+| Change chat arrangement | The chat preset picker (Combat Focus / Social Focus / Hybrid) offers deliberate chat-row resets, validated inside every screen profile. |
 | Recolor the theme | The **Venom**, **Gold**, and **Ember** swatches recolor the live preview and are baked into the real XML/TGA assets when you build. |
 | Use a downloaded UI | **USE DOWNLOADED UI** points Studio at any EverQuest UI folder (a SpinUI copy, an EQInterface skin, anything with an `EQUI.xml`). See below. |
 | Save your work | **SAVE PROJECT** writes a small JSON you can reopen later; Ctrl+S saves in place. |
@@ -97,8 +100,8 @@ and previews it with the real SpinUI window textures:
 * **Authoritative:** window positions, sizes, visibility/start states, all
   EverQuest anchor modes (left/right/top/bottom/half-screen center), chat
   container geometry, and your custom accent colors. Exported values
-  round-trip through import with zero geometry differences, at every
-  supported resolution.
+  round-trip through import with zero geometry differences, at every one of
+  the seven supported screen profiles.
 * **Preserved from your imported INI:** chat routing, window transparency
   and fade settings, locks, hotbuttons, macros, spell loadouts, and any
   client settings Studio does not edit. They pass through untouched.
@@ -131,10 +134,11 @@ atomically.
 * **A preview error appears in the status bar** — Studio recovered and kept
   running; the full traceback is in
   `%LOCALAPPDATA%\SpinUIStudio\spinui-studio.log`.
-* **Your layout looks different in game** — confirm the toolbar resolution
-  matches the resolution EverQuest actually runs at, and that you loaded the
-  exported INI for the right character (`UI_<Character>_<server>_LO1.ini`,
-  exact capitalization).
+* **Your layout looks different in game** — confirm the toolbar **Screen**
+  profile matches the resolution EverQuest actually runs at (Studio reads
+  `eqclient.ini` to recommend it), and that you loaded the exported INI for
+  the right character (`UI_<Character>_<server>_LO1.ini`, exact
+  capitalization).
 
 From a source checkout the same editor runs with
 `python tools/spinui_studio.py`; deterministic checks are `--selftest` and
