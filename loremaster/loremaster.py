@@ -158,7 +158,10 @@ INITIAL_BACKFILL_BYTES = 2 * 1024 * 1024
 INITIAL_BACKFILL_MINUTES = 30
 MAX_FIGHT_HISTORY = 500
 TIMELINE_BUCKET_SECONDS = 2
-MINI_BASE_WIDTH = 720
+MINI_BASE_WIDTH = 560
+# Windows names the diagonal resize cursor "size_nw_se"; X11 uses
+# "bottom_right_corner".
+RESIZE_CURSOR = "size_nw_se" if os.name == "nt" else "bottom_right_corner"
 MINI_BASE_HEIGHT = 34
 
 MINI_CARD_LABELS = {
@@ -170,7 +173,13 @@ MINI_CARD_LABELS = {
     "faction": "STANDING",
     "travels": "JOURNEY",
 }
-MINI_COMPACT_LABELS = {"progress": "XP"}
+MINI_COMPACT_LABELS = {
+    "progress": "XP",
+    "combat": "DPS",
+    "kills": "KILLS",
+    "faction": "REP",
+    "travels": "TRAVEL",
+}
 
 
 def mini_stat_label_plan(keys, available_width: int,
@@ -180,8 +189,8 @@ def mini_stat_label_plan(keys, available_width: int,
     """Choose whole mini-HUD labels without ever clipping a word in half.
 
     Widths include each label, its live value, and local padding.  The caller
-    measures with the real Tk fonts; this pure planner makes the 720px packing
-    rule deterministic and independently testable.
+    measures with the real Tk fonts; this pure planner makes the compact
+    packing rule deterministic and independently testable.
     """
     ordered = [key for key in keys if key in MINI_CARD_LABELS]
     labels = {key: MINI_CARD_LABELS[key] for key in ordered}
@@ -189,9 +198,14 @@ def mini_stat_label_plan(keys, available_width: int,
     required += max(0, len(ordered) - 1) * max(0, int(divider_width))
     if required <= max(0, int(available_width)):
         return labels
-    for key in ("progress",):
-        if key not in labels or key not in MINI_COMPACT_LABELS:
-            continue
+    # Compact the longest labels first so the row never clips mid-word.
+    savings = sorted(
+        (key for key in ordered if key in MINI_COMPACT_LABELS),
+        key=lambda key: (full_widths.get(key, 0)
+                         - compact_widths.get(key, full_widths.get(key, 0))),
+        reverse=True,
+    )
+    for key in savings:
         required -= max(0, int(full_widths.get(key, 0)))
         required += max(0, int(compact_widths.get(key, full_widths.get(key, 0))))
         labels[key] = MINI_COMPACT_LABELS[key]
@@ -973,22 +987,35 @@ class SessionStats:
             self._close_fight()
         elif kind == "kill_other":
             killer = g["killer"].strip()
-            mob = normalize_mob(g["target"])
+            raw_target = g["target"].strip()
+            mob = normalize_mob(raw_target)
+            # "X has been slain by Y!" also fires when a groupmate or pet is
+            # the one who died. A player-style victim killed by a mob-article
+            # actor is an ally death, not a slain enemy: counting it would
+            # name the dead ally in kill totals, the encounter title, and the
+            # persisted SLAYING records.
+            ally_death = (
+                (self.is_pet(raw_target) or looks_like_player_actor(raw_target))
+                and killer.split(" ", 1)[0].lower() in {"a", "an", "the"}
+            )
             self._combat_signal(ts)
-            if self.fight:
-                self.fight.kills += 1
-                self.fight.kill_targets[mob] += 1
-                self.fight.add_timeline(ts, "kills", 1)
-            if killer == self.character or self.is_pet(killer):
-                self.kills[mob] += 1
-                if count_lifetime:
-                    self._lifetime_inc("kills")
-                    self._lifetime_named("kill_breakdown", mob)
+            if ally_death:
+                self._feed(ts, "ally_death", 0, raw_target)
             else:
-                self.group_kills[mob] += 1
-                if count_lifetime:
-                    self._lifetime_inc("group_kills")
-                    self._lifetime_named("group_kill_breakdown", mob)
+                if self.fight:
+                    self.fight.kills += 1
+                    self.fight.kill_targets[mob] += 1
+                    self.fight.add_timeline(ts, "kills", 1)
+                if killer == self.character or self.is_pet(killer):
+                    self.kills[mob] += 1
+                    if count_lifetime:
+                        self._lifetime_inc("kills")
+                        self._lifetime_named("kill_breakdown", mob)
+                else:
+                    self.group_kills[mob] += 1
+                    if count_lifetime:
+                        self._lifetime_inc("group_kills")
+                        self._lifetime_named("group_kill_breakdown", mob)
 
         elif kind == "heal_out":
             amt = int(g["amount"])
@@ -1356,7 +1383,7 @@ class LogWatcher:
 def check_alerts(kind: str, g: dict, raw_msg: str, character: str, cfg: dict):
     """Return a list of (severity, text) alerts for one parsed event.
     severity: 'danger' (red), 'warn' (gold), 'info' (cyan)."""
-    if not cfg.get("alerts_enabled", True):
+    if not cfg.get("alerts_enabled", False):
         return []
     out = []
     if kind == "tell_in" and cfg.get("alert_tells", True):
@@ -1398,7 +1425,7 @@ def invalid_custom_alert_patterns(rules) -> list[str]:
 
 def fight_toasts_active(cfg: dict) -> bool:
     """Fight-end toasts honor both the master switch and their own toggle."""
-    return bool(cfg.get("alerts_enabled", True) and cfg.get("fight_toasts", True))
+    return bool(cfg.get("alerts_enabled", False) and cfg.get("fight_toasts", True))
 
 
 def load_config() -> dict:
@@ -1413,7 +1440,8 @@ def load_config() -> dict:
         "locked": False,
         "starred": ["session_dps", "xp_hr", "hours_to_level", "kills"],
         "starred_cards": ["combat", "kills", "money", "progress"],
-        "alerts_enabled": True,
+        # Banners are opt-in: quiet by default, one switch in Settings.
+        "alerts_enabled": False,
         "alert_sound": True,
         "alert_seconds": 4,
         "big_hit_threshold": 800,
@@ -2149,7 +2177,8 @@ def run_gui(args):
             drag["active"] = False
             return
         interactive = (has_click_handler
-                       or cursor in {"hand2", "size_nw_se"}
+                       or cursor in {"hand2", "size_nw_se",
+                                     "bottom_right_corner"}
                        or widget_class in {
                            "Scrollbar", "Button", "TButton", "Entry",
                            "TEntry", "TCombobox",
@@ -2525,6 +2554,7 @@ def run_gui(args):
         def start_wiki_drag(event):
             wiki_drag["x"] = event.x_root - win.winfo_x()
             wiki_drag["y"] = event.y_root - win.winfo_y()
+            wiki_drag["origin"] = (win.winfo_x(), win.winfo_y())
 
         def move_wiki(event):
             width, height = win.winfo_width(), win.winfo_height()
@@ -2535,6 +2565,11 @@ def run_gui(args):
             win.geometry(f"{x:+d}{y:+d}")
 
         def end_wiki_drag(_event):
+            # A plain click on the header is not a move: pinning the window
+            # then would silently disable follow-the-cursor placement with no
+            # way back. Only an actual drag saves a pinned position.
+            if wiki_drag.get("origin") == (win.winfo_x(), win.winfo_y()):
+                return
             x, y = clamped_position(
                 [win.winfo_x(), win.winfo_y()], win.winfo_width(),
                 win.winfo_height(), win.winfo_x(), win.winfo_y())
@@ -2549,10 +2584,6 @@ def run_gui(args):
                          font=FONT_B, cursor="hand2", padx=8)
         close.pack(side="right", fill="y")
         close.bind("<Button-1>", lambda _e: _wiki_close())
-        settings = tk.Label(head, text="SETTINGS", fg=T["dim"], bg=T["panel"],
-                            font=FONT_RUNE, cursor="hand2", padx=6)
-        settings.pack(side="right", fill="y")
-        settings.bind("<Button-1>", lambda _e: open_settings())
         hotkey_badge = tk.Label(
             head, text=str(cfg.get("wiki_hotkey", "Ctrl+Shift+E")).upper(),
             fg=T["cyan"], bg=T["panel"], font=FONT_RUNE, padx=4)
@@ -2799,6 +2830,18 @@ def run_gui(args):
         check("Enable Lore Lens item lookup", enabled_var)
         check("Scan hovered tooltip on hotkey (Windows OCR, on demand)", hover_ocr_var)
         check("Allow network lookups (cached pages still work when off)", network_var)
+
+        def unpin_lore_lens():
+            cfg["wiki_position"] = None
+            save_config(cfg)
+            status.configure(
+                text="Lore Lens unpinned; it opens beside the cursor again.",
+                fg=T["green"])
+
+        tk.Button(frame, text="UNPIN LORE LENS (follow cursor)",
+                  command=unpin_lore_lens, bg=T["panel"], fg=T["dim"],
+                  activebackground=T["raised"], relief="flat", font=FONT_RUNE,
+                  padx=10, pady=4).pack(anchor="w", pady=(6, 0))
         row = tk.Frame(frame, bg=T["bg"])
         row.pack(fill="x", pady=(8, 4))
         L(row, "EQ-only global hotkey", fg=T["gold"], font=FONT_S).pack(side="left")
@@ -2845,7 +2888,7 @@ def run_gui(args):
         L(alerts_frame, alerts_blurb, fg=T["dim"], font=FONT_S, justify="left",
           wraplength=410).pack(fill="x", pady=(2, 10))
 
-        alerts_enabled_var = tk.BooleanVar(value=bool(cfg.get("alerts_enabled", True)))
+        alerts_enabled_var = tk.BooleanVar(value=bool(cfg.get("alerts_enabled", False)))
         sound_var = tk.BooleanVar(value=bool(cfg.get("alert_sound", True)))
         toast_var = tk.BooleanVar(value=bool(cfg.get("fight_toasts", True)))
         tells_var = tk.BooleanVar(value=bool(cfg.get("alert_tells", True)))
@@ -2855,7 +2898,7 @@ def run_gui(args):
         name_called_var = tk.BooleanVar(value=bool(
             cfg.get("alert_name_called", True)))
 
-        check("Enable alert banners", alerts_enabled_var, alerts_frame)
+        check("Enable alert banners (off by default)", alerts_enabled_var, alerts_frame)
         check("Play alert sound", sound_var, alerts_frame)
         check("Fight-end toast", toast_var, alerts_frame)
         check("Incoming tells", tells_var, alerts_frame)
@@ -3430,6 +3473,8 @@ def run_gui(args):
                         out.append(("row", f"{when} · {label}", f"+{fmt_num(amount)}"))
                     elif event_kind == "avoid":
                         out.append(("row", f"{when} · avoided {label}", ""))
+                    elif event_kind == "ally_death":
+                        out.append(("row", f"{when} · {label} died", ""))
                     else:
                         out.append(("row", f"Slain by {label}", ""))
             zs = snap["zones"][-6:]
@@ -3658,7 +3703,11 @@ def run_gui(args):
         footer_actions = tk.Frame(footer, bg=T["panel"])
         footer_actions.pack(fill="x", padx=(9, 4), pady=(0, 4))
         grip = tk.Label(footer_actions, text="\u2198", fg=T["cyan"], bg=T["panel"],
-                        font=FONT_B, cursor="size_nw_se")
+                        font=FONT_B)
+        try:
+            grip.configure(cursor=RESIZE_CURSOR)
+        except tk.TclError:
+            pass
         widgets["grip"] = grip
         grip.pack(side="right", padx=(4, 1), pady=3)
         grip.bind("<Button-1>", start_resize)
@@ -3724,6 +3773,27 @@ def run_gui(args):
             full_widths, compact_widths)
         for key, label in labels.items():
             _set_text(name_widgets[key], label)
+        # Even fully compacted labels can outgrow the strip when values get
+        # long (big DPS numbers, coin totals). A clipped word is worse than a
+        # slightly wider HUD, so grow the window to the real measured need
+        # (cap, borders, and pack padding included via requested widths).
+        if state.get("mini"):
+            cells = widgets.get("mini_cells")
+            if cells and controls:
+                cells.update_idletasks()
+                needed_width = (
+                    controls.winfo_reqwidth() + cells.winfo_reqwidth() + 25)
+                current_width = int(widgets.get("mini_width", MINI_BASE_WIDTH))
+                if needed_width > current_width:
+                    new_width = min(1000, needed_width)
+                    widgets["mini_width"] = new_width
+                    widgets["mini_available_width"] = max(
+                        80, int(widgets.get("mini_available_width", 0))
+                        + new_width - current_width)
+                    try:
+                        root.geometry(f"{new_width}x{root.winfo_height()}")
+                    except tk.TclError:
+                        pass
 
     def build_mini():
         clear_scroll_bindings()
@@ -3744,15 +3814,9 @@ def run_gui(args):
         controls.pack(side="right", fill="y", padx=(1, 3))
         widgets["mini_controls"] = controls
         widgets["mini_width"] = mini_width
-        wiki_hotkey_label, wiki_state_label, wiki_state_color = (
-            wiki_hotkey_presentation())
-        widgets["mini_wiki"] = tk.Label(
-            controls, text=(f"LORE LENS  {wiki_hotkey_label}  "
-                            f"{wiki_state_label}"),
-            fg=wiki_state_color, bg=T["raised"], font=FONT_RUNE,
-            cursor="hand2", padx=5)
-        widgets["mini_wiki"].pack(side="left", pady=3)
-        widgets["mini_wiki"].bind("<Button-1>", open_wiki_from_hotkey)
+        # The mini strip is a stats readout: only the log-health dot, LOCK,
+        # and DETAILS ship here. Settings and Lore Lens live on the details
+        # HUD, keeping this row compact with the full width for DPS cells.
         widgets["mini_log"] = tk.Label(
             controls, text="●", fg=T["dim"], bg=T["bg"], font=FONT_S,
             cursor="hand2", padx=3)
@@ -3763,11 +3827,6 @@ def run_gui(args):
             font=FONT_RUNE, cursor="hand2", padx=5)
         widgets["mini_lock"].pack(side="left", pady=3)
         widgets["mini_lock"].bind("<Button-1>", lambda _e: toggle_lock())
-        widgets["mini_settings"] = tk.Label(
-            controls, text="SET", fg=T["dim"], bg=T["raised"],
-            font=FONT_RUNE, cursor="hand2", padx=5)
-        widgets["mini_settings"].pack(side="left", padx=(3, 0), pady=3)
-        widgets["mini_settings"].bind("<Button-1>", open_settings)
         details = tk.Label(controls, text="DETAILS", fg=T["cyan"], bg=T["raised"],
                            font=FONT_RUNE, cursor="hand2", padx=6)
         details.pack(side="left", padx=(3, 0), pady=3)
@@ -3799,8 +3858,8 @@ def run_gui(args):
             widgets["mini_names"][key] = name
             widgets["mini_items"][key] = value
         fit_mini_stat_labels()
-        # Four default ledger cards plus log health, Lore Lens, lock, and
-        # details controls need 720 px at the standard font size.  Keeping an
+        # Four default ledger cards plus the log dot, lock, and details
+        # controls fit in 560 px at the standard font size.  Keeping an
         # explicit width also makes the companion reservation deterministic
         # for installer-provided layouts instead of clipping right-side tools.
         default_x = max(8, root.winfo_screenwidth() - mini_width - 12)
@@ -4153,13 +4212,6 @@ def run_gui(args):
                     mini_lock,
                     text="MOVE" if state["locked"] else "LOCK",
                     fg=T["gold_bright"] if state["locked"] else T["dim"])
-            mini_wiki = widgets.get("mini_wiki")
-            if mini_wiki:
-                shortcut, hotkey_state, hotkey_color = wiki_hotkey_presentation()
-                _set_widget(
-                    mini_wiki,
-                    text=f"LORE LENS  {shortcut}  {hotkey_state}",
-                    fg=hotkey_color)
             fit_mini_stat_labels()
             return
 
@@ -4215,8 +4267,12 @@ def run_gui(args):
                         fg=T["gold_bright"] if state["locked"] else T["dim"])
         grip = widgets.get("grip")
         if grip:
-            _set_widget(grip, fg=T["line"] if state["locked"] else T["cyan"],
-                        cursor="arrow" if state["locked"] else "size_nw_se")
+            try:
+                _set_widget(
+                    grip, fg=T["line"] if state["locked"] else T["cyan"],
+                    cursor="arrow" if state["locked"] else RESIZE_CURSOR)
+            except tk.TclError:
+                _set_widget(grip, fg=T["line"] if state["locked"] else T["cyan"])
         pass_button = widgets.get("pass")
         if pass_button:
             if state["click_through"]:
@@ -4580,7 +4636,7 @@ def selftest() -> int:
         "Cloak of Flames")
     assert extract_item_query("[Cloak of Flames +4]")[0] == "Cloak of Flames"
     assert r"C:\EQLegends\Logs" in DEFAULT_LOG_DIRS
-    assert MINI_BASE_WIDTH == 720 and MINI_BASE_HEIGHT == 34
+    assert MINI_BASE_WIDTH == 560 and MINI_BASE_HEIGHT == 34
     wiki_selftest()
 
     # coin parsing

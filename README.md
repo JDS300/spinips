@@ -38,11 +38,13 @@
 4. [Installation](#installation)
 5. [Chat: three windows, three presets](#chat-three-windows-three-presets)
 6. [The map](#the-map)
-7. [Bags, bank bags and the dock](#bags-bank-bags-and-the-dock)
-8. [Spin's Loremaster (log parser & DPS tracker)](#spins-loremaster)
-9. [Customizing & regenerating](#customizing--regenerating)
-10. [Troubleshooting](#troubleshooting)
-11. [Repository map](#repository-map)
+7. [The equipment screen](#the-equipment-screen)
+8. [The pet command center](#the-pet-command-center)
+9. [Bags, bank bags and the dock](#bags-bank-bags-and-the-dock)
+10. [Spin's Loremaster (log parser & DPS tracker)](#spins-loremaster)
+11. [Customizing & regenerating](#customizing--regenerating)
+12. [Troubleshooting](#troubleshooting)
+13. [Repository map](#repository-map)
 
 ---
 
@@ -52,7 +54,7 @@
 |---|---|
 | `spinui_reloaded/` | The full UI skin - a themed overhaul of the modern default skin. Every window inherits the new look; the shipped 1440p default is safe at 2560x1440. |
 | `UI_Spin_qeynos_LO1.ini` | Complete example layout for **Spin @ qeynos**, pixel-planned for 3440x1440 (Combat Focus). Existing characters should use the installer's safe merge. |
-| `layouts/combat-focus/` `layouts/social-focus/` `layouts/hybrid/` | The same layout with three different chat-row arrangements - pick your style. These three are the only layout folders included in release packages; `layouts/original/` and `layouts/spin-live/` are internal generator bases kept in the repository. |
+| `layouts/combat-focus/` `layouts/social-focus/` `layouts/hybrid/` | The same layout with three different chat-row arrangements - pick your style. Release packages ship these three 3440x1440 aliases plus the complete `layouts/profiles/` tree for all seven resolutions; `layouts/original/` and `layouts/spin-live/` are internal generator bases kept in the repository. |
 | `layouts/original/` | The author's pre-overhaul Spin profile, retained as project history, not a substitute for another player's backup. |
 | `loremaster/` | **Spin's Loremaster** - the real-time Encounter Lab, session tracker, DPS overlay, and Lore Lens item-wiki companion. |
 | `tools/` | The generators that built everything (textures, layout, preview). Rerunnable and hackable. |
@@ -196,9 +198,12 @@ The presets differ only in the chat row:
 
 | Preset | Main | Social | Combat | For |
 |---|---|---|---|---|
-| `combat-focus` *(default)* | **820px** | **820px** | **820px** | a clean symmetrical chat row - three equal panes |
-| `social-focus` | 800px | **1000px** | 660px | raid/guild chatter first |
-| `hybrid` | 900px | 1000px | **560px, half-height** | combat as a compact self-ticker |
+| `combat-focus` *(default)* | 700px | 700px | **1060px** | the large combat pane from Spin's live HUD |
+| `social-focus` | 620px | **1120px** | 720px | raid/guild chatter first |
+| `hybrid` | 820px | 1000px | **640px, reduced height** | combat as a compact self-ticker (200px vs 280px tall) |
+
+At other resolutions each preset keeps these proportions inside that screen's
+validated chat row.
 
 *Hybrid + true self-only combat:* the small window already keeps combat out of your way; to fully silence **other people's** melee spam, use Options (`ALT+O`) → **Chat** filters → set *Others' Melee* categories to **Off** - filter visibility is a game-side setting that routing can't override, so this stays a 30-second manual step.
 
@@ -208,7 +213,7 @@ The presets differ only in the chat row:
 
 Tuned for **running with the map open**:
 
-* Top-right glass panel, now **720x600** - bigger canvas, easier reading at 3440x1440 - still clear of the buff/song columns, the group window, and the whole combat cluster.
+* Top-right glass panel at **640x520** (640x440 on 1080-tall screens) - still clear of the buff/song columns, the group window, and the whole combat cluster.
 * **Translucent by design** (`Alpha 235`) and **fades to 160** when it isn't the active window - terrain reads through it while you navigate, and it solidifies the moment you mouse in.
 * Coordinate/zone readouts recolored from black to light text so they're readable on the dark canvas.
 * Toggle it with your usual map key; the INI keeps its position and size permanently.
@@ -283,7 +288,7 @@ Loremaster's face is its own - the same design language as the rest of Spin's UI
 
 **Fight mode** is the Details-style deep dive: use **OLDER / NEWER / LIVE** to browse the rolling encounter history, then switch the Encounter Lab between **Overview, Damage, Healing, Targets, and Timeline**. It reports total damage, DPS, duration, enemies slain, target types, crits/misses, incoming damage and healing, observed actors, every ability's total/share/DPS/hits/average/max, effective healing/overheal, and damage by target. The bounded two-second timeline shows outgoing damage, incoming damage, healing and kills without retaining an unbounded event stream. One uninterrupted pull is one encounter: three shamans plus four warriors remain one seven-enemy fight until combat goes quiet, while repeated mob names still retain the individual kill count. Actor rows are explicitly observational: EverQuest logs nearby actions but do not guarantee a true group/raid roster, so Loremaster only reports contributors actually visible in your local log. **Session mode** aggregates combat, actor and ability totals, healing, XP, loot, coin, faction, travel, and casting since Loremaster launched or you pressed **RESET**. **Records mode** is intentionally selective: NPC and group kills with per-creature breakdown, deaths, and record fight DPS survive resets; volatile totals such as damage, healing, coin, and XP do not become misleading lifetime counters.
 
-**Pin a section** (✦) into **HUD mode** - a slim ember-capped strip with gold tick separators (`COMBAT 1,284 dps │ SLAYING 47 │ COIN 2p 9g`) for pure-minimal play. At 720px, the real font, value, and control widths are measured before packing; `PROGRESSION` remains whole when it fits and becomes the whole label `XP` only when required, never a clipped fragment. A dedicated **LORE LENS · CTRL+SHIFT+E · READY** control keeps item intelligence discoverable without crowding the combat values. **DETAILS** expands the full meter, **HUD** collapses it, and both positions are remembered separately. The Lore control ends in `READY / CONFLICT / DISABLED`; the separate colored `LIVE / READY / STALE / NO LOG` indicator describes log health and doubles as the log-folder picker.
+**Pin a section** (✦) into **HUD mode** - a compact 560px ember-capped strip with gold tick separators (`DPS 1,284 │ KILLS 47 │ COIN 2p 9g`) for pure-minimal play. The real font, value, and control widths are measured before packing, and labels shorten whole-word (`COMBAT`→`DPS`, `PROGRESSION`→`XP`) when space demands - never a clipped fragment. The strip carries only the colored log-health dot (doubles as the log-folder picker), **LOCK**, and **DETAILS**; Lore Lens and Settings live on the details HUD so combat values get the full width. **DETAILS** expands the full meter, **HUD** collapses it, and both positions are remembered separately.
 
 ### Lore Lens: EQL Wiki item intelligence
 
@@ -329,7 +334,7 @@ In game, enable logging once: **`/log on`**. Loremaster auto-finds the newest `e
 
 ### Alerts: the WeakAuras/DBM layer
 
-Loremaster doubles as an alert engine: big center-screen banners (red / gold / cyan by severity) that flash over the game and fade out, with a sound cue:
+Loremaster doubles as an opt-in alert engine — **banners are off by default** and one Settings switch turns the whole system on: big center-screen banners (red / gold / cyan by severity) that flash over the game and fade out, with a sound cue:
 
 | Built-in trigger | Banner |
 |---|---|
@@ -360,7 +365,7 @@ Advanced users can additionally add DBM-style triggers in `%LOCALAPPDATA%\SpinsL
 * **Safe click-through**: full mode's **CLICK-THRU** lets mouse input reach EverQuest. The active label becomes **PASS ON**, a banner explains recovery, and **Ctrl+Alt+L** restores mouse control. It remains disabled unless that recovery key was registered successfully and always starts off after relaunch.
 * **Incremental live details**: changing combat values update existing labels and meter canvases in place. The panel rebuilds structure only when a genuinely new row appears, instead of destroying the whole combat card every polling cycle.
 * **LOCATE LOG** opens a folder picker; **RESET** clears only the live session. Config is materialized automatically on first run.
-* **SETTINGS** controls Lore Lens, Hover Scan, its hotkey and network access; every alert and notification toggle (master switch, sound, fight toasts, per-trigger switches, big-hit threshold, banner duration, test alert, banner-position reset); plus high contrast, reduced motion and text scale. It is reachable from full mode, from the Lore Lens window, and via the **SET** control in mini mode.
+* **SETTINGS** lives on the details HUD's footer. It controls Lore Lens, Hover Scan, its hotkey and network access; every alert and notification toggle (master switch, sound, fight toasts, per-trigger switches, big-hit threshold, banner duration, test alert, banner-position reset); plus high contrast, reduced motion and text scale. **Alert banners ship OFF by default** - flip *Enable alert banners* in Settings to opt in.
 
 ---
 
