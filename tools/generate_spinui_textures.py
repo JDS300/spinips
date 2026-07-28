@@ -668,7 +668,7 @@ def generate(*, source_skin: Path = SKIN, output_skin: Path = SKIN,
              quiet: bool = False) -> tuple[str, ...]:
     """Build client-ready theme atlases into ``output_skin``.
 
-    Studio uses this entry point to build a custom skin without mutating the
+    Custom-theme builds use this entry point to paint a skin without mutating the
     repository. The default call preserves the historical command behavior.
     """
     output_skin.mkdir(parents=True, exist_ok=True)
@@ -735,7 +735,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--source-skin", type=Path, default=SKIN)
     parser.add_argument("--output-skin", type=Path, default=SKIN)
     parser.add_argument("--palette", type=Path,
-                        help="SpinUI Studio JSON with venom/gold/ember colors")
+                        help="theme JSON with venom/gold/ember colors")
     parser.add_argument("--no-previews", action="store_true")
     args = parser.parse_args(argv)
     palette = None
