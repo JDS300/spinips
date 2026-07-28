@@ -1,4 +1,4 @@
-# Spin's UI / LOREMASTER && SPINFOURKAYYY (https://i.imgur.com/9ps9i8C.png)
+# Spin's UI / LOREMASTER 
 
 **A complete Obsidian, Venom & Ember interface for EverQuest Legends.** SpinUI rebuilds the aging EQ presentation around a crisp combat dock, cinematic equipment screen, readable effects and spell controls, seven validated screen profiles from 1920×1080 through 4K, and **Spin's Loremaster**, a live Encounter Lab and EQL Wiki companion that never injects into the game.
 
