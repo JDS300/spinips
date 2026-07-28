@@ -503,8 +503,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignRight>false</AlignRight>
-		<TopAnchorOffset>91</TopAnchorOffset>
-		<BottomAnchorOffset>107</BottomAnchorOffset>
+		<TopAnchorOffset>96</TopAnchorOffset>
+		<BottomAnchorOffset>112</BottomAnchorOffset>
 		<LeftAnchorOffset>6</LeftAnchorOffset>
 		<RightAnchorOffset>132</RightAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
@@ -536,8 +536,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignRight>true</AlignRight>
-		<TopAnchorOffset>91</TopAnchorOffset>
-		<BottomAnchorOffset>107</BottomAnchorOffset>
+		<TopAnchorOffset>96</TopAnchorOffset>
+		<BottomAnchorOffset>112</BottomAnchorOffset>
 		<LeftAnchorOffset>232</LeftAnchorOffset>
 		<RightAnchorOffset>6</RightAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
@@ -823,13 +823,12 @@
 			<G>240</G>
 			<B>240</B>
 		</TextColor>
-		<Text>100</Text>
 		<NoWrap>true</NoWrap>
 		<AlignRight>true</AlignRight>
 		<AutoStretch>true</AutoStretch>
 		<TopAnchorOffset>71</TopAnchorOffset>
 		<BottomAnchorOffset>81</BottomAnchorOffset>
-		<RightAnchorOffset>3</RightAnchorOffset>
+		<RightAnchorOffset>15</RightAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
 		<FontShadow>true</FontShadow>
@@ -864,6 +863,42 @@
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Gauge>
 
+	<Label item="PW_ExpPercLabel">
+		<ScreenID>PW_ExpPercLabel</ScreenID>
+		<Font>1</Font>
+		<TextColor>
+			<R>240</R>
+			<G>240</G>
+			<B>240</B>
+		</TextColor>
+		<Text>%</Text>
+		<NoWrap>true</NoWrap>
+		<AlignRight>true</AlignRight>
+		<AutoStretch>true</AutoStretch>
+		<TopAnchorOffset>71</TopAnchorOffset>
+		<BottomAnchorOffset>81</BottomAnchorOffset>
+		<RightAnchorOffset>3</RightAnchorOffset>
+		<RightAnchorToLeft>false</RightAnchorToLeft>
+		<FontShadow>true</FontShadow>
+	</Label>
+	<Label item="PW_AltAdvPctLabel">
+		<ScreenID>PW_AltAdvPctLabel</ScreenID>
+		<Font>1</Font>
+		<TextColor>
+			<R>240</R>
+			<G>240</G>
+			<B>240</B>
+		</TextColor>
+		<Text>%</Text>
+		<NoWrap>true</NoWrap>
+		<AlignRight>true</AlignRight>
+		<AutoStretch>true</AutoStretch>
+		<TopAnchorOffset>83</TopAnchorOffset>
+		<BottomAnchorOffset>93</BottomAnchorOffset>
+		<RightAnchorOffset>3</RightAnchorOffset>
+		<RightAnchorToLeft>false</RightAnchorToLeft>
+		<FontShadow>true</FontShadow>
+	</Label>
 	<Label item="PW_AltAdvLabel">
 		<ScreenID>AltAdvLabel</ScreenID>
 		<EQType>27</EQType>
@@ -878,7 +913,7 @@
 		<AutoStretch>true</AutoStretch>
 		<TopAnchorOffset>83</TopAnchorOffset>
 		<BottomAnchorOffset>93</BottomAnchorOffset>
-		<RightAnchorOffset>3</RightAnchorOffset>
+		<RightAnchorOffset>15</RightAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
 		<FontShadow>true</FontShadow>
@@ -1286,8 +1321,10 @@
 		<Pieces>PW_InvocationInfo</Pieces>
 		<Pieces>PW_ExpGauge</Pieces>
 		<Pieces>PW_ExpLabel</Pieces>
+		<Pieces>PW_ExpPercLabel</Pieces>
 		<Pieces>PW_AltAdvGauge</Pieces>
 		<Pieces>PW_AltAdvLabel</Pieces>
+		<Pieces>PW_AltAdvPctLabel</Pieces>
 		<Pieces>PW_Level</Pieces>
 		<Pieces>PW_Class</Pieces>
 		<Pieces>PW_HPNumbers</Pieces>

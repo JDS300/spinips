@@ -152,8 +152,8 @@ def audit_player_and_target() -> None:
             child_text(player_window, "ClickThroughEmptyBuffs") != "true"):
         fail("PlayerWindow interaction or empty-buff click-through changed")
     for label, expected, alignment in (
-        (stance, (91, 107, 6, 132), "false"),
-        (invocation, (91, 107, 232, 6), "true"),
+        (stance, (96, 112, 6, 132), "false"),
+        (invocation, (96, 112, 232, 6), "true"),
     ):
         actual = tuple(
             child_int(label, tag) for tag in (
@@ -277,8 +277,8 @@ def audit_effects_casting_and_bars() -> None:
             child_text(buff_background, "Style_Border") != "false"):
         fail("BuffWindow inset background became opaque")
     buff_template = item(buffs, "Button", "BW_Player_Buff_Template")
-    if dimensions(buff_template) != (216, 20):
-        fail("BuffWindow rows must remain tightly packed at 216x20")
+    if dimensions(buff_template) != (52, 20):
+        fail("BuffWindow buff chip must stay icon-plus-timer sized at 52x20")
     if dimensions_at(buff_template, "DecalSize") != (20, 20):
         fail("BuffWindow icon geometry drifted")
     if dimensions(item(buffs, "Screen", "BW_00_Screen")) != (216, 20):
@@ -288,10 +288,10 @@ def audit_effects_casting_and_bars() -> None:
                                 f"Buff{index}Label", 500 + index)
         if child_int(label, "Font") < 3:
             fail(f"BW_Buff{index} fell below the accessible font tier")
-        if dimensions(label) != (179, 18):
+        if dimensions(label) != (154, 18):
             fail(f"BW_Buff{index} geometry drifted")
-        if (child_int(label, "Location/X"), child_int(label, "Location/Y")) != (27, 1):
-            fail(f"BW_Buff{index} lost compact row alignment")
+        if (child_int(label, "Location/X"), child_int(label, "Location/Y")) != (52, 1):
+            fail(f"BW_Buff{index} lost its timer-clear alignment")
         item(buffs, "Screen", f"BW_{index:02d}_Screen")
 
     songs = root_for("EQUI_ShortDurationBuffWindow.xml")
@@ -311,21 +311,21 @@ def audit_effects_casting_and_bars() -> None:
             child_text(song_background, "Style_Border") != "false"):
         fail("ShortDurationBuffWindow inset background became opaque")
     song_template = item(songs, "Button", "SDBW_Player_Buff_Template")
-    if dimensions(song_template) != (216, 20):
-        fail("ShortDurationBuffWindow rows must remain tightly packed at 216x20")
+    if dimensions(song_template) != (52, 20):
+        fail("ShortDurationBuffWindow buff chip must stay icon-plus-timer sized at 52x20")
     if dimensions_at(song_template, "DecalSize") != (20, 20):
         fail("ShortDurationBuffWindow icon geometry drifted")
     if dimensions(item(songs, "Screen", "SDBW_00_Screen")) != (216, 20):
         fail("ShortDurationBuffWindow label row template drifted")
     for index in range(15):
-        screen_id = "Buff1Label" if index == 1 else f"SDBuff{index}Label"
+        screen_id = f"SDBuff{index}Label"
         label = require_binding(songs, "Label", f"SDBW_Buff{index}",
                                 screen_id, 600 + index)
         if child_int(label, "Font") < 3:
             fail(f"SDBW_Buff{index} fell below the accessible font tier")
-        if dimensions(label) != (179, 18):
+        if dimensions(label) != (154, 18):
             fail(f"SDBW_Buff{index} geometry drifted")
-        if (child_int(label, "Location/X"), child_int(label, "Location/Y")) != (27, 1):
+        if (child_int(label, "Location/X"), child_int(label, "Location/Y")) != (52, 1):
             fail(f"SDBW_Buff{index} lost compact row alignment")
         item(songs, "Screen", f"SDBW_{index:02d}_Screen")
 

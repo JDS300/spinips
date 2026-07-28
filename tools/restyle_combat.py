@@ -198,20 +198,34 @@ def style_buff_file(path: Path, prefix: str, count: int,
                     title: str, height: int) -> None:
     text = path.read_text(encoding="ascii")
     template = f"{prefix}_Player_Buff_Template"
+    # The client paints the remaining-duration countdown centered on this
+    # button. The previous full-row 216px button centered that text under
+    # the name label, hiding it. An icon-plus-timer chip (52x20, icon in
+    # the first 20px) centers the shadowed countdown in the clear band
+    # beside the icon; the name labels start at x=52 and never cover it.
     text = change_item(
         text, "Button", template,
         lambda b: set_container(
-            set_container(set_font(b, 2), "Size", CX=216, CY=20),
+            set_container(
+                set_or_add_value(set_font(b, 2), "FontShadow", "true",
+                                 after="Font"),
+                "Size", CX=52, CY=20),
             "DecalSize", CX=20, CY=20,
         ),
+    )
+    # One 52px chip per row: cap the tile box short of two chip widths so
+    # the flow stays a single column with the same 20px pitch as the labels.
+    text = change_item(
+        text, "TileLayoutBox", f"{prefix}_Buttons",
+        lambda b: set_value(b, "RightAnchorOffset", 163),
     )
     for index in range(count):
         label = f"{prefix}_Buff{index}"
 
         def label_style(block: str) -> str:
             block = set_font(block, 3)
-            block = set_container(block, "Location", X=27, Y=1)
-            block = set_container(block, "Size", CX=179, CY=18)
+            block = set_container(block, "Location", X=52, Y=1)
+            block = set_container(block, "Size", CX=154, CY=18)
             return set_color(block, "TextColor", TEXT, insert=True)
 
         text = change_item(text, "Label", label, label_style)
@@ -219,7 +233,7 @@ def style_buff_file(path: Path, prefix: str, count: int,
     text = change_item(
         text, "Label", f"{prefix}_Buff_FrontSpacer",
         lambda b: set_container(
-            set_container(b, "Location", X=0, Y=1), "Size", CX=27, CY=18
+            set_container(b, "Location", X=0, Y=1), "Size", CX=52, CY=18
         ),
     )
     text = change_item(
@@ -308,8 +322,8 @@ def style_player() -> None:
         # Stance") than the stock two-point font was designed around.  Give
         # the left rail a real, inset column and enough line height for Font 4
         # descenders without letting it collide with invocation text.
-        block = set_value(block, "TopAnchorOffset", 91)
-        block = set_value(block, "BottomAnchorOffset", 107)
+        block = set_value(block, "TopAnchorOffset", 96)
+        block = set_value(block, "BottomAnchorOffset", 112)
         block = set_value(block, "LeftAnchorOffset", 6)
         block = set_value(block, "RightAnchorOffset", 132)
         return block
@@ -318,8 +332,9 @@ def style_player() -> None:
         # Reserve an independent right-aligned column for values such as
         # "Empower".  The four-pixel gutter keeps both dynamic labels legible
         # even when the three-class identity uses the full command-frame width.
-        block = set_value(block, "TopAnchorOffset", 91)
-        block = set_value(block, "BottomAnchorOffset", 107)
+        # Sits below the AA percent readout band (83..93) with a clear gap.
+        block = set_value(block, "TopAnchorOffset", 96)
+        block = set_value(block, "BottomAnchorOffset", 112)
         block = set_value(block, "LeftAnchorOffset", 232)
         block = set_value(block, "RightAnchorOffset", 6)
         return block
