@@ -173,9 +173,9 @@
 		<Style_HScroll>false</Style_HScroll>
 		<Style_Transparent>false</Style_Transparent>
 		<FillTint>
-			<R>66</R>
-			<G>207</G>
-			<B>139</B>
+			<R>52</R>
+			<G>218</G>
+			<B>190</B>
 		</FillTint>
 		<EQType>41</EQType>
 		<GaugeDrawTemplate>
@@ -200,17 +200,17 @@
 		<FontShadow>true</FontShadow>		
 		<Font>4</Font>
 		<TextColor>
-			<R>216</R>
-			<G>200</G>
-			<B>154</B>
+			<R>238</R>
+			<G>242</G>
+			<B>243</B>
 		</TextColor>
 		<Style_VScroll>false</Style_VScroll>
 		<Style_HScroll>false</Style_HScroll>
 		<Style_Transparent>false</Style_Transparent>
 		<FillTint>
-			<R>150</R>
-			<G>0</G>
-			<B>0</B>
+			<R>52</R>
+			<G>218</G>
+			<B>190</B>
 		</FillTint>
 		<EQType>41</EQType>
 		<GaugeDrawTemplate>
@@ -229,9 +229,9 @@
 		<EQType>301</EQType>
 		<Font>4</Font>
 		<TextColor>
-			<R>216</R>
-			<G>200</G>
-			<B>154</B>
+			<R>238</R>
+			<G>242</G>
+			<B>243</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Text>100</Text>
@@ -240,7 +240,9 @@
 		<AutoStretch>true</AutoStretch>
 		<TopAnchorOffset>49</TopAnchorOffset>
 		<BottomAnchorOffset>69</BottomAnchorOffset>
+		<LeftAnchorOffset>30</LeftAnchorOffset>
 		<RightAnchorOffset>8</RightAnchorOffset>
+		<LeftAnchorToLeft>false</LeftAnchorToLeft>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
 		<FontShadow>true</FontShadow>
@@ -675,8 +677,8 @@
 		</Size>
 		<Style_VScroll>false</Style_VScroll>
 		<Style_HScroll>false</Style_HScroll>
-		<Style_Transparent>true</Style_Transparent>
-		<DrawTemplate>WDT_RoundedTransparentBottomArrow</DrawTemplate>
+		<Style_Transparent>false</Style_Transparent>
+		<DrawTemplate>WDT_RoundedNoTitle</DrawTemplate>
 		<LockedDrawTemplate>WDT_RoundedTransparentNoArrow</LockedDrawTemplate>		
 		<ClickThroughEmptyBuffs>true</ClickThroughEmptyBuffs>			
 		<KeepOnScreen>true</KeepOnScreen>

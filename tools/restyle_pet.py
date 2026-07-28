@@ -154,6 +154,20 @@ def _polish_buff_host(text: str) -> str:
     return _replace_item(text, "Screen", "PIW_BuffWindow", body)
 
 
+def _frame_outer_window(text: str) -> str:
+    """Give the outer host window a real frame.
+
+    The buff rail mounts on the outer PetInfoWindow, which the stock skin
+    left transparent — so active pet buffs rendered as loose dark tiles
+    floating outside the visible command panel. The command subpanel keeps
+    its own border, which reads as the divider between commands and effects.
+    """
+    _, body = _item_block(text, "Screen", "PetInfoWindow")
+    body = _set_scalar(body, "Style_Transparent", "false")
+    body = _set_scalar(body, "DrawTemplate", "WDT_RoundedNoTitle")
+    return _replace_item(text, "Screen", "PetInfoWindow", body)
+
+
 def _compact_geometry(text: str, filename: str) -> str:
     """Apply the minimum polished geometry for one Legends menu variant."""
     width, height = WINDOW_SIZES[filename]
@@ -287,6 +301,7 @@ def restyle(path: Path) -> bool:
     revised = _direct_command_pieces(revised)
     revised = _remove_flow_grid(revised)
     revised = _polish_buff_host(revised)
+    revised = _frame_outer_window(revised)
     revised = _compact_geometry(revised, path.name)
     ET.fromstring(revised)
     if revised == text:
