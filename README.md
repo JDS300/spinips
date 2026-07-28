@@ -36,11 +36,13 @@
 4. [Installation](#installation)
 5. [Chat: three windows, three presets](#chat-three-windows-three-presets)
 6. [The map](#the-map)
-7. [Bags, bank bags and the dock](#bags-bank-bags-and-the-dock)
-8. [Spin's Loremaster (log parser & DPS tracker)](#spins-loremaster)
-9. [Customizing & regenerating](#customizing--regenerating)
-10. [Troubleshooting](#troubleshooting)
-11. [Repository map](#repository-map)
+7. [The equipment screen](#the-equipment-screen)
+8. [The pet command center](#the-pet-command-center)
+9. [Bags, bank bags and the dock](#bags-bank-bags-and-the-dock)
+10. [Spin's Loremaster (log parser & DPS tracker)](#spins-loremaster)
+11. [Customizing & regenerating](#customizing--regenerating)
+12. [Troubleshooting](#troubleshooting)
+13. [Repository map](#repository-map)
 
 ---
 
@@ -50,7 +52,7 @@
 |---|---|
 | `spinui_reloaded/` | The full UI skin - a themed overhaul of the modern default skin. Every window inherits the new look; the shipped 1440p default is safe at 2560x1440. |
 | `UI_Spin_qeynos_LO1.ini` | Complete example layout for **Spin @ qeynos**, pixel-planned for 3440x1440 (Combat Focus). Existing characters should use the installer's safe merge. |
-| `layouts/combat-focus/` `layouts/social-focus/` `layouts/hybrid/` | The same layout with three different chat-row arrangements - pick your style. These three are the only layout folders included in release packages; `layouts/original/` and `layouts/spin-live/` are internal generator bases kept in the repository. |
+| `layouts/combat-focus/` `layouts/social-focus/` `layouts/hybrid/` | The same layout with three different chat-row arrangements - pick your style. Release packages ship these three 3440x1440 aliases plus the complete `layouts/profiles/` tree for all seven resolutions; `layouts/original/` and `layouts/spin-live/` are internal generator bases kept in the repository. |
 | `layouts/original/` | The author's pre-overhaul Spin profile, retained as project history, not a substitute for another player's backup. |
 | `loremaster/` | **Spin's Loremaster** - the real-time Encounter Lab, session tracker, DPS overlay, and Lore Lens item-wiki companion. |
 | `tools/` | The generators that built everything (textures, layout, preview). Rerunnable and hackable. |
@@ -194,9 +196,12 @@ The presets differ only in the chat row:
 
 | Preset | Main | Social | Combat | For |
 |---|---|---|---|---|
-| `combat-focus` *(default)* | **820px** | **820px** | **820px** | a clean symmetrical chat row - three equal panes |
-| `social-focus` | 800px | **1000px** | 660px | raid/guild chatter first |
-| `hybrid` | 900px | 1000px | **560px, half-height** | combat as a compact self-ticker |
+| `combat-focus` *(default)* | 700px | 700px | **1060px** | the large combat pane from Spin's live HUD |
+| `social-focus` | 620px | **1120px** | 720px | raid/guild chatter first |
+| `hybrid` | 820px | 1000px | **640px, reduced height** | combat as a compact self-ticker (200px vs 280px tall) |
+
+At other resolutions each preset keeps these proportions inside that screen's
+validated chat row.
 
 *Hybrid + true self-only combat:* the small window already keeps combat out of your way; to fully silence **other people's** melee spam, use Options (`ALT+O`) → **Chat** filters → set *Others' Melee* categories to **Off** - filter visibility is a game-side setting that routing can't override, so this stays a 30-second manual step.
 
@@ -206,7 +211,7 @@ The presets differ only in the chat row:
 
 Tuned for **running with the map open**:
 
-* Top-right glass panel, now **720x600** - bigger canvas, easier reading at 3440x1440 - still clear of the buff/song columns, the group window, and the whole combat cluster.
+* Top-right glass panel at **640x520** (640x440 on 1080-tall screens) - still clear of the buff/song columns, the group window, and the whole combat cluster.
 * **Translucent by design** (`Alpha 235`) and **fades to 160** when it isn't the active window - terrain reads through it while you navigate, and it solidifies the moment you mouse in.
 * Coordinate/zone readouts recolored from black to light text so they're readable on the dark canvas.
 * Toggle it with your usual map key; the INI keeps its position and size permanently.

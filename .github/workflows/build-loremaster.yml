@@ -55,13 +55,15 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path build/spec | Out-Null
+          # --version-file is resolved relative to --specpath, so pass
+          # absolute paths.
           pyinstaller --clean --noconfirm --onefile --windowed `
             --name Loremaster --distpath dist --workpath build/loremaster `
-            --version-file loremaster/versioninfo-loremaster.txt `
+            --version-file (Join-Path $PWD 'loremaster/versioninfo-loremaster.txt') `
             --specpath build/spec loremaster/loremaster.py
           pyinstaller --clean --noconfirm --onefile --windowed --uac-admin `
             --name SpinUIInstaller --distpath dist --workpath build/installer `
-            --version-file installer/versioninfo-installer.txt `
+            --version-file (Join-Path $PWD 'installer/versioninfo-installer.txt') `
             --specpath build/spec installer/spinui_installer.py
 
       - name: Smoke-test packaged executables

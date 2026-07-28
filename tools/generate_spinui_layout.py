@@ -249,7 +249,10 @@ def _adaptive_chat_geometry(profile: ResolutionProfile, preset: str):
     if sw >= 3000:
         dock_width = 951
     elif aspect >= 2.2:
-        dock_width = round(sw * 0.275)
+        # The ultrawide bag dock (8 x 100px pitch anchored at sw-940) needs
+        # the reserved strip to actually cover it, or the opened bags land on
+        # the Combat chat pane (seen at 2560x1080 before this floor).
+        dock_width = max(round(sw * 0.275), 948)
     usable = sw - 16 - dock_width
     content = usable - 16
     weights = CHAT_WEIGHTS[preset]
@@ -291,9 +294,24 @@ def adaptive_placements(profile: ResolutionProfile, preset: str) -> dict[str, di
     player_x = center - 550
     target_x = center + 178
     player_y = chat_top - 375
+    # Target-of-target sits under the map. On short screens the raised
+    # player/target plates can reach that band; park it beside the target
+    # plate instead of inside it (seen at 2560x1080).
+    tot_x, tot_y = max(8, sw - 1080), 536
+    plate_clash = (
+        tot_y < player_y + 193 and tot_y + 100 > player_y and (
+            (tot_x < player_x + 360 and tot_x + 232 > player_x)
+            or (tot_x < target_x + 360 and tot_x + 232 > target_x)))
+    if plate_clash:
+        tot_x = min(sw - 240, target_x + 368)
     group_y = max(656, chat_top - 502)
     inventory_x = max(8, round(sw * 0.0509))
-    inventory_y = min(round(sh * 0.141), chat_top - 676)
+    # The 668-tall inventory must clear both the chat row and, where the
+    # screen is tall enough, the raised player plate beneath it.
+    inventory_y = max(8, min(round(sh * 0.141), chat_top - 676, player_y - 676))
+    # The bank window and its bag grid stack left-to-right beside the open
+    # inventory: inventory | bank window | bank bags.
+    bank_x = max(inventory_x + 668, center - 720)
     pet_x = min(sw - 521, inventory_x + 676)
     pet_y = max(8, player_y - 189)
     bank_y = max(80, min(round(sh * 0.23), chat_top - 406))
@@ -338,29 +356,38 @@ def adaptive_placements(profile: ResolutionProfile, preset: str) -> dict[str, di
         "ShortDurationBuffWindow": q(sw - 432, 8, 216, 324, show=1),
         "ShortDurationBuffWindow_13": q(sw - 432, 8, 216, 324, show=0),
         "GroupWindow": q(sw - 307, group_y, show=1),
-        "ExtendedTargetWnd": q(sw - 494, group_y, 170, 300, show=0),
-        "MapViewWnd": q(max(8, sw - 1080), 8, 640, 520,
+        # On 1080-tall screens the plates sit high: the map shortens to 440
+        # and extended target tucks under the song column so the utilities
+        # never cover the plates or the chat row.
+        "ExtendedTargetWnd": (
+            q(sw - 432, 340, 170, 300, show=0) if sh <= 1080
+            else q(sw - 494, group_y, 170, 300, show=0)),
+        "MapViewWnd": q(max(8, sw - 1080), 8, 640, 440 if sh <= 1080 else 520,
                         extra={"Alpha": "235", "FadeToAlpha": "160", "Fades": "1"}),
-        "TargetOfTargetWindow": q(max(8, sw - 1080), 536, 232, 100),
+        "TargetOfTargetWindow": q(tot_x, tot_y, 232, 100),
         "CompassWindow": q(center - 230, 8),
         "TrackingWnd": q(8, 120, 340, 390),
         "InventoryWindow": q(inventory_x, inventory_y),
-        "BigBankWnd": q(max(8, center - 720), bank_y),
+        "BigBankWnd": q(bank_x, bank_y),
         "BreathWindow": q(center - 59, max(8, player_y - 71)),
     }
     for name, (x, width, height, y) in chat.items():
         placements[name] = q(x, y, width, height, extra=CHAT_ALPHA)
 
     if sw >= 3000 or sw / sh >= 2.2:
-        bag_x, bag_y, columns = sw - 940, chat_top + 14, 8
+        # Keep the full bag row at least 8px above the bottom edge; on 1080p
+        # ultrawides chat_top+14 would otherwise land it flush with the edge.
+        bag_x, bag_y, columns = sw - 940, min(chat_top + 14, sh - 8 - 194), 8
     else:
+        # A 4x2 grid beside the top-anchored inventory keeps the opened bags
+        # above the raised plates and clear of the song column.
         bag_x, bag_y, columns = min(sw - 404, inventory_x + 668), inventory_y, 4
     for i in range(1, 9):
         col, row = (i - 1) % columns, (i - 1) // columns
         placements[f"BagInv{i}"] = q(
             bag_x + col * 100, bag_y + row * 204, 96, 194)
 
-    bank_bag_x = max(8, min(sw - 804, center - 400))
+    bank_bag_x = max(bank_x + 295, min(sw - 804, center - 400))
     for i in range(1, 17):
         col, row = (i - 1) % 8, (i - 1) // 8
         placements[f"BagBank{i}"] = q(
@@ -613,9 +640,24 @@ def validate_profile(placements, screen_w, screen_h) -> list[str]:
             bx0, by0, bx1, by1 = profile_rect(b)
             if ax0 < bx1 and bx0 < ax1 and ay0 < by1 and by0 < ay1:
                 problems.append(f"OVERLAP {a} x {b}")
+    # EQMain is generated outside the placement table (right/bottom anchor,
+    # 8px/4px offsets). The skin's EQUI.xml includes the vertical 52x200
+    # button-bar variant; the always-visible HUD must clear it.
+    eqmain = (screen_w - 8 - 52, screen_h - 4 - 200, screen_w - 8, screen_h - 4)
+    for name in visible:
+        ax0, ay0, ax1, ay1 = profile_rect(name)
+        if (ax0 < eqmain[2] and eqmain[0] < ax1
+                and ay0 < eqmain[3] and eqmain[1] < ay1):
+            problems.append(f"OVERLAP EQMainWnd x {name}")
+    # Every optional workspace must compose cleanly at every resolution, not
+    # just 3440x1440 — the 2560x1080 bag dock regression proved the gap. The
+    # one exception: the full banking workspace on 1080-tall screens, where a
+    # 668px inventory plus the bank suite geometrically cannot clear the
+    # raised plates; there those windows float over the HUD like stock EQ.
     optional_states = dict(OPTIONAL_VISIBLE)
-    if (screen_w, screen_h) == (SCREEN_W, SCREEN_H):
-        optional_states.update(OPTIONAL_VISIBLE_3440)
+    optional_states.update(OPTIONAL_VISIBLE_3440)
+    if screen_h <= 1080:
+        optional_states.pop("banking", None)
     for state, optional in optional_states.items():
         state_visible = visible + [name for name in optional if name in placements]
         for i, a in enumerate(state_visible):

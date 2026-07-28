@@ -360,7 +360,13 @@ class WindowsTrayIcon:
                         return 0
                 if taskbar_created and message == taskbar_created:
                     self._added = False
-                    add_icon()
+                    if add_icon():
+                        self.error = None
+                    return 0
+                if message == 0x0113:  # WM_TIMER — retry a failed tray add
+                    if not self._added and add_icon():
+                        self.error = None
+                        user32.KillTimer(hwnd, 1)
                     return 0
                 if message == 0x0010:  # WM_CLOSE
                     user32.DestroyWindow(hwnd)
@@ -390,7 +396,12 @@ class WindowsTrayIcon:
         if not self._hwnd:
             raise OSError(ctypes.get_last_error(), "CreateWindowExW failed")
         if not add_icon():
-            raise OSError(ctypes.get_last_error(), "Shell_NotifyIconW failed")
+            # At login autostart (--wait-for-eq) the shell's notification
+            # area may not exist yet. Failing permanently here would leave a
+            # hidden HUD with no recovery icon, so keep the message loop
+            # alive and retry on a timer plus the TaskbarCreated broadcast.
+            self.error = "tray icon pending; the shell was not ready yet"
+            user32.SetTimer(self._hwnd, 1, 5000, None)
         self._active = True
         self._ready.set()
 

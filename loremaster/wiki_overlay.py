@@ -266,6 +266,10 @@ def parse_hotkey(value: str) -> tuple[int, int, str]:
 def _clean_wikitext(value: str, limit: int = 4000) -> list[str]:
     """Convert a small trusted-shape MediaWiki field to bounded plain text."""
     value = _strip_controls(value or "")
+    # Output is capped at `limit` chars, so bounding the input costs nothing
+    # while keeping a pathological page from stalling the lookup worker in
+    # the regex/template passes below.
+    value = value[:max(8 * limit, 32_000)]
     value = re.sub(r"<(?:script|style)\b[^>]*>.*?</(?:script|style)\s*>", "", value,
                    flags=re.I | re.S)
     value = re.sub(r"<br\s*/?>", "\n", value, flags=re.I)
@@ -274,9 +278,12 @@ def _clean_wikitext(value: str, limit: int = 4000) -> list[str]:
     value = re.sub(r"\[(?:https?://\S+)\s+([^\]]+)\]", r"\1", value)
     value = re.sub(r"\[(?:https?://[^\]]+)\]", "", value)
     # Small icon/category/formatting templates add noise and can contain
-    # nested pipes.  Iterate to remove innermost templates safely.
+    # nested pipes.  Iterate to remove innermost templates safely, with a
+    # pass cap so absurd nesting depth cannot spin this loop.
     previous = None
-    while previous != value:
+    for _pass in range(100):
+        if previous == value:
+            break
         previous = value
         value = re.sub(r"\{\{[^{}]*\}\}", "", value)
     value = re.sub(r"<[^>]+>", "", value)
@@ -400,9 +407,11 @@ class WikiCache:
         try:
             raw = json.loads(self._path(name).read_text(encoding="utf-8"))
             item = WikiItem(**raw)
+            # A corrupt fetched_at must read as any other bad cache entry —
+            # raising here would kill the lookup worker thread for good.
+            age = max(0.0, self.clock() - float(item.fetched_at))
         except (OSError, ValueError, TypeError):
             return None
-        age = max(0.0, self.clock() - float(item.fetched_at))
         if age > self.ttl_seconds and not allow_stale:
             return None
         item.cached = True

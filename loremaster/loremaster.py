@@ -973,22 +973,35 @@ class SessionStats:
             self._close_fight()
         elif kind == "kill_other":
             killer = g["killer"].strip()
-            mob = normalize_mob(g["target"])
+            raw_target = g["target"].strip()
+            mob = normalize_mob(raw_target)
+            # "X has been slain by Y!" also fires when a groupmate or pet is
+            # the one who died. A player-style victim killed by a mob-article
+            # actor is an ally death, not a slain enemy: counting it would
+            # name the dead ally in kill totals, the encounter title, and the
+            # persisted SLAYING records.
+            ally_death = (
+                (self.is_pet(raw_target) or looks_like_player_actor(raw_target))
+                and killer.split(" ", 1)[0].lower() in {"a", "an", "the"}
+            )
             self._combat_signal(ts)
-            if self.fight:
-                self.fight.kills += 1
-                self.fight.kill_targets[mob] += 1
-                self.fight.add_timeline(ts, "kills", 1)
-            if killer == self.character or self.is_pet(killer):
-                self.kills[mob] += 1
-                if count_lifetime:
-                    self._lifetime_inc("kills")
-                    self._lifetime_named("kill_breakdown", mob)
+            if ally_death:
+                self._feed(ts, "ally_death", 0, raw_target)
             else:
-                self.group_kills[mob] += 1
-                if count_lifetime:
-                    self._lifetime_inc("group_kills")
-                    self._lifetime_named("group_kill_breakdown", mob)
+                if self.fight:
+                    self.fight.kills += 1
+                    self.fight.kill_targets[mob] += 1
+                    self.fight.add_timeline(ts, "kills", 1)
+                if killer == self.character or self.is_pet(killer):
+                    self.kills[mob] += 1
+                    if count_lifetime:
+                        self._lifetime_inc("kills")
+                        self._lifetime_named("kill_breakdown", mob)
+                else:
+                    self.group_kills[mob] += 1
+                    if count_lifetime:
+                        self._lifetime_inc("group_kills")
+                        self._lifetime_named("group_kill_breakdown", mob)
 
         elif kind == "heal_out":
             amt = int(g["amount"])
@@ -2525,6 +2538,7 @@ def run_gui(args):
         def start_wiki_drag(event):
             wiki_drag["x"] = event.x_root - win.winfo_x()
             wiki_drag["y"] = event.y_root - win.winfo_y()
+            wiki_drag["origin"] = (win.winfo_x(), win.winfo_y())
 
         def move_wiki(event):
             width, height = win.winfo_width(), win.winfo_height()
@@ -2535,6 +2549,11 @@ def run_gui(args):
             win.geometry(f"{x:+d}{y:+d}")
 
         def end_wiki_drag(_event):
+            # A plain click on the header is not a move: pinning the window
+            # then would silently disable follow-the-cursor placement with no
+            # way back. Only an actual drag saves a pinned position.
+            if wiki_drag.get("origin") == (win.winfo_x(), win.winfo_y()):
+                return
             x, y = clamped_position(
                 [win.winfo_x(), win.winfo_y()], win.winfo_width(),
                 win.winfo_height(), win.winfo_x(), win.winfo_y())
@@ -2799,6 +2818,18 @@ def run_gui(args):
         check("Enable Lore Lens item lookup", enabled_var)
         check("Scan hovered tooltip on hotkey (Windows OCR, on demand)", hover_ocr_var)
         check("Allow network lookups (cached pages still work when off)", network_var)
+
+        def unpin_lore_lens():
+            cfg["wiki_position"] = None
+            save_config(cfg)
+            status.configure(
+                text="Lore Lens unpinned; it opens beside the cursor again.",
+                fg=T["green"])
+
+        tk.Button(frame, text="UNPIN LORE LENS (follow cursor)",
+                  command=unpin_lore_lens, bg=T["panel"], fg=T["dim"],
+                  activebackground=T["raised"], relief="flat", font=FONT_RUNE,
+                  padx=10, pady=4).pack(anchor="w", pady=(6, 0))
         row = tk.Frame(frame, bg=T["bg"])
         row.pack(fill="x", pady=(8, 4))
         L(row, "EQ-only global hotkey", fg=T["gold"], font=FONT_S).pack(side="left")
@@ -3430,6 +3461,8 @@ def run_gui(args):
                         out.append(("row", f"{when} · {label}", f"+{fmt_num(amount)}"))
                     elif event_kind == "avoid":
                         out.append(("row", f"{when} · avoided {label}", ""))
+                    elif event_kind == "ally_death":
+                        out.append(("row", f"{when} · {label} died", ""))
                     else:
                         out.append(("row", f"Slain by {label}", ""))
             zs = snap["zones"][-6:]
