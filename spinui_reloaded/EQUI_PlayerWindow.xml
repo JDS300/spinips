@@ -79,8 +79,8 @@
 				<Y>0</Y>
 			</Location>
 			<Size>
-				<CX>128</CX>
-				<CY>2</CY>
+				<CX>2</CX>
+				<CY>32</CY>
 			</Size>
 		</Frames>
 	</Ui2DAnimation>
@@ -330,7 +330,7 @@
 	<Button item="PW_CombatStateAnim">
 		<ScreenID>PW_CombatStateAnim</ScreenID>
 		<RelativePosition>true</RelativePosition>
-		<Style_Transparent>false</Style_Transparent>
+		<Style_Transparent>true</Style_Transparent>
 		<Style_Checkbox>false</Style_Checkbox>
 		<DecalSize>
 			<CX>13</CX>
@@ -1327,7 +1327,6 @@
 		<Pieces>A_AttackIndicatorAnimBottom</Pieces>
 		<Pieces>A_AttackIndicatorAnimLeft</Pieces>
 		<Pieces>A_AttackIndicatorAnimRight</Pieces>
-		<Pieces>A_AttackIndicatorAnimFill</Pieces>
 		<Pieces>DragBox:PW_DragBox</Pieces>
 		<Pieces>DragBox:PW_DragBox2</Pieces>
 		<Pieces>DragBox:PWDragBox3</Pieces>
