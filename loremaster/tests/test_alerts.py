@@ -74,7 +74,8 @@ class AlertTriggerGatingTests(unittest.TestCase):
 
 class FightToastGatingTests(unittest.TestCase):
     def test_master_switch_gates_fight_toasts(self):
-        self.assertTrue(LOREMASTER.fight_toasts_active({}))
+        # Banners are opt-in: an untouched config stays quiet.
+        self.assertFalse(LOREMASTER.fight_toasts_active({}))
         self.assertTrue(LOREMASTER.fight_toasts_active(
             {"alerts_enabled": True, "fight_toasts": True}))
         self.assertFalse(LOREMASTER.fight_toasts_active(
@@ -100,7 +101,9 @@ class AlertConfigDefaultTests(unittest.TestCase):
         for key in ("alert_tells", "alert_summon", "alert_death",
                     "alert_big_hit", "alert_name_called"):
             self.assertIs(cfg[key], True, key)
-        self.assertIs(cfg["alerts_enabled"], True)
+        # The master banner switch ships OFF; each trigger is pre-enabled so
+        # one Settings toggle turns the whole system on.
+        self.assertIs(cfg["alerts_enabled"], False)
         self.assertIs(cfg["fight_toasts"], True)
         self.assertEqual(cfg["big_hit_threshold"], 800)
         self.assertEqual(cfg["alert_seconds"], 4)
