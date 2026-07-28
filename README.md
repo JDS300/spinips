@@ -4,6 +4,8 @@
 
 [**Download the latest release**](https://github.com/itsspin/spinips/releases/latest) · Windows · EverQuest Legends · Log-only companion · Standard-library runtime
 
+**Installer is providing FALSE POSITIVES, just use manual version for ui/ini if worried. <3
+
 ## Real in-game showcase
 
 ![SpinUI running in EverQuest Legends at 3440x1440](docs/screenshots/spinui-live-hero.jpg)
