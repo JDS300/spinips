@@ -2,17 +2,16 @@
 """One-command release quality gate for SpinUI and Loremaster.
 
 The source gate is safe to run from a dirty worktree: generated layouts are
-rebuilt in memory and compared without rewriting the player's files. Pillow is
-used by the Studio visual self-test. Package checks operate on staged
-directories so the workflow cannot publish a partial or stale payload.
+rebuilt in memory and compared without rewriting the player's files. Package
+checks operate on staged directories so the workflow cannot publish a partial
+or stale payload.
 
 Local/CI usage::
 
     python tools/release_quality_gate.py
     python tools/release_quality_gate.py --packages-only \
         --package installer=package/SpinUI-Installer \
-        --package manual=package/SpinUI-Manual \
-        --package studio=package/SpinUI-Studio
+        --package manual=package/SpinUI-Manual
 """
 
 from __future__ import annotations
@@ -86,9 +85,10 @@ SOURCE_REQUIRED = (
     "loremaster/tests/test_wiki_overlay.py",
     "loremaster/tests/fixtures/cloak_of_flames.json",
     "loremaster/tests/fixtures/studded_belt.json",
-    "docs/SPINUI-STUDIO.md",
     "installer/spinui_installer.py",
     "installer/INSTALL-MANUAL.md",
+    "installer/versioninfo-installer.txt",
+    "loremaster/versioninfo-loremaster.txt",
     "tools/audit_combat_ui.py",
     "tools/audit_spinui.py",
     "tools/build_showcase_media.py",
@@ -96,7 +96,6 @@ SOURCE_REQUIRED = (
     "tools/generate_spinui_textures.py",
     "tools/render_loremaster_preview.py",
     "tools/render_preview.py",
-    "tools/spinui_studio.py",
     "tools/spinui_theme.py",
     ".github/workflows/build-loremaster.yml",
 )
@@ -121,18 +120,6 @@ COMMON_PACKAGE_TOP_LEVEL = {
     "README.md",
     "INSTALL.md",
     "Loremaster.exe",
-    "SpinUIStudio.exe",
-}
-
-# The standalone Studio release ships only the editor and its build sources:
-# no Loremaster, no installer, and only the previews Studio itself renders.
-STUDIO_PACKAGE_TOP_LEVEL = {
-    "docs",
-    "spinui_reloaded",
-    "layouts",
-    "UI_Spin_qeynos_LO1.ini",
-    "README.md",
-    "SpinUIStudio.exe",
 }
 
 
@@ -584,11 +571,7 @@ def check_generated_layout_drift() -> None:
 
 
 def run_source_selftests() -> None:
-    section("SpinUI Studio, Loremaster, and installer self-tests")
-    run_command(
-        "SpinUI Studio --selftest",
-        [sys.executable, str(REPO / "tools" / "spinui_studio.py"), "--selftest"],
-    )
+    section("Loremaster and installer self-tests")
     run_command(
         "Loremaster --selftest",
         [sys.executable, str(REPO / "loremaster" / "loremaster.py"), "--selftest"],
@@ -747,12 +730,9 @@ def check_staged_package(kind: str, package_root: Path) -> None:
     if not package_root.is_dir():
         fail(f"{kind} package directory does not exist: {package_root}")
 
-    if kind == "studio":
-        expected_top = set(STUDIO_PACKAGE_TOP_LEVEL)
-    else:
-        expected_top = set(COMMON_PACKAGE_TOP_LEVEL)
-        if kind == "installer":
-            expected_top.add("SpinUIInstaller.exe")
+    expected_top = set(COMMON_PACKAGE_TOP_LEVEL)
+    if kind == "installer":
+        expected_top.add("SpinUIInstaller.exe")
     actual_top = {path.name for path in package_root.iterdir()}
     missing = sorted(expected_top - actual_top)
     extra = sorted(actual_top - expected_top)
@@ -790,46 +770,22 @@ def check_staged_package(kind: str, package_root: Path) -> None:
         package_layouts / "profiles",
         f"{kind}/layouts/profiles",
     )
-    if kind == "studio":
-        # Studio ships a purpose-built README and only the docs/previews tree
-        # its offline renderer actually loads.
-        package_docs = package_root / "docs"
-        if not package_docs.is_dir():
-            fail(f"{kind} package is missing the docs directory")
-        actual_docs = {path.name for path in package_docs.iterdir()}
-        if actual_docs != {"previews"}:
-            fail(
-                f"{kind} package docs must contain exactly ['previews'], "
-                f"found {sorted(actual_docs)}"
-            )
-        docs_files = _compare_packaged_tree(
-            REPO / "docs" / "previews", package_docs / "previews",
-            f"{kind}/docs/previews"
-        )
-        _check_same_file(
-            REPO / "docs" / "SPINUI-STUDIO.md",
-            package_root / "README.md",
-            f"{kind}/README.md",
-        )
-    else:
-        docs_files = _compare_packaged_tree(
-            REPO / "docs", package_root / "docs", f"{kind}/docs"
-        )
-        _check_same_file(
-            REPO / "README.md", package_root / "README.md", f"{kind}/README.md")
-        _check_same_file(
-            REPO / "installer" / "INSTALL-MANUAL.md",
-            package_root / "INSTALL.md",
-            f"{kind}/INSTALL.md",
-        )
+    docs_files = _compare_packaged_tree(
+        REPO / "docs", package_root / "docs", f"{kind}/docs"
+    )
+    _check_same_file(
+        REPO / "README.md", package_root / "README.md", f"{kind}/README.md")
+    _check_same_file(
+        REPO / "installer" / "INSTALL-MANUAL.md",
+        package_root / "INSTALL.md",
+        f"{kind}/INSTALL.md",
+    )
     _check_same_file(
         REPO / "UI_Spin_qeynos_LO1.ini",
         package_root / "UI_Spin_qeynos_LO1.ini",
         f"{kind}/UI_Spin_qeynos_LO1.ini",
     )
-    _check_windows_executable(package_root / "SpinUIStudio.exe")
-    if kind != "studio":
-        _check_windows_executable(package_root / "Loremaster.exe")
+    _check_windows_executable(package_root / "Loremaster.exe")
     if kind == "installer":
         _check_windows_executable(package_root / "SpinUIInstaller.exe")
     print(
@@ -842,10 +798,9 @@ def check_staged_package(kind: str, package_root: Path) -> None:
 def parse_package(value: str) -> tuple[str, Path]:
     kind, separator, raw_path = value.partition("=")
     kind = kind.strip().casefold()
-    if (not separator or kind not in {"installer", "manual", "studio"}
-            or not raw_path.strip()):
+    if not separator or kind not in {"installer", "manual"} or not raw_path.strip():
         raise argparse.ArgumentTypeError(
-            "package must be installer=PATH, manual=PATH, or studio=PATH"
+            "package must be installer=PATH or manual=PATH"
         )
     path = Path(raw_path.strip())
     if not path.is_absolute():

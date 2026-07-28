@@ -1,7 +1,7 @@
 # SpinUI manual installation
 
 This package does not require the installer. It contains the complete
-`spinui_reloaded` skin, SpinUI Studio, Spin's Loremaster, the optional
+`spinui_reloaded` skin, Spin's Loremaster, the optional
 character-layout profiles, and alternate chat presets. Seven validated screen
 profiles cover 1920×1080, 2048×1080, 2560×1080, 2560×1440, 3440×1440,
 3840×1600, and 3840×2160.
@@ -19,45 +19,19 @@ profiles cover 1920×1080, 2048×1080, 2560×1080, 2560×1440, 3440×1440,
 > `UI_Spin_qeynos_LO1.ini.spinui-backup-20260720-214500`; applying an identical
 > preset again writes nothing and creates no extra backup.
 
+> **Antivirus note:** the unsigned `Loremaster.exe` and `SpinUIInstaller.exe`
+> can trip machine-learning heuristics (commonly `Wacatac!ml` or "suspicious
+> PE"). Every release publishes a `SHA256SUMS.txt`; verify a download with
+> `Get-FileHash -Algorithm SHA256 <file>` in PowerShell before restoring it
+> from quarantine. Both executables are built in public by GitHub Actions
+> from the repository source.
+
 ## 1. Close EverQuest completely
 
 EverQuest rewrites character UI files when it exits. Do not copy or replace an
 INI while the game is running.
 
-## 2. Optional: design offline with SpinUI Studio
-
-Run `SpinUIStudio.exe` directly from the extracted package, keeping it beside
-the `spinui_reloaded`, `layouts`, and `UI_Spin_qeynos_LO1.ini` content.
-(Studio is also published on its own as `SpinUI-Studio.zip`, with a dedicated
-guide inside.) The preview uses real SpinUI textures and the same INI
-geometry exported to EverQuest. Choose the exact screen under **Screen** —
-all seven validated profiles from 1920×1080 through 3840×2160 — and each
-profile closely preserves the submitted 3440×1440 live composition without
-shrinking text or controls. Studio detects common game installs, recommends
-the resolution read from `eqclient.ini`, and offers to import the newest
-character UI INI. Drag windows, drag the gold corner to resize supported
-controls, enter exact pixel
-positions, nudge with arrow keys, and customize the Venom, Gold, and Ember
-accents. **Preview on canvas** is separate from **In-game start state**, so a
-hidden pet, bag, or inventory window can be positioned without forcing it open
-at login. **USE DOWNLOADED UI** can point Studio at any other UI folder (for
-example an EQInterface skin) to arrange a layout against that skin's true
-window footprints and export an INI targeting it.
-
-Use **SAVE PROJECT** to keep an editable JSON project, **SAVE PREVIEW** for a
-full-resolution PNG, **EXPORT INI** for only the character layout, or **BUILD
-FINAL UI** for a complete custom skin and INI bundle. Studio writes to a new
-folder. If you explicitly export over a live character INI, confirm EverQuest
-is closed; Studio creates a timestamped byte-exact backup and performs an
-atomic replacement.
-
-Names, chat lines, buffs, gauges, items, and similar runtime values in the
-preview are deterministic samples. Their surrounding geometry and built skin
-assets are authoritative, but only `eqgame.exe` can reproduce its own font
-rasterization and supply live state. Perform one final in-game smoke test when
-the servers are available.
-
-## 3. Install the skin
+## 2. Install the skin
 
 For a clean update, rename or remove an older `spinui_reloaded` folder first,
 then copy the complete new folder into the game's `uifiles` folder. This keeps
@@ -84,7 +58,7 @@ In game, select it with:
 
 The `1` preserves your current window positions.
 
-## 4. Optional: install a resolution profile
+## 3. Optional: install a resolution profile
 
 Skip this step if you want to keep your existing window arrangement. Otherwise
 choose the exact resolution and chat emphasis under:
@@ -135,7 +109,7 @@ filename before writing. If a manually entered name resolves to an existing
 INI, it safely merges that file rather than treating the entry as permission
 to overwrite it.
 
-## 5. Run Spin's Loremaster
+## 4. Run Spin's Loremaster
 
 Move `Loremaster.exe` anywhere you prefer, then run it. In EverQuest, type:
 

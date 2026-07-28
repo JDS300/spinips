@@ -57,12 +57,11 @@ jobs:
           New-Item -ItemType Directory -Force -Path build/spec | Out-Null
           pyinstaller --clean --noconfirm --onefile --windowed `
             --name Loremaster --distpath dist --workpath build/loremaster `
+            --version-file loremaster/versioninfo-loremaster.txt `
             --specpath build/spec loremaster/loremaster.py
-          pyinstaller --clean --noconfirm --onefile --windowed `
-            --name SpinUIStudio --distpath dist --workpath build/studio `
-            --specpath build/spec tools/spinui_studio.py
           pyinstaller --clean --noconfirm --onefile --windowed --uac-admin `
             --name SpinUIInstaller --distpath dist --workpath build/installer `
+            --version-file installer/versioninfo-installer.txt `
             --specpath build/spec installer/spinui_installer.py
 
       - name: Smoke-test packaged executables
@@ -70,8 +69,6 @@ jobs:
         run: |
           $lore = Start-Process -FilePath dist/Loremaster.exe -ArgumentList '--selftest' -PassThru -Wait
           if ($lore.ExitCode -ne 0) { throw "Loremaster selftest exit code $($lore.ExitCode)" }
-          $studio = Start-Process -FilePath dist/SpinUIStudio.exe -ArgumentList '--selftest' -PassThru -Wait
-          if ($studio.ExitCode -ne 0) { throw "Studio selftest exit code $($studio.ExitCode)" }
           $installer = Start-Process -FilePath dist/SpinUIInstaller.exe -ArgumentList '--selftest' -PassThru -Wait
           if ($installer.ExitCode -ne 0) { throw "Installer selftest exit code $($installer.ExitCode)" }
 
@@ -96,47 +93,39 @@ jobs:
             Copy-Item -Force README.md $package
             Copy-Item -Force installer/INSTALL-MANUAL.md (Join-Path $package 'INSTALL.md')
             Copy-Item -Force dist/Loremaster.exe $package
-            Copy-Item -Force dist/SpinUIStudio.exe $package
           }
           Copy-Item -Force dist/SpinUIInstaller.exe $installerPackage
-
-      - name: Assemble staged standalone Studio release
-        shell: pwsh
-        run: |
-          # SpinUI Studio is its own release: the editor plus the build
-          # sources it renders and compiles - no Loremaster, no installer.
-          $studioPackage = Join-Path $PWD 'package/SpinUI-Studio'
-          New-Item -ItemType Directory -Force -Path $studioPackage | Out-Null
-          Copy-Item -Recurse -Force spinui_reloaded (Join-Path $studioPackage 'spinui_reloaded')
-          $studioLayouts = Join-Path $studioPackage 'layouts'
-          New-Item -ItemType Directory -Force -Path $studioLayouts | Out-Null
-          foreach ($preset in @('combat-focus', 'social-focus', 'hybrid')) {
-            Copy-Item -Recurse -Force (Join-Path 'layouts' $preset) (Join-Path $studioLayouts $preset)
-          }
-          Copy-Item -Recurse -Force layouts/profiles (Join-Path $studioLayouts 'profiles')
-          $studioDocs = Join-Path $studioPackage 'docs'
-          New-Item -ItemType Directory -Force -Path $studioDocs | Out-Null
-          Copy-Item -Recurse -Force docs/previews (Join-Path $studioDocs 'previews')
-          Copy-Item -Force UI_Spin_qeynos_LO1.ini $studioPackage
-          Copy-Item -Force docs/SPINUI-STUDIO.md (Join-Path $studioPackage 'README.md')
-          Copy-Item -Force dist/SpinUIStudio.exe $studioPackage
 
       - name: Verify staged release packages
         run: >
           python tools/release_quality_gate.py --packages-only
           --package installer=package/SpinUI-Installer
           --package manual=package/SpinUI-Manual
-          --package studio=package/SpinUI-Studio
 
       - name: Compress verified release packages
         shell: pwsh
         run: |
           $installerPackage = Join-Path $PWD 'package/SpinUI-Installer'
           $manualPackage = Join-Path $PWD 'package/SpinUI-Manual'
-          $studioPackage = Join-Path $PWD 'package/SpinUI-Studio'
           Compress-Archive -Path "$installerPackage/*" -DestinationPath package/SpinUI-Installer.zip -CompressionLevel Optimal
           Compress-Archive -Path "$manualPackage/*" -DestinationPath package/SpinUI-Manual.zip -CompressionLevel Optimal
-          Compress-Archive -Path "$studioPackage/*" -DestinationPath package/SpinUI-Studio.zip -CompressionLevel Optimal
+
+      - name: Publish SHA-256 checksums
+        shell: pwsh
+        run: |
+          # A published checksum list lets users confirm a download is the
+          # exact CI-built file when an antivirus heuristic questions it.
+          $lines = foreach ($file in @(
+              'package/SpinUI-Installer.zip',
+              'package/SpinUI-Manual.zip',
+              'dist/Loremaster.exe',
+              'dist/SpinUIInstaller.exe')) {
+            $hash = (Get-FileHash -Algorithm SHA256 $file).Hash.ToLower()
+            "$hash  $(Split-Path -Leaf $file)"
+          }
+          Set-Content -Path package/SHA256SUMS.txt -Value ($lines -join "`n") -NoNewline
+          Add-Content -Path package/SHA256SUMS.txt -Value "`n"
+          Get-Content package/SHA256SUMS.txt
 
       - name: Upload installer package
         uses: actions/upload-artifact@v4
@@ -152,21 +141,14 @@ jobs:
           path: package/SpinUI-Manual.zip
           if-no-files-found: error
 
-      - name: Upload standalone Studio package
-        uses: actions/upload-artifact@v4
-        with:
-          name: SpinUI-Studio
-          path: package/SpinUI-Studio.zip
-          if-no-files-found: error
-
-      - name: Upload standalone executables
+      - name: Upload standalone executables and checksums
         uses: actions/upload-artifact@v4
         with:
           name: SpinUI-Windows-tools
           path: |
             dist/Loremaster.exe
-            dist/SpinUIStudio.exe
             dist/SpinUIInstaller.exe
+            package/SHA256SUMS.txt
           if-no-files-found: error
 
       - name: Publish workflow-dispatch release
@@ -180,7 +162,7 @@ jobs:
           $assets = @(
             'package/SpinUI-Installer.zip',
             'package/SpinUI-Manual.zip',
-            'package/SpinUI-Studio.zip',
+            'package/SHA256SUMS.txt',
             'dist/Loremaster.exe',
             'dist/SpinUIInstaller.exe'
           )
@@ -191,7 +173,7 @@ jobs:
             gh release create $tag @assets --repo $env:GITHUB_REPOSITORY `
               --target $env:GITHUB_SHA `
               --title "SpinUI $tag — Obsidian, Venom & Ember" `
-              --notes "Complete SpinUI Windows release. Use SpinUI-Installer.zip for guided setup, SpinUI-Manual.zip for an installer-free setup, or the standalone SpinUI-Studio.zip for the offline layout and theme editor on its own."
+              --notes "Complete SpinUI Windows release. Use SpinUI-Installer.zip for guided setup or SpinUI-Manual.zip for an installer-free setup. Verify any download against SHA256SUMS.txt; the unsigned executables can trip antivirus machine-learning heuristics (see the README's Troubleshooting section)."
           }
 
       - name: Attach package to release
@@ -201,6 +183,6 @@ jobs:
         run: >
           gh release upload "${{ github.event.release.tag_name }}"
           package/SpinUI-Installer.zip package/SpinUI-Manual.zip
-          package/SpinUI-Studio.zip
+          package/SHA256SUMS.txt
           dist/Loremaster.exe dist/SpinUIInstaller.exe
           --clobber

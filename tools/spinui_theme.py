@@ -53,7 +53,7 @@ def _rgb(value: tuple[int, int, int]) -> tuple[int, int, int]:
 
 
 def rgb_from_hex(value: str) -> tuple[int, int, int]:
-    """Parse one CSS-style ``#RRGGBB`` color for Studio/project files."""
+    """Parse one CSS-style ``#RRGGBB`` color for theme/project files."""
     if not re.fullmatch(r"#[0-9a-fA-F]{6}", value):
         raise ValueError(f"invalid color {value!r}; expected #RRGGBB")
     return tuple(int(value[index:index + 2], 16) for index in (1, 3, 5))
@@ -85,7 +85,7 @@ def accent_palette(*, venom: tuple[int, int, int] = CYAN,
     """Create the complete accent ramp used by XML, atlases, and previews.
 
     The canonical colors return their hand-tuned deep/bright companions.
-    Custom choices derive accessible companions deterministically so a Studio
+    Custom choices derive accessible companions deterministically so a theme
     project can be rebuilt without storing generated binary data.
     """
     venom, gold, ember = _rgb(venom), _rgb(gold), _rgb(ember)
@@ -109,7 +109,7 @@ def accent_palette(*, venom: tuple[int, int, int] = CYAN,
 
 
 def palette_from_hex(values: dict[str, str]) -> dict[str, tuple[int, int, int]]:
-    """Expand the three user-facing colors from a Studio JSON document."""
+    """Expand the three user-facing colors from a theme JSON document."""
     required = {"venom", "gold", "ember"}
     missing = required - values.keys()
     if missing:
