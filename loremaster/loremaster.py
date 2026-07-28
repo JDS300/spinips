@@ -3814,9 +3814,9 @@ def run_gui(args):
         controls.pack(side="right", fill="y", padx=(1, 3))
         widgets["mini_controls"] = controls
         widgets["mini_width"] = mini_width
-        # The mini strip is a stats readout: only the log-health dot, LOCK,
-        # and DETAILS ship here. Settings and Lore Lens live on the details
-        # HUD, keeping this row compact with the full width for DPS cells.
+        # The mini strip is a stats readout: the log-health dot, LOCK,
+        # SETTINGS, and DETAILS ship here. Lore Lens lives on the details
+        # HUD, keeping this row compact with most of its width for DPS cells.
         widgets["mini_log"] = tk.Label(
             controls, text="●", fg=T["dim"], bg=T["bg"], font=FONT_S,
             cursor="hand2", padx=3)
@@ -3827,6 +3827,11 @@ def run_gui(args):
             font=FONT_RUNE, cursor="hand2", padx=5)
         widgets["mini_lock"].pack(side="left", pady=3)
         widgets["mini_lock"].bind("<Button-1>", lambda _e: toggle_lock())
+        widgets["mini_settings"] = tk.Label(
+            controls, text="SETTINGS", fg=T["dim"], bg=T["raised"],
+            font=FONT_RUNE, cursor="hand2", padx=5)
+        widgets["mini_settings"].pack(side="left", padx=(3, 0), pady=3)
+        widgets["mini_settings"].bind("<Button-1>", open_settings)
         details = tk.Label(controls, text="DETAILS", fg=T["cyan"], bg=T["raised"],
                            font=FONT_RUNE, cursor="hand2", padx=6)
         details.pack(side="left", padx=(3, 0), pady=3)
