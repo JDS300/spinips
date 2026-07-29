@@ -2,7 +2,7 @@
 """Spin's Loremaster — the log-reading companion for Spin's UI Reloaded.
 
 A zero-dependency (Python standard library only) EverQuest Legends session
-tracker themed to match the "Obsidian, Venom & Ember" skin
+tracker themed to match the "Vellum & Ember" skin
 and shaped to dock into the reserved bottom-right zone of the 3440x1440
 layout.
 
@@ -97,28 +97,28 @@ from wiki_overlay import (
 )
 
 # ---------------------------------------------------------------------------
-# Theme — matches Spin UI "Obsidian, Venom & Ember"
+# Theme — matches Spin UI "Vellum & Ember" (leather, brass, ember, spirit)
 # ---------------------------------------------------------------------------
 THEME = {
-    "bg": "#090c11",
-    "panel": "#10161d",
-    "raised": "#17222a",
-    "line": "#303f4e",
-    "line_soft": "#1c2631",
-    "gold": "#db9e2a",
-    "gold_bright": "#facd5f",
-    "cyan": "#34dabe",
-    "text": "#eef2f3",
-    "dim": "#92a1a9",
+    "bg": "#120d08",
+    "panel": "#1a140d",
+    "raised": "#261d12",
+    "line": "#685030",
+    "line_soft": "#342819",
+    "gold": "#d0a254",
+    "gold_bright": "#f8d68c",
+    "cyan": "#7eaaf4",
+    "text": "#f1e7d4",
+    "dim": "#ac9a7e",
     "hp": "#de3e48",
     "mana": "#427ef4",
-    "endur": "#db9e2a",
+    "endur": "#d0a254",
     "green": "#42cf8b",
-    "ember": "#e5642d",
-    "parchment": "#d8c89a",
-    "void": "#040609",
-    "meter": "#12302f",
-    "meter_edge": "#1e7468",
+    "ember": "#f2762c",
+    "parchment": "#decca2",
+    "void": "#090704",
+    "meter": "#2e1c10",
+    "meter_edge": "#9a5a24",
 }
 
 # EverQuest writes eqlog_<Character>_<server>.txt (any character, any
@@ -1815,7 +1815,7 @@ def wiki_status_label(item) -> str:
 # ---------------------------------------------------------------------------
 class AlertManager:
     COLORS = {"danger": ("#d93a3f", "#1a0d0e"), "warn": ("#c9a227", "#14110a"),
-              "info": ("#41c7e4", "#0a1214")}
+              "info": ("#7eaaf4", "#0e1118")}
 
     def __init__(self, tk_module, root, cfg):
         self.tk = tk_module
@@ -1854,7 +1854,7 @@ class AlertManager:
         outer.pack()
         inner = tk.Frame(outer, bg=body, padx=18, pady=8)
         inner.pack()
-        tk.Label(inner, text=text_msg, fg="#e8eaf0", bg=body,
+        tk.Label(inner, text=text_msg, fg="#f1e7d4", bg=body,
                  font=("Segoe UI Semibold", 14)).pack()
         win.update_idletasks()
         width, height = win.winfo_width(), win.winfo_height()
@@ -1951,7 +1951,7 @@ def run_gui(args):
     if cfg.get("high_contrast", False):
         T.update(bg="#000000", panel="#0a0a0a", raised="#171717",
                  line="#74818a", line_soft="#3e474d", text="#ffffff",
-                 dim="#c6cdd1", gold_bright="#ffe184", cyan="#5cffe2")
+                 dim="#c6cdd1", gold_bright="#ffe184", cyan="#9cc4ff")
     root = tk.Tk()
     root.title("Spin\'s Loremaster")
     root.configure(bg=T["bg"])
@@ -3685,7 +3685,7 @@ def run_gui(args):
             # the gold rule under each section header — equipment-screen DNA
             rl = tk.Frame(sect, bg=T["gold"], height=1)
             rl.pack(fill="x", padx=4, pady=(1, 0))
-            rl2 = tk.Frame(sect, bg="#050609", height=1)
+            rl2 = tk.Frame(sect, bg="#090704", height=1)
             rl2.pack(fill="x", padx=4)
             detail = tk.Frame(sect, bg=T["bg"])
             for w in (row, hb, nm, val, chev):

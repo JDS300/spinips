@@ -490,9 +490,9 @@
 	<Label item="PW_StanceLabel">
 		<ScreenID>PW_StanceLabel</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>4</Font>
@@ -523,9 +523,9 @@
 	<Label item="PW_InvocationInfo">
 		<ScreenID>PW_InvocationInfo</ScreenID>
 		<TextColor>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>4</Font>
@@ -605,9 +605,9 @@
 		<TextOffsetY>-50</TextOffsetY>
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<FillTint>
-			<R>112</R>
-			<G>137</G>
-			<B>158</B>
+			<R>152</R>
+			<G>132</G>
+			<B>104</B>
 		</FillTint>
 		<EQType>16</EQType>
 		<GaugeDrawTemplate>
@@ -696,9 +696,9 @@
 		<RelativePosition>true</RelativePosition>
 		<GaugeOffsetY>0</GaugeOffsetY>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>3</EQType>
 		<GaugeDrawTemplate>
@@ -788,14 +788,14 @@
 		<RelativePosition>true</RelativePosition>
 		<GaugeOffsetY>0</GaugeOffsetY>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<LinesFillTint>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</LinesFillTint>
 		<DrawLinesFill>true</DrawLinesFill>
 		<EQType>4</EQType>
@@ -837,14 +837,14 @@
 		<RelativePosition>true</RelativePosition>
 		<GaugeOffsetY>0</GaugeOffsetY>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<LinesFillTint>
-			<R>150</R>
-			<G>240</G>
-			<B>222</B>
+			<R>178</R>
+			<G>206</G>
+			<B>252</B>
 		</LinesFillTint>
 		<DrawLinesFill>true</DrawLinesFill>
 		<EQType>5</EQType>
@@ -922,9 +922,9 @@
 		<EQType>2</EQType>
 		<Font>4</Font>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Text>60 Shadow Knight</Text>
@@ -945,9 +945,9 @@
 		<EQType>3</EQType>
 		<Font>4</Font>
 		<TextColor>
-			<R>238</R>
-			<G>242</G>
-			<B>243</B>
+			<R>241</R>
+			<G>231</G>
+			<B>212</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Text>60 Shadow Knight</Text>
@@ -1035,9 +1035,9 @@
 		<Style_Transparent>false</Style_Transparent>
 		<TooltipReference/>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<DrawLinesFill>false</DrawLinesFill>
 		<EQType>7</EQType>

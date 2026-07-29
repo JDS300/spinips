@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Spin's UI Reloaded — "Obsidian, Venom & Ember" texture generator.
+"""Spin's UI Reloaded — "Vellum & Ember" texture generator.
 
 Regenerates the shared chrome textures (window borders, titlebars, buttons,
-gauges, scrollbars, tabs, backgrounds) that every EverQuest window draws from,
-giving the whole interface a dark-glass look with ember-gold and arcane-cyan
-accents.
+gauges, scrollbars, tabs, backgrounds) that every EverQuest window draws from.
+The identity is an adventurer's field journal: dark oiled-leather panels
+framed in aged brass, a glowing ember seam across every titlebar, warm
+parchment text, and a spirit-blue accent reserved for the arcane.
 
 Safety model: each output texture starts as a pixel-perfect copy of the
 pristine original (read from git), and only the explicitly listed cells
@@ -23,10 +24,10 @@ import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw
-from spinui_theme import (BG0, BG1, BG2, BG3, CYAN, CYAN_DEEP, EMBER, GOLD,
-                          GOLD_BRIGHT, GOLD_DEEP, LINE, LINE_BRIGHT,
-                          LINE_SOFT, RED, TEXT, TEXT_DIM, VOID,
-                          palette_from_hex)
+from spinui_theme import (BG0, BG1, BG2, BG3, CYAN, CYAN_DEEP, EMBER,
+                          EMBER_BRIGHT, EMBER_DEEP, GOLD, GOLD_BRIGHT,
+                          GOLD_DEEP, LINE, LINE_BRIGHT, LINE_SOFT, RED, TEXT,
+                          TEXT_DIM, VOID, palette_from_hex)
 
 REPO = Path(__file__).resolve().parent.parent
 SKIN = REPO / "spinui_reloaded"
@@ -117,18 +118,18 @@ def glass_slab(img, box, state="normal", radius=3):
     cell = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(cell)
     grads = {
-        "normal": (BG2, (8, 11, 16)),
-        "flyby": ((21, 49, 48), (11, 24, 28)),
-        "pressed": ((52, 38, 14), (19, 16, 10)),
-        "pressedflyby": ((30, 58, 51), (15, 29, 29)),
-        "disabled": ((10, 13, 17), (7, 9, 12)),
+        "normal": (BG2, (13, 9, 6)),
+        "flyby": ((56, 34, 16), (24, 15, 8)),
+        "pressed": ((62, 45, 18), (23, 17, 9)),
+        "pressedflyby": ((70, 47, 22), (27, 19, 10)),
+        "disabled": ((15, 11, 8), (10, 8, 6)),
     }
     lines = {
         "normal": LINE,
-        "flyby": CYAN,
+        "flyby": EMBER,
         "pressed": GOLD,
         "pressedflyby": GOLD_BRIGHT,
-        "disabled": (23, 30, 38),
+        "disabled": (36, 28, 19),
     }
     top, bot = grads[state]
     for yy in range(h):
@@ -139,16 +140,16 @@ def glass_slab(img, box, state="normal", radius=3):
     if w > 3 and h > 3:
         d.rounded_rectangle([1, 1, w - 2, h - 2], radius=max(1, radius - 1),
                             outline=lines[state] + (255,))
-    # Tight top bevel; interaction is signaled by a luminous lower rail.
+    # Tight top bevel; interaction is signaled by a luminous ember rail.
     if state in ("normal", "flyby"):
-        d.line([(radius, 1), (w - 1 - radius, 1)], fill=(255, 255, 255, 34))
+        d.line([(radius, 1), (w - 1 - radius, 1)], fill=(255, 226, 178, 32))
     if state == "flyby":
-        d.line([(radius, h - 2), (w - 1 - radius, h - 2)], fill=CYAN + (240,))
+        d.line([(radius, h - 2), (w - 1 - radius, h - 2)], fill=EMBER + (240,))
         if h > 8 and w > 16:
-            d.line([(1, radius), (1, h - 1 - radius)], fill=CYAN + (190,))
+            d.line([(1, radius), (1, h - 1 - radius)], fill=EMBER + (190,))
     if state in ("pressed", "pressedflyby"):
         d.line([(radius, 1), (w - 1 - radius, 1)], fill=(0, 0, 0, 90))
-        rail = CYAN if state == "pressedflyby" else GOLD
+        rail = EMBER_BRIGHT if state == "pressedflyby" else GOLD
         d.line([(radius, h - 2), (w - 1 - radius, h - 2)], fill=rail + (245,))
         if h > 8 and w > 16:
             d.line([(1, radius), (1, h - 1 - radius)], fill=rail + (210,))
@@ -272,8 +273,8 @@ def recessed_slot(img, box, radius=3):
     for i, a in ((1, 120), (2, 60)):
         d.line([(1 + radius // 2, i), (w - 2 - radius // 2, i)], fill=(0, 0, 0, a))
     d.rounded_rectangle([0, 0, w - 1, h - 1], radius=radius, outline=LINE + (255,))
-    d.line([(radius, h - 2), (w - 1 - radius, h - 2)], fill=(255, 255, 255, 14))
-    d.line([(w - 5, h - 2), (w - 2, h - 2), (w - 2, h - 5)], fill=CYAN + (115,))
+    d.line([(radius, h - 2), (w - 1 - radius, h - 2)], fill=(255, 226, 178, 14))
+    d.line([(w - 5, h - 2), (w - 2, h - 2), (w - 2, h - 5)], fill=LINE_BRIGHT + (150,))
     img.paste(cell, (x0, y0))
 
 
@@ -285,13 +286,13 @@ def soft_border_h(img, box, edge="top"):
         fill(img, box, LINE + (255,))
         return
     if edge == "top":
-        hline(img, x0, x1, y0, (5, 6, 9), 255)
+        hline(img, x0, x1, y0, (7, 5, 3), 255)
         for y in range(y0 + 1, y1):
             hline(img, x0, x1, y, LINE, 255)
     else:
         for y in range(y0, y1 - 1):
             hline(img, x0, x1, y, LINE, 255)
-        hline(img, x0, x1, y1 - 1, (5, 6, 9), 255)
+        hline(img, x0, x1, y1 - 1, (7, 5, 3), 255)
 
 
 def soft_border_v(img, box, edge="left"):
@@ -312,19 +313,20 @@ def soft_border_v(img, box, edge="left"):
 
 
 def titlebar_piece(img, box, cap=None, gold_edge=True):
-    """16px matte titlebar with teal light-line and heraldic gold base."""
+    """16px leather titlebar with the signature ember seam and brass base."""
     x0, y0, x1, y1 = box
-    vgrad(img, box, (19, 27, 34), (6, 9, 13))
-    hline(img, x0, x1, y0, CYAN, 210)                  # venom signal edge
-    hline(img, x0, x1, y0 + 1, (255, 255, 255), 25)
+    vgrad(img, box, (38, 28, 17), (13, 9, 6))
+    hline(img, x0, x1, y0, EMBER, 235)                 # glowing ember seam
+    hline(img, x0, x1, y0 + 1, EMBER_BRIGHT, 90)       # heat bloom under it
+    hline(img, x0, x1, y0 + 2, EMBER_DEEP, 46)
     if gold_edge:
         hline(img, x0, x1, y1 - 2, GOLD, 200)
         hline(img, x0, x1, y1 - 1, GOLD_DEEP, 160)
     else:
-        hline(img, x0, x1, y1 - 1, (5, 6, 9), 255)
+        hline(img, x0, x1, y1 - 1, (7, 5, 3), 255)
     if cap == "left":
         soft_border_v(img, (x0, y0, x0 + 2, y1), "left")
-        ImageDraw.Draw(img).line([(x0 + 1, y0 + 2), (x0 + 1, y1 - 3)], fill=CYAN + (230,))
+        ImageDraw.Draw(img).line([(x0 + 1, y0 + 2), (x0 + 1, y1 - 3)], fill=EMBER + (230,))
     if cap == "right":
         soft_border_v(img, (x1 - 2, y0, x1, y1), "right")
 
@@ -370,28 +372,31 @@ def rounded_edge(img, box, orient, alpha=242, line=LINE, body=BG1):
 def scroll_arrow_btn(img, box, direction, state):
     x0, y0, x1, y1 = box
     glass_slab(img, box, state, radius=3)
-    col = {"normal": TEXT_DIM, "flyby": CYAN, "pressed": GOLD, "disabled": (70, 76, 92)}[state]
+    col = {"normal": TEXT_DIM, "flyby": EMBER, "pressed": GOLD, "disabled": (88, 74, 56)}[state]
     chevron(img, (x0 + 1, y0 + 1, x1 - 1, y1 - 1), direction, col, thick=2)
 
 
 def seamless_bg(size, base, amp=3, weave=True, vign=0):
-    """Tileable near-flat obsidian background with faint per-pixel grain."""
+    """Tileable oiled-leather background: warm grain over a soft hide mottle."""
+    import math
     import random
     rng = random.Random(7)
     w, h = size
     img = Image.new("RGBA", size)
     px = img.load()
+    tau = 2 * math.pi
     for y in range(h):
         for x in range(w):
             n = rng.randint(-amp, amp)
-            wv = 0
-            if weave and ((x + y) % 16 == 0):
-                wv -= 3
-            if weave and ((x - y) % 16 == 0):
-                wv += 1
-            r = max(0, min(255, base[0] + n + wv))
-            g = max(0, min(255, base[1] + n + wv))
-            b = max(0, min(255, base[2] + n + wv + (1 if (x * 7 + y * 3) % 13 == 0 else 0)))
+            # low-frequency mottling, phase-locked to the tile so edges wrap
+            m = (math.sin(x * tau / w * 3 + 1.7)
+                 + math.sin(y * tau / h * 4 + 0.6)
+                 + math.sin((x * 2 + y) * tau / w * 2 + 3.1)) / 3
+            warm = int(round(m * 2))
+            pore = -2 if weave and (x * 13 + y * 7) % 29 == 0 else 0
+            r = max(0, min(255, base[0] + n + warm + pore + 1))
+            g = max(0, min(255, base[1] + n + warm + pore))
+            b = max(0, min(255, base[2] + n + int(warm * 0.5) + pore))
             px[x, y] = (r, g, b, 255)
     return img
 
@@ -422,27 +427,29 @@ def build_br_pieces(img):
     fill(img, (99, 110, 100, 111), LINE + (255,))       # WithTitleTopLeft 1x1
     fill(img, (117, 110, 118, 111), LINE + (255,))      # WithTitleTop 1x1
     fill(img, (120, 110, 121, 111), LINE + (255,))      # WithTitleTopRight 1x1
-    rounded_corner(img, (99, 113, 104, 129), "tl", radius=5)      # WithTitleLeftTop 5x16
+    rounded_corner(img, (99, 113, 104, 129), "tl", radius=5, line=LINE_BRIGHT)   # WithTitleLeftTop 5x16
     titlebar_piece(img, (102, 113, 116, 129))                     # RoundedFrameTitleLeft 14x16
     titlebar_piece(img, (117, 113, 119, 129))                     # RoundedFrameTitleMiddle 2x16
     titlebar_piece(img, (120, 113, 134, 129))                     # RoundedFrameTitleRight 14x16
-    rounded_corner(img, (132, 113, 137, 129), "tr", radius=5)     # WithTitleRightTop 5x16
+    rounded_corner(img, (132, 113, 137, 129), "tr", radius=5, line=LINE_BRIGHT)  # WithTitleRightTop 5x16
 
     # --- rounded frame (no title) — chat windows live here ---
-    rounded_corner(img, (179, 159, 189, 164), "tl", radius=5)     # TopLeft 10x5
+    # Corner cells use polished brass (LINE_BRIGHT) so every window reads as a
+    # leather panel pinned down by brass caps — the Vellum signature.
+    rounded_corner(img, (179, 159, 189, 164), "tl", radius=5, line=LINE_BRIGHT)  # TopLeft 10x5
     rounded_edge(img, (191, 159, 195, 164), "top")                # Top 4x5
-    rounded_corner(img, (201, 159, 211, 164), "tr", radius=5)     # TopRight 10x5
-    rounded_corner(img, (215, 160, 220, 165), "bl", radius=4)     # TabLeftBottom 5x5
-    rounded_corner(img, (220, 160, 225, 165), "br", radius=4)     # TabRightBottom 5x5
-    rounded_corner(img, (206, 164, 211, 172), "tr", radius=5)     # RightTop 5x8
-    rounded_corner(img, (179, 165, 184, 171), "tl", radius=5)     # LeftTop 5x6
+    rounded_corner(img, (201, 159, 211, 164), "tr", radius=5, line=LINE_BRIGHT)  # TopRight 10x5
+    rounded_corner(img, (215, 160, 220, 165), "bl", radius=4, line=LINE_BRIGHT)  # TabLeftBottom 5x5
+    rounded_corner(img, (220, 160, 225, 165), "br", radius=4, line=LINE_BRIGHT)  # TabRightBottom 5x5
+    rounded_corner(img, (206, 164, 211, 172), "tr", radius=5, line=LINE_BRIGHT)  # RightTop 5x8
+    rounded_corner(img, (179, 165, 184, 171), "tl", radius=5, line=LINE_BRIGHT)  # LeftTop 5x6
     rounded_edge(img, (206, 169, 211, 173), "right")              # Right 5x4
     rounded_edge(img, (179, 172, 184, 176), "left")               # Left 5x4
-    rounded_corner(img, (206, 174, 211, 180), "br", radius=5)     # RightBottom 5x6
-    rounded_corner(img, (179, 177, 184, 181), "bl", radius=5)     # LeftBottom 5x4
-    rounded_corner(img, (179, 182, 187, 187), "bl", radius=5)     # BottomLeft 8x5
+    rounded_corner(img, (206, 174, 211, 180), "br", radius=5, line=LINE_BRIGHT)  # RightBottom 5x6
+    rounded_corner(img, (179, 177, 184, 181), "bl", radius=5, line=LINE_BRIGHT)  # LeftBottom 5x4
+    rounded_corner(img, (179, 182, 187, 187), "bl", radius=5, line=LINE_BRIGHT)  # BottomLeft 8x5
     rounded_edge(img, (190, 182, 195, 187), "bottom")             # Bottom 5x5
-    rounded_corner(img, (201, 182, 211, 187), "br", radius=5)     # BottomRight 10x5
+    rounded_corner(img, (201, 182, 211, 187), "br", radius=5, line=LINE_BRIGHT)  # BottomRight 10x5
 
 
 def build_br_pieces_trans(img):
@@ -493,13 +500,13 @@ def build_pieces01(img):
     # Tile buttons 6x6
     for x, state in ((230, "normal"), (237, "pressed"), (244, "flyby")):
         clear(img, (x, 10, x + 6, 16))
-        col = {"normal": TEXT_DIM, "pressed": GOLD, "flyby": CYAN}[state]
+        col = {"normal": TEXT_DIM, "pressed": GOLD, "flyby": EMBER}[state]
         outline(img, (x, 10, x + 6, 16), col)
     # List header 4x16 (Left/Middle/Right share the rect)
     vgrad(img, (30, 20, 34, 36), BG3, BG1)
-    hline(img, 30, 34, 20, CYAN, 190)
+    hline(img, 30, 34, 20, EMBER, 190)
     hline(img, 30, 34, 34, GOLD, 170)
-    hline(img, 30, 34, 35, (5, 6, 9))
+    hline(img, 30, 34, 35, (7, 5, 3))
     # Close / Min / Max buttons 12x12
     for x, state in ((100, "normal"), (112, "flyby"), (124, "pressed")):
         clear(img, (x, 90, x + 12, 102))
@@ -507,7 +514,7 @@ def build_pieces01(img):
         glyph_x(img, (x, 90, x + 12, 102), col, pad=3, thick=1)
     for x, state in ((136, "normal"), (148, "flyby"), (160, "pressed")):
         clear(img, (x, 90, x + 12, 102))
-        col = {"normal": TEXT_DIM, "flyby": CYAN, "pressed": GOLD}[state]
+        col = {"normal": TEXT_DIM, "flyby": EMBER, "pressed": GOLD}[state]
         glyph_minus(img, (x, 90, x + 12, 102), col, pad=3)
     # Recessed box 41x41 (item slots)
     recessed_slot(img, (180, 110, 221, 151))
@@ -532,7 +539,7 @@ def build_pieces01(img):
     # Plus / minus buttons 14x16
     for x, state in ((100, "normal"), (114, "flyby"), (128, "pressed"), (142, "pressedflyby"), (156, "disabled")):
         glass_slab(img, (x, 220, x + 14, 236), state, radius=3)
-        col = {"normal": TEXT_DIM, "flyby": CYAN, "pressed": GOLD, "pressedflyby": GOLD_BRIGHT, "disabled": (70, 76, 92)}[state]
+        col = {"normal": TEXT_DIM, "flyby": EMBER, "pressed": GOLD, "pressedflyby": GOLD_BRIGHT, "disabled": (88, 74, 56)}[state]
         glyph_plus(img, (x, 220, x + 14, 236), col, pad=4)
         glass_slab(img, (x, 236, x + 14, 252), state, radius=3)
         glyph_minus(img, (x, 236, x + 14, 252), col, pad=4)
@@ -540,7 +547,7 @@ def build_pieces01(img):
     # atlas — one glyph centered on the shared rows serves both crops.
     for x, state in ((171, "normal"), (183, "flyby"), (195, "pressed")):
         clear(img, (x, 232, x + 12, 253))
-        col = {"normal": TEXT_DIM, "flyby": CYAN, "pressed": GOLD}[state]
+        col = {"normal": TEXT_DIM, "flyby": EMBER, "pressed": GOLD}[state]
         glyph_qmark(img, (x, 236, x + 12, 248), col)
     # White pixel must stay white
     fill(img, (4, 251, 5, 252), (255, 255, 255, 255))
@@ -566,10 +573,10 @@ def build_pieces03(img):
     # Title pieces 56 tall (EQ button banner) — glass band with gold base
     for box in ((0, 160, 48, 216), (49, 160, 115, 216), (116, 160, 118, 216), (121, 160, 169, 216)):
         vgrad(img, box, BG3, BG1)
-        hline(img, box[0], box[2], 160, CYAN, 190)
+        hline(img, box[0], box[2], 160, EMBER, 190)
         hline(img, box[0], box[2], 213, GOLD, 190)
         hline(img, box[0], box[2], 214, GOLD_DEEP, 150)
-        hline(img, box[0], box[2], 215, (5, 6, 9))
+        hline(img, box[0], box[2], 215, (7, 5, 3))
     for x, state in ((0, "normal"), (20, "flyby"), (40, "pressed"), (60, "pressedflyby"), (80, "disabled")):
         glass_slab(img, (x, 160, x + 20, 180), state, radius=3)
     # Arrow buttons 30x32
@@ -580,7 +587,7 @@ def build_pieces03(img):
         (90, 216, "left", "pressed"), (120, 216, "left", "disabled"),
     ):
         glass_slab(img, (x, y, x + 30, y + 32), state, radius=4)
-        col = {"normal": GOLD, "flyby": CYAN, "pressed": GOLD_BRIGHT, "pressedflyby": GOLD_BRIGHT, "disabled": (70, 76, 92)}[state]
+        col = {"normal": GOLD, "flyby": EMBER, "pressed": GOLD_BRIGHT, "pressedflyby": GOLD_BRIGHT, "disabled": (88, 74, 56)}[state]
         chevron(img, (x + 4, y + 4, x + 26, y + 28), direction, col, thick=2)
 
 
@@ -607,7 +614,7 @@ def build_fg_pieces(img):
         if part == "top":
             hline(img, x0, x1, y0, LINE_BRIGHT)
         if part == "bottom":
-            hline(img, x0, x1, y1 - 1, (5, 6, 9))
+            hline(img, x0, x1, y1 - 1, (7, 5, 3))
     # HSB arrows 22x12
     for y, state in ((140, "normal"), (152, "flyby"), (164, "pressed"), (176, "disabled")):
         scroll_arrow_btn(img, (10, y, 32, y + 12), "left", state)
@@ -616,7 +623,7 @@ def build_fg_pieces(img):
     for box in ((60, 140, 64, 152), (70, 140, 74, 152), (80, 140, 82, 152)):
         fill(img, box, BG3 + (255,))
         hline(img, box[0], box[2], 140, LINE_BRIGHT)
-        hline(img, box[0], box[2], 151, (5, 6, 9))
+        hline(img, box[0], box[2], 151, (7, 5, 3))
     # Tab frame pieces (tops rounded 4px)
     rounded_corner(img, (140, 110, 150, 114), "tl", radius=4, body=BG2)   # TabFrameTopLeft 10x4 (+TabBottomLeft)
     rounded_edge(img, (151, 110, 153, 114), "top", body=BG2)              # TabFrameTop 2x4
@@ -707,14 +714,14 @@ def generate(*, source_skin: Path = SKIN, output_skin: Path = SKIN,
             if not quiet:
                 print("painted", name)
 
-        # Full-tile backgrounds stay obsidian while the interaction accents
-        # are customized. This preserves text contrast across arbitrary hues.
+        # Full-tile backgrounds stay dark oiled leather while the interaction
+        # accents are customized. This preserves text contrast across hues.
         bgs = {
-            "wnd_bg_light_rock.tga": ((9, 13, 18), 2),
-            "wnd_bg_dark_rock.tga": ((5, 8, 12), 2),
-            "wnd_bg_light_rock_inner.tga": ((7, 11, 15), 2),
-            "wnd_dark_rock.tga": ((4, 7, 10), 1),
-            "wnd_fg_dark_rock.tga": ((4, 7, 10), 1),
+            "wnd_bg_light_rock.tga": ((24, 18, 11), 2),
+            "wnd_bg_dark_rock.tga": ((14, 10, 6), 2),
+            "wnd_bg_light_rock_inner.tga": ((19, 14, 9), 2),
+            "wnd_dark_rock.tga": ((11, 8, 5), 1),
+            "wnd_fg_dark_rock.tga": ((11, 8, 5), 1),
         }
         for name, (base, amp) in bgs.items():
             src = load_pristine(name, source_skin)

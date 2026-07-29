@@ -174,7 +174,7 @@ jobs:
           } else {
             gh release create $tag @assets --repo $env:GITHUB_REPOSITORY `
               --target $env:GITHUB_SHA `
-              --title "SpinUI $tag — Obsidian, Venom & Ember" `
+              --title "SpinUI $tag — Vellum & Ember" `
               --notes "Complete SpinUI Windows release. Use SpinUI-Installer.zip for guided setup or SpinUI-Manual.zip for an installer-free setup. Verify any download against SHA256SUMS.txt; the unsigned executables can trip antivirus machine-learning heuristics (see the README's Troubleshooting section)."
           }
 

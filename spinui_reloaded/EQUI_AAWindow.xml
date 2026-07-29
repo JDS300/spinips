@@ -267,14 +267,14 @@
 		<Style_Transparent>false</Style_Transparent>
 		<!--<TooltipReference/>-->
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<LinesFillTint>
-			<R>150</R>
-			<G>240</G>
-			<B>222</B>
+			<R>178</R>
+			<G>206</G>
+			<B>252</B>
 		</LinesFillTint>
 		<DrawLinesFill>true</DrawLinesFill>
 		<EQType>5</EQType>

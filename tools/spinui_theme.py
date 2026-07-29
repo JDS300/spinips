@@ -1,41 +1,44 @@
-"""Canonical SpinUI "Obsidian, Venom & Ember" visual tokens.
+"""Canonical SpinUI "Vellum & Ember" visual tokens.
 
-The palette keeps EverQuest's heraldic gold, but gives interactive and
-combat-focused surfaces a more assertive ToxiUI-inspired teal signal.
-Renderers and atlas generators import this file so documentation matches the
-textures shipped to the client.
+The identity is an adventurer's field journal bound for Norrath: dark oiled
+leather panels, aged-brass frames and corner caps, warm parchment text, a
+glowing ember seam across every titlebar, and a cool spirit-blue reserved for
+the arcane (AA, casting, selection glow).  Renderers and atlas generators
+import this file so documentation matches the textures shipped to the client.
 """
 
 from __future__ import annotations
 
 import re
 
-BG0 = (5, 7, 10)          # deepest obsidian / exterior shadow
-BG1 = (9, 12, 17)         # matte panel
-BG2 = (16, 22, 29)        # raised control
-BG3 = (23, 34, 42)        # hover / selected surface
-VOID = (4, 6, 9)
+BG0 = (12, 9, 6)          # deepest umber / exterior shadow
+BG1 = (19, 14, 9)         # oiled-leather panel
+BG2 = (30, 22, 14)        # raised control
+BG3 = (46, 34, 21)        # hover / selected surface
+VOID = (9, 7, 4)
 
-LINE_SOFT = (28, 38, 49)
-LINE = (48, 63, 78)
-LINE_BRIGHT = (78, 101, 119)
+LINE_SOFT = (52, 40, 25)
+LINE = (104, 80, 48)      # brass-brown frame
+LINE_BRIGHT = (166, 130, 82)  # polished brass corner caps
 
-GOLD_DEEP = (121, 78, 18)
-GOLD = (219, 158, 42)
-GOLD_BRIGHT = (250, 205, 95)
-EMBER = (229, 100, 45)
+GOLD_DEEP = (112, 82, 34)
+GOLD = (208, 162, 84)     # aged brass
+GOLD_BRIGHT = (248, 214, 140)
+EMBER = (242, 118, 44)    # forge seam / interaction heat
+EMBER_DEEP = (140, 56, 18)
+EMBER_BRIGHT = (255, 176, 100)
 
-CYAN_DEEP = (15, 104, 98)
-CYAN = (52, 218, 190)     # venom/arcane interaction accent
+CYAN_DEEP = (48, 74, 132)
+CYAN = (126, 170, 244)    # spirit-blue arcane accent
 
-TEXT = (238, 242, 243)
-TEXT_DIM = (146, 161, 169)
-PARCHMENT = (216, 200, 154)
+TEXT = (241, 231, 212)    # warm parchment ink
+TEXT_DIM = (172, 154, 126)
+PARCHMENT = (222, 204, 162)
 
 HP = (222, 62, 72)
 MANA = (66, 126, 244)
-ENDUR = (219, 158, 42)
-PET = (112, 137, 158)
+ENDUR = (208, 162, 84)
+PET = (152, 132, 104)
 GREEN = (66, 207, 139)
 RED = HP
 

@@ -18,14 +18,14 @@ from PIL import Image, ImageDraw, ImageEnhance, ImageFont
 
 REPO = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = REPO / "docs" / "screenshots"
-GOLD = "#db9e2a"
-GOLD_BRIGHT = "#facd5f"
-CYAN = "#34dabe"
-TEXT = "#eef2f3"
-DIM = "#92a1a9"
-BG = "#090c11"
-PANEL = "#10161d"
-LINE = "#303f4e"
+GOLD = "#d0a254"
+GOLD_BRIGHT = "#f8d68c"
+CYAN = "#7eaaf4"
+TEXT = "#f1e7d4"
+DIM = "#ac9a7e"
+BG = "#120d08"
+PANEL = "#1a140d"
+LINE = "#685030"
 
 
 def _font(size: int, *, bold: bool = False, serif: bool = False):
@@ -108,7 +108,7 @@ def _tour_frame(background: Image.Image, panel: Image.Image, phase: int,
     y = 154
     for index, (name, copy) in enumerate(headings):
         active = index == phase
-        fill = "#17222a" if active else BG
+        fill = "#261d12" if active else BG
         edge = CYAN if active else LINE
         draw.rounded_rectangle((right_x + 24, y, 908, y + 72), radius=5,
                                fill=fill, outline=edge, width=2 if active else 1)

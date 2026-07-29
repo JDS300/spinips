@@ -306,9 +306,9 @@
 		<ScreenID>Target_Class</ScreenID>
 		<EQType>1000</EQType>
 		<TextColor>
-			<R>238</R>
-			<G>242</G>
-			<B>243</B>
+			<R>241</R>
+			<G>231</G>
+			<B>212</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>3</Font>
@@ -329,9 +329,9 @@
 		<ScreenID>Target_Level</ScreenID>
 		<EQType>1001</EQType>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>3</Font>
@@ -415,9 +415,9 @@
 		<RelativePosition>true</RelativePosition>
 		<Font>3</Font>
 		<TextColor>
-			<R>238</R>
-			<G>242</G>
-			<B>243</B>
+			<R>241</R>
+			<G>231</G>
+			<B>212</B>
 		</TextColor>
 		<Text></Text>
 		<NoWrap>true</NoWrap>
@@ -439,9 +439,9 @@
 		<RelativePosition>true</RelativePosition>
 		<Font>3</Font>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<Text></Text>
 		<NoWrap>true</NoWrap>
@@ -547,9 +547,9 @@
 		<Style_Transparent>false</Style_Transparent>
 		<TooltipReference/>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<DrawLinesFill>false</DrawLinesFill>
 		<EQType>187</EQType>
@@ -586,9 +586,9 @@
 		<RelativePosition>true</RelativePosition>
 		<GaugeOffsetY>0</GaugeOffsetY>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>188</EQType>
 		<GaugeDrawTemplate>

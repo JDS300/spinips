@@ -1,6 +1,6 @@
 # Spin's UI / LOREMASTER 
 
-**A complete Obsidian, Venom & Ember interface for EverQuest Legends.** SpinUI rebuilds the aging EQ presentation around a crisp combat dock, cinematic equipment screen, readable effects and spell controls, seven validated screen profiles from 1920×1080 through 4K, and **Spin's Loremaster**, a live Encounter Lab and EQL Wiki companion that never injects into the game.
+**A complete Vellum & Ember interface for EverQuest Legends.** SpinUI rebuilds the aging EQ presentation around a crisp combat dock, cinematic equipment screen, readable effects and spell controls, seven validated screen profiles from 1920×1080 through 4K, and **Spin's Loremaster**, a live Encounter Lab and EQL Wiki companion that never injects into the game.
 
 [**Download the latest release**](https://github.com/itsspin/spinips/releases/latest) · Windows · EverQuest Legends · Log-only companion · Standard-library runtime
 
@@ -33,7 +33,7 @@
 ## Contents
 
 1. [What's inside](#whats-inside)
-2. [The theme: Obsidian, Venom & Ember](#the-theme-obsidian-venom--ember)
+2. [The theme: Vellum & Ember](#the-theme-vellum--ember)
 3. [Resolution-aware layouts](#resolution-aware-layouts)
 4. [Installation](#installation)
 5. [Chat: three windows, three presets](#chat-three-windows-three-presets)
@@ -65,20 +65,23 @@ Design inspiration, translated into EverQuest's SIDL skin system: **ELVUI / TOXI
 
 ---
 
-## The theme: Obsidian, Venom & Ember
+## The theme: Vellum & Ember
+
+The identity is an adventurer's field journal bound for Norrath: dark oiled-leather panels pinned down by polished brass corner caps, a glowing **ember seam** running across every titlebar, warm parchment ink, and a cool spirit-blue reserved for the arcane. No flat charcoal, no neon teal - it should not be mistaken for any WoW-descended UI at a glance.
 
 Every shared chrome texture was redrawn programmatically (see `tools/generate_spinui_textures.py`), so **all** windows - inventory, merchant, tradeskill, guild, raid, overseer, everything - pick up the theme automatically:
 
 | Role | Color | Where you see it |
 |---|---|---|
-| Matte obsidian | `#05070A → #17222A` | window backgrounds, control layers, slots |
-| Gunmetal line | `#303F4E` | crisp window, button, and content-well outlines |
-| **Ember gold** | `#DB9E2A` / `#FACD5F` | committed states, XP, records, heraldic identity |
-| **Venom arcane** | `#34DABE` | signal rails, hover/selection, casting, AA, active tabs |
-| HP / Mana / Endurance | `#DE3E48` / `#427EF4` / `#DB9E2A` | every vitals gauge, group row, target HP |
-| Text | `#EEF2F3` primary / `#92A1A9` dim | high-contrast labels and secondary data |
+| Oiled leather | `#0C0906 → #2E2215` | window backgrounds, control layers, slots (subtle hide-grain mottle) |
+| Brass frame | `#685030` edges / `#A68252` corner caps | window outlines, button frames, content wells |
+| **Ember seam** | `#F2762C` | the glowing line atop every titlebar, hover states, interaction heat |
+| **Aged brass gold** | `#D0A254` / `#F8D68C` | committed states, XP, records, heraldic identity |
+| **Spirit blue** | `#7EAAF4` | casting, AA, selection glow - the arcane accent |
+| HP / Mana / Endurance | `#DE3E48` / `#427EF4` / `#D0A254` | every vitals gauge, group row, target HP |
+| Text | `#F1E7D4` parchment / `#AC9A7E` dim | warm, high-contrast labels and secondary data |
 
-Gauges use a compact high-contrast gradient that the client tints per gauge, so HP reads deep red, mana electric blue, endurance amber, XP gold, and casting/AA venom-teal without losing a consistent material language. Spell art is now centered at a crisp **36×36** inside each native 40×40 socket, so the icons fill the rail cleanly without stretching or changing their function.
+Gauges use a compact high-contrast gradient that the client tints per gauge, so HP reads deep red, mana electric blue, endurance brass, XP gold, and casting/AA spirit-blue without losing a consistent material language. Spell art is now centered at a crisp **36×36** inside each native 40×40 socket, so the icons fill the rail cleanly without stretching or changing their function.
 
 Window XML polish applied on top (133+ verified value-level edits): vivid gauge tints in Player/Target/Group/Pet/ExtTarget/Casting/Breath/Aggro windows, readable label colors in the buff & song windows, map coordinate readouts flipped from black to light (they'd be invisible on the dark map), and target-name text bumped to a larger font.
 
@@ -135,7 +138,7 @@ The layout generator validates all **21 resolution/preset combinations**: every 
 | Casting bar | hidden | **shown** (centered) | see your own cast progress |
 | Chat font | size 3 | **size 5** (size 6 in the 4K default) | readability at 1440p and 4K pixel density (right-click chat → Font to change) |
 | Pet command window | cramped 311x190, 57px commands | **513x181 fixed side rail, direct 78px four-column commands** | no overhead dark slab; all commands and 42 effect positions remain reachable |
-| XP vs AA bars | both overlaid pure blue | **XP ember gold, AA venom** - fills *and* sub-tick overlays, in the player plate, inventory, and AA window | tell the two progression bars apart at a glance |
+| XP vs AA bars | both overlaid pure blue | **XP brass gold, AA spirit blue** - fills *and* sub-tick overlays, in the player plate, inventory, and AA window | tell the two progression bars apart at a glance |
 | Buff/Song style | RIGHT + number rail | **slim LEFT list, no numbering** | larger readable icons, transparent rows, no heavy black slab |
 | Player/Target rails | opaque bands and tight text | **transparent, full-width** | effects float cleanly; stance/empower labels fit |
 | HUD label fonts | 2-4 | **+1 across the board** | mana/end numbers, level/class, stance, group names |
@@ -238,7 +241,7 @@ Inspired by WoW's **Narcissus** and finalized for EverQuest Legends, the Equipme
 
 The active default is now a deliberate **513x181 low-profile command center** instead of a 356x255 stack with a 75px dark reserve above Companion. It converts that reserve into a full-height side rail: 29% less vertical obstruction, nearly the same total pixel footprint, and all **42 visible pet buff/debuff positions** retained with a measured 12px flow allowance.
 
-* Pet and target names use larger type, with their percentages separated at the right edge and HP/target colors tuned to the Obsidian, Ember and Venom palette.
+* Pet and target names use larger type, with their percentages separated at the right edge and HP/target colors tuned to the Vellum & Ember palette.
 * All fourteen native pet commands use explicit **Legends-validated** placement in a clean 4-column grid on 78x23 targets. Their `Pet0_Button` through `Pet13_Button` bindings remain untouched, so commands such as Inventory stay fully clickable instead of wrapping below the EverQuest Legends client frame. Legends injects each label and action through those bindings; SpinUI does not hardcode EverQuest Live command names.
 * The required `PetBuffWindow` / `PetBuffButtons` chain remains mounted with its native 24px template and click-through empty pixels. The fixed default flows 6x7 down the new right rail; it does not hide or discard effects for the sake of appearance.
 * Resizable buffs-on-bottom and buffs-on-top alternatives open at a compact **356x209** with one visible row, then devote every added pixel of height to more effect rows while the 356x181 command panel stays fixed. The compact resizable right-rail alternative opens at **441x181** with 21 positions, the same 12px flow allowance, and grows in both directions.
@@ -257,7 +260,7 @@ The active default is now a deliberate **513x181 low-profile command center** in
 
 ## Spin's Loremaster
 
-*The log parser - DPS, XP, pets, songs, loot, and time-to-level in one obsidian panel.*
+*The log parser - DPS, XP, pets, songs, loot, and time-to-level in one leather-bound panel.*
 
 Loremaster is a purpose-built Python companion for Spin's UI Reloaded. It reads EverQuest logs in real time, turns combat and adventure events into a detailed live ledger, and remains standard-library-only; releases package it as one self-contained executable with no Python installation required.
 
@@ -292,7 +295,7 @@ Loremaster's face is its own - the same design language as the rest of Spin's UI
 
 ### Lore Lens: EQL Wiki item intelligence
 
-Lore Lens turns [EQL Wiki](https://eqlwiki.com/) item pages into a compact obsidian reference card next to the item you are inspecting. It uses the wiki's structured MediaWiki endpoint, not presentation-page scraping, and shows the item profile, drop zones and NPCs, vendors, related quests, player-crafted status, and tradeskill uses. Empty sections remain explicit instead of being guessed, and **OPEN FULL WIKI PAGE** is always available for the complete source.
+Lore Lens turns [EQL Wiki](https://eqlwiki.com/) item pages into a compact vellum reference card next to the item you are inspecting. It uses the wiki's structured MediaWiki endpoint, not presentation-page scraping, and shows the item profile, drop zones and NPCs, vendors, related quests, player-crafted status, and tradeskill uses. Empty sections remain explicit instead of being guessed, and **OPEN FULL WIKI PAGE** is always available for the complete source.
 
 * **Ctrl+Shift+E by default, fully rebindable:** a dedicated native Windows owner holds both Loremaster shortcuts for the process lifetime, including while the HUD is tray-hidden. `READY` means reserved, `CONFLICT` means another app owns the requested binding, and `DISABLED` means Lore Lens is off. Actions are accepted only while EverQuest or Loremaster is foreground. Rebinding is atomic; if a new shortcut conflicts, the prior working shortcut remains active.
 * **True on-demand Hover Scan:** press the shortcut while EverQuest is foreground. Loremaster verifies the foreground process, freezes one bounded mixed-DPI, multi-monitor-safe tooltip region before Lore Lens can cover it, then opens **READING HOVERED ITEM…** and validates the recognized candidates against exact EQL Wiki item pages. The cursor can move immediately after the keypress; nothing is captured continuously.
@@ -304,7 +307,7 @@ Lore Lens turns [EQL Wiki](https://eqlwiki.com/) item pages into a compact obsid
 
 ### Accessibility
 
-Loremaster **SETTINGS** includes a high-contrast palette, adjustable text scale from 85–140%, and reduced motion. Reduced motion removes alert fades; high contrast strengthens secondary text, outlines, and active signals without relying on venom/gold color alone. These settings apply on the next launch where noted and remain per-user in `%LOCALAPPDATA%\SpinsLoremaster`.
+Loremaster **SETTINGS** includes a high-contrast palette, adjustable text scale from 85–140%, and reduced motion. Reduced motion removes alert fades; high contrast strengthens secondary text, outlines, and active signals without relying on spirit/gold color alone. These settings apply on the next launch where noted and remain per-user in `%LOCALAPPDATA%\SpinsLoremaster`.
 
 ### Run it: from source
 
@@ -360,7 +363,7 @@ Advanced users can additionally add DBM-style triggers in `%LOCALAPPDATA%\SpinsL
 
 ### The overlay
 
-* Borderless obsidian panel with the ember-gold frame - **drag anywhere** to move; position remembered. It raises only while EverQuest/Loremaster is foreground and drops behind unrelated apps. It defaults to the layout's reserved right-side shelf, clear of the map, group window, hotbars, and bag dock.
+* Borderless leather panel with the ember-brass frame - **drag anywhere** to move; position remembered. It raises only while EverQuest/Loremaster is foreground and drops behind unrelated apps. It defaults to the layout's reserved right-side shelf, clear of the map, group window, hotbars, and bag dock.
 * **Mini mode**: a slim strip showing only your pinned sections. Click ✦ beside a section to pin or unpin it; **LOCK** prevents accidental repositioning.
 * **Safe click-through**: full mode's **CLICK-THRU** lets mouse input reach EverQuest. The active label becomes **PASS ON**, a banner explains recovery, and **Ctrl+Alt+L** restores mouse control. It remains disabled unless that recovery key was registered successfully and always starts off after relaunch.
 * **Incremental live details**: changing combat values update existing labels and meter canvases in place. The panel rebuilds structure only when a genuinely new row appears, instead of destroying the whole combat card every polling cycle.
@@ -452,4 +455,4 @@ spinips/
 
 ---
 
-*Spin's UI Reloaded - forged in obsidian, edged in ember. See you in Norrath.*
+*Spin's UI Reloaded - bound in leather, sealed in ember. See you in Norrath.*

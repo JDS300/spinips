@@ -636,9 +636,9 @@
 		</Size>
 		<Text>Character Vitals</Text>
 		<TextColor>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</TextColor>
 		<NoWrap>true</NoWrap>
 		<AlignCenter>false</AlignCenter>
@@ -1508,9 +1508,9 @@
 		</Size>
 		<Text>Primary Attributes</Text>
 		<TextColor>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</TextColor>
 		<NoWrap>true</NoWrap>
 		<AlignCenter>false</AlignCenter>
@@ -2426,9 +2426,9 @@
 		</Size>
 		<Text>Resists</Text>
 		<TextColor>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</TextColor>
 		<NoWrap>true</NoWrap>
 		<AlignCenter>false</AlignCenter>
@@ -2941,9 +2941,9 @@
 		</Size>
 		<Text>Additional Modifiers</Text>
 		<TextColor>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</TextColor>
 		<NoWrap>true</NoWrap>
 		<AlignCenter>false</AlignCenter>
@@ -3787,9 +3787,9 @@
 		</Size>
 		<Text>Mitigation</Text>
 		<TextColor>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</TextColor>
 		<NoWrap>true</NoWrap>
 		<AlignCenter>false</AlignCenter>
@@ -4755,9 +4755,9 @@
 		</Size>
 		<Text>Additional Information</Text>
 		<TextColor>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</TextColor>
 		<NoWrap>true</NoWrap>
 		<AlignCenter>false</AlignCenter>
@@ -9164,14 +9164,14 @@
 		<AutoStretch>true</AutoStretch>
 		<GaugeOffsetY>0</GaugeOffsetY>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<LinesFillTint>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</LinesFillTint>
 		<DrawLinesFill>true</DrawLinesFill>
 		<EQType>4</EQType>
@@ -9250,14 +9250,14 @@
 		<AutoStretch>true</AutoStretch>
 		<GaugeOffsetY>0</GaugeOffsetY>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<LinesFillTint>
-			<R>150</R>
-			<G>240</G>
-			<B>222</B>
+			<R>178</R>
+			<G>206</G>
+			<B>252</B>
 		</LinesFillTint>
 		<DrawLinesFill>true</DrawLinesFill>
 		<EQType>5</EQType>

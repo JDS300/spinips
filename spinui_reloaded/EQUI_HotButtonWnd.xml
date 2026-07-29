@@ -1611,9 +1611,9 @@
 		<ScreenID>HB_HorizontalCurrentPageLabel</ScreenID>
 		<Font>2</Font>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Location>
@@ -1657,9 +1657,9 @@
 		<ScreenID>HB_VerticalCurrentPageLabel</ScreenID>
 		<Font>2</Font>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Location>

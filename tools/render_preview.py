@@ -134,7 +134,7 @@ def glass_window(canvas, x, y, w, h, alpha=235):
                         fill=BG1 + (alpha,), outline=(1, 3, 5, 255))
     d.rounded_rectangle([1, 1, w - 2, h - 2], radius=4, outline=LINE + (245,))
     rail_end = max(28, int(w * .24))
-    d.line([(5, 1), (rail_end, 1)], fill=CYAN + (235,), width=2)
+    d.line([(5, 1), (rail_end, 1)], fill=EMBER + (235,), width=2)
     d.line([(rail_end + 1, 1), (w - 6, 1)], fill=LINE_SOFT + (220,))
     canvas.alpha_composite(win, (x, y))
     return (x + 8, y + 6, x + w - 8, y + h - 6)
@@ -206,8 +206,8 @@ def draw_chat(canvas, x, y, w, h, name, lines, input_line=""):
     # tab
     d = ImageDraw.Draw(canvas)
     d.rounded_rectangle([x + 8, y, x + 8 + 10 + 8 * len(name), y + 20], radius=3,
-                        fill=(16, 22, 29, 255), outline=CYAN + (220,))
-    d.line([(x + 10, y + 19), (x + 6 + 8 * len(name) + 10, y + 19)], fill=CYAN + (245,))
+                        fill=(30, 22, 14, 255), outline=EMBER + (220,))
+    d.line([(x + 10, y + 19), (x + 6 + 8 * len(name) + 10, y + 19)], fill=EMBER + (245,))
     d.line([(x + 9, y + 4), (x + 9, y + 16)], fill=GOLD + (235,), width=2)
     text(canvas, (x + 16, y + 10), name, size=12, color=GOLD_BRIGHT, bold=True, anchor="lm")
     ty = y + 30
@@ -367,7 +367,7 @@ def draw_buffs(canvas, x, y, title, rows, w=200, h=None):
     d = ImageDraw.Draw(canvas)
     d.rectangle([x, y, x + w - 1, y + 15], fill=BG1 + (224,),
                 outline=LINE + (245,))
-    d.line([(x + 4, y), (x + 56, y)], fill=CYAN + (235,), width=2)
+    d.line([(x + 4, y), (x + 56, y)], fill=EMBER + (235,), width=2)
     text(canvas, (x + w // 2, y + 8), title.upper(), size=9,
          color=DIM, bold=True, anchor="mm")
     names = ["Chloroplast", "Talisman of Altuna", "Storm Strength", "Guard of the Glade",
@@ -442,8 +442,8 @@ def draw_loremaster(canvas, x, y, w, h):
     d.rectangle([x, y, x + w - 1, y + h - 1], fill=LINE + (255,))
     d.rectangle([x + 1, y + 1, x + w - 2, y + h - 2], fill=BG1 + (250,))
     rect(canvas, (x + 1, y + 1, x + w - 1, y + 28), fill=BG2 + (255,))
-    d.line([(x + 1, y + 1), (x + 120, y + 1)], fill=CYAN + (255,), width=2)
-    d.line([(x + 1, y + 27), (x + w - 2, y + 27)], fill=EMBER + (255,), width=2)
+    d.line([(x + 1, y + 1), (x + 120, y + 1)], fill=EMBER + (255,), width=2)
+    d.line([(x + 1, y + 27), (x + w - 2, y + 27)], fill=GOLD + (255,), width=2)
     text(canvas, (x + 10, y + 7), "SPIN'S LOREMASTER", size=13, color=GOLD_BRIGHT, bold=True)
     text(canvas, (x + w - 12, y + 8), "—   ↺   ✕", size=12, color=DIM, anchor="ra")
     text(canvas, (x + 10, y + 35), "SPIN · QEYNOS", size=9, color=PARCHMENT, bold=True)

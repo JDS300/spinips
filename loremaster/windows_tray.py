@@ -104,11 +104,11 @@ def build_brand_icon_planes(size: int = 32) -> tuple[bytes, bytes, int]:
     pixels = bytearray(size * size * 4)
     mask_stride = ((size + 15) // 16) * 2
     mask = bytearray(b"\xff" * (mask_stride * size))
-    gold = (42, 158, 219, 255)       # BGRA #db9e2a
-    gold_bright = (95, 205, 250, 255)  # #facd5f
-    obsidian = (17, 12, 9, 255)      # #090c11
-    cyan = (190, 218, 52, 255)       # #34dabe
-    ember = (45, 100, 229, 255)      # #e5642d
+    gold = (84, 162, 208, 255)       # BGRA #d0a254
+    gold_bright = (140, 214, 248, 255)  # #f8d68c
+    obsidian = (8, 13, 18, 255)      # leather #120d08
+    cyan = (244, 170, 126, 255)      # spirit blue #7eaaf4
+    ember = (44, 118, 242, 255)      # #f2762c
 
     for y in range(size):
         for x in range(size):
@@ -123,7 +123,7 @@ def build_brand_icon_planes(size: int = 32) -> tuple[bytes, bytes, int]:
             elif abs(px - cx) + abs(py - cy) <= 4.6 * scale:
                 color = ember if abs(px - cx) + abs(py - cy) <= 1.8 * scale else cyan
             elif radius <= 8.0 * scale and ((x + y) % max(2, int(4 * scale)) == 0):
-                color = (27, 34, 23, 255)  # restrained teal-black texture
+                color = (9, 22, 34, 255)  # warm leather-grain texture (BGRA)
             else:
                 color = obsidian
             offset = (y * size + x) * 4

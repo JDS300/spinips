@@ -32,16 +32,16 @@ LOREMASTER_NAME = "Loremaster.exe"
 STARTUP_LINK = "Spin's Loremaster.lnk"
 DESKTOP_LINK = "Spin's Loremaster.lnk"
 
-BG = "#090c11"
-PANEL = "#10161d"
-RAISED = "#17222a"
-LINE = "#303f4e"
-GOLD = "#db9e2a"
-GOLD_BRIGHT = "#facd5f"
-CYAN = "#34dabe"
-TEXT = "#eef2f3"
-DIM = "#92a1a9"
-EMBER = "#e5642d"
+BG = "#120d08"
+PANEL = "#1a140d"
+RAISED = "#261d12"
+LINE = "#685030"
+GOLD = "#d0a254"
+GOLD_BRIGHT = "#f8d68c"
+CYAN = "#7eaaf4"
+TEXT = "#f1e7d4"
+DIM = "#ac9a7e"
+EMBER = "#f2762c"
 
 
 @dataclass(frozen=True)
@@ -1699,12 +1699,12 @@ def run_gui() -> int:
                  side="right", pady=(5, 0))
     tk.Frame(root, bg=EMBER, height=2).pack(fill="x")
 
-    step_bar = tk.Frame(root, bg="#0c1117", padx=30, pady=9)
+    step_bar = tk.Frame(root, bg="#100b07", padx=30, pady=9)
     step_bar.pack(fill="x")
     step_labels: list[tk.Label] = []
     for index, title in enumerate(("1  INSTALL", "2  LAYOUT", "3  REVIEW")):
         label = tk.Label(
-            step_bar, text=title, bg="#0c1117", fg=DIM,
+            step_bar, text=title, bg="#100b07", fg=DIM,
             font=("Segoe UI Semibold", 9), anchor="center",
         )
         label.pack(side="left", expand=True, fill="x")
@@ -1831,7 +1831,7 @@ def run_gui() -> int:
         canvas.create_rectangle(1, 1, width - 2, height - 2, outline=LINE)
         canvas.create_rectangle(82, 18, 115, 29, fill=RAISED, outline=CYAN)
         canvas.create_rectangle(122, 18, 155, 29, fill=RAISED, outline=GOLD)
-        colors = ("#234f58", "#395160", "#5b4725")
+        colors = ("#3c5a86", "#584428", "#6b3a1c")
         labels = ("MAIN", "SOCIAL", "COMBAT")
         total = sum(preset.chat_widths) + 16
         cursor = 7.0
@@ -1870,7 +1870,7 @@ def run_gui() -> int:
             takefocus=True, command=lambda key=preset.key: choose_layout(key),
         )
         radio.pack(fill="x")
-        canvas = tk.Canvas(card, width=238, height=70, bg="#0b0f14",
+        canvas = tk.Canvas(card, width=238, height=70, bg="#0f0a06",
                            highlightthickness=0, bd=0, cursor="hand2")
         canvas.pack(fill="x", pady=(6, 7))
         draw_layout_schematic(canvas, preset)
@@ -1976,12 +1976,12 @@ def run_gui() -> int:
              bg=PANEL, fg=DIM, font=("Segoe UI", 9)).pack(anchor="w", padx=23)
 
     review_box = tk.Frame(
-        review_page, bg="#0c1117", padx=16, pady=12,
+        review_page, bg="#100b07", padx=16, pady=12,
         highlightthickness=1, highlightbackground=LINE,
     )
     review_box.pack(fill="x", pady=(12, 0))
     review_var = tk.StringVar()
-    tk.Label(review_box, textvariable=review_var, bg="#0c1117", fg=TEXT,
+    tk.Label(review_box, textvariable=review_var, bg="#100b07", fg=TEXT,
              font=("Segoe UI", 9), justify="left", anchor="nw",
              wraplength=790).pack(fill="x")
 

@@ -14,15 +14,15 @@ REPO = Path(__file__).resolve().parent.parent
 SKIN = REPO / "spinui_reloaded"
 STOCK = Path(r"C:\EQLegends\uifiles\default")
 
-TEXT = (238, 242, 243)
-TEXT_DIM = (146, 161, 169)
-GOLD_BRIGHT = (250, 205, 95)
-CYAN = (52, 218, 190)
+TEXT = (241, 231, 212)
+TEXT_DIM = (172, 154, 126)
+GOLD_BRIGHT = (248, 214, 140)
+CYAN = (126, 170, 244)
 HP = (222, 62, 72)
 MANA = (66, 126, 244)
-ENDURANCE = (219, 158, 42)
-PET = (112, 137, 158)
-BG1 = (9, 12, 17)
+ENDURANCE = (208, 162, 84)
+PET = (152, 132, 104)
+BG1 = (19, 14, 9)
 
 FILES = (
     "EQUI_ActionsWindow.xml",

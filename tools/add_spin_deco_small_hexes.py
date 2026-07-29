@@ -26,10 +26,10 @@ def draw_wing_gem(img):
     """Ember diamond that splits the stance/invocation wings."""
     gem = Image.new("RGBA", (12, 12), (0, 0, 0, 0))
     d = ImageDraw.Draw(gem)
-    d.polygon([(5, 0), (10, 5), (5, 10), (0, 5)], fill=(219, 158, 42, 255),
-              outline=(5, 7, 10, 255))
-    d.polygon([(5, 2), (8, 5), (5, 8), (2, 5)], fill=(250, 205, 95, 255))
-    d.point((5, 4), fill=(255, 236, 180, 255))
+    d.polygon([(5, 0), (10, 5), (5, 10), (0, 5)], fill=(242, 118, 44, 255),
+              outline=(7, 5, 3, 255))
+    d.polygon([(5, 2), (8, 5), (5, 8), (2, 5)], fill=(255, 176, 100, 255))
+    d.point((5, 4), fill=(255, 226, 178, 255))
     img.paste(gem, (112, 64))
 
 

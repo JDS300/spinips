@@ -876,7 +876,7 @@ def audit_inventory_geometry() -> None:
             child_int(label, "TextColor/R"), child_int(label, "TextColor/G"),
             child_int(label, "TextColor/B"),
         )
-        if color != (219, 158, 42):
+        if color != (208, 162, 84):
             fail(f"inventory ledger heading lost canonical gold: {label_name}")
 
     stats1_bottom = STATS1[1] + STATS1[3]

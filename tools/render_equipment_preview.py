@@ -16,7 +16,7 @@ from restyle_inventory import (ANY_ROW, BAGS, BAG_SLOT_SIZE, BAG_SPACING,  # noq
                                CREST, CREST_SIZE, LEFT_RAIL, PAGE_LOCATION,
                                RIGHT_RAIL, SLOT_SIZE, STATS1, STATS2, STATS3,
                                WEAPON_ROW, WINDOW, slot_pos)
-from spinui_theme import (BG1, BG2, CYAN, GOLD, GOLD_BRIGHT, LINE, LINE_SOFT,
+from spinui_theme import (BG1, BG2, CYAN, EMBER, GOLD, GOLD_BRIGHT, LINE, LINE_SOFT,
                           TEXT, TEXT_DIM)
 
 SKIN = REPO / "spinui_reloaded"
@@ -76,7 +76,7 @@ def main():
     # window: rounded obsidian glass + titlebar
     d.rounded_rectangle([0, 0, W - 1, H - 1], radius=5, fill=(9, 13, 18, 250), outline=LINE + (255,))
     d.rectangle([1, 1, W - 2, 18], fill=(16, 22, 29, 255))
-    d.line([(1, 1), (W - 2, 1)], fill=CYAN + (225,))
+    d.line([(1, 1), (W - 2, 1)], fill=EMBER + (225,))
     d.line([(1, 17), (W - 2, 17)], fill=GOLD + (220,))
     d.text((10, 9), "Inventory", font=F(11, True), fill=TEXT, anchor="lm")
     d.text((W - 12, 9), "—   ✕", font=F(11, True), fill=DIM, anchor="rm")
@@ -89,9 +89,9 @@ def main():
         active = i == 0
         d.rounded_rectangle([tx, 24, tx + tw, 44], radius=4,
                             fill=(23, 34, 42, 255) if active else BG1 + (255,),
-                            outline=(CYAN if active else LINE_SOFT) + (255,))
+                            outline=(EMBER if active else LINE_SOFT) + (255,))
         if active:
-            d.line([(tx + 4, 43), (tx + tw - 4, 43)], fill=CYAN + (255,), width=2)
+            d.line([(tx + 4, 43), (tx + tw - 4, 43)], fill=EMBER + (255,), width=2)
         d.text((tx + tw // 2, 34), t, font=F(11, active), fill=TEXT if active else DIM, anchor="mm")
         tx += tw + 4
 

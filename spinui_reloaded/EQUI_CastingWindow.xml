@@ -30,9 +30,9 @@
 		<Style_HScroll>false</Style_HScroll>
 		<Style_Transparent>false</Style_Transparent>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<LinesFillTint>
 			<R>0</R>
@@ -63,9 +63,9 @@
 		<EQType>134</EQType>
 		<Font>4</Font>
 		<TextColor>
-			<R>238</R>
-			<G>242</G>
-			<B>243</B>
+			<R>241</R>
+			<G>231</G>
+			<B>212</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<AutoStretch>true</AutoStretch>

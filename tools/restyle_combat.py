@@ -16,19 +16,20 @@ from typing import Callable
 REPO = Path(__file__).resolve().parent.parent
 SKIN = REPO / "spinui_reloaded"
 
-# Obsidian / venom / ember accessibility palette.  The same values live in
-# spinui_theme.py for rendered documentation; they are repeated here so this
-# script has no Pillow/runtime dependency.
-TEXT = (238, 242, 243)
-TEXT_DIM = (146, 161, 169)
-GOLD = (219, 158, 42)
-GOLD_BRIGHT = (250, 205, 95)
-CYAN = (52, 218, 190)
-CYAN_BRIGHT = (150, 240, 222)
+# "Vellum & Ember" accessibility palette: parchment ink, aged brass, and a
+# spirit-blue arcane accent.  The same values live in spinui_theme.py for
+# rendered documentation; they are repeated here so this script has no
+# Pillow/runtime dependency.
+TEXT = (241, 231, 212)
+TEXT_DIM = (172, 154, 126)
+GOLD = (208, 162, 84)
+GOLD_BRIGHT = (248, 214, 140)
+CYAN = (126, 170, 244)
+CYAN_BRIGHT = (178, 206, 252)
 HP = (222, 62, 72)
 MANA = (66, 126, 244)
-ENDURANCE = (219, 158, 42)
-PET = (112, 137, 158)
+ENDURANCE = (208, 162, 84)
+PET = (152, 132, 104)
 
 # Older SpinUI releases exposed a large collection of visual variants.  Most of
 # those files predate the July Legends schema and can lose live controls when a
@@ -547,7 +548,7 @@ def style_hotbuttons() -> None:
     write_ascii(path, text)
 
 
-CYAN_DIM = (36, 152, 133)
+CYAN_DIM = (88, 122, 186)
 
 # Twin-wing rail: static STANCE / INVOCATION captions bracket the bar, the
 # dynamic names sit inside their wing, and an ember gem marks the split.
@@ -591,9 +592,9 @@ WING_BLOCK = """	<!-- SPIN-WING: stance / invocation twin-wing rail -->
 		<RightAnchorToLeft>true</RightAnchorToLeft>
 		<Text>STANCE</Text>
 		<TextColor>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</TextColor>
 		<NoWrap>true</NoWrap>
 		<AlignCenter>false</AlignCenter>
@@ -614,9 +615,9 @@ WING_BLOCK = """	<!-- SPIN-WING: stance / invocation twin-wing rail -->
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Text>INVOCATION</Text>
 		<TextColor>
-			<R>36</R>
-			<G>152</G>
-			<B>133</B>
+			<R>88</R>
+			<G>122</G>
+			<B>186</B>
 		</TextColor>
 		<NoWrap>true</NoWrap>
 		<AlignCenter>false</AlignCenter>
@@ -655,6 +656,12 @@ def style_stance_file(path: Path, menu_name: str | None = None) -> None:
         if rail_anchor not in text:
             fail(f"missing stance rail pieces in {path.name}")
         text = text.replace(rail_anchor, WING_PIECES + rail_anchor, 1)
+    # The static captions ship inside WING_BLOCK, so re-assert their palette on
+    # every run — a theme change must reach files that already carry the block.
+    text = change_item(text, "Label", "SW_StanceCaption",
+                       lambda b: set_color(b, "TextColor", GOLD))
+    text = change_item(text, "Label", "SW_InvocationCaption",
+                       lambda b: set_color(b, "TextColor", CYAN_DIM))
     def center_in_wing(block: str, color, left: int, right: int) -> str:
         # The dynamic names center inside their wing box, so any stance or
         # invocation name the client returns sits balanced with no overlap —

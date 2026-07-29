@@ -5,9 +5,9 @@
 	<Label item="ETW_AggroPct0">
 		<ScreenID>ETW_AggroPct0</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -75,9 +75,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>189</EQType>
 		<GaugeDrawTemplate>
@@ -96,9 +96,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>82</EQType>
 		<GaugeDrawTemplate>
@@ -164,9 +164,9 @@
 	<Label item="ETW_AggroPct1">
 		<ScreenID>ETW_AggroPct1</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -235,9 +235,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>190</EQType>
 		<GaugeDrawTemplate>
@@ -256,9 +256,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>83</EQType>
 		<GaugeDrawTemplate>
@@ -323,9 +323,9 @@
 	<Label item="ETW_AggroPct2">
 		<ScreenID>ETW_AggroPct2</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -394,9 +394,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>191</EQType>
 		<GaugeDrawTemplate>
@@ -415,9 +415,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>84</EQType>
 		<GaugeDrawTemplate>
@@ -482,9 +482,9 @@
 	<Label item="ETW_AggroPct3">
 		<ScreenID>ETW_AggroPct3</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -553,9 +553,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>192</EQType>
 		<GaugeDrawTemplate>
@@ -574,9 +574,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>85</EQType>
 		<GaugeDrawTemplate>
@@ -641,9 +641,9 @@
 	<Label item="ETW_AggroPct4">
 		<ScreenID>ETW_AggroPct4</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -712,9 +712,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>193</EQType>
 		<GaugeDrawTemplate>
@@ -733,9 +733,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>86</EQType>
 		<GaugeDrawTemplate>
@@ -800,9 +800,9 @@
 	<Label item="ETW_AggroPct5">
 		<ScreenID>ETW_AggroPct5</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -871,9 +871,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>194</EQType>
 		<GaugeDrawTemplate>
@@ -892,9 +892,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>87</EQType>
 		<GaugeDrawTemplate>
@@ -959,9 +959,9 @@
 	<Label item="ETW_AggroPct6">
 		<ScreenID>ETW_AggroPct6</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -1030,9 +1030,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>195</EQType>
 		<GaugeDrawTemplate>
@@ -1051,9 +1051,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>88</EQType>
 		<GaugeDrawTemplate>
@@ -1118,9 +1118,9 @@
 	<Label item="ETW_AggroPct7">
 		<ScreenID>ETW_AggroPct7</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -1189,9 +1189,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>196</EQType>
 		<GaugeDrawTemplate>
@@ -1210,9 +1210,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>89</EQType>
 		<GaugeDrawTemplate>
@@ -1277,9 +1277,9 @@
 	<Label item="ETW_AggroPct8">
 		<ScreenID>ETW_AggroPct8</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -1348,9 +1348,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>197</EQType>
 		<GaugeDrawTemplate>
@@ -1369,9 +1369,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>90</EQType>
 		<GaugeDrawTemplate>
@@ -1436,9 +1436,9 @@
 	<Label item="ETW_AggroPct9">
 		<ScreenID>ETW_AggroPct9</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -1507,9 +1507,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>198</EQType>
 		<GaugeDrawTemplate>
@@ -1528,9 +1528,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>91</EQType>
 		<GaugeDrawTemplate>
@@ -1595,9 +1595,9 @@
 	<Label item="ETW_AggroPct10">
 		<ScreenID>ETW_AggroPct10</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -1666,9 +1666,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>199</EQType>
 		<GaugeDrawTemplate>
@@ -1687,9 +1687,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>92</EQType>
 		<GaugeDrawTemplate>
@@ -1754,9 +1754,9 @@
 	<Label item="ETW_AggroPct11">
 		<ScreenID>ETW_AggroPct11</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -1825,9 +1825,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>200</EQType>
 		<GaugeDrawTemplate>
@@ -1846,9 +1846,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>93</EQType>
 		<GaugeDrawTemplate>
@@ -1913,9 +1913,9 @@
 	<Label item="ETW_AggroPct12">
 		<ScreenID>ETW_AggroPct12</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -1984,9 +1984,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>201</EQType>
 		<GaugeDrawTemplate>
@@ -2005,9 +2005,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>94</EQType>
 		<GaugeDrawTemplate>
@@ -2072,9 +2072,9 @@
 	<Label item="ETW_AggroPct13">
 		<ScreenID>ETW_AggroPct13</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -2143,9 +2143,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>202</EQType>
 		<GaugeDrawTemplate>
@@ -2164,9 +2164,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>95</EQType>
 		<GaugeDrawTemplate>
@@ -2231,9 +2231,9 @@
 	<Label item="ETW_AggroPct14">
 		<ScreenID>ETW_AggroPct14</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -2302,9 +2302,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>203</EQType>
 		<GaugeDrawTemplate>
@@ -2323,9 +2323,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>96</EQType>
 		<GaugeDrawTemplate>
@@ -2390,9 +2390,9 @@
 	<Label item="ETW_AggroPct15">
 		<ScreenID>ETW_AggroPct15</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -2461,9 +2461,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>204</EQType>
 		<GaugeDrawTemplate>
@@ -2482,9 +2482,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>97</EQType>
 		<GaugeDrawTemplate>
@@ -2549,9 +2549,9 @@
 	<Label item="ETW_AggroPct16">
 		<ScreenID>ETW_AggroPct16</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -2620,9 +2620,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>205</EQType>
 		<GaugeDrawTemplate>
@@ -2641,9 +2641,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>98</EQType>
 		<GaugeDrawTemplate>
@@ -2708,9 +2708,9 @@
 	<Label item="ETW_AggroPct17">
 		<ScreenID>ETW_AggroPct17</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -2779,9 +2779,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>206</EQType>
 		<GaugeDrawTemplate>
@@ -2800,9 +2800,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>99</EQType>
 		<GaugeDrawTemplate>
@@ -2867,9 +2867,9 @@
 	<Label item="ETW_AggroPct18">
 		<ScreenID>ETW_AggroPct18</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -2938,9 +2938,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>207</EQType>
 		<GaugeDrawTemplate>
@@ -2959,9 +2959,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>100</EQType>
 		<GaugeDrawTemplate>
@@ -3026,9 +3026,9 @@
 	<Label item="ETW_AggroPct19">
 		<ScreenID>ETW_AggroPct19</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -3097,9 +3097,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>208</EQType>
 		<GaugeDrawTemplate>
@@ -3118,9 +3118,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>101</EQType>
 		<GaugeDrawTemplate>
@@ -3185,9 +3185,9 @@
 	<Label item="ETW_AggroPct20">
 		<ScreenID>ETW_AggroPct20</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -3256,9 +3256,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>209</EQType>
 		<GaugeDrawTemplate>
@@ -3277,9 +3277,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>171</EQType>
 		<GaugeDrawTemplate>
@@ -3344,9 +3344,9 @@
 	<Label item="ETW_AggroPct21">
 		<ScreenID>ETW_AggroPct21</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -3415,9 +3415,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>210</EQType>
 		<GaugeDrawTemplate>
@@ -3436,9 +3436,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>172</EQType>
 		<GaugeDrawTemplate>
@@ -3503,9 +3503,9 @@
 	<Label item="ETW_AggroPct22">
 		<ScreenID>ETW_AggroPct22</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -3574,9 +3574,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>211</EQType>
 		<GaugeDrawTemplate>
@@ -3595,9 +3595,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>173</EQType>
 		<GaugeDrawTemplate>

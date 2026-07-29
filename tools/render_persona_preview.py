@@ -11,7 +11,7 @@ sys.path.insert(0, str(REPO / "tools"))
 from render_equipment_preview import FILLED, SLOT_ABBR  # noqa: E402
 from restyle_inventory import BAGS, CREST, WINDOW  # noqa: E402
 from restyle_persona import EQUIP_CANVAS, SLOT_POSITIONS, SLOT_SIZE  # noqa: E402
-from spinui_theme import (BG1, BG2, BG3, CYAN, GOLD, GOLD_BRIGHT, LINE,  # noqa: E402
+from spinui_theme import (BG1, BG2, BG3, CYAN, EMBER, GOLD, GOLD_BRIGHT, LINE,  # noqa: E402
                           LINE_SOFT, TEXT, TEXT_DIM)
 
 SKIN = REPO / "spinui_reloaded"
@@ -43,7 +43,7 @@ def main():
     d.rounded_rectangle([0, 0, w - 1, h - 1], radius=5,
                         fill=(9, 13, 18, 250), outline=LINE + (255,))
     d.rectangle([1, 1, w - 2, 18], fill=BG2 + (255,))
-    d.line([(1, 1), (w - 2, 1)], fill=CYAN + (255,))
+    d.line([(1, 1), (w - 2, 1)], fill=EMBER + (255,))
     d.line([(1, 17), (w - 2, 17)], fill=GOLD + (255,))
     d.text((10, 9), "Inventory", font=font(11, True), fill=TEXT, anchor="lm")
     d.text((w - 12, 9), "—   ×", font=font(11, True), fill=TEXT_DIM, anchor="rm")
@@ -54,9 +54,9 @@ def main():
         active = name == "Loadouts"
         d.rounded_rectangle([x, 24, x + tw, 44], radius=4,
                             fill=(23, 34, 42, 255) if active else BG1 + (255,),
-                            outline=(CYAN if active else LINE_SOFT) + (255,))
+                            outline=(EMBER if active else LINE_SOFT) + (255,))
         if active:
-            d.line([(x + 4, 43), (x + tw - 4, 43)], fill=CYAN + (255,), width=2)
+            d.line([(x + 4, 43), (x + tw - 4, 43)], fill=EMBER + (255,), width=2)
         d.text((x + tw // 2, 34), name, font=font(10, active),
                fill=TEXT if active else TEXT_DIM, anchor="mm")
         x += tw + 4

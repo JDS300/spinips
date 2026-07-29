@@ -41,9 +41,9 @@
 		<RightAnchorToLeft>true</RightAnchorToLeft>
 		<Text>STANCE</Text>
 		<TextColor>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</TextColor>
 		<NoWrap>true</NoWrap>
 		<AlignCenter>false</AlignCenter>
@@ -64,9 +64,9 @@
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Text>INVOCATION</Text>
 		<TextColor>
-			<R>36</R>
-			<G>152</G>
-			<B>133</B>
+			<R>88</R>
+			<G>122</G>
+			<B>186</B>
 		</TextColor>
 		<NoWrap>true</NoWrap>
 		<AlignCenter>false</AlignCenter>
@@ -102,9 +102,9 @@
 		<RightAnchorToLeft>true</RightAnchorToLeft>
 		<Text></Text>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<NoWrap>true</NoWrap>
 		<AlignCenter>true</AlignCenter>
@@ -126,9 +126,9 @@
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Text></Text>
 		<TextColor>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</TextColor>
 		<NoWrap>true</NoWrap>
 		<AlignCenter>true</AlignCenter>

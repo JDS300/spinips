@@ -108,9 +108,9 @@
 		<FontShadow>true</FontShadow>
 		<Font>4</Font>
 		<TextColor>
-			<R>238</R>
-			<G>242</G>
-			<B>243</B>
+			<R>241</R>
+			<G>231</G>
+			<B>212</B>
 		</TextColor>
 		<Style_VScroll>false</Style_VScroll>
 		<Style_HScroll>false</Style_HScroll>
@@ -138,9 +138,9 @@
 		<RelativePosition>true</RelativePosition>
 		<Font>4</Font>
 		<TextColor>
-			<R>238</R>
-			<G>242</G>
-			<B>243</B>
+			<R>241</R>
+			<G>231</G>
+			<B>212</B>
 		</TextColor>
 		<Text>100</Text>
 		<NoWrap>true</NoWrap>
@@ -173,9 +173,9 @@
 		<Style_HScroll>false</Style_HScroll>
 		<Style_Transparent>false</Style_Transparent>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>41</EQType>
 		<GaugeDrawTemplate>
@@ -200,17 +200,17 @@
 		<FontShadow>true</FontShadow>		
 		<Font>4</Font>
 		<TextColor>
-			<R>238</R>
-			<G>242</G>
-			<B>243</B>
+			<R>241</R>
+			<G>231</G>
+			<B>212</B>
 		</TextColor>
 		<Style_VScroll>false</Style_VScroll>
 		<Style_HScroll>false</Style_HScroll>
 		<Style_Transparent>false</Style_Transparent>
 		<FillTint>
-			<R>52</R>
-			<G>218</G>
-			<B>190</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<EQType>41</EQType>
 		<GaugeDrawTemplate>
@@ -229,9 +229,9 @@
 		<EQType>301</EQType>
 		<Font>4</Font>
 		<TextColor>
-			<R>238</R>
-			<G>242</G>
-			<B>243</B>
+			<R>241</R>
+			<G>231</G>
+			<B>212</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Text>100</Text>
@@ -540,9 +540,9 @@
 		<Font>4</Font>
 		<Text>COMPANION</Text>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<NoWrap>true</NoWrap>
 		<AlignLeft>true</AlignLeft>

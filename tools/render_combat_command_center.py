@@ -19,7 +19,7 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "tools"))
 import render_preview as ui  # noqa: E402
 from spinui_theme import (  # noqa: E402
-    BG1, BG2, CYAN, ENDUR, GOLD, GOLD_BRIGHT, HP, LINE, MANA, PET,
+    BG1, BG2, CYAN, EMBER, ENDUR, GOLD, GOLD_BRIGHT, HP, LINE, MANA, PET,
     TEXT, TEXT_DIM,
 )
 
@@ -150,7 +150,7 @@ def effects(canvas: Image.Image, x: int, y: int, title: str,
     draw = ImageDraw.Draw(canvas)
     draw.rectangle((x, y, x + 215, y + 15), fill=BG1 + (224,),
                    outline=LINE + (245,))
-    draw.line((x + 4, y, x + 56, y), fill=CYAN + (235,), width=2)
+    draw.line((x + 4, y, x + 56, y), fill=EMBER + (235,), width=2)
     ui.text(canvas, (x + 108, y + 8), title, 9, TEXT_DIM, True, anchor="mm")
     for index, name in enumerate(names):
         row = y + 18 + index * 20
@@ -202,7 +202,7 @@ def main() -> int:
     draw = ImageDraw.Draw(canvas)
     draw.rounded_rectangle((620, 1028, 1448, 1069), radius=5,
                            fill=BG1 + (248,), outline=LINE + (255,))
-    draw.line((626, 1029, 810, 1029), fill=CYAN + (255,), width=2)
+    draw.line((626, 1029, 810, 1029), fill=EMBER + (255,), width=2)
     ui.text(canvas, (634, 1048), "LEGENDS COMMAND CENTER", 10,
             GOLD_BRIGHT, True, anchor="lm")
     ui.text(canvas, (823, 1048), "HP", 9, HP, True, anchor="lm")

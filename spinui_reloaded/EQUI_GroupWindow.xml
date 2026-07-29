@@ -175,9 +175,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>1201</EQType>
 		<GaugeDrawTemplate>
@@ -197,9 +197,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>112</R>
-			<G>137</G>
-			<B>158</B>
+			<R>152</R>
+			<G>132</G>
+			<B>104</B>
 		</FillTint>
 		<EQType>1301</EQType>
 		<GaugeDrawTemplate>
@@ -295,9 +295,9 @@
 	<Label item="GW_AggroPctPlayer1">
 		<ScreenID>GW_AggroPctPlayer1</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -387,9 +387,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>1202</EQType>
 		<GaugeDrawTemplate>
@@ -409,9 +409,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>112</R>
-			<G>137</G>
-			<B>158</B>
+			<R>152</R>
+			<G>132</G>
+			<B>104</B>
 		</FillTint>
 		<EQType>1302</EQType>
 		<GaugeDrawTemplate>
@@ -507,9 +507,9 @@
 	<Label item="GW_AggroPctPlayer2">
 		<ScreenID>GW_AggroPctPlayer2</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -599,9 +599,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>1203</EQType>
 		<GaugeDrawTemplate>
@@ -621,9 +621,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>112</R>
-			<G>137</G>
-			<B>158</B>
+			<R>152</R>
+			<G>132</G>
+			<B>104</B>
 		</FillTint>
 		<EQType>1303</EQType>
 		<GaugeDrawTemplate>
@@ -719,9 +719,9 @@
 	<Label item="GW_AggroPctPlayer3">
 		<ScreenID>GW_AggroPctPlayer3</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -811,9 +811,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>1204</EQType>
 		<GaugeDrawTemplate>
@@ -833,9 +833,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>112</R>
-			<G>137</G>
-			<B>158</B>
+			<R>152</R>
+			<G>132</G>
+			<B>104</B>
 		</FillTint>
 		<EQType>1304</EQType>
 		<GaugeDrawTemplate>
@@ -931,9 +931,9 @@
 	<Label item="GW_AggroPctPlayer4">
 		<ScreenID>GW_AggroPctPlayer4</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -1023,9 +1023,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>1205</EQType>
 		<GaugeDrawTemplate>
@@ -1045,9 +1045,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>112</R>
-			<G>137</G>
-			<B>158</B>
+			<R>152</R>
+			<G>132</G>
+			<B>104</B>
 		</FillTint>
 		<EQType>1305</EQType>
 		<GaugeDrawTemplate>
@@ -1143,9 +1143,9 @@
 	<Label item="GW_AggroPctPlayer5">
 		<ScreenID>GW_AggroPctPlayer5</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -1235,9 +1235,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>1206</EQType>
 		<GaugeDrawTemplate>
@@ -1257,9 +1257,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>112</R>
-			<G>137</G>
-			<B>158</B>
+			<R>152</R>
+			<G>132</G>
+			<B>104</B>
 		</FillTint>
 		<EQType>1306</EQType>
 		<GaugeDrawTemplate>
@@ -1355,9 +1355,9 @@
 	<Label item="GW_AggroPctPlayer6">
 		<ScreenID>GW_AggroPctPlayer6</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -1447,9 +1447,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>1207</EQType>
 		<GaugeDrawTemplate>
@@ -1469,9 +1469,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>112</R>
-			<G>137</G>
-			<B>158</B>
+			<R>152</R>
+			<G>132</G>
+			<B>104</B>
 		</FillTint>
 		<EQType>1307</EQType>
 		<GaugeDrawTemplate>
@@ -1567,9 +1567,9 @@
 	<Label item="GW_AggroPctPlayer7">
 		<ScreenID>GW_AggroPctPlayer7</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -1659,9 +1659,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>1208</EQType>
 		<GaugeDrawTemplate>
@@ -1681,9 +1681,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>112</R>
-			<G>137</G>
-			<B>158</B>
+			<R>152</R>
+			<G>132</G>
+			<B>104</B>
 		</FillTint>
 		<EQType>1308</EQType>
 		<GaugeDrawTemplate>
@@ -1779,9 +1779,9 @@
 	<Label item="GW_AggroPctPlayer8">
 		<ScreenID>GW_AggroPctPlayer8</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -1871,9 +1871,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>1209</EQType>
 		<GaugeDrawTemplate>
@@ -1893,9 +1893,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>112</R>
-			<G>137</G>
-			<B>158</B>
+			<R>152</R>
+			<G>132</G>
+			<B>104</B>
 		</FillTint>
 		<EQType>1309</EQType>
 		<GaugeDrawTemplate>
@@ -1991,9 +1991,9 @@
 	<Label item="GW_AggroPctPlayer9">
 		<ScreenID>GW_AggroPctPlayer9</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -2083,9 +2083,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>1210</EQType>
 		<GaugeDrawTemplate>
@@ -2105,9 +2105,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>112</R>
-			<G>137</G>
-			<B>158</B>
+			<R>152</R>
+			<G>132</G>
+			<B>104</B>
 		</FillTint>
 		<EQType>1310</EQType>
 		<GaugeDrawTemplate>
@@ -2203,9 +2203,9 @@
 	<Label item="GW_AggroPctPlayer10">
 		<ScreenID>GW_AggroPctPlayer10</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>
@@ -2295,9 +2295,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>219</R>
-			<G>158</G>
-			<B>42</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<EQType>1211</EQType>
 		<GaugeDrawTemplate>
@@ -2317,9 +2317,9 @@
 		<GaugeOffsetY>-2</GaugeOffsetY>
 		<RelativePosition>true</RelativePosition>
 		<FillTint>
-			<R>112</R>
-			<G>137</G>
-			<B>158</B>
+			<R>152</R>
+			<G>132</G>
+			<B>104</B>
 		</FillTint>
 		<EQType>1311</EQType>
 		<GaugeDrawTemplate>
@@ -2415,9 +2415,9 @@
 	<Label item="GW_AggroPctPlayer11">
 		<ScreenID>GW_AggroPctPlayer11</ScreenID>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<RelativePosition>true</RelativePosition>
 		<Font>2</Font>

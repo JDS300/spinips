@@ -67,9 +67,9 @@
 		<RelativePosition>true</RelativePosition>
 		<Font>3</Font>
 		<TextColor>
-			<R>238</R>
-			<G>242</G>
-			<B>243</B>
+			<R>241</R>
+			<G>231</G>
+			<B>212</B>
 		</TextColor>
 		<Text></Text>
 		<NoWrap>true</NoWrap>
@@ -89,9 +89,9 @@
 		<RelativePosition>true</RelativePosition>
 		<Font>3</Font>
 		<TextColor>
-			<R>250</R>
-			<G>205</G>
-			<B>95</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TextColor>
 		<Text></Text>
 		<NoWrap>true</NoWrap>

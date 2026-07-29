@@ -77,7 +77,7 @@ IDENTITY_LABEL_GEOMETRY = {
     "IW_Level": (3, 162, 130, 20, 34),
     "IW_Class": (3, 128, 4, 20, 34),
 }
-LEDGER_HEADER_GOLD = (219, 158, 42)
+LEDGER_HEADER_GOLD = (208, 162, 84)
 
 
 def slot_pos(slot_id):
