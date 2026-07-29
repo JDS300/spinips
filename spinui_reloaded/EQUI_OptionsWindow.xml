@@ -2367,7 +2367,7 @@ TEMPLATES FOR ELEMENTS
 		</Location>
 		<Size>
 			<CX>160</CX>
-			<CY>18</CY>
+			<CY>34</CY>
 		</Size>
 		<Style_Checkbox>true</Style_Checkbox>
 		<Text>Swap Map Ctrl + Right Click</Text>
@@ -2393,7 +2393,7 @@ TEMPLATES FOR ELEMENTS
 		<BottomAnchorToTop>false</BottomAnchorToTop>
 		<LeftAnchorToLeft>true</LeftAnchorToLeft>
 		<RightAnchorToLeft>true</RightAnchorToLeft>
-		<BottomAnchorOffset>10</BottomAnchorOffset>
+		<BottomAnchorOffset>5</BottomAnchorOffset>
 		<TopAnchorOffset>10</TopAnchorOffset>
 		<LeftAnchorOffset>0</LeftAnchorOffset>
 		<RightAnchorOffset>170</RightAnchorOffset>	
@@ -2689,7 +2689,61 @@ TEMPLATES FOR ELEMENTS
 			<SliderArt>SDT_DefSlider</SliderArt>
 			<DrawValue>true</DrawValue>
 		</Slider>	
-
+		<Label item="ODP_TextFilteringLabel">
+			<ScreenID>ODP_TextFilteringLabel</ScreenID>
+			<Size>
+				<CX>160</CX>
+				<CY>14</CY>
+			</Size>
+			<Text>UI Text Filtering</Text>
+			<NoWrap>true</NoWrap>
+			<AlignCenter>false</AlignCenter>
+			<AlignRight>false</AlignRight>
+		</Label>
+		<Combobox item="ODP_TextFiltering">
+			<ScreenID>ODP_TextFiltering</ScreenID>
+			<DrawTemplate>WDT_InnerSolid</DrawTemplate>
+			<Size>
+				<CX>100</CX>
+				<CY>24</CY>
+			</Size>
+			<ListHeight>100</ListHeight>
+			<Button>BDT_Combo</Button>
+			<Style_Border>true</Style_Border>
+			<Choices>None</Choices>
+			<Choices>Linear</Choices>
+		</Combobox>	
+		<Label item="ODP_UIScaleLabel">
+			<ScreenID>ODP_TextFilteringLabel</ScreenID>
+			<Size>
+				<CX>160</CX>
+				<CY>14</CY>
+			</Size>
+			<Text>UI Scaling</Text>
+			<NoWrap>true</NoWrap>
+			<AlignCenter>false</AlignCenter>
+			<AlignRight>false</AlignRight>
+		</Label>		
+		<Combobox item="ODP_UIScale">
+			<ScreenID>ODP_UIScale</ScreenID>
+			<DrawTemplate>WDT_InnerSolid</DrawTemplate>
+			<Location>
+				<X>0</X>
+				<Y>0</Y>
+			</Location>
+			<Size>
+				<CX>115</CX>
+				<CY>24</CY>
+			</Size>
+			<ListHeight>100</ListHeight>
+			<Button>BDT_Combo</Button>
+			<Style_Border>true</Style_Border>
+			<Choices>1x</Choices>
+			<Choices>2x</Choices>
+			<Choices>3x</Choices>
+			<Choices>4x</Choices>
+			<Choices>5x</Choices>
+		</Combobox>			
 	<!-- INTERFACE - GENERAL (RIGHT LAYOUT) VERTICAL LAYOUT BOX -->	
 	<VerticalLayoutBox item="OIGP_RightLayout">
 		<DrawTemplate>WDT_Inner</DrawTemplate>
@@ -2702,7 +2756,7 @@ TEMPLATES FOR ELEMENTS
 		<BottomAnchorToTop>false</BottomAnchorToTop>
 		<LeftAnchorToLeft>true</LeftAnchorToLeft>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
-		<BottomAnchorOffset>10</BottomAnchorOffset>
+		<BottomAnchorOffset>5</BottomAnchorOffset>
 		<TopAnchorOffset>10</TopAnchorOffset>
 		<LeftAnchorOffset>200</LeftAnchorOffset>
 		<RightAnchorOffset>10</RightAnchorOffset>		
@@ -2715,6 +2769,10 @@ TEMPLATES FOR ELEMENTS
 		<Pieces>OGP_LayoutCopyButton</Pieces>
 		<Pieces>Screen:FontScreen</Pieces>
 		<Pieces>Screen:TextureScreen</Pieces>
+		<Pieces>ODP_UIScaleLabel</Pieces>		
+		<Pieces>ODP_UIScale</Pieces>		
+		<Pieces>ODP_TextFilteringLabel</Pieces>
+		<Pieces>ODP_TextFiltering</Pieces>
 		<Pieces>ODP_BGAlphaSlider</Pieces>
 		<Pieces>ODP_BRAlphaSlider</Pieces>		
 		<Pieces>ODP_FGAlphaSlider</Pieces>
@@ -5001,8 +5059,8 @@ TEMPLATES FOR ELEMENTS
 			<Y>47</Y>
 		</Location>
 		<Size>
-			<CX>420</CX>
-			<CY>530</CY>
+			<CX>427</CX>
+			<CY>537</CY>
 		</Size>
 		<KeepOnScreen>true</KeepOnScreen>
 		<KeepOnScreenOffset>
