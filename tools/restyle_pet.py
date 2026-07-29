@@ -9,8 +9,8 @@ buttons directly; SpinUI now does the same while retaining every native
 ScreenID and allowing Legends to inject each label/action.
 
 The compact geometry keeps the proven 356x181 command panel intact. The fixed
-default moves its 42-icon effect tray into a 156px side rail, eliminating the
-empty-looking slab above Companion without sacrificing Legends capacity.
+default seats a slim one-row effect strip beneath the commands, so the window
+stays 356px wide with no empty side rail.
 Resizable top/bottom variants start at one 24px row and grow the buff region,
 not the command panel, when the user needs more effect rows. The compact right
 variant starts with 21 visible effects and also grows independently.
@@ -40,13 +40,13 @@ COMMAND_POSITIONS = {
 COMMAND_ITEMS = tuple(f"PIW_Pet{i}_Button" for i in range(14))
 PET_PANEL_SIZE = (356, 181)
 WINDOW_SIZES = {
-    "EQUI_PetInfoWindow.xml": (465, 181),
+    "EQUI_PetInfoWindow.xml": (356, 209),
     "EQUI_PetInfoWindow1.xml": (356, 209),
     "EQUI_PetInfoWindow2.xml": (356, 209),
     "EQUI_PetInfoWindow3.xml": (441, 181),
 }
 BUFF_RECTS = {
-    "EQUI_PetInfoWindow.xml": (353, 2, 461, 179),
+    "EQUI_PetInfoWindow.xml": (4, 178, 352, 207),
     "EQUI_PetInfoWindow1.xml": (4, 178, 352, 207),
     "EQUI_PetInfoWindow2.xml": (4, 2, 352, 31),
     "EQUI_PetInfoWindow3.xml": (353, 2, 437, 179),
@@ -58,7 +58,7 @@ SUBWINDOW_RECTS = {
     "EQUI_PetInfoWindow3.xml": (0, 0, 356, 181),
 }
 BUFF_CAPACITY = {
-    "EQUI_PetInfoWindow.xml": 28,
+    "EQUI_PetInfoWindow.xml": 14,
     "EQUI_PetInfoWindow1.xml": 14,
     "EQUI_PetInfoWindow2.xml": 14,
     "EQUI_PetInfoWindow3.xml": 21,
@@ -177,9 +177,11 @@ def _compact_geometry(text: str, filename: str) -> str:
         text, "Screen", "PetInfoWindow", {"CX": width, "CY": height})
 
     if filename == "EQUI_PetInfoWindow.xml":
-        # Fixed default: trade the empty top slab for a full-capacity side rail.
+        # Fixed default: the 356px command panel with a slim one-row effect
+        # strip beneath it — no side rail, no large dark well beside the
+        # commands. The resizable variants remain the home for more rows.
         text = _set_item_fields(text, "Screen", "PetInfoWindow", {
-            "MenuName": "Fixed Size - Buffs on Right",
+            "MenuName": "Fixed Size - Buffs on Bottom",
         })
         text = _set_item_fields(text, "Screen", "PetInfoSubWindow", {
             "TopAnchorOffset": 0,
@@ -190,8 +192,8 @@ def _compact_geometry(text: str, filename: str) -> str:
             "RightAnchorToLeft": True,
         })
         text = _set_item_fields(text, "Screen", "PIW_BuffWindow", {
-            "LeftAnchorOffset": 353,
-            "TopAnchorOffset": 2,
+            "LeftAnchorOffset": 4,
+            "TopAnchorOffset": 178,
             "RightAnchorOffset": 4,
             "BottomAnchorOffset": 2,
             "LeftAnchorToLeft": True,

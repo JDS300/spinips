@@ -577,8 +577,8 @@
 		<ScreenID>PetBuffWindow</ScreenID>
 		<RelativePosition>true</RelativePosition>
 		<AutoStretch>true</AutoStretch>
-		<LeftAnchorOffset>353</LeftAnchorOffset>
-		<TopAnchorOffset>2</TopAnchorOffset>
+		<LeftAnchorOffset>4</LeftAnchorOffset>
+		<TopAnchorOffset>178</TopAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
 		<BottomAnchorOffset>2</BottomAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
@@ -665,14 +665,14 @@
 	
 	<Screen item="PetInfoWindow">
 		<RelativePosition>false</RelativePosition>
-		<MenuName>Fixed Size - Buffs on Right</MenuName>
+		<MenuName>Fixed Size - Buffs on Bottom</MenuName>
 		<Location>
 			<X>3</X>
 			<Y>0</Y>
 		</Location>
 		<Size>
-			<CX>465</CX>
-			<CY>181</CY>
+			<CX>356</CX>
+			<CY>209</CY>
 		</Size>
 		<Style_VScroll>false</Style_VScroll>
 		<Style_HScroll>false</Style_HScroll>

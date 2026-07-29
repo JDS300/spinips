@@ -234,7 +234,7 @@ def audit_pet_geometry() -> None:
     variants = WINDOW_SIZES
     command_items = list(COMMAND_ITEMS)
     menu_names = {
-        "EQUI_PetInfoWindow.xml": "Fixed Size - Buffs on Right",
+        "EQUI_PetInfoWindow.xml": "Fixed Size - Buffs on Bottom",
         "EQUI_PetInfoWindow1.xml": "Resizable - Buffs on Bottom",
         "EQUI_PetInfoWindow2.xml": "Resizable - Buffs on Top",
         "EQUI_PetInfoWindow3.xml": "Resizable - Buffs on Right",
@@ -403,7 +403,7 @@ def audit_pet_geometry() -> None:
                 f"{capacity}, expected {BUFF_CAPACITY[filename]}"
             )
         if filename in ("EQUI_PetInfoWindow.xml", "EQUI_PetInfoWindow3.xml"):
-            columns = 4 if filename == "EQUI_PetInfoWindow.xml" else 3
+            columns = 14 if filename == "EQUI_PetInfoWindow.xml" else 3
             horizontal_slack = buff_width - columns * template_size[0]
             if horizontal_slack != 12:
                 fail(f"{filename} pet effect rail lost its 12px flow safety")
@@ -421,10 +421,10 @@ def audit_pet_geometry() -> None:
             )
             if _rects_overlap(global_rect, buff_rect):
                 fail(f"{filename} pet effect rail overlaps a command hit target")
-        # The compact fixed default shows a 4x7 effect rail; the resizable
-        # right-click variants remain the home for extreme effect counts.
-        if filename == "EQUI_PetInfoWindow.xml" and capacity < 28:
-            fail("fixed Pet default must keep at least a 4x7 effect rail")
+        # The compact fixed default shows one full-width effect strip; the
+        # resizable right-click variants remain the home for more rows.
+        if filename == "EQUI_PetInfoWindow.xml" and capacity < 14:
+            fail("fixed Pet default must keep a full 14-slot effect strip")
 
         window_pieces = [node.text for node in window.findall("Pieces")]
         if window_pieces.count("Screen:PetInfoSubWindow") != 1:
