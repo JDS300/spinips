@@ -288,9 +288,9 @@ def audit_effects_casting_and_bars() -> None:
                                 f"Buff{index}Label", 500 + index)
         if child_int(label, "Font") < 3:
             fail(f"BW_Buff{index} fell below the accessible font tier")
-        if dimensions(label) != (146, 18):
+        if dimensions(label) != (170, 18):
             fail(f"BW_Buff{index} geometry drifted")
-        if (child_int(label, "Location/X"), child_int(label, "Location/Y")) != (60, 1):
+        if (child_int(label, "Location/X"), child_int(label, "Location/Y")) != (36, 1):
             fail(f"BW_Buff{index} lost its timer-clear alignment")
         item(buffs, "Screen", f"BW_{index:02d}_Screen")
 
@@ -323,9 +323,9 @@ def audit_effects_casting_and_bars() -> None:
                                 screen_id, 600 + index)
         if child_int(label, "Font") < 3:
             fail(f"SDBW_Buff{index} fell below the accessible font tier")
-        if dimensions(label) != (146, 18):
+        if dimensions(label) != (170, 18):
             fail(f"SDBW_Buff{index} geometry drifted")
-        if (child_int(label, "Location/X"), child_int(label, "Location/Y")) != (60, 1):
+        if (child_int(label, "Location/X"), child_int(label, "Location/Y")) != (36, 1):
             fail(f"SDBW_Buff{index} lost compact row alignment")
         item(songs, "Screen", f"SDBW_{index:02d}_Screen")
 

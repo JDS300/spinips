@@ -198,10 +198,10 @@ def style_buff_file(path: Path, prefix: str, count: int,
                     title: str, height: int) -> None:
     text = path.read_text(encoding="ascii")
     template = f"{prefix}_Player_Buff_Template"
-    # The client paints the remaining-duration countdown at the buff
-    # button's edge, so the button stays icon-sized (24x20) and the name
-    # labels start at x=60 — leaving a clear 36px shadowed-timer band
-    # between the icon and the name that neither can cover.
+    # The client paints the remaining-duration countdown centered on the
+    # buff button, so the button stays icon-sized (24x20) with a shadowed
+    # font, and the name labels start at x=36 so even a wide "120m" spill
+    # never reaches them.
     text = change_item(
         text, "Button", template,
         lambda b: set_container(
@@ -212,19 +212,22 @@ def style_buff_file(path: Path, prefix: str, count: int,
             "DecalSize", CX=20, CY=20,
         ),
     )
-    # One icon per row: cap the tile box short of two chip widths so the
-    # flow stays a single column with the same 20px pitch as the labels.
+    # One icon per row, paired with its name: the box must flow
+    # vertically. Horizontal-first flow put the first three buffs side by
+    # side in row one while their names stacked, scrambling every row.
     text = change_item(
         text, "TileLayoutBox", f"{prefix}_Buttons",
-        lambda b: set_value(b, "RightAnchorOffset", 191),
+        lambda b: set_value(
+            set_value(b, "HorizontalFirst", "false"),
+            "RightAnchorOffset", 191),
     )
     for index in range(count):
         label = f"{prefix}_Buff{index}"
 
         def label_style(block: str) -> str:
             block = set_font(block, 3)
-            block = set_container(block, "Location", X=60, Y=1)
-            block = set_container(block, "Size", CX=146, CY=18)
+            block = set_container(block, "Location", X=36, Y=1)
+            block = set_container(block, "Size", CX=170, CY=18)
             return set_color(block, "TextColor", TEXT, insert=True)
 
         text = change_item(text, "Label", label, label_style)
@@ -232,7 +235,7 @@ def style_buff_file(path: Path, prefix: str, count: int,
     text = change_item(
         text, "Label", f"{prefix}_Buff_FrontSpacer",
         lambda b: set_container(
-            set_container(b, "Location", X=0, Y=1), "Size", CX=60, CY=18
+            set_container(b, "Location", X=0, Y=1), "Size", CX=36, CY=18
         ),
     )
     text = change_item(
