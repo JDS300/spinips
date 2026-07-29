@@ -7,7 +7,7 @@
 		<FontShadow>true</FontShadow>
 		<RelativePosition>true</RelativePosition>
 		<Size>
-			<CX>52</CX>
+			<CX>24</CX>
 			<CY>20</CY>
 		</Size>
 		<Template>BDT_PlayerBuff</Template>
@@ -26,7 +26,7 @@
 		<AutoStretch>true</AutoStretch>
 		<TopAnchorOffset>0</TopAnchorOffset>
 		<LeftAnchorOffset>1</LeftAnchorOffset>
-		<RightAnchorOffset>163</RightAnchorOffset>
+		<RightAnchorOffset>191</RightAnchorOffset>
 		<BottomAnchorOffset>0</BottomAnchorOffset>
 		<BottomAnchorToTop>false</BottomAnchorToTop>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
@@ -50,7 +50,7 @@
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>52</CX>
+			<CX>60</CX>
 			<CY>18</CY>
 		</Size>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -81,11 +81,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<Style_Transparent>true</Style_Transparent>
@@ -113,11 +113,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -140,11 +140,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -167,11 +167,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -194,11 +194,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -221,11 +221,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -248,11 +248,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -275,11 +275,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -302,11 +302,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -329,11 +329,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -356,11 +356,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -383,11 +383,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -410,11 +410,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -437,11 +437,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -464,11 +464,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -491,11 +491,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -518,11 +518,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -545,11 +545,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -572,11 +572,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -599,11 +599,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -626,11 +626,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -653,11 +653,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -680,11 +680,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -707,11 +707,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -734,11 +734,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -761,11 +761,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -788,11 +788,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -815,11 +815,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -842,11 +842,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>
@@ -869,11 +869,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Style_Tooltip>false</Style_Tooltip>
 		<Location>
-			<X>52</X>
+			<X>60</X>
 			<Y>1</Y>
 		</Location>
 		<Size>
-			<CX>154</CX>
+			<CX>146</CX>
 			<CY>18</CY>
 		</Size>
 		<FontShadow>true</FontShadow>

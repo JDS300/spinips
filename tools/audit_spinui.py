@@ -343,10 +343,10 @@ def audit_pet_geometry() -> None:
         if len(root.findall(".//Screen[@item='PIW_BuffWindow']")) != 1:
             fail(f"{filename} must define exactly one native pet buff host")
         if (
-            buff_host.findtext("Style_Transparent") != "true"
+            buff_host.findtext("Style_Transparent") != "false"
             or buff_host.findtext("Style_Border") != "false"
         ):
-            fail(f"{filename} empty pet buff capacity must stay transparent")
+            fail(f"{filename} pet buff rail must stay an opaque recessed well")
         if buff_host.findtext("ScreenID") != "PetBuffWindow":
             fail(f"{filename} pet buff host lost its Legends ScreenID")
         if [node.text for node in buff_host.findall("Pieces")] != [
@@ -403,7 +403,7 @@ def audit_pet_geometry() -> None:
                 f"{capacity}, expected {BUFF_CAPACITY[filename]}"
             )
         if filename in ("EQUI_PetInfoWindow.xml", "EQUI_PetInfoWindow3.xml"):
-            columns = 6 if filename == "EQUI_PetInfoWindow.xml" else 3
+            columns = 4 if filename == "EQUI_PetInfoWindow.xml" else 3
             horizontal_slack = buff_width - columns * template_size[0]
             if horizontal_slack != 12:
                 fail(f"{filename} pet effect rail lost its 12px flow safety")
@@ -421,8 +421,10 @@ def audit_pet_geometry() -> None:
             )
             if _rects_overlap(global_rect, buff_rect):
                 fail(f"{filename} pet effect rail overlaps a command hit target")
-        if filename == "EQUI_PetInfoWindow.xml" and capacity < 39:
-            fail("fixed Pet default must retain modern Legends effect capacity")
+        # The compact fixed default shows a 4x7 effect rail; the resizable
+        # right-click variants remain the home for extreme effect counts.
+        if filename == "EQUI_PetInfoWindow.xml" and capacity < 28:
+            fail("fixed Pet default must keep at least a 4x7 effect rail")
 
         window_pieces = [node.text for node in window.findall("Pieces")]
         if window_pieces.count("Screen:PetInfoSubWindow") != 1:

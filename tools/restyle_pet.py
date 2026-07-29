@@ -40,13 +40,13 @@ COMMAND_POSITIONS = {
 COMMAND_ITEMS = tuple(f"PIW_Pet{i}_Button" for i in range(14))
 PET_PANEL_SIZE = (356, 181)
 WINDOW_SIZES = {
-    "EQUI_PetInfoWindow.xml": (513, 181),
+    "EQUI_PetInfoWindow.xml": (465, 181),
     "EQUI_PetInfoWindow1.xml": (356, 209),
     "EQUI_PetInfoWindow2.xml": (356, 209),
     "EQUI_PetInfoWindow3.xml": (441, 181),
 }
 BUFF_RECTS = {
-    "EQUI_PetInfoWindow.xml": (353, 2, 509, 179),
+    "EQUI_PetInfoWindow.xml": (353, 2, 461, 179),
     "EQUI_PetInfoWindow1.xml": (4, 178, 352, 207),
     "EQUI_PetInfoWindow2.xml": (4, 2, 352, 31),
     "EQUI_PetInfoWindow3.xml": (353, 2, 437, 179),
@@ -58,7 +58,7 @@ SUBWINDOW_RECTS = {
     "EQUI_PetInfoWindow3.xml": (0, 0, 356, 181),
 }
 BUFF_CAPACITY = {
-    "EQUI_PetInfoWindow.xml": 42,
+    "EQUI_PetInfoWindow.xml": 28,
     "EQUI_PetInfoWindow1.xml": 14,
     "EQUI_PetInfoWindow2.xml": 14,
     "EQUI_PetInfoWindow3.xml": 21,
@@ -149,7 +149,9 @@ def _remove_flow_grid(text: str) -> str:
 
 def _polish_buff_host(text: str) -> str:
     _, body = _item_block(text, "Screen", "PIW_BuffWindow")
-    body = _set_scalar(body, "Style_Transparent", "true")
+    # Opaque recessed well (WDT_Inner) so active effects sit on a clean
+    # obsidian inset instead of loose tiles over the window background.
+    body = _set_scalar(body, "Style_Transparent", "false")
     body = _set_scalar(body, "Style_Border", "false")
     return _replace_item(text, "Screen", "PIW_BuffWindow", body)
 

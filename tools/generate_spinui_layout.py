@@ -169,7 +169,7 @@ PLACEMENTS: dict[str, dict] = {
     # bottom baseline: 8px before PlayerWindow and 7px above the hotbar row.
     # The fixed default spends ultrawide width on a full-capacity effect rail
     # instead of stacking a dark tray overhead.
-    "PetInfoWindow": P(851, 582, 513, 181, show=0),
+    "PetInfoWindow": P(851, 582, 465, 181, show=0),
     "PetInfoWindow_1": P(1008, 558, 356, 209, show=0),
     "PetInfoWindow_2": P(1008, 558, 356, 209, show=0),
     "PetInfoWindow_3": P(923, 586, 441, 181, show=0),
@@ -325,7 +325,7 @@ def adaptive_placements(profile: ResolutionProfile, preset: str) -> dict[str, di
         "HotButtonWnd11": q(64, max(8, chat_top - 273), 98, 271, show=0),
         "PlayerWindow": q(player_x, player_y, 360, 193, show=1),
         "TargetWindow": q(target_x, player_y, 360, 193, show=1),
-        "PetInfoWindow": q(pet_x, pet_y, 513, 181, show=0),
+        "PetInfoWindow": q(pet_x, pet_y, 465, 181, show=0),
         "PetInfoWindow_1": q(pet_x + 157, pet_y - 24,
                              356, 209, show=0),
         "PetInfoWindow_2": q(pet_x + 157, pet_y - 24,
@@ -571,7 +571,7 @@ XML_SIZES = {
     # Player/Target keep their full transparent interaction and buff hosts for
     # placement math even though only the compact lower subframes are painted.
     "PlayerWindow": (360, 193), "TargetWindow": (360, 193),
-    "PetInfoWindow": (513, 181), "BuffWindow": (216, 640),
+    "PetInfoWindow": (465, 181), "BuffWindow": (216, 640),
     "PetInfoWindow_1": (356, 209), "PetInfoWindow_2": (356, 209),
     "PetInfoWindow_3": (441, 181),
     "BuffWindow_13": (216, 640), "ShortDurationBuffWindow": (216, 324),

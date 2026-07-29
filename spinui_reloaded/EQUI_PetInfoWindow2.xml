@@ -587,7 +587,7 @@
 		<LeftAnchorToLeft>true</LeftAnchorToLeft>
 		<Style_VScroll>false</Style_VScroll>
 		<Style_HScroll>false</Style_HScroll>
-		<Style_Transparent>true</Style_Transparent>
+		<Style_Transparent>false</Style_Transparent>
 		<TooltipReference>Buffs on your pet will show here</TooltipReference>
 		<DrawTemplate>WDT_Inner</DrawTemplate>
 		<Style_Titlebar>false</Style_Titlebar>
