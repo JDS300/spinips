@@ -40,12 +40,13 @@
 6. [The map](#the-map)
 7. [The equipment screen](#the-equipment-screen)
 8. [The pet command center](#the-pet-command-center)
-9. [The target ring](#the-target-ring)
-10. [Bags, bank bags and the dock](#bags-bank-bags-and-the-dock)
-11. [Spin's Loremaster (log parser & DPS tracker)](#spins-loremaster)
-12. [Customizing & regenerating](#customizing--regenerating)
-13. [Troubleshooting](#troubleshooting)
-14. [Repository map](#repository-map)
+9. [Effect countdowns](#effect-countdowns)
+10. [The target ring](#the-target-ring)
+11. [Bags, bank bags and the dock](#bags-bank-bags-and-the-dock)
+12. [Spin's Loremaster (log parser & DPS tracker)](#spins-loremaster)
+13. [Customizing & regenerating](#customizing--regenerating)
+14. [Troubleshooting](#troubleshooting)
+15. [Repository map](#repository-map)
 
 ---
 
@@ -123,7 +124,7 @@ Zone by zone:
 
 * **Chat row (y 1146-1426 at 3440×1440):** Main Chat, Social, and the larger Combat pane sit side by side across the bottom. Narrower profiles retain all three panes and reserve a lower-right command strip instead of letting chat cover the EQ menu.
 * **Center combat cluster:** Player plate (left) and Target plate (right) sit above exactly two 6×2 hotbars. The horizontal 14-gem spell bar and twin-wing stance row remain centered between them, with the casting bar immediately above. The low-profile Pet command center parks above the cluster and immediately to the right of Inventory's reserved footprint, keeping both openable windows clear of each other at every profile.
-* **Right column:** Spell Effects and Song Effects pin top-right in slim 240px transparent rails with 20px icons and contiguous authored rows, no oversized black backplates or artificial gutters. Each row is a three-column read - **icon, remaining duration, effect name** - so the countdown never lands on top of the art it belongs to. They use the clean **LEFT-anchored, no-numbering list style** (icons beside names, no floating number rail). Right-click either window to switch styles any time. Group sits below them; Extended Target keeps a tidy parking spot for whenever you enable it. A sparse engine-assigned effect slot can still reserve its own row, because SpinUI does not rewrite live buff-slot identity.
+* **Right column:** Spell Effects and Song Effects pin top-right in slim 216px transparent rails with 20px icons and contiguous authored rows, no oversized black backplates or artificial gutters. Each effect's countdown rides on its own icon in **shadowed ember gold**, so it reads at a glance without the client stretching its beneficial/detrimental plate into a slab of flat colour across the row - see [Effect countdowns](#effect-countdowns) for why those are one setting. They use the clean **LEFT-anchored, no-numbering list style** (icons beside names, no floating number rail). Right-click either window to switch styles any time. Group sits below them; Extended Target keeps a tidy parking spot for whenever you enable it. A sparse engine-assigned effect slot can still reserve its own row, because SpinUI does not rewrite live buff-slot identity.
 * **Top-right glass:** the Map (toggleable) - see [The map](#the-map).
 * **Bottom-right dock:** deliberately reserved for the EQ command strip, **Loremaster**, and inventory bags. Its width adapts to the chosen screen profile.
 * **Openable windows** (inventory, bank, loot, merchant…) receive on-screen profile positions. At narrow 1080p widths, the full 660×668 Inventory intentionally overlays part of the HUD rather than being shrunk into unreadability; Pet remains parked clear beside it.
@@ -138,8 +139,11 @@ The layout generator validates all **21 resolution/preset combinations**: every 
 | Song window | hidden | **shown** (under buffs) | bard songs at a glance |
 | Casting bar | hidden | **shown** (centered) | see your own cast progress |
 | Chat font | size 3 | **size 5** (size 6 in the 4K default) | readability at 1440p and 4K pixel density (right-click chat → Font to change) |
-| Pet command window | cramped 311x190, 57px commands | **356x280 with direct 78px four-column commands over a four-row effect rail** | no overhead dark slab; all commands reachable and 20 effects visible with their own timers |
-| Effect countdowns | stamped on the spell icon in the smallest font | **own column between icon and name, Font 3, ember gold** | read a duration without squinting through the artwork |
+| Pet command window | cramped 311x190, 57px commands | **356x236 with direct 78px four-column commands over a two-row, 28-cell effect rail** | no overhead dark slab; every command reachable and a pet's whole effect set visible in 58px |
+| Effect countdowns | smallest font, no shadow, parchment on artwork | **Font 3, shadowed, ember gold** | read a duration through the icon art instead of squinting at it |
+| In-game HUD strip | fixed width with dead space, SETTINGS on the strip | **fits its own content; LOCK + DETAILS only** | no gap between the last stat and the tools; SETTINGS is one click away on DETAILS |
+| PROGRESSION cell | session xp % and levels | **adds estimated time to level** | decide whether to hold the camp without opening DETAILS |
+| Potential motes | invisible until you open your bags | **MOTES tier-1..5 counter on the strip** | see what a long pull actually dropped |
 | Target ring | stock grey noise, one flat con hue | **SpinUI runic ring; threat escalates in hue, opacity, speed, density and radius** | judge a pull before you make it - see [The target ring](#the-target-ring) |
 | XP vs AA bars | both overlaid pure blue | **XP brass gold, AA spirit blue** - fills *and* sub-tick overlays, in the player plate, inventory, and AA window | tell the two progression bars apart at a glance |
 | Buff/Song style | RIGHT + number rail | **slim LEFT list, no numbering** | larger readable icons, transparent rows, no heavy black slab |
@@ -242,14 +246,29 @@ Inspired by WoW's **Narcissus** and finalized for EverQuest Legends, the Equipme
 
 ## The pet command center
 
-The active default is a **356x280 command center**: the proven 356x181 command panel with a four-row effect rail recessed beneath it. No 75px dark reserve above Companion, no empty side rail beside the commands - 181px of commands and 99px of effects, with nothing spent on decoration.
+The active default is a **356x236 command center**: the proven 356x181 command panel with a two-row effect rail recessed beneath it. No 75px dark reserve above Companion, no empty side rail beside the commands - 181px of commands and 55px of effects, with nothing spent on decoration.
 
 * Pet and target names use larger type, with their percentages separated at the right edge and HP/target colors tuned to the Vellum & Ember palette.
 * All fourteen native pet commands use explicit **Legends-validated** placement in a clean 4-column grid on 78x23 targets. Their `Pet0_Button` through `Pet13_Button` bindings remain untouched, so commands such as Inventory stay fully clickable instead of wrapping below the EverQuest Legends client frame. Legends injects each label and action through those bindings; SpinUI does not hardcode EverQuest Live command names.
-* The required `PetBuffWindow` / `PetBuffButtons` chain remains mounted with click-through empty pixels, but each cell is now an **icon + countdown chip** rather than a bare 24px icon. The client centers a pet effect's remaining duration on its own cell, so an icon-sized cell can only stamp that number across the artwork; a 67px chip with the icon pinned to its left edge lands the countdown in a clear column beside it. The rail holds **20 effects at once** - a realistic pet's entire set - across four rows, and is sized for those rows *plus* the frame insets the client subtracts before it flows them, so a row can never silently vanish.
+* The required `PetBuffWindow` / `PetBuffButtons` chain remains mounted with click-through empty pixels on **24px icon cells**, each countdown drawn on its own icon in shadowed ember gold. The rail holds **28 effects at once** - comfortably more than a pet carries - across two rows, and is sized for those rows *plus* the frame insets the client subtracts before it flows them, so a row can never silently vanish. See [Effect countdowns](#effect-countdowns) for why the cell stays icon sized.
 * The command panel no longer paints its own frame. It is a panel nested at the outer window's top-left corner, and it used to draw a second rounded border over the outer one while still reserving a minimize control there, which read as a mismatched patch behind COMPANION. The outer window now owns the frame and background, and the effect well carries the thin recessed frame that divides commands from effects - inside the window, where it cannot collide with the outer frame's corner.
-* Resizable buffs-on-bottom and buffs-on-top alternatives open at the same **356x280**, then devote every added pixel of height to more effect rows while the 356x181 command panel stays fixed. The compact resizable right-rail alternative stays at **441x181** with 21 positions: that column is too narrow for a timer column, so it deliberately keeps the compact 24px overlay cell rather than trade away the density that is its whole reason to exist.
+* Resizable buffs-on-bottom and buffs-on-top alternatives open at the same **356x236**, then devote every added pixel of height to more effect rows while the 356x181 command panel stays fixed. The compact resizable right-rail alternative stays at **441x181** with 21 positions and grows in both directions.
 * This is static XML geometry with no polling, animation loop or script overhead. The 3440x1440 preset keeps the window hidden by default, preserving the existing preference, but gives every variant a validated location with a shared right edge and bottom baseline: an exact 8px gutter before Player and 7px above the neighboring hotbars.
+
+---
+
+## Effect countdowns
+
+Every effect cell in SpinUI - Spell Effects, Song Effects, and the Companion rail - shows its remaining duration **on its own icon**, in Font 3 ember gold with a shadow. That is a deliberate choice between two things the skin cannot separate, and it is worth writing down because the obvious "nicer" layout is a trap.
+
+EverQuest draws two overlays on a buff button, and **one button width controls both**:
+
+1. the remaining-duration **countdown**, centered on the button, and
+2. a solid **beneficial / detrimental background plate**, stretched to fill it - a bright blue or red tile in the Companion rail, and the client's own plate in the effects windows.
+
+So a chip wide enough to give the countdown its own column beside the icon also stretches that plate into a slab of flat colour next to every effect. There is no width that gives a separate timer column *and* an icon-sized plate, and there is no per-buff duration binding the client exposes, so the plate cannot be turned into a duration gauge either. The plate wins: an icon-sized cell keeps it a frame around the art it belongs to, and gold-on-shadow keeps the number readable through the artwork.
+
+The constants live in one place per window - `EFFECT_*` in `tools/restyle_combat.py`, `BUFF_CELL` in `tools/restyle_pet.py` - and both audits import them to re-prove that a cell never outgrows its icon and that a worst-case countdown still cannot reach the name column.
 
 ---
 
@@ -259,19 +278,21 @@ The active default is a **356x280 command center**: the proven 356x181 command p
 
 The ring under your target is the only part of SpinUI that lives in the world instead of on a window, and it has one job: answer *can this thing kill me?* before you pull. The stock skin ships a sheet of flat grey noise there, so every consider tier reads as the same milky smear and the only thing separating "harmless" from "deadly" is a hue that bright zone lighting washes straight out.
 
-SpinUI ships its own ring. `TargetIndicator.tga` is a **runic lattice** - broad sweeping bands, finer hairlines between them, and small diamond nodes where the two series cross - on a near-black field that is invisible under the client's additive blending, so you get crisp filigree instead of a glowing puddle. The sheet stays neutral grey and tiles seamlessly on both axes, which keeps every tint true and makes it read correctly whichever way the client maps the texture across the ring.
+SpinUI ships its own ring. `TargetIndicator.tga` is a set of **crisp concentric rings** - a bright core, a soft glow, and a dim hairline between each pair - on a near-black field that is invisible under the client's additive blending, so you get filigree instead of a glowing puddle. The sheet stays neutral grey so every tint stays true.
+
+Structure lives on the **radial axis only**, and that detail is the whole design. The client walks the sheet outward along the indicator's concentric circles and scrolls it back towards the center, so one row of the sheet is a circle on the ground and one column is a spoke. SpinUI's first sheet carried a lattice on both axes; in game its cross-axis ticks and nodes showed up as bright streaks radiating out of the target instead of rings around it. The sheet now puts every ring on the radial axis and leaves the circumference with nothing but a 7% brightness breath - enough that the ring is not a flat stencil, far too shallow to read as a spoke.
 
 The ramp in `TargetIndicator.ini` states each tier's threat **five** ways at once, so it survives colour-blindness and noon on a beach alike:
 
-| Consider | Ring | Opacity | Inward pull | Lattice | Radius |
+| Consider | Ring | Opacity | Inward pull | Rings visible | Radius |
 |---|---|---|---|---|---|
-| Trivial | slate | 140 | 0.0004 | sparse | smallest |
-| Very easy | jade | 175 | 0.0006 | ↓ | ↓ |
-| Easy | teal | 195 | 0.0008 | ↓ | ↓ |
-| Fairly easy | azure | 212 | 0.0010 | ↓ | ↓ |
-| Even match | parchment | 232 | 0.0013 | ↓ | ↓ |
-| Difficult | ember gold | 248 | 0.0018 | ↓ | ↓ |
-| **Deadly** | **crimson** | **255** | **0.0026** | densest | widest, and the only tier that pulses |
+| Trivial | slate | 140 | 0.0004 | ~1.6 | smallest |
+| Very easy | jade | 175 | 0.0006 | ~1.9 | ↓ |
+| Easy | teal | 195 | 0.0008 | ~2.2 | ↓ |
+| Fairly easy | azure | 212 | 0.0010 | ~2.6 | ↓ |
+| Even match | parchment | 232 | 0.0013 | ~2.9 | ↓ |
+| Difficult | ember gold | 248 | 0.0018 | ~3.4 | ↓ |
+| **Deadly** | **crimson** | **255** | **0.0026** | **~3.8** | widest, and the only tier that pulses |
 
 `PointCount` also rises from the stock 64 to 128, so the ring reads as a circle rather than a polygon when you are standing on top of your target.
 
@@ -324,7 +345,14 @@ Loremaster's face is its own - the same design language as the rest of Spin's UI
 
 **Fight mode** is the Details-style deep dive: use **OLDER / NEWER / LIVE** to browse the rolling encounter history, then switch the Encounter Lab between **Overview, Damage, Healing, Targets, and Timeline**. It reports total damage, DPS, duration, enemies slain, target types, crits/misses, incoming damage and healing, observed actors, every ability's total/share/DPS/hits/average/max, effective healing/overheal, and damage by target. The bounded two-second timeline shows outgoing damage, incoming damage, healing and kills without retaining an unbounded event stream. One uninterrupted pull is one encounter: three shamans plus four warriors remain one seven-enemy fight until combat goes quiet, while repeated mob names still retain the individual kill count. Actor rows are explicitly observational: EverQuest logs nearby actions but do not guarantee a true group/raid roster, so Loremaster only reports contributors actually visible in your local log. **Session mode** aggregates combat, actor and ability totals, healing, XP, loot, coin, faction, travel, and casting since Loremaster launched or you pressed **RESET**. **Records mode** is intentionally selective: NPC and group kills with per-creature breakdown, deaths, and record fight DPS survive resets; volatile totals such as damage, healing, coin, and XP do not become misleading lifetime counters.
 
-**Pin a section** (✦) into **HUD mode** - a compact 560px ember-capped strip with gold tick separators (`DPS 1,284 │ KILLS 47 │ COIN 2p 9g`) for pure-minimal play. The real font, value, and control widths are measured before packing, and labels shorten whole-word (`COMBAT`→`DPS`, `PROGRESSION`→`XP`) when space demands - never a clipped fragment. The strip carries only the colored log-health dot (doubles as the log-folder picker), **LOCK**, and **DETAILS**; Lore Lens and Settings live on the details HUD so combat values get the full width. **DETAILS** expands the full meter, **HUD** collapses it, and both positions are remembered separately.
+**Pin a section** (✦) into **HUD mode** - a compact ember-capped strip with gold tick separators (`DPS 1,284 │ KILLS 47 │ COIN 2p 9g │ MOTES 27/32/3/2/1`) for pure-minimal play. The real font, value, and control widths are measured before packing, and labels shorten whole-word (`COMBAT`→`DPS`, `PROGRESSION`→`XP`) when space demands - never a clipped fragment.
+
+The strip **fits itself to what it is showing, in both directions**. It used to only ever grow, so once a long value had been seen the extra pixels stayed forever as dead space between the last stat and the right-hand tools; now it follows the measured need down as well as up, with a floor so a quiet session still reads as a deliberate bar. It carries only the controls a glance needs: the coloured log-health dot (which doubles as the log-folder picker), **LOCK**, and **DETAILS**. **SETTINGS** and Lore Lens live on the DETAILS footer, one click away, so every spare pixel here belongs to the ledger. **DETAILS** expands the full meter, **HUD** collapses it, and both positions are remembered separately.
+
+Two cells earn their place on a strip that small:
+
+* **PROGRESSION** now carries **estimated time to level** beside the session xp figure (`424.9% xp · +4 lvl · 1h20m to lvl`), because that is the number that decides whether to hold the camp.
+* **MOTES** tracks the five grades of EverQuest Legends potential mote as `tier1/tier2/tier3/tier4/tier5` - Infinitesimal, Minor, Lesser, Potential, Major. Clearing a camp buries mote loot lines under everything else, and this is the readout that survives a long pull. The counts are **what this session looted**, not what your bags hold; Loremaster reads only your log. They are derived from the same SPOILS ledger, so the two can never disagree, and **DETAILS → MOTES** breaks them out by tier name with a session total. The tracker is a normal card: unstar it with ✦ if you do not want it, and an existing config picks it up exactly once.
 
 ### Lore Lens: EQL Wiki item intelligence
 

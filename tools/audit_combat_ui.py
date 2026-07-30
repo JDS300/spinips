@@ -12,8 +12,9 @@ from pathlib import Path
 # The effects-row grid is authored once in tools/restyle_combat.py; the audit
 # imports it so a geometry change can never pass by editing only one side.
 from restyle_combat import (EFFECT_CHIP, EFFECT_ICON, EFFECT_NAME_WIDTH,
-                           EFFECT_NAME_X, EFFECT_ROW_WIDTH,
-                           EFFECT_TIMER_FONT, EFFECT_TIMER_HALF_WIDTH)
+                           EFFECT_NAME_X, EFFECT_PLATE_BLEED,
+                           EFFECT_ROW_WIDTH, EFFECT_TIMER_FONT,
+                           EFFECT_TIMER_HALF_WIDTH)
 
 
 REPO = Path(__file__).resolve().parent.parent
@@ -266,12 +267,12 @@ def audit_group_and_extended_targets() -> None:
 
 
 def audit_effect_row_geometry(root: ET.Element, prefix: str, label: str) -> None:
-    """Prove the countdown column mathematically, not just by coordinates.
+    """Prove the row's two client-owned overlays stay where they belong.
 
-    The client centers a buff's remaining-duration countdown on its own
-    button, so the chip must be wide enough that a worst-case countdown
-    clears both the spell icon on its left and the effect-name column on
-    its right.  Anything narrower stamps the timer back onto the icon.
+    One button width controls both the centered countdown and the stretched
+    beneficial/detrimental background plate, so the chip has to stay icon
+    sized (or the plate becomes a slab of flat colour beside every icon)
+    while a worst-case countdown still cannot reach the name column.
     """
     chip = item(root, "Button", f"{prefix}_Player_Buff_Template")
     chip_size = dimensions(chip)
@@ -288,11 +289,11 @@ def audit_effect_row_geometry(root: ET.Element, prefix: str, label: str) -> None
         fail(f"{label} countdown lost its shadow")
     if color(chip, "TextColor") != GOLD_BRIGHT:
         fail(f"{label} countdown lost its ember-gold separation from names")
+    if chip_size[0] - EFFECT_ICON[0] > EFFECT_PLATE_BLEED:
+        fail(f"{label} chip outgrew its icon; the client's plate becomes a slab")
     center = chip_size[0] // 2
-    if center - EFFECT_TIMER_HALF_WIDTH < EFFECT_ICON[0]:
-        fail(f"{label} countdown column overlaps the spell icon")
     if center + EFFECT_TIMER_HALF_WIDTH > EFFECT_NAME_X:
-        fail(f"{label} countdown column reaches the effect-name column")
+        fail(f"{label} countdown can spill onto the effect-name column")
 
 
 def audit_effects_casting_and_bars() -> None:

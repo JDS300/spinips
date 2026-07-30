@@ -381,11 +381,14 @@ def draw_buffs(canvas, x, y, title, rows, w=200, h=None):
         d.rectangle([x + 1, by, x + w - 2, by + 19],
                     fill=BG1 + (190,), outline=LINE_SOFT + (150,))
         slot(canvas, x + 1, by, 20, ICONS[i % len(ICONS)])
-        # The client centers a buff's countdown on its own button, so the
-        # preview has to put it exactly where the chip's midpoint falls -
-        # between the icon and the name column, never at the row's edge.
-        text(canvas, (x + 1 + EFFECT_CHIP[0] // 2, by + 3), f"{27 - i}m",
-             size=9, color=GOLD_BRIGHT, anchor="ma")
+        # The client centers a buff's countdown on its own icon-sized button,
+        # so the preview draws it there too - on the art, in ember gold with a
+        # shadow - rather than at the row's edge where nothing paints it.
+        cx = x + 1 + EFFECT_CHIP[0] // 2
+        text(canvas, (cx + 1, by + 5), f"{27 - i}m", size=9,
+             color=(0, 0, 0), anchor="mm")
+        text(canvas, (cx, by + 4), f"{27 - i}m", size=9,
+             color=GOLD_BRIGHT, anchor="mm")
         text(canvas, (x + EFFECT_NAME_X, by + 2), names[i % len(names)],
              size=10, color=TEXT)
 

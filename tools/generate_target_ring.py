@@ -8,17 +8,17 @@ every con reads as the same milky smear on the ground and the only difference
 between "harmless" and "will kill you" is a hue the world lighting washes out.
 
 This generator writes SpinUI's own ring sheet: a near-black field (invisible
-under additive blending) carrying a runic lattice — broad sweeping bands, finer
-hairlines between them, and small diamond nodes where the two series cross.
-The sheet stays neutral grey so `TargetIndicator.ini` owns every colour, and it
-tiles seamlessly on both axes so it reads correctly whichever way the client
-maps U and V across the ring.
+under additive blending) carrying crisp concentric rings — a bright core, a
+soft glow, and a dim hairline between each pair — that the client scrolls
+inward. Structure lives on the radial axis only; see the RING_* block below for
+why, and for what happens when it does not. The sheet stays neutral grey so
+`TargetIndicator.ini` owns every colour.
 
 Run from the repo root:  python3 tools/generate_target_ring.py
 
 The companion ramp lives in spinui_reloaded/TargetIndicator.ini, which encodes
-threat four ways at once — hue, opacity, inward speed, and lattice density — so
-the ring stays legible for colour-blind players and in blown-out daylight.
+threat five ways at once — hue, opacity, inward speed, ring count, and radius —
+so the ring stays legible for colour-blind players and in blown-out daylight.
 """
 
 from __future__ import annotations
@@ -34,35 +34,46 @@ PREVIEW_DIR = REPO / "docs" / "previews"
 
 SIZE = 256
 
-# Every period divides SIZE, so the sheet tiles without a seam on either axis.
-BAND_PERIOD = 64          # broad sweeping bands
-BAND_CORE = 1.6           # half-width of a band's bright core, in pixels
-BAND_FALLOFF = 9.0        # how far a band's glow reaches
-HAIRLINE_PERIOD = 32      # finer series, offset half a period from the bands
-TICK_PERIOD = 32          # cross-axis ticks
-NODE_PERIOD = 64          # runic nodes at the lattice crossings
-NODE_RADIUS = 3
+# --- Which way the sheet lies on the ring ----------------------------------
+# The client builds the indicator as concentric circles of vertices and walks
+# the sheet outward along them, scrolling it back towards the center: U runs
+# once around the circumference, V runs radially.  So a *row* of this sheet is
+# a circle drawn on the ground, and a *column* is a spoke.
+#
+# The first SpinUI sheet carried a lattice on both axes - rings across V plus
+# ticks and bright nodes across U - and in game the U structure is what showed
+# up: bright streaks radiating out of the target instead of rings around it.
+# Structure therefore belongs on V alone.  U gets nothing but a whisper of
+# brightness modulation, far too shallow to read as a spoke.
+#
+# Only powers of two tile 256 seamlessly, so the ring pitch is 16 rows.  The
+# client shows TextureScale x 256 rows at once, which is why the ini's scale
+# ramp doubles as a ring-count ramp: 0.10 shows ~1.6 rings, 0.24 shows ~3.8.
+RING_PERIOD = 16
+RING_CORE = 1.5           # half-width of a ring's bright core, in rows
+RING_FALLOFF = 5.0        # how far a ring's glow reaches
+HAIRLINE_OFFSET = RING_PERIOD / 2
+ANGULAR_LOBES = 6         # integer cycles, so U stays seamless
+ANGULAR_DEPTH = 0.07      # +/- 7%: life around the ring, never a spoke
 
-BASE = 22                 # faint ground glow so the ring never disappears
-BAND_PEAK = 236
-HAIRLINE_PEAK = 132
-TICK_PEAK = 104
-NODE_PEAK = 255
+BASE = 18                 # faint ground glow so the ring never disappears
+RING_PEAK = 240
+HAIRLINE_PEAK = 96
 
 # Threat ramp shared by the generated preview and TargetIndicator.ini.  Each
 # tier repeats its meaning in four channels: hue, opacity, inward drift, and
-# how much of the sheet is visible at once (lattice density).
+# how many rings are visible at once.
 CON_TIERS = (
     # key, label, rgb, alpha, texture_scale, texture_speed, fade_end, twist
-    ("Trivial", "TRIVIAL", (108, 116, 124), 140, 0.075, 0.0004, 16, 0.0),
-    ("VeryEasy", "VERY EASY", (96, 214, 132), 175, 0.090, 0.0006, 17, 0.0),
-    ("Easy", "EASY", (104, 206, 224), 195, 0.105, 0.0008, 18, 0.0),
-    ("FairlyEasy", "FAIRLY EASY", (108, 150, 248), 212, 0.120, 0.0010, 19, 0.0),
-    ("FairMatch", "EVEN MATCH", (244, 236, 214), 232, 0.135, 0.0013, 20, 0.0),
-    ("Difficult", "DIFFICULT", (248, 196, 96), 248, 0.150, 0.0018, 21, 0.0),
+    ("Trivial", "TRIVIAL", (108, 116, 124), 140, 0.100, 0.0004, 16, 0.0),
+    ("VeryEasy", "VERY EASY", (96, 214, 132), 175, 0.120, 0.0006, 17, 0.0),
+    ("Easy", "EASY", (104, 206, 224), 195, 0.140, 0.0008, 18, 0.0),
+    ("FairlyEasy", "FAIRLY EASY", (108, 150, 248), 212, 0.160, 0.0010, 19, 0.0),
+    ("FairMatch", "EVEN MATCH", (244, 236, 214), 232, 0.180, 0.0013, 20, 0.0),
+    ("Difficult", "DIFFICULT", (248, 196, 96), 248, 0.210, 0.0018, 21, 0.0),
     # Only the tier that can kill you pulses; see [instructions] for how to
     # switch it off without losing the rest of the ramp.
-    ("Deadly", "DEADLY", (250, 82, 74), 255, 0.165, 0.0026, 22, 0.18),
+    ("Deadly", "DEADLY", (250, 82, 74), 255, 0.240, 0.0026, 22, 0.18),
 )
 
 # Non-con rings.  Free/FreeInvalid are the ground-target reticle and keep the
@@ -72,52 +83,48 @@ CON_TIERS = (
 POINT_COUNT = 128
 
 
-def _wrapped_distance(value: float, period: int) -> float:
+def _wrapped_distance(value: float, period: float) -> float:
     """Distance to the nearest multiple of ``period``, wrapping both ways."""
     offset = value % period
     return min(offset, period - offset)
 
 
-def _band(distance: float) -> float:
-    """Smooth 0..1 profile for one lattice line."""
-    if distance <= BAND_CORE:
+def _ring(distance: float) -> float:
+    """Smooth 0..1 profile across one ring."""
+    if distance <= RING_CORE:
         return 1.0
-    if distance >= BAND_FALLOFF:
+    if distance >= RING_FALLOFF:
         return 0.0
-    ratio = (distance - BAND_CORE) / (BAND_FALLOFF - BAND_CORE)
+    ratio = (distance - RING_CORE) / (RING_FALLOFF - RING_CORE)
     return math.cos(ratio * math.pi / 2.0) ** 2
 
 
 def _hairline(distance: float) -> float:
-    if distance <= 0.7:
+    if distance <= 0.6:
         return 1.0
-    if distance >= 3.0:
+    if distance >= 2.6:
         return 0.0
-    return 1.0 - (distance - 0.7) / 2.3
+    return 1.0 - (distance - 0.6) / 2.0
 
 
 def build_sheet() -> list[list[int]]:
     """Render the neutral-grey ring sheet as a SIZE x SIZE luminance grid."""
     rows: list[list[int]] = []
     for y in range(SIZE):
-        band = _band(_wrapped_distance(y + 0.5, BAND_PERIOD))
-        hairline = _hairline(
-            _wrapped_distance(y + 0.5 - HAIRLINE_PERIOD / 2, HAIRLINE_PERIOD))
-        node_y = _wrapped_distance(y + 0.5, NODE_PERIOD)
+        centre = y + 0.5
+        value = float(BASE)
+        value += _ring(_wrapped_distance(centre, RING_PERIOD)) * (RING_PEAK - BASE)
+        value += _hairline(
+            _wrapped_distance(centre - HAIRLINE_OFFSET, RING_PERIOD)
+        ) * (HAIRLINE_PEAK - BASE) * 0.8
         row: list[int] = []
         for x in range(SIZE):
-            tick = _hairline(_wrapped_distance(x + 0.5, TICK_PERIOD))
-            value = float(BASE)
-            value += band * (BAND_PEAK - BASE)
-            value += hairline * (HAIRLINE_PEAK - BASE) * 0.75
-            # Cross-axis ticks brighten where they meet a band, so the lattice
-            # gains structure without turning the whole sheet into a grid.
-            value += tick * (TICK_PEAK - BASE) * (0.35 + 0.65 * band)
-            node_x = _wrapped_distance(x + 0.5, NODE_PERIOD)
-            if node_x + node_y <= NODE_RADIUS:
-                weight = 1.0 - (node_x + node_y) / (NODE_RADIUS + 1.0)
-                value += weight * (NODE_PEAK - value)
-            row.append(max(0, min(255, int(round(value)))))
+            # Shallow, seamless breathing around the circumference so the ring
+            # is not a flat stencil.  Kept well below the threshold where an
+            # amplitude change starts to read as a spoke.
+            lobe = 1.0 + ANGULAR_DEPTH * math.sin(
+                2.0 * math.pi * ANGULAR_LOBES * (x + 0.5) / SIZE)
+            row.append(max(0, min(255, int(round(value * lobe)))))
         rows.append(row)
     return rows
 
@@ -168,7 +175,10 @@ def render_preview(rows: list[list[int]], path: Path) -> bool:
         inner = cell * 0.09
         outer = cell * 0.46 * (fade_end / 22.0)
         opaque = cell * 0.30 * (fade_end / 22.0)
-        repeats = max(1.0, 1.0 / scale) / 8.0
+        # Sample the sheet the way the client does: U wraps once around the
+        # circumference, and TextureScale decides how many rows of V - and so
+        # how many rings - are visible between the center and FadeEnd.
+        visible_rows = max(1.0, scale * SIZE)
         tile = Image.new("RGB", (cell, cell), (14, 11, 8))
         pixels = tile.load()
         for y in range(cell):
@@ -183,8 +193,8 @@ def render_preview(rows: list[list[int]], path: Path) -> bool:
                     envelope = 1.0 - (radius - opaque) / max(1.0, outer - opaque)
                     envelope *= envelope
                 angle = (math.atan2(dy, dx) / (2.0 * math.pi)) % 1.0
-                sample_v = (radius / outer) * repeats * SIZE
-                sample_u = angle * repeats * SIZE * 4.0
+                sample_v = (radius / outer) * visible_rows
+                sample_u = angle * SIZE
                 luma = rows[int(sample_v) % SIZE][int(sample_u) % SIZE]
                 weight = (luma / 255.0) * envelope * (alpha / 255.0)
                 base = pixels[x, y]
@@ -266,7 +276,7 @@ Spin's UI Reloaded - the "Vellum & Ember" target ring
 	  hue          slate > jade > teal > azure > parchment > gold > crimson
 	  Alpha        140 (harmless) climbing to 255 (deadly)
 	  TextureSpeed 0.0004 (a slow drift) climbing to 0.0026 (pulled inward fast)
-	  TextureScale 0.075 (sparse lattice) climbing to 0.165 (dense and busy)
+	  TextureScale 0.10 (about 1.6 rings) climbing to 0.24 (about 3.8 rings)
 	  FadeEnd      16 (a small quiet ring) growing to 22 (the widest ring)
 
 	so a dangerous target reads as dangerous from motion and weight even if you
