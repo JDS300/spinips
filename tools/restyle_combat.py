@@ -31,6 +31,31 @@ MANA = (66, 126, 244)
 ENDURANCE = (208, 162, 84)
 PET = (152, 132, 104)
 
+# --- Spell Effects / Song Effects row geometry ----------------------------
+# EverQuest draws a buff's remaining-duration countdown centered on the buff
+# button itself, using the button's own Font/FontShadow/TextColor.  There is no
+# separate binding for it, so the only way to give the countdown its own
+# readable column is to make the button wide enough that its center lands past
+# the spell icon.  With the icon pinned to the chip's left edge:
+#
+#   row x=1        x=21                 x=74                      x=230
+#       [ icon 20 ][ timer column      ][ effect name 156        ][pad]
+#                        ^ countdown center = 1 + 72/2 = 37
+#
+# A four-character countdown ("120m") is ~30px wide at Font 3, so it spans
+# roughly x=22..52 — clear of the icon and 22px short of the name column.
+EFFECT_ROW_WIDTH = 240
+EFFECT_CHIP = (72, 20)
+EFFECT_ICON = (20, 20)
+EFFECT_TIMER_FONT = 3
+# Widest countdown the column must swallow without touching the icon or the
+# name; used by tools/audit_combat_ui.py to prove the band mathematically.
+EFFECT_TIMER_HALF_WIDTH = 16
+EFFECT_NAME_X = EFFECT_CHIP[0] + 2
+EFFECT_NAME_TAIL = 10
+EFFECT_NAME_WIDTH = EFFECT_ROW_WIDTH - EFFECT_NAME_X - EFFECT_NAME_TAIL
+EFFECT_TIMER_CENTER = EFFECT_CHIP[0] // 2
+
 # Older SpinUI releases exposed a large collection of visual variants.  Most of
 # those files predate the July Legends schema and can lose live controls when a
 # saved layout still selects them.  Keep the filenames as compatibility aliases
@@ -199,19 +224,31 @@ def style_buff_file(path: Path, prefix: str, count: int,
                     title: str, height: int) -> None:
     text = path.read_text(encoding="ascii")
     template = f"{prefix}_Player_Buff_Template"
-    # The client paints the remaining-duration countdown centered on the
-    # buff button, so the button stays icon-sized (24x20) with a shadowed
-    # font, and the name labels start at x=36 so even a wide "120m" spill
-    # never reaches them.
+    # The client paints each effect's remaining-duration countdown *centered*
+    # on its buff button, so the button's own width is the only lever that
+    # decides where that countdown lands.  An icon-sized button centers the
+    # countdown on top of the spell icon, which is what made it unreadable.
+    # EFFECT_CHIP is therefore wide enough that the centered countdown clears
+    # the icon pinned to the chip's left edge (see EFFECT_TIMER_CENTER), and
+    # the name column starts past the chip so nothing can overlap it:
+    #     [ 20px icon ][ timer column ][ effect name ]
     text = change_item(
         text, "Button", template,
-        lambda b: set_container(
+        lambda b: set_color(
             set_container(
-                set_or_add_value(set_font(b, 2), "FontShadow", "true",
-                                 after="Font"),
-                "Size", CX=24, CY=20),
-            "DecalSize", CX=20, CY=20,
+                set_container(
+                    set_or_add_value(
+                        set_font(b, EFFECT_TIMER_FONT), "FontShadow", "true",
+                        after="Font"),
+                    "Size", CX=EFFECT_CHIP[0], CY=EFFECT_CHIP[1]),
+                "DecalSize", CX=EFFECT_ICON[0], CY=EFFECT_ICON[1],
+            ),
+            "TextColor", GOLD_BRIGHT, insert=True,
         ),
+    )
+    text = change_item(
+        text, "Button", template,
+        lambda b: set_container(b, "DecalOffset", X=0, Y=0),
     )
     # One icon per row, paired with its name: the box must flow
     # vertically. Horizontal-first flow put the first three buffs side by
@@ -220,15 +257,16 @@ def style_buff_file(path: Path, prefix: str, count: int,
         text, "TileLayoutBox", f"{prefix}_Buttons",
         lambda b: set_value(
             set_value(b, "HorizontalFirst", "false"),
-            "RightAnchorOffset", 191),
+            "RightAnchorOffset", EFFECT_ROW_WIDTH - EFFECT_CHIP[0] - 1),
     )
     for index in range(count):
         label = f"{prefix}_Buff{index}"
 
         def label_style(block: str) -> str:
             block = set_font(block, 3)
-            block = set_container(block, "Location", X=36, Y=1)
-            block = set_container(block, "Size", CX=170, CY=18)
+            block = set_container(block, "Location", X=EFFECT_NAME_X, Y=1)
+            block = set_container(block, "Size",
+                                  CX=EFFECT_NAME_WIDTH, CY=18)
             return set_color(block, "TextColor", TEXT, insert=True)
 
         text = change_item(text, "Label", label, label_style)
@@ -236,18 +274,21 @@ def style_buff_file(path: Path, prefix: str, count: int,
     text = change_item(
         text, "Label", f"{prefix}_Buff_FrontSpacer",
         lambda b: set_container(
-            set_container(b, "Location", X=0, Y=1), "Size", CX=36, CY=18
+            set_container(b, "Location", X=0, Y=1),
+            "Size", CX=EFFECT_NAME_X, CY=18
         ),
     )
     text = change_item(
         text, "Label", f"{prefix}_Buff_BackSpacer",
         lambda b: set_container(
-            set_container(b, "Location", X=206, Y=1), "Size", CX=10, CY=18
+            set_container(b, "Location",
+                          X=EFFECT_ROW_WIDTH - EFFECT_NAME_TAIL, Y=1),
+            "Size", CX=EFFECT_NAME_TAIL, CY=18
         ),
     )
     text = change_item(
         text, "Screen", f"{prefix}_00_Screen",
-        lambda b: set_container(b, "Size", CX=216, CY=20),
+        lambda b: set_container(b, "Size", CX=EFFECT_ROW_WIDTH, CY=20),
     )
     text = change_item(
         text, "TileLayoutBox", f"{prefix}_Buttons",
@@ -272,7 +313,7 @@ def style_buff_file(path: Path, prefix: str, count: int,
 
     def window_style(block: str) -> str:
         block = set_value(block, "Text", title)
-        block = set_container(block, "Size", CX=216, CY=height)
+        block = set_container(block, "Size", CX=EFFECT_ROW_WIDTH, CY=height)
         block = set_value(block, "Style_Transparent", "true")
         block = set_value(block, "DrawTemplate", "WDT_RoundedTransparentNoArrow")
         block = set_value(block, "Style_Titlebar", "true")

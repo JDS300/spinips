@@ -227,9 +227,11 @@ def _rects_overlap(
 def audit_pet_geometry() -> None:
     """Guard the readable 1440p pet hierarchy and every EQ layout variant."""
 
-    from restyle_pet import (BUFF_CAPACITY, BUFF_RECTS, BUTTON_SIZE,
-                             COMMAND_ITEMS, COMMAND_POSITIONS,
-                             PET_PANEL_SIZE, SUBWINDOW_RECTS, WINDOW_SIZES)
+    from restyle_pet import (BUFF_BORDER_INSET, BUFF_CAPACITY, BUFF_CELLS,
+                             BUFF_DECALS, BUFF_RECTS, BUFF_TIMER_FONT,
+                             BUFF_TIMER_HALF_WIDTH, BUTTON_SIZE, COMMAND_ITEMS,
+                             COMMAND_POSITIONS, PET_PANEL_SIZE,
+                             SUBWINDOW_RECTS, TIMER_COLOR, WINDOW_SIZES)
 
     variants = WINDOW_SIZES
     command_items = list(COMMAND_ITEMS)
@@ -259,8 +261,12 @@ def audit_pet_geometry() -> None:
         if filename in ("EQUI_PetInfoWindow1.xml", "EQUI_PetInfoWindow2.xml"):
             bounds = tuple(child_int(window, field) for field in (
                 "MinHSize", "MinVSize", "MaxHSize", "MaxVSize"))
-            if bounds != (356, 209, 356, 480):
-                fail(f"{filename} must resize vertically from 356x209: {bounds}")
+            compact = WINDOW_SIZES[filename]
+            if bounds != (compact[0], compact[1], compact[0], 480):
+                fail(
+                    f"{filename} must resize vertically from "
+                    f"{compact[0]}x{compact[1]}: {bounds}"
+                )
         elif filename == "EQUI_PetInfoWindow3.xml":
             bounds = tuple(child_int(window, field) for field in (
                 "MinHSize", "MinVSize", "MaxHSize", "MaxVSize"))
@@ -312,6 +318,16 @@ def audit_pet_geometry() -> None:
             fail(f"{filename} command panel left its compact 356x181 frame")
         if (sub_width, sub_height) != PET_PANEL_SIZE:
             fail(f"{filename} command panel must remain {PET_PANEL_SIZE}")
+        # A panel nested at the outer frame's own corner must not paint a
+        # second frame or reserve window controls there: that is what made the
+        # top-left corner read as a patch that did not fit.
+        if (subwindow.findtext("Style_Border") != "false"
+                or subwindow.findtext("Style_Transparent") != "true"):
+            fail(f"{filename} command panel reintroduced a duplicate frame")
+        for control in ("Style_Qmarkbox", "Style_Closebox", "Style_Minimizebox",
+                        "Style_Titlebar"):
+            if subwindow.findtext(control) != "false":
+                fail(f"{filename} command panel reserved a stray {control}")
         subwindow_pieces = [
             node.text for node in subwindow.findall("Pieces") if node.text]
         direct_commands = [
@@ -342,11 +358,14 @@ def audit_pet_geometry() -> None:
         buff_host = item(root, "Screen", "PIW_BuffWindow")
         if len(root.findall(".//Screen[@item='PIW_BuffWindow']")) != 1:
             fail(f"{filename} must define exactly one native pet buff host")
+        # The rail's own frame is the divider between commands and effects now
+        # that the command panel paints none; it also has to be paid for in
+        # rail size, because the client subtracts it before flowing the tiles.
         if (
             buff_host.findtext("Style_Transparent") != "false"
-            or buff_host.findtext("Style_Border") != "false"
+            or buff_host.findtext("Style_Border") != "true"
         ):
-            fail(f"{filename} pet buff rail must stay an opaque recessed well")
+            fail(f"{filename} pet buff rail must stay a framed recessed well")
         if buff_host.findtext("ScreenID") != "PetBuffWindow":
             fail(f"{filename} pet buff host lost its Legends ScreenID")
         if [node.text for node in buff_host.findall("Pieces")] != [
@@ -368,20 +387,44 @@ def audit_pet_geometry() -> None:
             fail(f"{filename} must define exactly one native pet buff template")
         if buff_tile.findtext("ScreenID") != "PetBuffButtons":
             fail(f"{filename} pet buff tile box lost its Legends ScreenID")
+        decal_size, decal_offset = BUFF_DECALS[filename]
         if (
             buff_template.findtext("ScreenID"),
             buff_template.findtext("Style_Checkbox"),
             buff_template.findtext("Template"),
             child_int(buff_template, "DecalSize/CX"),
             child_int(buff_template, "DecalSize/CY"),
-        ) != ("Pet_Buff_Template", "false", "BDT_PetRedBuff", 22, 22):
+        ) != ("Pet_Buff_Template", "false", "BDT_PetRedBuff", *decal_size):
             fail(f"{filename} pet buff template lost its Legends binding or decal")
+        if (child_int(buff_template, "DecalOffset/X"),
+                child_int(buff_template, "DecalOffset/Y")) != decal_offset:
+            fail(f"{filename} pet effect icon left its cell corner")
         template_size = (
             child_int(buff_template, "Size/CX"),
             child_int(buff_template, "Size/CY"),
         )
-        if template_size != (24, 24):
-            fail(f"{filename} pet buff template must remain 24x24")
+        if template_size != BUFF_CELLS[filename]:
+            fail(
+                f"{filename} pet buff template must remain "
+                f"{BUFF_CELLS[filename][0]}x{BUFF_CELLS[filename][1]}"
+            )
+        # The client centers a pet effect's countdown on its own cell, so a
+        # cell only earns a readable timer column when that center clears the
+        # icon.  The narrow right rail cannot, and says so by keeping the
+        # compact overlay cell; every other rail must prove the clearance.
+        timer_center = template_size[0] // 2
+        has_timer_column = (
+            timer_center - BUFF_TIMER_HALF_WIDTH
+            >= decal_offset[0] + decal_size[0])
+        if has_timer_column != (filename != "EQUI_PetInfoWindow3.xml"):
+            fail(f"{filename} pet effect countdown column changed shape")
+        if child_int(buff_template, "Font") < BUFF_TIMER_FONT:
+            fail(f"{filename} pet countdown fell below the accessible font tier")
+        if buff_template.findtext("FontShadow") != "true":
+            fail(f"{filename} pet countdown lost its shadow")
+        if tuple(child_int(buff_template, f"TextColor/{channel}")
+                 for channel in ("R", "G", "B")) != TIMER_COLOR:
+            fail(f"{filename} pet countdown lost its ember-gold tint")
         expected_anchor_top = filename != "EQUI_PetInfoWindow2.xml"
         if (buff_tile.findtext("FirstPieceTemplate") != "true"
                 or buff_tile.findtext("AnchorToTop")
@@ -389,24 +432,28 @@ def audit_pet_geometry() -> None:
                 or [node.text for node in buff_tile.findall("Pieces")]
                 != ["PIW_PetBuff_Template"]):
             fail(f"{filename} pet buff flow lost its Legends template binding")
-        expected_horizontal = filename in (
-            "EQUI_PetInfoWindow1.xml", "EQUI_PetInfoWindow2.xml")
+        # Horizontal trays read left-to-right; only the right-hand side rail
+        # flows down its own column first.
+        expected_horizontal = filename != "EQUI_PetInfoWindow3.xml"
         if buff_tile.findtext("HorizontalFirst") != str(expected_horizontal).lower():
             fail(f"{filename} pet buff flow uses the wrong reading direction")
         buff_width = buff_rect[2] - buff_rect[0]
         buff_height = buff_rect[3] - buff_rect[1]
-        capacity = (buff_width // template_size[0]) * (
-            buff_height // template_size[1])
+        flow_width = buff_width - BUFF_BORDER_INSET
+        flow_height = buff_height - BUFF_BORDER_INSET
+        columns = flow_width // template_size[0]
+        rows = flow_height // template_size[1]
+        capacity = columns * rows
         if capacity != BUFF_CAPACITY[filename]:
             fail(
                 f"{filename} visible pet buff capacity changed: "
                 f"{capacity}, expected {BUFF_CAPACITY[filename]}"
             )
-        if filename in ("EQUI_PetInfoWindow.xml", "EQUI_PetInfoWindow3.xml"):
-            columns = 14 if filename == "EQUI_PetInfoWindow.xml" else 3
-            horizontal_slack = buff_width - columns * template_size[0]
-            if horizontal_slack != 12:
-                fail(f"{filename} pet effect rail lost its 12px flow safety")
+        if not columns or not rows:
+            fail(f"{filename} pet effect rail cannot flow a single cell")
+        if (flow_width - columns * template_size[0] < 0
+                or flow_height - rows * template_size[1] < 0):
+            fail(f"{filename} pet effect rail does not pay for its own frame")
 
         seam_width = max(
             0, min(sub_right, buff_rect[2]) - max(sub_left, buff_rect[0]))
@@ -421,10 +468,11 @@ def audit_pet_geometry() -> None:
             )
             if _rects_overlap(global_rect, buff_rect):
                 fail(f"{filename} pet effect rail overlaps a command hit target")
-        # The compact fixed default shows one full-width effect strip; the
-        # resizable right-click variants remain the home for more rows.
-        if filename == "EQUI_PetInfoWindow.xml" and capacity < 14:
-            fail("fixed Pet default must keep a full 14-slot effect strip")
+        # The compact fixed default has to show a realistic pet's whole effect
+        # set at once; the resizable right-click variants remain the home for
+        # extreme counts.
+        if filename == "EQUI_PetInfoWindow.xml" and capacity < 20:
+            fail("fixed Pet default must show at least 20 effect positions")
 
         window_pieces = [node.text for node in window.findall("Pieces")]
         if window_pieces.count("Screen:PetInfoSubWindow") != 1:
@@ -434,7 +482,7 @@ def audit_pet_geometry() -> None:
         if window_pieces.count("DragBox:PIWDragBox1") != 1:
             fail(f"{filename} must mount the pet drag region exactly once")
 
-        expected_drag = ((0, 28, 356, 46)
+        expected_drag = ((0, window_height - 181, 356, window_height - 163)
                          if filename == "EQUI_PetInfoWindow2.xml"
                          else (0, 0, 356, 24))
         drag_rect = _stretched_rect(
@@ -446,8 +494,11 @@ def audit_pet_geometry() -> None:
             fail(f"{filename} drag region left the command frame: {drag_rect}")
 
         if filename in ("EQUI_PetInfoWindow1.xml", "EQUI_PetInfoWindow2.xml"):
-            if child_int(window, "MinVSize") != 209:
-                fail(f"{filename} must retain its 209px compact minimum height")
+            if child_int(window, "MinVSize") != WINDOW_SIZES[filename][1]:
+                fail(
+                    f"{filename} must retain its "
+                    f"{WINDOW_SIZES[filename][1]}px compact minimum height"
+                )
             grown_sub = _stretched_rect(
                 subwindow, window_width, window_height + 48,
                 label=f"{filename} grown command panel",
@@ -1035,7 +1086,13 @@ def main() -> int:
           f"TGA {tga_count} | DDS {dds_count} | CUR {cur_count}")
     print(f"  window templates {template_count} | "
           f"reference files {template_reference_files} | no unresolved symbols")
-    print("  pet 513x181 fixed-right | commands 14 | effects 42 | variants 4")
+    from restyle_pet import BUFF_CAPACITY, WINDOW_SIZES
+    pet_default = "EQUI_PetInfoWindow.xml"
+    print(
+        f"  pet {WINDOW_SIZES[pet_default][0]}x{WINDOW_SIZES[pet_default][1]} "
+        f"fixed | commands 14 | effects {BUFF_CAPACITY[pet_default]} "
+        f"+ timer column | variants {len(WINDOW_SIZES)}"
+    )
     print("  inventory 660x668 | equipment 23 | ledger 15/15 + 6/6 | footer 6 | persona 23 | bags 12")
     return 0
 

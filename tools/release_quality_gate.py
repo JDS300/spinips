@@ -108,6 +108,7 @@ README_MEDIA = {
     "docs/screenshots/loremaster-session-live.png": ("PNG", {(400, 480)}, 1_000_000),
     "docs/screenshots/loremaster-live-tour.gif": ("GIF", {(960, 540)}, 4_000_000),
     "docs/previews/loremaster_panel.png": ("PNG", {(1704, 1658)}, 2_000_000),
+    "docs/previews/target_ring.png": ("PNG", {(1344, 234)}, 1_000_000),
 }
 
 PUBLIC_LAYOUT_PRESETS = ("combat-focus", "social-focus", "hybrid")
