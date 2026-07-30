@@ -43,8 +43,8 @@
 		<ScreenID>Pet_Buff_Template</ScreenID>
 		<RelativePosition>true</RelativePosition>
 		<Size>
-			<CX>67</CX>
-			<CY>22</CY>
+			<CX>24</CX>
+			<CY>24</CY>
 		</Size>
 		<Style_VScroll>false</Style_VScroll>
 		<Style_HScroll>false</Style_HScroll>
@@ -52,12 +52,12 @@
 		<Style_Checkbox>false</Style_Checkbox>
 		<Template>BDT_PetRedBuff</Template>
 		<DecalOffset>
-			<X>0</X>
+			<X>1</X>
 			<Y>1</Y>
 		</DecalOffset>
 		<DecalSize>
-			<CX>20</CX>
-			<CY>20</CY>
+			<CX>22</CX>
+			<CY>22</CY>
 		</DecalSize>
 		<Font>3</Font>
 		<FontShadow>true</FontShadow>
@@ -677,7 +677,7 @@
 		</Location>
 		<Size>
 			<CX>356</CX>
-			<CY>280</CY>
+			<CY>236</CY>
 		</Size>
 		<Style_VScroll>false</Style_VScroll>
 		<Style_HScroll>false</Style_HScroll>
@@ -698,7 +698,7 @@
 		</KeepOnScreenOffset>	
 		<Escapable>false</Escapable>
 		<MinHSize>356</MinHSize>
-		<MinVSize>280</MinVSize>
+		<MinVSize>236</MinVSize>
 		<MaxHSize>356</MaxHSize>
 		<MaxVSize>480</MaxVSize>
 		<Pieces>Screen:PetInfoSubWindow</Pieces>

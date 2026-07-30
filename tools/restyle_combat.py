@@ -32,29 +32,32 @@ ENDURANCE = (208, 162, 84)
 PET = (152, 132, 104)
 
 # --- Spell Effects / Song Effects row geometry ----------------------------
-# EverQuest draws a buff's remaining-duration countdown centered on the buff
-# button itself, using the button's own Font/FontShadow/TextColor.  There is no
-# separate binding for it, so the only way to give the countdown its own
-# readable column is to make the button wide enough that its center lands past
-# the spell icon.  With the icon pinned to the chip's left edge:
+# EverQuest draws two things on a buff button that the skin cannot separate:
+# the remaining-duration countdown, centered on the button, and a solid
+# beneficial/detrimental background plate that is stretched to fill it.  One
+# button width controls both, so a chip wide enough to give the countdown its
+# own column also stretches that plate into a slab of flat blue beside every
+# icon.  The plate wins: an icon-sized chip keeps it as a frame around the art
+# it belongs to, and the countdown rides on the icon in ember gold with a
+# shadow, which is legible and is how EverQuest has always shown it.
 #
-#   row x=1        x=21                 x=74                      x=230
-#       [ icon 20 ][ timer column      ][ effect name 156        ][pad]
-#                        ^ countdown center = 1 + 72/2 = 37
+#   row x=1     x=25    x=36                        x=206
+#       [ icon 20 ][gap][ effect name 170          ][pad]
+#          ^ countdown centered at x=13
 #
-# A four-character countdown ("120m") is ~30px wide at Font 3, so it spans
-# roughly x=22..52 — clear of the icon and 22px short of the name column.
-EFFECT_ROW_WIDTH = 240
-EFFECT_CHIP = (72, 20)
+# EFFECT_TIMER_HALF_WIDTH is the widest countdown the row must swallow; the
+# audit proves it still cannot reach the name column.
+EFFECT_ROW_WIDTH = 216
+EFFECT_CHIP = (24, 20)
 EFFECT_ICON = (20, 20)
 EFFECT_TIMER_FONT = 3
-# Widest countdown the column must swallow without touching the icon or the
-# name; used by tools/audit_combat_ui.py to prove the band mathematically.
 EFFECT_TIMER_HALF_WIDTH = 16
-EFFECT_NAME_X = EFFECT_CHIP[0] + 2
+# The chip must never extend meaningfully past its icon, or the client's
+# background plate becomes a slab instead of a frame.
+EFFECT_PLATE_BLEED = 4
+EFFECT_NAME_X = 36
 EFFECT_NAME_TAIL = 10
 EFFECT_NAME_WIDTH = EFFECT_ROW_WIDTH - EFFECT_NAME_X - EFFECT_NAME_TAIL
-EFFECT_TIMER_CENTER = EFFECT_CHIP[0] // 2
 
 # Older SpinUI releases exposed a large collection of visual variants.  Most of
 # those files predate the July Legends schema and can lose live controls when a
@@ -224,14 +227,9 @@ def style_buff_file(path: Path, prefix: str, count: int,
                     title: str, height: int) -> None:
     text = path.read_text(encoding="ascii")
     template = f"{prefix}_Player_Buff_Template"
-    # The client paints each effect's remaining-duration countdown *centered*
-    # on its buff button, so the button's own width is the only lever that
-    # decides where that countdown lands.  An icon-sized button centers the
-    # countdown on top of the spell icon, which is what made it unreadable.
-    # EFFECT_CHIP is therefore wide enough that the centered countdown clears
-    # the icon pinned to the chip's left edge (see EFFECT_TIMER_CENTER), and
-    # the name column starts past the chip so nothing can overlap it:
-    #     [ 20px icon ][ timer column ][ effect name ]
+    # Icon-sized chip: the countdown rides on the icon (Font 3, ember gold,
+    # shadowed) and the client's background plate stays a frame rather than a
+    # stretched slab.  See the EFFECT_* block above for why these are one lever.
     text = change_item(
         text, "Button", template,
         lambda b: set_color(

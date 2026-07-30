@@ -228,8 +228,8 @@ def audit_pet_geometry() -> None:
     """Guard the readable 1440p pet hierarchy and every EQ layout variant."""
 
     from restyle_pet import (BUFF_BORDER_INSET, BUFF_CAPACITY, BUFF_CELLS,
-                             BUFF_DECALS, BUFF_RECTS, BUFF_TIMER_FONT,
-                             BUFF_TIMER_HALF_WIDTH, BUTTON_SIZE, COMMAND_ITEMS,
+                             BUFF_DECALS, BUFF_PLATE_BLEED, BUFF_RECTS,
+                             BUFF_TIMER_FONT, BUTTON_SIZE, COMMAND_ITEMS,
                              COMMAND_POSITIONS, PET_PANEL_SIZE,
                              SUBWINDOW_RECTS, TIMER_COLOR, WINDOW_SIZES)
 
@@ -408,16 +408,13 @@ def audit_pet_geometry() -> None:
                 f"{filename} pet buff template must remain "
                 f"{BUFF_CELLS[filename][0]}x{BUFF_CELLS[filename][1]}"
             )
-        # The client centers a pet effect's countdown on its own cell, so a
-        # cell only earns a readable timer column when that center clears the
-        # icon.  The narrow right rail cannot, and says so by keeping the
-        # compact overlay cell; every other rail must prove the clearance.
-        timer_center = template_size[0] // 2
-        has_timer_column = (
-            timer_center - BUFF_TIMER_HALF_WIDTH
-            >= decal_offset[0] + decal_size[0])
-        if has_timer_column != (filename != "EQUI_PetInfoWindow3.xml"):
-            fail(f"{filename} pet effect countdown column changed shape")
+        # The cell may not outgrow its icon: the client stretches a solid
+        # blue/red beneficial-vs-detrimental tile across the whole cell, so a
+        # wider cell turns that tile into a slab of flat colour per effect.
+        if (template_size[0] - (decal_offset[0] + decal_size[0])
+                > BUFF_PLATE_BLEED):
+            fail(f"{filename} pet effect cell outgrew its icon; the "
+                 f"beneficial/detrimental tile becomes a slab")
         if child_int(buff_template, "Font") < BUFF_TIMER_FONT:
             fail(f"{filename} pet countdown fell below the accessible font tier")
         if buff_template.findtext("FontShadow") != "true":
@@ -471,8 +468,8 @@ def audit_pet_geometry() -> None:
         # The compact fixed default has to show a realistic pet's whole effect
         # set at once; the resizable right-click variants remain the home for
         # extreme counts.
-        if filename == "EQUI_PetInfoWindow.xml" and capacity < 20:
-            fail("fixed Pet default must show at least 20 effect positions")
+        if filename == "EQUI_PetInfoWindow.xml" and capacity < 28:
+            fail("fixed Pet default must show at least 28 effect positions")
 
         window_pieces = [node.text for node in window.findall("Pieces")]
         if window_pieces.count("Screen:PetInfoSubWindow") != 1:
@@ -1091,7 +1088,7 @@ def main() -> int:
     print(
         f"  pet {WINDOW_SIZES[pet_default][0]}x{WINDOW_SIZES[pet_default][1]} "
         f"fixed | commands 14 | effects {BUFF_CAPACITY[pet_default]} "
-        f"+ timer column | variants {len(WINDOW_SIZES)}"
+        f"icon cells | variants {len(WINDOW_SIZES)}"
     )
     print("  inventory 660x668 | equipment 23 | ledger 15/15 + 6/6 | footer 6 | persona 23 | bags 12")
     return 0

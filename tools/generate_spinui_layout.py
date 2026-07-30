@@ -169,9 +169,9 @@ PLACEMENTS: dict[str, dict] = {
     # bottom baseline: 8px before PlayerWindow and 7px above the hotbar row.
     # The fixed default spends ultrawide width on a full-capacity effect rail
     # instead of stacking a dark tray overhead.
-    "PetInfoWindow": P(851, 483, 356, 280, show=0),
-    "PetInfoWindow_1": P(1008, 483, 356, 280, show=0),
-    "PetInfoWindow_2": P(1008, 483, 356, 280, show=0),
+    "PetInfoWindow": P(851, 527, 356, 236, show=0),
+    "PetInfoWindow_1": P(1008, 527, 356, 236, show=0),
+    "PetInfoWindow_2": P(1008, 527, 356, 236, show=0),
     "PetInfoWindow_3": P(923, 586, 441, 181, show=0),
     "StanceWnd":     P(1489, 1027, 440, 66, show=1),
     "CastingWindow": P(1557, 966, 310, 46, show=1),
@@ -192,18 +192,18 @@ PLACEMENTS: dict[str, dict] = {
     # July Legends-native effect rows: icon + readable name, backed by the
     # current 500..529 / 600..614 EQType bindings. Older menu variants remain
     # parked but hidden because they predate the Legends row schema.
-    "BuffWindow":                 P(3200, 8, 240, 640, show=1),
-    "BuffWindow_13":              P(3200, 8, 240, 640, show=0),
-    "ShortDurationBuffWindow":    P(2960, 8, 240, 324, show=1),
-    "ShortDurationBuffWindow_13": P(2960, 8, 240, 324, show=0),
+    "BuffWindow":                 P(3224, 8, 216, 640, show=1),
+    "BuffWindow_13":              P(3224, 8, 216, 640, show=0),
+    "ShortDurationBuffWindow":    P(3008, 8, 216, 324, show=1),
+    "ShortDurationBuffWindow_13": P(3008, 8, 216, 324, show=0),
     "GroupWindow":             P(3133, 656, show=1),
     "ExtendedTargetWnd":       P(2946, 656, 170, 300, show=0),
     # Map: translucent glass, top-right but clear of buffs/songs, so it can
     # stay open while running without hiding the HUD or the world.
-    "MapViewWnd":              P(2312, 8, 640, 520,
+    "MapViewWnd":              P(2360, 8, 640, 520,
                                  extra={"Alpha": "235", "FadeToAlpha": "160",
                                         "Fades": "1"}),
-    "TargetOfTargetWindow":    P(2312, 536, 232, 100),
+    "TargetOfTargetWindow":    P(2360, 536, 232, 100),
 
     # --- top center / left utility ------------------------------------------
     "CompassWindow": P(1490, 8),
@@ -297,7 +297,7 @@ def adaptive_placements(profile: ResolutionProfile, preset: str) -> dict[str, di
     # Target-of-target sits under the map. On short screens the raised
     # player/target plates can reach that band; park it beside the target
     # plate instead of inside it (seen at 2560x1080).
-    tot_x, tot_y = max(8, sw - 1128), 536
+    tot_x, tot_y = max(8, sw - 1080), 536
     plate_clash = (
         tot_y < player_y + 193 and tot_y + 100 > player_y and (
             (tot_x < player_x + 360 and tot_x + 232 > player_x)
@@ -313,7 +313,7 @@ def adaptive_placements(profile: ResolutionProfile, preset: str) -> dict[str, di
     # inventory: inventory | bank window | bank bags.
     bank_x = max(inventory_x + 668, center - 720)
     pet_x = min(sw - 412, inventory_x + 676)
-    pet_y = max(8, player_y - 288)
+    pet_y = max(8, player_y - 244)
     bank_y = max(80, min(round(sh * 0.23), chat_top - 406))
 
     placements = {
@@ -325,11 +325,11 @@ def adaptive_placements(profile: ResolutionProfile, preset: str) -> dict[str, di
         "HotButtonWnd11": q(64, max(8, chat_top - 273), 98, 271, show=0),
         "PlayerWindow": q(player_x, player_y, 360, 193, show=1),
         "TargetWindow": q(target_x, player_y, 360, 193, show=1),
-        "PetInfoWindow": q(pet_x, pet_y, 356, 280, show=0),
+        "PetInfoWindow": q(pet_x, pet_y, 356, 236, show=0),
         "PetInfoWindow_1": q(pet_x + 157, pet_y - 24,
-                             356, 280, show=0),
+                             356, 236, show=0),
         "PetInfoWindow_2": q(pet_x + 157, pet_y - 24,
-                             356, 280, show=0),
+                             356, 236, show=0),
         "PetInfoWindow_3": q(pet_x + 72, pet_y + 4,
                              441, 181, show=0),
         "StanceWnd": q(center - 231, chat_top - 119, 440, 66, show=1),
@@ -351,18 +351,18 @@ def adaptive_placements(profile: ResolutionProfile, preset: str) -> dict[str, di
                             528, 56, show=0),
         "HotButtonWnd9": q(min(sw - 536, center + 540), chat_top - 56,
                            528, 56, show=0),
-        "BuffWindow": q(sw - 240, 8, 240, 640, show=1),
-        "BuffWindow_13": q(sw - 240, 8, 240, 640, show=0),
-        "ShortDurationBuffWindow": q(sw - 480, 8, 240, 324, show=1),
-        "ShortDurationBuffWindow_13": q(sw - 480, 8, 240, 324, show=0),
+        "BuffWindow": q(sw - 216, 8, 216, 640, show=1),
+        "BuffWindow_13": q(sw - 216, 8, 216, 640, show=0),
+        "ShortDurationBuffWindow": q(sw - 432, 8, 216, 324, show=1),
+        "ShortDurationBuffWindow_13": q(sw - 432, 8, 216, 324, show=0),
         "GroupWindow": q(sw - 307, group_y, show=1),
         # On 1080-tall screens the plates sit high: the map shortens to 440
         # and extended target tucks under the song column so the utilities
         # never cover the plates or the chat row.
         "ExtendedTargetWnd": (
-            q(sw - 410, 340, 170, 300, show=0) if sh <= 1080
+            q(sw - 432, 340, 170, 300, show=0) if sh <= 1080
             else q(sw - 494, group_y, 170, 300, show=0)),
-        "MapViewWnd": q(max(8, sw - 1128), 8, 640, 440 if sh <= 1080 else 520,
+        "MapViewWnd": q(max(8, sw - 1080), 8, 640, 440 if sh <= 1080 else 520,
                         extra={"Alpha": "235", "FadeToAlpha": "160", "Fades": "1"}),
         "TargetOfTargetWindow": q(tot_x, tot_y, 232, 100),
         "CompassWindow": q(center - 230, 8),
@@ -571,11 +571,11 @@ XML_SIZES = {
     # Player/Target keep their full transparent interaction and buff hosts for
     # placement math even though only the compact lower subframes are painted.
     "PlayerWindow": (360, 193), "TargetWindow": (360, 193),
-    "PetInfoWindow": (356, 280), "BuffWindow": (240, 640),
-    "PetInfoWindow_1": (356, 280), "PetInfoWindow_2": (356, 280),
+    "PetInfoWindow": (356, 236), "BuffWindow": (216, 640),
+    "PetInfoWindow_1": (356, 236), "PetInfoWindow_2": (356, 236),
     "PetInfoWindow_3": (441, 181),
-    "BuffWindow_13": (240, 640), "ShortDurationBuffWindow": (240, 324),
-    "ShortDurationBuffWindow_13": (240, 324), "BigBankWnd": (287, 390),
+    "BuffWindow_13": (216, 640), "ShortDurationBuffWindow": (216, 324),
+    "ShortDurationBuffWindow_13": (216, 324), "BigBankWnd": (287, 390),
     "InventoryWindow": (660, 668), "BreathWindow": (118, 32),
     "GroupWindow": (230, 204),   # four-player Legends group = three companion rows
     "CompassWindow": (460, 36),

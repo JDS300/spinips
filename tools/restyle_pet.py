@@ -9,12 +9,11 @@ buttons directly; SpinUI now does the same while retaining every native
 ScreenID and allowing Legends to inject each label/action.
 
 The compact geometry keeps the proven 356x181 command panel intact. Beneath it
-the fixed default seats a four-row effect rail of icon+countdown chips, so a
-pet's effects stay both fully visible and legible without an empty side rail.
-Resizable top/bottom variants open at the same rail and grow the buff region,
-not the command panel, when the user needs more effect rows. The compact right
-variant is the deliberate exception: too narrow for a timer column, it keeps
-the 24px overlay cell and its 21 visible effects, and also grows independently.
+the fixed default seats a two-row rail of 24px effect cells - 28 positions,
+more than a pet carries - with each countdown drawn on its own icon, so the
+window stays low-profile. Resizable top/bottom variants open at the same rail
+and grow the buff region, not the command panel, when more rows are wanted;
+the right-rail variant grows in both directions from its own 441x181.
 """
 
 from __future__ import annotations
@@ -32,33 +31,23 @@ VARIANTS = tuple(SKIN / f"EQUI_PetInfoWindow{suffix}.xml"
 BUTTON_SIZE = (78, 23)
 
 # --- Companion effect rail -------------------------------------------------
-# EverQuest centers a pet effect's remaining-duration countdown on its own
-# button, exactly as it does in the Spell/Song Effects windows.  A 24px
-# icon-sized cell therefore stamps the countdown straight onto the icon.  The
-# bottom/top rails now use a wider chip whose centered countdown clears the
-# icon pinned to its left edge:
-#
-#   chip x=0                   x=67
-#        [ 20px icon ][ countdown ]
-#                     ^ center = 33
-#
-# The narrow right-hand rail has no room for that, so it deliberately keeps
-# the compact overlay cell; growing it would cost the variant its one reason
-# to exist.
-BUFF_CELLS = {
-    "EQUI_PetInfoWindow.xml": (67, 22),
-    "EQUI_PetInfoWindow1.xml": (67, 22),
-    "EQUI_PetInfoWindow2.xml": (67, 22),
-    "EQUI_PetInfoWindow3.xml": (24, 24),
-}
-BUFF_DECALS = {
-    "EQUI_PetInfoWindow.xml": ((20, 20), (0, 1)),
-    "EQUI_PetInfoWindow1.xml": ((20, 20), (0, 1)),
-    "EQUI_PetInfoWindow2.xml": ((20, 20), (0, 1)),
-    "EQUI_PetInfoWindow3.xml": ((22, 22), (1, 1)),
-}
-# Widest countdown the timer column must swallow without touching the icon.
-BUFF_TIMER_HALF_WIDTH = 13
+# A pet effect cell carries two client-drawn overlays that the skin cannot
+# separate: the remaining-duration countdown, centered on the cell, and the
+# beneficial/detrimental background (an 8px solid blue or red tile) stretched
+# to fill it.  One cell width controls both.  A cell wide enough to give the
+# countdown its own column therefore also stretches that tile into a slab of
+# flat blue per effect, which costs far more than the column buys - so cells
+# stay icon sized, the tile stays a frame around the art, and the countdown
+# rides on the icon in shadowed ember gold.
+BUFF_CELL = (24, 24)
+BUFF_DECAL = ((22, 22), (1, 1))
+BUFF_CELLS = {name: BUFF_CELL for name in (
+    "EQUI_PetInfoWindow.xml", "EQUI_PetInfoWindow1.xml",
+    "EQUI_PetInfoWindow2.xml", "EQUI_PetInfoWindow3.xml")}
+BUFF_DECALS = {name: BUFF_DECAL for name in BUFF_CELLS}
+# A cell may not extend past its icon by more than this, or the background
+# tile stops reading as a frame and becomes a slab.
+BUFF_PLATE_BLEED = 2
 BUFF_TIMER_FONT = 3
 # EverQuest subtracts a bordered host's frame insets before it flows a
 # TileLayoutBox, so every rail is sized for its rows *plus* this much on both
@@ -77,31 +66,31 @@ COMMAND_ITEMS = tuple(f"PIW_Pet{i}_Button" for i in range(14))
 # reads as part of the effect art it sits beside.
 TIMER_COLOR = (248, 214, 140)
 PET_PANEL_SIZE = (356, 181)
-# The bottom/top rails now seat four readable icon+countdown rows instead of a
-# single clipped strip, so the fixed default shows 20 effect positions rather
-# than 14 with their timers stamped on the art.
+# Two 24px rows seat 28 effect positions - comfortably more than a pet carries
+# - in 58px of rail, so the fixed default stays a low-profile command center
+# instead of a tall panel.
 WINDOW_SIZES = {
-    "EQUI_PetInfoWindow.xml": (356, 280),
-    "EQUI_PetInfoWindow1.xml": (356, 280),
-    "EQUI_PetInfoWindow2.xml": (356, 280),
+    "EQUI_PetInfoWindow.xml": (356, 236),
+    "EQUI_PetInfoWindow1.xml": (356, 236),
+    "EQUI_PetInfoWindow2.xml": (356, 236),
     "EQUI_PetInfoWindow3.xml": (441, 181),
 }
 BUFF_RECTS = {
-    "EQUI_PetInfoWindow.xml": (4, 178, 352, 278),
-    "EQUI_PetInfoWindow1.xml": (4, 178, 352, 278),
-    "EQUI_PetInfoWindow2.xml": (4, 2, 352, 102),
+    "EQUI_PetInfoWindow.xml": (4, 178, 352, 234),
+    "EQUI_PetInfoWindow1.xml": (4, 178, 352, 234),
+    "EQUI_PetInfoWindow2.xml": (4, 2, 352, 58),
     "EQUI_PetInfoWindow3.xml": (353, 2, 437, 179),
 }
 SUBWINDOW_RECTS = {
     "EQUI_PetInfoWindow.xml": (0, 0, 356, 181),
     "EQUI_PetInfoWindow1.xml": (0, 0, 356, 181),
-    "EQUI_PetInfoWindow2.xml": (0, 99, 356, 280),
+    "EQUI_PetInfoWindow2.xml": (0, 55, 356, 236),
     "EQUI_PetInfoWindow3.xml": (0, 0, 356, 181),
 }
 BUFF_CAPACITY = {
-    "EQUI_PetInfoWindow.xml": 20,
-    "EQUI_PetInfoWindow1.xml": 20,
-    "EQUI_PetInfoWindow2.xml": 20,
+    "EQUI_PetInfoWindow.xml": 28,
+    "EQUI_PetInfoWindow1.xml": 28,
+    "EQUI_PetInfoWindow2.xml": 28,
     "EQUI_PetInfoWindow3.xml": 21,
 }
 

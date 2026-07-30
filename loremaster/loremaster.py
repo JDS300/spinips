@@ -158,11 +158,57 @@ INITIAL_BACKFILL_BYTES = 2 * 1024 * 1024
 INITIAL_BACKFILL_MINUTES = 30
 MAX_FIGHT_HISTORY = 500
 TIMELINE_BUCKET_SECONDS = 2
-MINI_BASE_WIDTH = 560
+# EverQuest Legends drops five grades of potential mote, and a night of
+# clearing camps buries their loot lines under everything else.  The client
+# names the items in the plural ("Motes of Minor Potential") while a loot line
+# reads "You have looted a <name>", so both forms have to match - as does the
+# unqualified fourth grade, which carries no grade word at all.
+MOTE_RE = re.compile(
+    r"^motes?\s+of\s+(?:(infinitesimal|minor|lesser|major)\s+)?potential$",
+    re.IGNORECASE)
+# Index order is the in-game tier order, 1..5; "" is the unqualified tier 4.
+MOTE_GRADES = ("infinitesimal", "minor", "lesser", "", "major")
+MOTE_TIER_LABELS = ("Infinitesimal", "Minor", "Lesser", "Potential", "Major")
+
+
+def mote_tier_counts(loot) -> list[int]:
+    """Bucket looted potential motes into their five grades, tier 1 -> 5.
+
+    Derived from the session loot ledger rather than a second parse, so the
+    tracker can never disagree with SPOILS about what actually dropped.
+    """
+    counts = [0, 0, 0, 0, 0]
+    if not isinstance(loot, dict):
+        return counts
+    for name, quantity in loot.items():
+        match = MOTE_RE.match(str(name).strip())
+        if match is None:
+            continue
+        try:
+            amount = int(quantity)
+        except (TypeError, ValueError):
+            continue
+        counts[MOTE_GRADES.index((match.group(1) or "").casefold())] += max(
+            0, amount)
+    return counts
+
+
+def fmt_mote_tiers(counts) -> str:
+    """The slim strip readout: five tier counts, tier 1 on the left."""
+    return "/".join(str(max(0, int(n))) for n in counts)
+
+
+MINI_BASE_WIDTH = 520
+# The strip fits itself to its content; this is the floor, so a quiet session
+# with short values still reads as a deliberate bar rather than a chip.
+MINI_MIN_WIDTH = 380
+# The strip shows at most this many stat cells; beyond that it stops being a
+# glance readout.  Five fits the four ledger staples plus the mote tracker.
+MINI_MAX_CELLS = 5
 # Windows names the diagonal resize cursor "size_nw_se"; X11 uses
 # "bottom_right_corner".
 RESIZE_CURSOR = "size_nw_se" if os.name == "nt" else "bottom_right_corner"
-MINI_BASE_HEIGHT = 34
+MINI_BASE_HEIGHT = 30
 
 MINI_CARD_LABELS = {
     "combat": "COMBAT",
@@ -170,6 +216,7 @@ MINI_CARD_LABELS = {
     "loot": "SPOILS",
     "money": "COIN",
     "progress": "PROGRESSION",
+    "motes": "MOTES",
     "faction": "STANDING",
     "travels": "JOURNEY",
 }
@@ -1439,7 +1486,8 @@ def load_config() -> dict:
         "panel_size": [400, 480],
         "locked": False,
         "starred": ["session_dps", "xp_hr", "hours_to_level", "kills"],
-        "starred_cards": ["combat", "kills", "money", "progress"],
+        "starred_cards": ["combat", "kills", "money", "progress", "motes"],
+        "hud_cards_version": 1,
         # Banners are opt-in: quiet by default, one switch in Settings.
         "alerts_enabled": False,
         "alert_sound": True,
@@ -1504,6 +1552,18 @@ def load_config() -> dict:
         except (TypeError, ValueError):
             cfg["opacity"] = 1.0
     cfg["ui_rendering_version"] = 2
+    # The mote tracker is new, so an existing config would never show it.  Add
+    # it to the strip exactly once and leave every other starred choice - and a
+    # deliberate later removal - alone.
+    try:
+        hud_cards_version = int(loaded.get("hud_cards_version", 0) or 0)
+    except (TypeError, ValueError):
+        hud_cards_version = 0
+    if hud_cards_version < 1:
+        starred = cfg.get("starred_cards")
+        if isinstance(starred, list) and "motes" not in starred:
+            starred.append("motes")
+    cfg["hud_cards_version"] = 1
     # Broken custom alert regexes are skipped silently per log line; warn
     # exactly once here so the config author can find and fix them.
     bad_patterns = invalid_custom_alert_patterns(cfg.get("custom_alerts", []))
@@ -3121,6 +3181,7 @@ def run_gui(args):
         ("loot", "SPOILS"),
         ("money", "COIN"),
         ("progress", "PROGRESSION"),
+        ("motes", "MOTES"),
         ("faction", "STANDING"),
         ("travels", "JOURNEY"),
     ]
@@ -3194,6 +3255,8 @@ def run_gui(args):
                 return "session only"
             if key == "progress":
                 return "session only"
+            if key == "motes":
+                return "session only"
             if key == "faction":
                 return "session only"
             if key == "travels":
@@ -3211,9 +3274,19 @@ def run_gui(args):
             return f"{n} item" + ("s" if n != 1 else "")
         if key == "money":
             return fmt_coins(snap["copper"])
+        if key == "motes":
+            counts = mote_tier_counts(snap["loot"])
+            return fmt_mote_tiers(counts) if any(counts) else "none yet"
         if key == "progress":
             if snap["xp_pct_known"]:
-                return f"{snap['xp_pct']:.1f}% xp" + (f", +{stats.levelups} lvl" if stats.levelups else "")
+                # Time to level is the number that decides whether to keep the
+                # camp, so it rides on the strip instead of only in DETAILS.
+                parts = [f"{snap['xp_pct']:.1f}% xp"]
+                if stats.levelups:
+                    parts.append(f"+{stats.levelups} lvl")
+                if snap["hours_to_level"] is not None:
+                    parts.append(f"{fmt_eta(snap['hours_to_level'])} to lvl")
+                return " · ".join(parts)
             if snap["xp_events"]:
                 return f"{snap['xp_events']} xp gain" + ("s" if snap["xp_events"] != 1 else "")
             if stats.skillups:
@@ -3438,6 +3511,16 @@ def run_gui(args):
                 out.append(("row", name, f"\u00d7{n}" if n > 1 else ""))
             if not rows:
                 out.append(("line", "Nothing looted yet", ""))
+        elif key == "motes":
+            counts = mote_tier_counts(snap["loot"])
+            for tier, (label, count) in enumerate(
+                    zip(MOTE_TIER_LABELS, counts), start=1):
+                out.append(("row", f"Tier {tier} · {label}", str(count)))
+            out.append(("row", "Total this session", str(sum(counts))))
+            if not any(counts):
+                out.append(("line", "No potential motes have dropped yet. "
+                                    "Counts are what this session looted, not "
+                                    "what your bags hold.", ""))
         elif key == "money":
             out.append(("row", "Total", fmt_coins(snap["copper"])))
             out.append(("row", "Plat / hour", f"{snap['plat_hr']:.1f}p"))
@@ -3774,24 +3857,27 @@ def run_gui(args):
         for key, label in labels.items():
             _set_text(name_widgets[key], label)
         # Even fully compacted labels can outgrow the strip when values get
-        # long (big DPS numbers, coin totals). A clipped word is worse than a
-        # slightly wider HUD, so grow the window to the real measured need
-        # (cap, borders, and pack padding included via requested widths).
+        # long (big DPS numbers, coin totals), and a clipped word is worse than
+        # a slightly wider HUD. But the strip used to only ever grow, so once a
+        # long value had been seen the extra pixels stayed forever as dead space
+        # between the last stat and the right-hand tools. Track the real
+        # measured need and follow it in both directions, so the strip is
+        # exactly as long as what it is showing.
         if state.get("mini"):
             cells = widgets.get("mini_cells")
             if cells and controls:
                 cells.update_idletasks()
-                needed_width = (
-                    controls.winfo_reqwidth() + cells.winfo_reqwidth() + 25)
+                needed_width = min(1000, max(
+                    MINI_MIN_WIDTH,
+                    controls.winfo_reqwidth() + cells.winfo_reqwidth() + 25))
                 current_width = int(widgets.get("mini_width", MINI_BASE_WIDTH))
-                if needed_width > current_width:
-                    new_width = min(1000, needed_width)
-                    widgets["mini_width"] = new_width
+                if needed_width != current_width:
+                    widgets["mini_width"] = needed_width
                     widgets["mini_available_width"] = max(
                         80, int(widgets.get("mini_available_width", 0))
-                        + new_width - current_width)
+                        + needed_width - current_width)
                     try:
-                        root.geometry(f"{new_width}x{root.winfo_height()}")
+                        root.geometry(f"{needed_width}x{root.winfo_height()}")
                     except tk.TclError:
                         pass
 
@@ -3814,9 +3900,10 @@ def run_gui(args):
         controls.pack(side="right", fill="y", padx=(1, 3))
         widgets["mini_controls"] = controls
         widgets["mini_width"] = mini_width
-        # The mini strip is a stats readout: the log-health dot, LOCK,
-        # SETTINGS, and DETAILS ship here. Lore Lens lives on the details
-        # HUD, keeping this row compact with most of its width for DPS cells.
+        # The mini strip is a stats readout, so it carries only the controls a
+        # glance needs: the log-health dot, LOCK, and DETAILS. SETTINGS and
+        # Lore Lens live on the DETAILS footer, one click away, which keeps
+        # every spare pixel here on the ledger cells.
         widgets["mini_log"] = tk.Label(
             controls, text="●", fg=T["dim"], bg=T["bg"], font=FONT_S,
             cursor="hand2", padx=3)
@@ -3827,11 +3914,6 @@ def run_gui(args):
             font=FONT_RUNE, cursor="hand2", padx=5)
         widgets["mini_lock"].pack(side="left", pady=3)
         widgets["mini_lock"].bind("<Button-1>", lambda _e: toggle_lock())
-        widgets["mini_settings"] = tk.Label(
-            controls, text="SETTINGS", fg=T["dim"], bg=T["raised"],
-            font=FONT_RUNE, cursor="hand2", padx=5)
-        widgets["mini_settings"].pack(side="left", padx=(3, 0), pady=3)
-        widgets["mini_settings"].bind("<Button-1>", open_settings)
         details = tk.Label(controls, text="DETAILS", fg=T["cyan"], bg=T["raised"],
                            font=FONT_RUNE, cursor="hand2", padx=6)
         details.pack(side="left", padx=(3, 0), pady=3)
@@ -3850,7 +3932,7 @@ def run_gui(args):
         widgets["mini_names"] = {}
         names = MINI_CARD_LABELS
         starred = [k for k in (cfg.get("starred_cards") or ["combat"])
-                   if k in names][:4]
+                   if k in names][:MINI_MAX_CELLS]
         for i, key in enumerate(starred):
             if i:
                 tk.Frame(cells, bg=T["gold"], width=1, height=14).pack(
@@ -4477,6 +4559,9 @@ def selftest() -> int:
         line(9, "You gain party experience!! (0.50%)"),
         line(9, "You receive 2 platinum, 4 gold from the corpse."),
         line(9, "--You have looted a Froglok Fine Mesh from a froglok shin knight's corpse.--"),
+        line(9, "--You have looted a Motes of Infinitesimal Potential from a "
+                "froglok shin knight's corpse.--"),
+        line(9, "--You have looted a Motes of Major Potential.--"),
         # 30s of nothing -> fight closes at 10s gap
         line(40, "You healed Grimlord for 500 (650) hit points by Light Healing."),
         line(41, "Nexus slashes a gnoll for 40 points of damage."),  # bystander, no fight
@@ -4515,6 +4600,9 @@ def selftest() -> int:
     assert snap["healing_done"] == 500 and stats.overheal == 150
     assert abs(snap["plat"] - 2.4) < 1e-9, snap["plat"]
     assert snap["loot"]["Froglok Fine Mesh"] == 1
+    # End to end: a real loot line reaches the mote tracker through the same
+    # ledger SPOILS reads, so the two can never disagree.
+    assert mote_tier_counts(snap["loot"]) == [1, 0, 0, 0, 1]
     assert snap["xp_events"] == 2
     assert abs(snap["xp_pct"] - 0.75) < 1e-9
     assert stats.level == 40 and stats.xp_since_level == 0.0
@@ -4641,7 +4729,33 @@ def selftest() -> int:
         "Cloak of Flames")
     assert extract_item_query("[Cloak of Flames +4]")[0] == "Cloak of Flames"
     assert r"C:\EQLegends\Logs" in DEFAULT_LOG_DIRS
-    assert MINI_BASE_WIDTH == 560 and MINI_BASE_HEIGHT == 34
+    # The strip fits itself to its content, so these are its floor and its
+    # deck height, not the width it ends up at.
+    assert MINI_BASE_WIDTH == 520 and MINI_BASE_HEIGHT == 30
+    assert MINI_MIN_WIDTH < MINI_BASE_WIDTH
+    # SETTINGS belongs to the DETAILS footer; the strip carries LOCK + DETAILS.
+    assert "MOTES" in MINI_CARD_LABELS.values()
+    assert MINI_MAX_CELLS == 5
+
+    # Potential-mote tracking: plural item names, the unqualified fourth tier,
+    # and casing all bucket into the in-game tier order.
+    assert mote_tier_counts({
+        "Motes of Infinitesimal Potential": 27,
+        "Mote of Minor Potential": 32,
+        "motes of lesser potential": 3,
+        "Motes of Potential": 2,
+        "Mote of Major Potential": 1,
+        "Froglok Fine Mesh": 4,
+    }) == [27, 32, 3, 2, 1]
+    assert fmt_mote_tiers([27, 32, 3, 2, 1]) == "27/32/3/2/1"
+    assert mote_tier_counts({}) == [0, 0, 0, 0, 0]
+    assert mote_tier_counts(None) == [0, 0, 0, 0, 0]
+    # Near-misses must not be swept into a tier.
+    assert mote_tier_counts({
+        "Mote of Potential Greatness": 5,
+        "Shard of Minor Potential": 5,
+        "Motes of Major Potentials": 5,
+    }) == [0, 0, 0, 0, 0]
     wiki_selftest()
 
     # coin parsing
