@@ -116,6 +116,84 @@ class MoteTrackerTests(unittest.TestCase):
             [i for i, g in enumerate(LOREMASTER.MOTE_GRADES) if not g], [3])
 
 
+class MoteAcquisitionTests(unittest.TestCase):
+    """A mote has to be counted however the client announces it.
+
+    The tracker first derived its counts from the loot ledger, and the ledger
+    understood exactly two sentences - both requiring the article "a"/"an".
+    A stacked drop or a plain "You receive ..." system line therefore never
+    reached it at all, which is why a looted Mote of Major Potential could go
+    unreported.
+    """
+
+    def feed(self, *messages):
+        stats = LOREMASTER.SessionStats("Spin")
+        for index, message in enumerate(messages):
+            parsed = LOREMASTER.parse_line(
+                f"[Wed Jul 30 01:00:{index:02d} 2026] {message}")
+            if parsed:
+                stats.apply(*parsed)
+        return stats.motes
+
+    def test_corpse_loot_line_counts(self):
+        self.assertEqual(
+            self.feed("--You have looted a Mote of Major Potential.--"),
+            [0, 0, 0, 0, 1] + [0] * 5)
+        self.assertEqual(
+            self.feed("--You have looted a Mote of Major Potential from a "
+                      "gnoll pup's corpse.--"),
+            [0, 0, 0, 0, 1] + [0] * 5)
+
+    def test_a_stack_counts_its_whole_stack(self):
+        self.assertEqual(
+            self.feed("--You have looted 5 Motes of Minor Potential.--"),
+            [0, 5] + [0] * 8)
+
+    def test_system_lines_without_dashes_or_an_article_count(self):
+        for message in (
+            "You receive a Mote of Major Potential.",
+            "You have received a Mote of Major Potential.",
+            "You gain a Mote of Major Potential!",
+            "You have gained a Mote of Major Potential.",
+            "You acquired a Mote of Major Potential.",
+            "You found a Mote of Major Potential",
+            "You looted Mote of Major Potential.",
+        ):
+            with self.subTest(message=message):
+                self.assertEqual(
+                    self.feed(message), [0, 0, 0, 0, 1] + [0] * 5)
+
+    def test_quantity_is_honoured_on_a_system_line(self):
+        self.assertEqual(
+            self.feed("You have gained 3 Motes of Greater Potential."),
+            [0] * 5 + [3] + [0] * 4)
+
+    def test_a_single_line_is_never_counted_twice(self):
+        # A corpse-loot line matches the loot pattern; the last-resort mote
+        # pattern must not also claim it.
+        self.assertEqual(
+            self.feed("--You have looted a Mote of Infinite Potential.--"),
+            [0] * 9 + [1])
+
+    def test_chat_naming_the_item_is_not_a_mote_you_looted(self):
+        for message in (
+            "Aria tells you, 'You looted a Mote of Major Potential'",
+            "You tell the guild, 'you receive a mote of major potential'",
+            "Aria says, 'I found a Mote of Infinite Potential'",
+        ):
+            with self.subTest(message=message):
+                self.assertEqual(self.feed(message), [0] * 10)
+
+    def test_ordinary_loot_still_reaches_the_ledger_untouched(self):
+        stats = LOREMASTER.SessionStats("Spin")
+        parsed = LOREMASTER.parse_line(
+            "[Wed Jul 30 01:00:00 2026] --You have looted a Froglok Fine "
+            "Mesh from a froglok shin knight's corpse.--")
+        stats.apply(*parsed)
+        self.assertEqual(stats.loot["Froglok Fine Mesh"], 1)
+        self.assertEqual(stats.motes, [0] * 10)
+
+
 class StripGeometryTests(unittest.TestCase):
     def test_strip_can_shrink_below_its_starting_width(self):
         # The strip fits itself to its content; without a floor under the base
