@@ -278,27 +278,31 @@ The constants live in one place per window - `EFFECT_*` in `tools/restyle_combat
 
 The ring under your target is the only part of SpinUI that lives in the world instead of on a window, and it has one job: answer *can this thing kill me?* before you pull. The stock skin ships a sheet of flat grey noise there, so every consider tier reads as the same milky smear and the only thing separating "harmless" from "deadly" is a hue that bright zone lighting washes straight out.
 
-SpinUI ships its own ring. `TargetIndicator.tga` is a set of **crisp concentric rings** - a bright core, a soft glow, and a dim hairline between each pair - on a near-black field that is invisible under the client's additive blending, so you get filigree instead of a glowing puddle. The sheet stays neutral grey so every tint stays true.
+SpinUI ships its own ring. `TargetIndicator.tga` is a **soft breathing glow** - two slow, seamless swells crossing each other - on a neutral-grey sheet, so every con tint stays true and the ring reads as a lit band on the ground rather than a flat wash.
 
-Structure lives on the **radial axis only**, and that detail is the whole design. The client walks the sheet outward along the indicator's concentric circles and scrolls it back towards the center, so one row of the sheet is a circle on the ground and one column is a spoke. SpinUI's first sheet carried a lattice on both axes; in game its cross-axis ticks and nodes showed up as bright streaks radiating out of the target instead of rings around it. The sheet now puts every ring on the radial axis and leaves the circumference with nothing but a 7% brightness breath - enough that the ring is not a flat stencil, far too shallow to read as a spoke.
+**It deliberately has no hard feature on either axis, and that is the design.** The client does not document which way it lays a sheet across the indicator, and the obvious reading (texture across = angle, texture down = radius) is backwards here. Two structured sheets proved it in game: the first carried 12 features along its rows and drew about 12 streaks radiating out of the target; the second carried 16 ring cores and drew about 16. Image rows run around the circumference, so a bright row is a spoke, not a ring.
+
+Transposing would have been a third guess. A sheet with no edges cannot draw an edge in the wrong direction, so the art stays smooth and **every bit of the ring's meaning lives in the ramp** - which the same in-game passes confirmed is working: tint, opacity and radius all read correctly.
+
+If you want to settle the mapping, regenerate with `--style rings` and look at the ground: **rings** mean image columns run radially, **spokes** mean they run around the circumference. `--style flat` restores vanilla's featureless wash in one command. The release audit pins the shipped sheet to the safe style, so neither experiment can ship by accident, and it fails on any brightness step big enough to read as an edge.
 
 The ramp in `TargetIndicator.ini` states each tier's threat **five** ways at once, so it survives colour-blindness and noon on a beach alike:
 
-| Consider | Ring | Opacity | Inward pull | Rings visible | Radius |
+| Consider | Ring | Opacity | Inward pull | Sweep | Radius |
 |---|---|---|---|---|---|
-| Trivial | slate | 140 | 0.0004 | ~1.6 | smallest |
-| Very easy | jade | 175 | 0.0006 | ~1.9 | ↓ |
-| Easy | teal | 195 | 0.0008 | ~2.2 | ↓ |
-| Fairly easy | azure | 212 | 0.0010 | ~2.6 | ↓ |
-| Even match | parchment | 232 | 0.0013 | ~2.9 | ↓ |
-| Difficult | ember gold | 248 | 0.0018 | ~3.4 | ↓ |
-| **Deadly** | **crimson** | **255** | **0.0026** | **~3.8** | widest, and the only tier that pulses |
+| Trivial | slate | 140 | 0.0004 | widest, slowest | smallest |
+| Very easy | jade | 175 | 0.0006 | ↓ | ↓ |
+| Easy | teal | 195 | 0.0008 | ↓ | ↓ |
+| Fairly easy | azure | 212 | 0.0010 | ↓ | ↓ |
+| Even match | parchment | 232 | 0.0013 | ↓ | ↓ |
+| Difficult | ember gold | 248 | 0.0018 | ↓ | ↓ |
+| **Deadly** | **crimson** | **255** | **0.0026** | tightest, busiest | widest, and the only tier that pulses |
 
 `PointCount` also rises from the stock 64 to 128, so the ring reads as a circle rather than a polygon when you are standing on top of your target.
 
 * Everything reloads live - `/indicator off` then `/indicator on` - so you can tune it without leaving the game.
 * Too much motion? Set `TwistSpeed=0.0` under `[Deadly]`; the rest of the ramp keeps working.
-* Regenerate the art and the ramp together with `python tools/generate_target_ring.py`; edit the `CON_TIERS` table in that script rather than hand-patching the ini, or the shipped texture, the ini and the preview above stop agreeing. `tools/audit_target_ring.py` fails the release if the ini drifts from the table, if the sheet picks up a colour cast, or if any tier stops escalating over the one below it.
+* Regenerate the art and the ramp together with `python tools/generate_target_ring.py`; edit the `CON_TIERS` table in that script rather than hand-patching the ini, or the shipped texture, the ini and the preview above stop agreeing. `tools/audit_target_ring.py` fails the release if the ini drifts from the table, if the sheet is not the shipped style, if it picks up a colour cast or a hard edge, or if any tier stops escalating over the one below it.
 * Ground decals (`DecalIndicator.ini`) that draw the same sheet follow it at the same lattice density; the elemental `dcl_*` spell decals are untouched.
 
 ---

@@ -7,14 +7,16 @@ per consider colour.  The stock skin ships a flat sheet of grey noise there, so
 every con reads as the same milky smear on the ground and the only difference
 between "harmless" and "will kill you" is a hue the world lighting washes out.
 
-This generator writes SpinUI's own ring sheet: a near-black field (invisible
-under additive blending) carrying crisp concentric rings — a bright core, a
-soft glow, and a dim hairline between each pair — that the client scrolls
-inward. Structure lives on the radial axis only; see the RING_* block below for
-why, and for what happens when it does not. The sheet stays neutral grey so
-`TargetIndicator.ini` owns every colour.
+This generator writes SpinUI's own ring sheet. It deliberately carries no hard
+feature on either axis — see the block below for the two in-game passes that
+made that the right answer — so whichever way the client lays it across the
+indicator, the result is one soft, slowly breathing glow rather than streaks
+pointing the wrong way. The sheet stays neutral grey so `TargetIndicator.ini`
+owns every colour, and that ini is where all of the ring's meaning lives.
 
 Run from the repo root:  python3 tools/generate_target_ring.py
+Confirm the mapping:     python3 tools/generate_target_ring.py --style rings
+Restore vanilla's wash:  python3 tools/generate_target_ring.py --style flat
 
 The companion ramp lives in spinui_reloaded/TargetIndicator.ini, which encodes
 threat five ways at once — hue, opacity, inward speed, ring count, and radius —
@@ -34,35 +36,48 @@ PREVIEW_DIR = REPO / "docs" / "previews"
 
 SIZE = 256
 
-# --- Which way the sheet lies on the ring ----------------------------------
-# The client builds the indicator as concentric circles of vertices and walks
-# the sheet outward along them, scrolling it back towards the center: U runs
-# once around the circumference, V runs radially.  So a *row* of this sheet is
-# a circle drawn on the ground, and a *column* is a spoke.
+# --- Why this sheet has no hard edges anywhere ------------------------------
+# The client will not say which way it lays a sheet across the indicator, and
+# two in-game passes proved the natural reading (u = angle, v = radius) is
+# backwards here: both sheets carried their structure along image ROWS, and
+# both drew that structure as streaks radiating out of the target rather than
+# rings around it - the first with 12 features and about 12 streaks, the second
+# with 16 ring cores and about 16 streaks.  Image rows run around the
+# circumference; a bright row is a spoke.
 #
-# The first SpinUI sheet carried a lattice on both axes - rings across V plus
-# ticks and bright nodes across U - and in game the U structure is what showed
-# up: bright streaks radiating out of the target instead of rings around it.
-# Structure therefore belongs on V alone.  U gets nothing but a whisper of
-# brightness modulation, far too shallow to read as a spoke.
+# Transposing would be a third guess.  Instead the shipped sheet carries no
+# hard feature on either axis: two smooth sinusoids that never reach zero and
+# never form a line, so whichever way the client maps it the result is one
+# soft, slowly breathing glow.  A sheet with no edges cannot draw an edge in
+# the wrong direction.  All of the ring's *meaning* lives in the con ramp in
+# TargetIndicator.ini, which the last pass confirmed works: the tints, the
+# opacity and the radius are already reading correctly in game.
 #
-# Only powers of two tile 256 seamlessly, so the ring pitch is 16 rows.  The
-# client shows TextureScale x 256 rows at once, which is why the ini's scale
-# ramp doubles as a ring-count ramp: 0.10 shows ~1.6 rings, 0.24 shows ~3.8.
-RING_PERIOD = 16
-RING_CORE = 1.5           # half-width of a ring's bright core, in rows
-RING_FALLOFF = 5.0        # how far a ring's glow reaches
-HAIRLINE_OFFSET = RING_PERIOD / 2
-ANGULAR_LOBES = 6         # integer cycles, so U stays seamless
-ANGULAR_DEPTH = 0.07      # +/- 7%: life around the ring, never a spoke
+# `--style rings` regenerates the structured variant with its rings on image
+# columns, for anyone who wants to confirm the mapping in game; the release
+# audit pins the shipped sheet to the safe style so an experiment cannot ship.
+SHEET_STYLES = ("glow", "rings", "flat")
+DEFAULT_SHEET_STYLE = "glow"
 
-BASE = 18                 # faint ground glow so the ring never disappears
+# Smooth style: a wide swell crossed by a slower, shallower one.  Both periods
+# divide 256 so the sheet tiles seamlessly, and the floor stays well clear of
+# black so no gap can read as a division between features.
+GLOW_MID = 150
+GLOW_SWELL = (64, 60)     # (period in pixels, amplitude) - the primary breath
+GLOW_CROSS = (128, 26)    # the slower cross-axis breath
+FLAT_LEVEL = 190          # vanilla's featureless wash, for a one-command revert
+
+# Structured style (experimental, not shipped): crisp concentric rings on image
+# columns.  Only powers of two tile 256 seamlessly, so the pitch is 16px.
+RING_PERIOD = 16
+RING_CORE = 1.5
+RING_FALLOFF = 5.0
+RING_BASE = 18
 RING_PEAK = 240
-HAIRLINE_PEAK = 96
 
 # Threat ramp shared by the generated preview and TargetIndicator.ini.  Each
 # tier repeats its meaning in four channels: hue, opacity, inward drift, and
-# how many rings are visible at once.
+# how much of the sheet sweeps past at once.
 CON_TIERS = (
     # key, label, rgb, alpha, texture_scale, texture_speed, fade_end, twist
     ("Trivial", "TRIVIAL", (108, 116, 124), 140, 0.100, 0.0004, 16, 0.0),
@@ -83,6 +98,11 @@ CON_TIERS = (
 POINT_COUNT = 128
 
 
+def _swell(position: float, period: int, amplitude: float) -> float:
+    """One seamless sinusoid; never a line, never zero."""
+    return amplitude * math.sin(2.0 * math.pi * position / period)
+
+
 def _wrapped_distance(value: float, period: float) -> float:
     """Distance to the nearest multiple of ``period``, wrapping both ways."""
     offset = value % period
@@ -90,7 +110,7 @@ def _wrapped_distance(value: float, period: float) -> float:
 
 
 def _ring(distance: float) -> float:
-    """Smooth 0..1 profile across one ring."""
+    """Smooth 0..1 profile across one ring (structured style only)."""
     if distance <= RING_CORE:
         return 1.0
     if distance >= RING_FALLOFF:
@@ -99,32 +119,25 @@ def _ring(distance: float) -> float:
     return math.cos(ratio * math.pi / 2.0) ** 2
 
 
-def _hairline(distance: float) -> float:
-    if distance <= 0.6:
-        return 1.0
-    if distance >= 2.6:
-        return 0.0
-    return 1.0 - (distance - 0.6) / 2.0
-
-
-def build_sheet() -> list[list[int]]:
+def build_sheet(style: str = DEFAULT_SHEET_STYLE) -> list[list[int]]:
     """Render the neutral-grey ring sheet as a SIZE x SIZE luminance grid."""
+    if style not in SHEET_STYLES:
+        raise ValueError(f"unknown sheet style: {style}")
     rows: list[list[int]] = []
     for y in range(SIZE):
-        centre = y + 0.5
-        value = float(BASE)
-        value += _ring(_wrapped_distance(centre, RING_PERIOD)) * (RING_PEAK - BASE)
-        value += _hairline(
-            _wrapped_distance(centre - HAIRLINE_OFFSET, RING_PERIOD)
-        ) * (HAIRLINE_PEAK - BASE) * 0.8
         row: list[int] = []
         for x in range(SIZE):
-            # Shallow, seamless breathing around the circumference so the ring
-            # is not a flat stencil.  Kept well below the threshold where an
-            # amplitude change starts to read as a spoke.
-            lobe = 1.0 + ANGULAR_DEPTH * math.sin(
-                2.0 * math.pi * ANGULAR_LOBES * (x + 0.5) / SIZE)
-            row.append(max(0, min(255, int(round(value * lobe)))))
+            if style == "flat":
+                value = float(FLAT_LEVEL)
+            elif style == "rings":
+                value = RING_BASE + _ring(
+                    _wrapped_distance(x + 0.5, RING_PERIOD)
+                ) * (RING_PEAK - RING_BASE)
+            else:
+                value = (GLOW_MID
+                         + _swell(y + 0.5, *GLOW_SWELL)
+                         + _swell(x + 0.5, *GLOW_CROSS))
+            row.append(max(0, min(255, int(round(value)))))
         rows.append(row)
     return rows
 
@@ -268,6 +281,16 @@ Spin's UI Reloaded - the "Vellum & Ember" target ring
 	hand-patching this file, or the shipped art and the documentation preview
 	stop agreeing with what the client draws.
 
+	TargetIndicator.tga carries no hard feature on either axis on purpose. The
+	client does not document which way it lays a sheet across the indicator,
+	and two attempts that structured one axis both drew that structure as
+	streaks radiating out of the target instead of rings around it. A sheet
+	with no edges cannot draw an edge in the wrong direction, so the art is a
+	soft breathing glow and every bit of the ring's meaning lives in the ramp
+	below. To confirm the mapping in game, regenerate with --style rings and
+	look at the ground: rings mean image columns run radially, spokes mean
+	they run around the circumference.
+
 	The client only ever tells the ring which consider tier it is drawing, so
 	that tier is where all the meaning has to live.  Colour alone is not enough:
 	on a bright beach at noon a yellow ring and a white ring are the same ring.
@@ -276,7 +299,7 @@ Spin's UI Reloaded - the "Vellum & Ember" target ring
 	  hue          slate > jade > teal > azure > parchment > gold > crimson
 	  Alpha        140 (harmless) climbing to 255 (deadly)
 	  TextureSpeed 0.0004 (a slow drift) climbing to 0.0026 (pulled inward fast)
-	  TextureScale 0.10 (about 1.6 rings) climbing to 0.24 (about 3.8 rings)
+	  TextureScale 0.10 (a slow, wide sweep) climbing to 0.24 (a tight, busy one)
 	  FadeEnd      16 (a small quiet ring) growing to 22 (the widest ring)
 
 	so a dangerous target reads as dangerous from motion and weight even if you
@@ -397,13 +420,23 @@ def main(argv: list[str] | None = None) -> int:
         "--no-preview", action="store_true",
         help="write only the shipped texture",
     )
+    parser.add_argument(
+        "--style", choices=SHEET_STYLES, default=DEFAULT_SHEET_STYLE,
+        help=("sheet character: 'glow' is the shipped, edge-free sheet; "
+              "'rings' is the structured experiment; 'flat' restores the "
+              "vanilla featureless wash"),
+    )
     args = parser.parse_args(argv)
 
-    rows = build_sheet()
+    rows = build_sheet(args.style)
     target = args.output_skin / "TargetIndicator.tga"
     save_tga(rows, target)
     print(f"wrote {target.relative_to(REPO) if target.is_relative_to(REPO) else target}"
-          f"  ({SIZE}x{SIZE} neutral lattice, 32-bit)")
+          f"  ({SIZE}x{SIZE} neutral {args.style} sheet, 32-bit)")
+    if args.style != DEFAULT_SHEET_STYLE:
+        print(f"  note: '{args.style}' is not the shipped sheet — "
+              f"tools/audit_target_ring.py will fail until you rerun without "
+              f"--style")
     ini = args.output_skin / "TargetIndicator.ini"
     ini.write_text(build_ini(), encoding="ascii", newline="\n")
     print(f"wrote {ini.relative_to(REPO) if ini.is_relative_to(REPO) else ini}"

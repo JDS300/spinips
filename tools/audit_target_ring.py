@@ -10,7 +10,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from generate_target_ring import (CON_TIERS, POINT_COUNT, SIZE, build_ini)
+from generate_target_ring import (CON_TIERS, DEFAULT_SHEET_STYLE, POINT_COUNT,
+                                  SIZE, build_ini, build_sheet, save_tga)
 
 REPO = Path(__file__).resolve().parent.parent
 SKIN = REPO / "spinui_reloaded"
@@ -102,6 +103,11 @@ def audit_textures(*section_maps: dict[str, dict[str, str]]) -> int:
     return len(referenced)
 
 
+# A brightness step this large is a visible edge, and the client will happily
+# draw an edge as a spoke if it maps the sheet the way we did not expect.
+MAX_NEIGHBOUR_STEP = 40
+
+
 def audit_ring_sheet() -> None:
     path = SKIN / "TargetIndicator.tga"
     raw = path.read_bytes()
@@ -115,12 +121,41 @@ def audit_ring_sheet() -> None:
     body = raw[18:]
     if len(body) != width * height * 4:
         fail("ring sheet payload does not match its header")
+    # The shipped sheet is the safe, edge-free style. --style rings and --style
+    # flat exist to test the client's mapping and to fall back to vanilla, and
+    # neither may reach a release.
+    expected = bytearray()
+    rows = build_sheet(DEFAULT_SHEET_STYLE)
+    for y in range(len(rows) - 1, -1, -1):
+        for value in rows[y]:
+            expected += bytes((value, value, value, value))
+    if bytes(body) != bytes(expected):
+        fail(
+            "TargetIndicator.tga is not the shipped "
+            f"'{DEFAULT_SHEET_STYLE}' sheet; run "
+            "`python tools/generate_target_ring.py` with no --style"
+        )
     # The client multiplies the sheet by each tier's vertex colour, so any hue
     # baked into the art would poison every tint in the ramp.
     for offset in range(0, len(body), 4 * 97):  # coprime stride, whole sheet
         blue, green, red = body[offset], body[offset + 1], body[offset + 2]
         if not blue == green == red:
             fail("ring sheet must stay neutral grey so the con tints stay true")
+    # No hard feature on either axis: this is the invariant that keeps the ring
+    # from drawing as streaks when the client maps the sheet the other way.
+    for index in range(SIZE):
+        column = [rows[y][index] for y in range(SIZE)]
+        row = rows[index]
+        for series, axis in ((column, "rows"), (row, "columns")):
+            for position, value in enumerate(series):
+                if abs(value - series[position - 1]) > MAX_NEIGHBOUR_STEP:
+                    fail(
+                        f"ring sheet has a hard edge along its {axis}; the "
+                        f"client can draw that as a spoke"
+                    )
+                if value <= 0:
+                    fail("ring sheet must never fall to black; a gap reads as "
+                         "a division between features")
 
 
 def audit_decal_ini() -> dict[str, dict[str, str]]:
@@ -152,10 +187,11 @@ def main() -> int:
     print("Target ring audit: ALL PASS", flush=True)
     print(
         f"  {len(CON_TIERS)} consider tiers escalate on hue + alpha + speed + "
-        f"density + radius"
+        f"sweep + radius"
     )
     print(
-        f"  sheet {SIZE}x{SIZE} neutral | PointCount {POINT_COUNT} | "
+        f"  sheet {SIZE}x{SIZE} neutral {DEFAULT_SHEET_STYLE}, no hard edge on "
+        f"either axis | PointCount {POINT_COUNT} | "
         f"{textures} indicator textures resolved"
     )
     return 0
