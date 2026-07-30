@@ -20,6 +20,8 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "tools"))
 import generate_spinui_layout as LAYOUT  # noqa: E402
+from restyle_combat import (EFFECT_CHIP, EFFECT_NAME_X,  # noqa: E402
+                           EFFECT_ROW_WIDTH)
 from spinui_theme import (BG1, BG2, BG3, CYAN, EMBER, ENDUR, GOLD, GOLD_BRIGHT,
                           GREEN, HP, LINE, LINE_SOFT, MANA, PARCHMENT, PET,
                           TEXT, TEXT_DIM, VOID)
@@ -378,10 +380,14 @@ def draw_buffs(canvas, x, y, title, rows, w=200, h=None):
         by = y + 18 + i * 20
         d.rectangle([x + 1, by, x + w - 2, by + 19],
                     fill=BG1 + (190,), outline=LINE_SOFT + (150,))
-        slot(canvas, x + 3, by, 20, ICONS[i % len(ICONS)])
-        text(canvas, (x + 27, by + 2), names[i % len(names)], size=10, color=TEXT)
-        text(canvas, (x + w - 6, by + 2), f"{27 - i}m", size=9,
-             color=DIM, anchor="ra")
+        slot(canvas, x + 1, by, 20, ICONS[i % len(ICONS)])
+        # The client centers a buff's countdown on its own button, so the
+        # preview has to put it exactly where the chip's midpoint falls -
+        # between the icon and the name column, never at the row's edge.
+        text(canvas, (x + 1 + EFFECT_CHIP[0] // 2, by + 3), f"{27 - i}m",
+             size=9, color=GOLD_BRIGHT, anchor="ma")
+        text(canvas, (x + EFFECT_NAME_X, by + 2), names[i % len(names)],
+             size=10, color=TEXT)
 
 
 def draw_map(canvas, x, y, w, h):
@@ -559,7 +565,7 @@ def draw_compass(canvas, x, y, w=460, h=34):
 
 
 def draw_songs(canvas, x, y):
-    draw_buffs(canvas, x, y, "Song Effects", 6, w=216, h=324)
+    draw_buffs(canvas, x, y, "Song Effects", 6, w=EFFECT_ROW_WIDTH, h=324)
 
 
 # ---------------------------------------------------------------------------
@@ -644,7 +650,7 @@ def main():
 
     # right column
     x, y, w, h = xy("BuffWindow")
-    draw_buffs(canvas, x, y, "Spell Effects", 18, w=216, h=640)
+    draw_buffs(canvas, x, y, "Spell Effects", 18, w=EFFECT_ROW_WIDTH, h=640)
     x, y, w, h = xy("ShortDurationBuffWindow")
     draw_songs(canvas, x, y)
     draw_group(canvas, *xy("GroupWindow")[:2])

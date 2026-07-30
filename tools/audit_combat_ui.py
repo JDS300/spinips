@@ -9,6 +9,12 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+# The effects-row grid is authored once in tools/restyle_combat.py; the audit
+# imports it so a geometry change can never pass by editing only one side.
+from restyle_combat import (EFFECT_CHIP, EFFECT_ICON, EFFECT_NAME_WIDTH,
+                           EFFECT_NAME_X, EFFECT_ROW_WIDTH,
+                           EFFECT_TIMER_FONT, EFFECT_TIMER_HALF_WIDTH)
+
 
 REPO = Path(__file__).resolve().parent.parent
 SKIN = REPO / "spinui_reloaded"
@@ -259,11 +265,41 @@ def audit_group_and_extended_targets() -> None:
             require_fill(extended, name, expected)
 
 
+def audit_effect_row_geometry(root: ET.Element, prefix: str, label: str) -> None:
+    """Prove the countdown column mathematically, not just by coordinates.
+
+    The client centers a buff's remaining-duration countdown on its own
+    button, so the chip must be wide enough that a worst-case countdown
+    clears both the spell icon on its left and the effect-name column on
+    its right.  Anything narrower stamps the timer back onto the icon.
+    """
+    chip = item(root, "Button", f"{prefix}_Player_Buff_Template")
+    chip_size = dimensions(chip)
+    if chip_size != EFFECT_CHIP:
+        fail(f"{label} effect chip must stay {EFFECT_CHIP[0]}x{EFFECT_CHIP[1]}")
+    if dimensions_at(chip, "DecalSize") != EFFECT_ICON:
+        fail(f"{label} icon geometry drifted")
+    if (child_int(chip, "DecalOffset/X"),
+            child_int(chip, "DecalOffset/Y")) != (0, 0):
+        fail(f"{label} icon left the chip's left edge")
+    if child_int(chip, "Font") < EFFECT_TIMER_FONT:
+        fail(f"{label} countdown fell below the accessible font tier")
+    if chip.findtext("FontShadow") != "true":
+        fail(f"{label} countdown lost its shadow")
+    if color(chip, "TextColor") != GOLD_BRIGHT:
+        fail(f"{label} countdown lost its ember-gold separation from names")
+    center = chip_size[0] // 2
+    if center - EFFECT_TIMER_HALF_WIDTH < EFFECT_ICON[0]:
+        fail(f"{label} countdown column overlaps the spell icon")
+    if center + EFFECT_TIMER_HALF_WIDTH > EFFECT_NAME_X:
+        fail(f"{label} countdown column reaches the effect-name column")
+
+
 def audit_effects_casting_and_bars() -> None:
     buffs = root_for("EQUI_BuffWindow.xml")
     buff_window = item(buffs, "Screen", "BuffWindow")
-    if dimensions(buff_window) != (216, 640):
-        fail("BuffWindow must remain 216x640")
+    if dimensions(buff_window) != (EFFECT_ROW_WIDTH, 640):
+        fail(f"BuffWindow must remain {EFFECT_ROW_WIDTH}x640")
     if child_text(buff_window, "Style_Transparent") != "true":
         fail("BuffWindow must not paint an opaque maximum-slot canvas")
     if child_text(buff_window, "DrawTemplate") != "WDT_RoundedTransparentNoArrow":
@@ -276,28 +312,25 @@ def audit_effects_casting_and_bars() -> None:
     if (child_text(buff_background, "Style_Transparent") != "true" or
             child_text(buff_background, "Style_Border") != "false"):
         fail("BuffWindow inset background became opaque")
-    buff_template = item(buffs, "Button", "BW_Player_Buff_Template")
-    if dimensions(buff_template) != (24, 20):
-        fail("BuffWindow buff chip must stay icon-sized at 24x20")
-    if dimensions_at(buff_template, "DecalSize") != (20, 20):
-        fail("BuffWindow icon geometry drifted")
-    if dimensions(item(buffs, "Screen", "BW_00_Screen")) != (216, 20):
+    audit_effect_row_geometry(buffs, "BW", "BuffWindow")
+    if dimensions(item(buffs, "Screen", "BW_00_Screen")) != (EFFECT_ROW_WIDTH, 20):
         fail("BuffWindow label row template drifted")
     for index in range(30):
         label = require_binding(buffs, "Label", f"BW_Buff{index}",
                                 f"Buff{index}Label", 500 + index)
         if child_int(label, "Font") < 3:
             fail(f"BW_Buff{index} fell below the accessible font tier")
-        if dimensions(label) != (170, 18):
+        if dimensions(label) != (EFFECT_NAME_WIDTH, 18):
             fail(f"BW_Buff{index} geometry drifted")
-        if (child_int(label, "Location/X"), child_int(label, "Location/Y")) != (36, 1):
+        if (child_int(label, "Location/X"),
+                child_int(label, "Location/Y")) != (EFFECT_NAME_X, 1):
             fail(f"BW_Buff{index} lost its timer-clear alignment")
         item(buffs, "Screen", f"BW_{index:02d}_Screen")
 
     songs = root_for("EQUI_ShortDurationBuffWindow.xml")
     song_window = item(songs, "Screen", "ShortDurationBuffWindow")
-    if dimensions(song_window) != (216, 324):
-        fail("ShortDurationBuffWindow must remain 216x324")
+    if dimensions(song_window) != (EFFECT_ROW_WIDTH, 324):
+        fail(f"ShortDurationBuffWindow must remain {EFFECT_ROW_WIDTH}x324")
     if child_text(song_window, "Style_Transparent") != "true":
         fail("ShortDurationBuffWindow must not paint an opaque maximum-slot canvas")
     if child_text(song_window, "DrawTemplate") != "WDT_RoundedTransparentNoArrow":
@@ -310,12 +343,8 @@ def audit_effects_casting_and_bars() -> None:
     if (child_text(song_background, "Style_Transparent") != "true" or
             child_text(song_background, "Style_Border") != "false"):
         fail("ShortDurationBuffWindow inset background became opaque")
-    song_template = item(songs, "Button", "SDBW_Player_Buff_Template")
-    if dimensions(song_template) != (24, 20):
-        fail("ShortDurationBuffWindow buff chip must stay icon-sized at 24x20")
-    if dimensions_at(song_template, "DecalSize") != (20, 20):
-        fail("ShortDurationBuffWindow icon geometry drifted")
-    if dimensions(item(songs, "Screen", "SDBW_00_Screen")) != (216, 20):
+    audit_effect_row_geometry(songs, "SDBW", "ShortDurationBuffWindow")
+    if dimensions(item(songs, "Screen", "SDBW_00_Screen")) != (EFFECT_ROW_WIDTH, 20):
         fail("ShortDurationBuffWindow label row template drifted")
     for index in range(15):
         screen_id = f"SDBuff{index}Label"
@@ -323,9 +352,10 @@ def audit_effects_casting_and_bars() -> None:
                                 screen_id, 600 + index)
         if child_int(label, "Font") < 3:
             fail(f"SDBW_Buff{index} fell below the accessible font tier")
-        if dimensions(label) != (170, 18):
+        if dimensions(label) != (EFFECT_NAME_WIDTH, 18):
             fail(f"SDBW_Buff{index} geometry drifted")
-        if (child_int(label, "Location/X"), child_int(label, "Location/Y")) != (36, 1):
+        if (child_int(label, "Location/X"),
+                child_int(label, "Location/Y")) != (EFFECT_NAME_X, 1):
             fail(f"SDBW_Buff{index} lost compact row alignment")
         item(songs, "Screen", f"SDBW_{index:02d}_Screen")
 

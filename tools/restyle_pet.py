@@ -8,12 +8,13 @@ native commands below the clickable panel. Legends places these command
 buttons directly; SpinUI now does the same while retaining every native
 ScreenID and allowing Legends to inject each label/action.
 
-The compact geometry keeps the proven 356x181 command panel intact. The fixed
-default seats a slim one-row effect strip beneath the commands, so the window
-stays 356px wide with no empty side rail.
-Resizable top/bottom variants start at one 24px row and grow the buff region,
+The compact geometry keeps the proven 356x181 command panel intact. Beneath it
+the fixed default seats a four-row effect rail of icon+countdown chips, so a
+pet's effects stay both fully visible and legible without an empty side rail.
+Resizable top/bottom variants open at the same rail and grow the buff region,
 not the command panel, when the user needs more effect rows. The compact right
-variant starts with 21 visible effects and also grows independently.
+variant is the deliberate exception: too narrow for a timer column, it keeps
+the 24px overlay cell and its 21 visible effects, and also grows independently.
 """
 
 from __future__ import annotations
@@ -29,6 +30,40 @@ VARIANTS = tuple(SKIN / f"EQUI_PetInfoWindow{suffix}.xml"
                  for suffix in ("", "1", "2", "3"))
 
 BUTTON_SIZE = (78, 23)
+
+# --- Companion effect rail -------------------------------------------------
+# EverQuest centers a pet effect's remaining-duration countdown on its own
+# button, exactly as it does in the Spell/Song Effects windows.  A 24px
+# icon-sized cell therefore stamps the countdown straight onto the icon.  The
+# bottom/top rails now use a wider chip whose centered countdown clears the
+# icon pinned to its left edge:
+#
+#   chip x=0                   x=67
+#        [ 20px icon ][ countdown ]
+#                     ^ center = 33
+#
+# The narrow right-hand rail has no room for that, so it deliberately keeps
+# the compact overlay cell; growing it would cost the variant its one reason
+# to exist.
+BUFF_CELLS = {
+    "EQUI_PetInfoWindow.xml": (67, 22),
+    "EQUI_PetInfoWindow1.xml": (67, 22),
+    "EQUI_PetInfoWindow2.xml": (67, 22),
+    "EQUI_PetInfoWindow3.xml": (24, 24),
+}
+BUFF_DECALS = {
+    "EQUI_PetInfoWindow.xml": ((20, 20), (0, 1)),
+    "EQUI_PetInfoWindow1.xml": ((20, 20), (0, 1)),
+    "EQUI_PetInfoWindow2.xml": ((20, 20), (0, 1)),
+    "EQUI_PetInfoWindow3.xml": ((22, 22), (1, 1)),
+}
+# Widest countdown the timer column must swallow without touching the icon.
+BUFF_TIMER_HALF_WIDTH = 13
+BUFF_TIMER_FONT = 3
+# EverQuest subtracts a bordered host's frame insets before it flows a
+# TileLayoutBox, so every rail is sized for its rows *plus* this much on both
+# axes.  Too little and the client silently drops a row or a column.
+BUFF_BORDER_INSET = 8
 COMMAND_POSITIONS = {
     **{
         index: (10 + (index % 4) * 84, 74 + (index // 4) * 25)
@@ -38,29 +73,35 @@ COMMAND_POSITIONS = {
     13: (178, 149),
 }
 COMMAND_ITEMS = tuple(f"PIW_Pet{i}_Button" for i in range(14))
+# Ember gold, matching the Spell/Song Effects countdowns, so a timer never
+# reads as part of the effect art it sits beside.
+TIMER_COLOR = (248, 214, 140)
 PET_PANEL_SIZE = (356, 181)
+# The bottom/top rails now seat four readable icon+countdown rows instead of a
+# single clipped strip, so the fixed default shows 20 effect positions rather
+# than 14 with their timers stamped on the art.
 WINDOW_SIZES = {
-    "EQUI_PetInfoWindow.xml": (356, 209),
-    "EQUI_PetInfoWindow1.xml": (356, 209),
-    "EQUI_PetInfoWindow2.xml": (356, 209),
+    "EQUI_PetInfoWindow.xml": (356, 280),
+    "EQUI_PetInfoWindow1.xml": (356, 280),
+    "EQUI_PetInfoWindow2.xml": (356, 280),
     "EQUI_PetInfoWindow3.xml": (441, 181),
 }
 BUFF_RECTS = {
-    "EQUI_PetInfoWindow.xml": (4, 178, 352, 207),
-    "EQUI_PetInfoWindow1.xml": (4, 178, 352, 207),
-    "EQUI_PetInfoWindow2.xml": (4, 2, 352, 31),
+    "EQUI_PetInfoWindow.xml": (4, 178, 352, 278),
+    "EQUI_PetInfoWindow1.xml": (4, 178, 352, 278),
+    "EQUI_PetInfoWindow2.xml": (4, 2, 352, 102),
     "EQUI_PetInfoWindow3.xml": (353, 2, 437, 179),
 }
 SUBWINDOW_RECTS = {
     "EQUI_PetInfoWindow.xml": (0, 0, 356, 181),
     "EQUI_PetInfoWindow1.xml": (0, 0, 356, 181),
-    "EQUI_PetInfoWindow2.xml": (0, 28, 356, 209),
+    "EQUI_PetInfoWindow2.xml": (0, 99, 356, 280),
     "EQUI_PetInfoWindow3.xml": (0, 0, 356, 181),
 }
 BUFF_CAPACITY = {
-    "EQUI_PetInfoWindow.xml": 14,
-    "EQUI_PetInfoWindow1.xml": 14,
-    "EQUI_PetInfoWindow2.xml": 14,
+    "EQUI_PetInfoWindow.xml": 20,
+    "EQUI_PetInfoWindow1.xml": 20,
+    "EQUI_PetInfoWindow2.xml": 20,
     "EQUI_PetInfoWindow3.xml": 21,
 }
 
@@ -150,10 +191,74 @@ def _remove_flow_grid(text: str) -> str:
 def _polish_buff_host(text: str) -> str:
     _, body = _item_block(text, "Screen", "PIW_BuffWindow")
     # Opaque recessed well (WDT_Inner) so active effects sit on a clean
-    # obsidian inset instead of loose tiles over the window background.
+    # obsidian inset instead of loose tiles over the window background.  The
+    # well also carries its own thin frame: that frame is what divides commands
+    # from effects now that the command panel no longer paints a border of its
+    # own, and unlike the panel's border it sits inside the window instead of
+    # doubling up on the outer frame's corner.  BUFF_BORDER_INSET pays for the
+    # pixels the client takes off a bordered host before it flows the tiles.
     body = _set_scalar(body, "Style_Transparent", "false")
-    body = _set_scalar(body, "Style_Border", "false")
+    body = _set_scalar(body, "Style_Border", "true")
     return _replace_item(text, "Screen", "PIW_BuffWindow", body)
+
+
+def _style_buff_chip(text: str, filename: str) -> str:
+    """Give each effect cell a readable countdown instead of a stamped icon."""
+    cell = BUFF_CELLS[filename]
+    decal_size, decal_offset = BUFF_DECALS[filename]
+    _, body = _item_block(text, "Button", "PIW_PetBuff_Template")
+    body = _set_scalar(body, "Font", BUFF_TIMER_FONT)
+    body = _set_scalar(body, "FontShadow", "true")
+
+    def _pair(container: str, cx: int, cy: int) -> None:
+        nonlocal body
+        pattern = re.compile(
+            rf"(<{container}>)(.*?)(</{container}>)", re.S)
+        match = pattern.search(body)
+        if match is None:
+            raise ValueError(f"missing {container} in pet buff template")
+        inner = match.group(2)
+        first, second = ("CX", "CY") if container.endswith("Size") else ("X", "Y")
+        inner = _set_scalar(inner, first, str(cx))
+        inner = _set_scalar(inner, second, str(cy))
+        body = (body[:match.start()] + match.group(1) + inner
+                + match.group(3) + body[match.end():])
+
+    _pair("Size", *cell)
+    _pair("DecalSize", *decal_size)
+    _pair("DecalOffset", *decal_offset)
+    swatch = "".join(
+        f"\t\t\t<{channel}>{value}</{channel}>\n"
+        for channel, value in zip("RGB", TIMER_COLOR))
+    block = f"\t\t<TextColor>\n{swatch}\t\t</TextColor>"
+    if "<TextColor>" in body:
+        body = re.sub(r"[ \t]*<TextColor>.*?</TextColor>", block, body,
+                      count=1, flags=re.S)
+    else:
+        anchor = "\n\t\t<FontShadow>true</FontShadow>"
+        if anchor not in body:
+            raise ValueError("pet buff template lost its FontShadow anchor")
+        body = body.replace(anchor, f"{anchor}\n{block}", 1)
+    return _replace_item(text, "Button", "PIW_PetBuff_Template", body)
+
+
+def _clean_subwindow_chrome(text: str) -> str:
+    """Stop the command panel painting a second window frame.
+
+    PetInfoSubWindow is a panel nested at the outer window's own top-left
+    corner, and it carried a titlebar-less window's help/close/minimize
+    controls plus its own rounded border.  The client drew that border on top
+    of the outer window's identical border and still reserved the minimize
+    control at the corner, which read as a mismatched patch that did not fit
+    the frame.  The outer window now owns the frame and background; the
+    recessed effect well is the divider between commands and effects.
+    """
+    _, body = _item_block(text, "Screen", "PetInfoSubWindow")
+    for field in ("Style_Qmarkbox", "Style_Closebox", "Style_Minimizebox",
+                  "Style_Border"):
+        body = _set_scalar(body, field, "false")
+    body = _set_scalar(body, "Style_Transparent", "true")
+    return _replace_item(text, "Screen", "PetInfoSubWindow", body)
 
 
 def _frame_outer_window(text: str) -> str:
@@ -211,8 +316,8 @@ def _compact_geometry(text: str, filename: str) -> str:
     elif filename == "EQUI_PetInfoWindow1.xml":
         # Bottom: pin the command panel at 181px; extra height adds buff rows.
         text = _set_item_fields(text, "Screen", "PetInfoWindow", {
-            "MinVSize": 209,
-            "MaxHSize": 356,
+            "MinVSize": height,
+            "MaxHSize": width,
         })
         text = _set_item_fields(text, "Screen", "PetInfoSubWindow", {
             "TopAnchorOffset": 0,
@@ -229,8 +334,8 @@ def _compact_geometry(text: str, filename: str) -> str:
     elif filename == "EQUI_PetInfoWindow2.xml":
         # Top: pin the command panel to the bottom; added height grows buffs.
         text = _set_item_fields(text, "Screen", "PetInfoWindow", {
-            "MinVSize": 209,
-            "MaxHSize": 356,
+            "MinVSize": height,
+            "MaxHSize": width,
         })
         text = _set_item_fields(text, "Screen", "PetInfoSubWindow", {
             "TopAnchorOffset": 181,
@@ -290,8 +395,7 @@ def _compact_geometry(text: str, filename: str) -> str:
         # The top-tray variant grows upward; anchoring its icons to the lower
         # seam avoids recreating an empty band above Companion after resize.
         "AnchorToTop": filename != "EQUI_PetInfoWindow2.xml",
-        "HorizontalFirst": filename in (
-            "EQUI_PetInfoWindow1.xml", "EQUI_PetInfoWindow2.xml"),
+        "HorizontalFirst": filename != "EQUI_PetInfoWindow3.xml",
     })
     return text
 
@@ -305,6 +409,8 @@ def restyle(path: Path) -> bool:
     revised = _direct_command_pieces(revised)
     revised = _remove_flow_grid(revised)
     revised = _polish_buff_host(revised)
+    revised = _style_buff_chip(revised, path.name)
+    revised = _clean_subwindow_chrome(revised)
     revised = _frame_outer_window(revised)
     revised = _compact_geometry(revised, path.name)
     ET.fromstring(revised)
