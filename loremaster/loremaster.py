@@ -158,26 +158,46 @@ INITIAL_BACKFILL_BYTES = 2 * 1024 * 1024
 INITIAL_BACKFILL_MINUTES = 30
 MAX_FIGHT_HISTORY = 500
 TIMELINE_BUCKET_SECONDS = 2
-# EverQuest Legends drops five grades of potential mote, and a night of
-# clearing camps buries their loot lines under everything else.  The client
-# names the items in the plural ("Motes of Minor Potential") while a loot line
-# reads "You have looted a <name>", so both forms have to match - as does the
+# EverQuest Legends drops ten grades of potential mote, and a night of clearing
+# camps buries their loot lines under everything else.  The client names the
+# items in the plural ("Motes of Minor Potential") while a loot line reads
+# "You have looted a <name>", so both forms have to match - as does the
 # unqualified fourth grade, which carries no grade word at all.
+#
+# Order is the in-game tier order.  "Infinite" and "Infinitesimal" share a
+# prefix, so the grade word is always matched whole against a fixed set rather
+# than by prefix.  Exp per mote comes from the same table the grades do, so the
+# ledger can total a session's potential without a second source of truth.
+MOTE_TIERS = (
+    # grade word in the item name, short label, exp per mote
+    ("infinitesimal", "Infinitesimal", 1),
+    ("minor", "Minor", 1),
+    ("lesser", "Lesser", 2),
+    ("", "Potential", 4),
+    ("major", "Major", 5),
+    ("greater", "Greater", 6),
+    ("superior", "Superior", 7),
+    ("grand", "Grand", 8),
+    ("ascendant", "Ascendant", 9),
+    ("infinite", "Infinite", 10),
+)
+MOTE_GRADES = tuple(grade for grade, _label, _exp in MOTE_TIERS)
+MOTE_TIER_LABELS = tuple(label for _grade, label, _exp in MOTE_TIERS)
+MOTE_TIER_EXP = tuple(exp for _grade, _label, exp in MOTE_TIERS)
 MOTE_RE = re.compile(
-    r"^motes?\s+of\s+(?:(infinitesimal|minor|lesser|major)\s+)?potential$",
+    r"^motes?\s+of\s+(?:("
+    + "|".join(re.escape(grade) for grade in MOTE_GRADES if grade)
+    + r")\s+)?potential$",
     re.IGNORECASE)
-# Index order is the in-game tier order, 1..5; "" is the unqualified tier 4.
-MOTE_GRADES = ("infinitesimal", "minor", "lesser", "", "major")
-MOTE_TIER_LABELS = ("Infinitesimal", "Minor", "Lesser", "Potential", "Major")
 
 
 def mote_tier_counts(loot) -> list[int]:
-    """Bucket looted potential motes into their five grades, tier 1 -> 5.
+    """Bucket looted potential motes into their grades, lowest tier first.
 
     Derived from the session loot ledger rather than a second parse, so the
     tracker can never disagree with SPOILS about what actually dropped.
     """
-    counts = [0, 0, 0, 0, 0]
+    counts = [0] * len(MOTE_TIERS)
     if not isinstance(loot, dict):
         return counts
     for name, quantity in loot.items():
@@ -193,9 +213,25 @@ def mote_tier_counts(loot) -> list[int]:
     return counts
 
 
+def mote_exp_total(counts) -> int:
+    """Session potential earned, using each grade's own exp value."""
+    return sum(max(0, int(n)) * exp
+               for n, exp in zip(counts or (), MOTE_TIER_EXP))
+
+
 def fmt_mote_tiers(counts) -> str:
-    """The slim strip readout: five tier counts, tier 1 on the left."""
-    return "/".join(str(max(0, int(n))) for n in counts)
+    """The slim strip readout: tier counts, lowest tier on the left.
+
+    Ten grades would be a twenty-character cell if every one were printed, so
+    the readout stops at the highest grade that has actually dropped.  Early in
+    a session that is one or two numbers; it only grows when a rare grade
+    earns the space.
+    """
+    values = [max(0, int(n)) for n in (counts or ())]
+    highest = max((index for index, n in enumerate(values) if n), default=-1)
+    if highest < 0:
+        return "\u2014"
+    return "/".join(str(n) for n in values[:highest + 1])
 
 
 MINI_BASE_WIDTH = 520
@@ -203,8 +239,11 @@ MINI_BASE_WIDTH = 520
 # with short values still reads as a deliberate bar rather than a chip.
 MINI_MIN_WIDTH = 380
 # The strip shows at most this many stat cells; beyond that it stops being a
-# glance readout.  Five fits the four ledger staples plus the mote tracker.
-MINI_MAX_CELLS = 5
+# glance readout and starts being a second window.  PROGRESSION in particular
+# is a three-part value ("23.9% xp - +1 lvl - 2h24m to lvl") that on its own
+# pushed the strip past its width cap and clipped the cell after it, so it
+# lives on DETAILS where it has room.
+MINI_MAX_CELLS = 4
 # Windows names the diagonal resize cursor "size_nw_se"; X11 uses
 # "bottom_right_corner".
 RESIZE_CURSOR = "size_nw_se" if os.name == "nt" else "bottom_right_corner"
@@ -1486,8 +1525,8 @@ def load_config() -> dict:
         "panel_size": [400, 480],
         "locked": False,
         "starred": ["session_dps", "xp_hr", "hours_to_level", "kills"],
-        "starred_cards": ["combat", "kills", "money", "progress", "motes"],
-        "hud_cards_version": 1,
+        "starred_cards": ["kills", "money", "combat", "motes"],
+        "hud_cards_version": 2,
         # Banners are opt-in: quiet by default, one switch in Settings.
         "alerts_enabled": False,
         "alert_sound": True,
@@ -1552,18 +1591,21 @@ def load_config() -> dict:
         except (TypeError, ValueError):
             cfg["opacity"] = 1.0
     cfg["ui_rendering_version"] = 2
-    # The mote tracker is new, so an existing config would never show it.  Add
-    # it to the strip exactly once and leave every other starred choice - and a
-    # deliberate later removal - alone.
+    # Two one-time strip migrations, each applied exactly once so a deliberate
+    # later change is never undone: version 1 added the mote tracker, and
+    # version 2 moved PROGRESSION off the strip because its three-part value
+    # made the row overflow. Re-star either from DETAILS at any time.
     try:
         hud_cards_version = int(loaded.get("hud_cards_version", 0) or 0)
     except (TypeError, ValueError):
         hud_cards_version = 0
-    if hud_cards_version < 1:
-        starred = cfg.get("starred_cards")
-        if isinstance(starred, list) and "motes" not in starred:
+    starred = cfg.get("starred_cards")
+    if isinstance(starred, list):
+        if hud_cards_version < 1 and "motes" not in starred:
             starred.append("motes")
-    cfg["hud_cards_version"] = 1
+        if hud_cards_version < 2 and "progress" in starred:
+            starred.remove("progress")
+    cfg["hud_cards_version"] = 2
     # Broken custom alert regexes are skipped silently per log line; warn
     # exactly once here so the config author can find and fix them.
     bad_patterns = invalid_custom_alert_patterns(cfg.get("custom_alerts", []))
@@ -3513,14 +3555,16 @@ def run_gui(args):
                 out.append(("line", "Nothing looted yet", ""))
         elif key == "motes":
             counts = mote_tier_counts(snap["loot"])
-            for tier, (label, count) in enumerate(
-                    zip(MOTE_TIER_LABELS, counts), start=1):
-                out.append(("row", f"Tier {tier} · {label}", str(count)))
-            out.append(("row", "Total this session", str(sum(counts))))
+            for label, exp, count in zip(MOTE_TIER_LABELS, MOTE_TIER_EXP,
+                                         counts):
+                out.append(("row", f"{label} · {exp} xp", str(count)))
+            out.append(("row", "Motes this session", str(sum(counts))))
+            out.append(("row", "Potential earned", f"{mote_exp_total(counts)} xp"))
             if not any(counts):
                 out.append(("line", "No potential motes have dropped yet. "
                                     "Counts are what this session looted, not "
-                                    "what your bags hold.", ""))
+                                    "what your bags hold. The strip lists the "
+                                    "grades in this order, lowest first.", ""))
         elif key == "money":
             out.append(("row", "Total", fmt_coins(snap["copper"])))
             out.append(("row", "Plat / hour", f"{snap['plat_hr']:.1f}p"))
@@ -4602,7 +4646,7 @@ def selftest() -> int:
     assert snap["loot"]["Froglok Fine Mesh"] == 1
     # End to end: a real loot line reaches the mote tracker through the same
     # ledger SPOILS reads, so the two can never disagree.
-    assert mote_tier_counts(snap["loot"]) == [1, 0, 0, 0, 1]
+    assert mote_tier_counts(snap["loot"]) == [1, 0, 0, 0, 1] + [0] * 5
     assert snap["xp_events"] == 2
     assert abs(snap["xp_pct"] - 0.75) < 1e-9
     assert stats.level == 40 and stats.xp_since_level == 0.0
@@ -4735,27 +4779,49 @@ def selftest() -> int:
     assert MINI_MIN_WIDTH < MINI_BASE_WIDTH
     # SETTINGS belongs to the DETAILS footer; the strip carries LOCK + DETAILS.
     assert "MOTES" in MINI_CARD_LABELS.values()
-    assert MINI_MAX_CELLS == 5
+    assert MINI_MAX_CELLS == 4
+    # PROGRESSION is a three-part value that overflowed the strip; it lives on
+    # DETAILS now, where card_detail already shows the same figures.
+    assert "progress" in MINI_CARD_LABELS and "motes" in MINI_CARD_LABELS
 
-    # Potential-mote tracking: plural item names, the unqualified fourth tier,
-    # and casing all bucket into the in-game tier order.
+    # Potential-mote tracking across all ten grades: plural item names, the
+    # unqualified fourth grade, and casing all bucket into in-game tier order.
+    assert len(MOTE_TIERS) == 10
+    assert len(MOTE_GRADES) == len(MOTE_TIER_LABELS) == len(MOTE_TIER_EXP) == 10
     assert mote_tier_counts({
         "Motes of Infinitesimal Potential": 27,
         "Mote of Minor Potential": 32,
         "motes of lesser potential": 3,
         "Motes of Potential": 2,
         "Mote of Major Potential": 1,
+        "Mote of Greater Potential": 6,
+        "Mote of Superior Potential": 7,
+        "Mote of Grand Potential": 8,
+        "Mote of Ascendant Potential": 9,
+        "Mote of Infinite Potential": 10,
         "Froglok Fine Mesh": 4,
-    }) == [27, 32, 3, 2, 1]
-    assert fmt_mote_tiers([27, 32, 3, 2, 1]) == "27/32/3/2/1"
-    assert mote_tier_counts({}) == [0, 0, 0, 0, 0]
-    assert mote_tier_counts(None) == [0, 0, 0, 0, 0]
+    }) == [27, 32, 3, 2, 1, 6, 7, 8, 9, 10]
+    # "Infinite" and "Infinitesimal" share a prefix and must never merge.
+    assert mote_tier_counts({"Mote of Infinitesimal Potential": 1})[0] == 1
+    assert mote_tier_counts({"Mote of Infinite Potential": 1})[9] == 1
+    # The strip readout stops at the highest grade that actually dropped.
+    assert fmt_mote_tiers([27, 32, 3, 2, 1] + [0] * 5) == "27/32/3/2/1"
+    assert fmt_mote_tiers([5] + [0] * 9) == "5"
+    assert fmt_mote_tiers([0] * 9 + [1]) == "0/0/0/0/0/0/0/0/0/1"
+    assert fmt_mote_tiers([0] * 10) == "\u2014"
+    assert fmt_mote_tiers(None) == "\u2014"
+    assert mote_tier_counts({}) == [0] * 10
+    assert mote_tier_counts(None) == [0] * 10
+    # Each grade carries its own exp value.
+    assert mote_exp_total([1] * 10) == sum((1, 1, 2, 4, 5, 6, 7, 8, 9, 10))
+    assert mote_exp_total([0] * 10) == 0
     # Near-misses must not be swept into a tier.
     assert mote_tier_counts({
         "Mote of Potential Greatness": 5,
         "Shard of Minor Potential": 5,
         "Motes of Major Potentials": 5,
-    }) == [0, 0, 0, 0, 0]
+        "Mote of Supreme Potential": 5,
+    }) == [0] * 10
     wiki_selftest()
 
     # coin parsing

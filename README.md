@@ -142,8 +142,8 @@ The layout generator validates all **21 resolution/preset combinations**: every 
 | Pet command window | cramped 311x190, 57px commands | **356x236 with direct 78px four-column commands over a two-row, 28-cell effect rail** | no overhead dark slab; every command reachable and a pet's whole effect set visible in 58px |
 | Effect countdowns | smallest font, no shadow, parchment on artwork | **Font 3, shadowed, ember gold** | read a duration through the icon art instead of squinting at it |
 | In-game HUD strip | fixed width with dead space, SETTINGS on the strip | **fits its own content; LOCK + DETAILS only** | no gap between the last stat and the tools; SETTINGS is one click away on DETAILS |
-| PROGRESSION cell | session xp % and levels | **adds estimated time to level** | decide whether to hold the camp without opening DETAILS |
-| Potential motes | invisible until you open your bags | **MOTES tier-1..5 counter on the strip** | see what a long pull actually dropped |
+| Strip cells | five, including a three-part PROGRESSION value that overflowed | **four: SLAYING, COIN, COMBAT, MOTES** | the row fits its content again; PROGRESSION keeps every figure, plus time to level, on DETAILS |
+| Potential motes | invisible until you open your bags | **MOTES counter over all ten grades** | see what a long pull actually dropped |
 | Target ring | stock grey noise, one flat con hue | **SpinUI runic ring; threat escalates in hue, opacity, speed, density and radius** | judge a pull before you make it - see [The target ring](#the-target-ring) |
 | XP vs AA bars | both overlaid pure blue | **XP brass gold, AA spirit blue** - fills *and* sub-tick overlays, in the player plate, inventory, and AA window | tell the two progression bars apart at a glance |
 | Buff/Song style | RIGHT + number rail | **slim LEFT list, no numbering** | larger readable icons, transparent rows, no heavy black slab |
@@ -353,10 +353,14 @@ Loremaster's face is its own - the same design language as the rest of Spin's UI
 
 The strip **fits itself to what it is showing, in both directions**. It used to only ever grow, so once a long value had been seen the extra pixels stayed forever as dead space between the last stat and the right-hand tools; now it follows the measured need down as well as up, with a floor so a quiet session still reads as a deliberate bar. It carries only the controls a glance needs: the coloured log-health dot (which doubles as the log-folder picker), **LOCK**, and **DETAILS**. **SETTINGS** and Lore Lens live on the DETAILS footer, one click away, so every spare pixel here belongs to the ledger. **DETAILS** expands the full meter, **HUD** collapses it, and both positions are remembered separately.
 
-Two cells earn their place on a strip that small:
+The strip seats **four** cells - `SLAYING · COIN · COMBAT · MOTES` by default. **PROGRESSION** is not one of them: its value is three parts long (`23.9% xp · +1 lvl · 2h24m to lvl`) and on its own it pushed the row past its width cap and clipped the cell after it. It keeps all of those figures, including **estimated time to level**, on **DETAILS → PROGRESSION**, where there is room for them. Re-star it with ✦ any time.
 
-* **PROGRESSION** now carries **estimated time to level** beside the session xp figure (`424.9% xp · +4 lvl · 1h20m to lvl`), because that is the number that decides whether to hold the camp.
-* **MOTES** tracks the five grades of EverQuest Legends potential mote as `tier1/tier2/tier3/tier4/tier5` - Infinitesimal, Minor, Lesser, Potential, Major. Clearing a camp buries mote loot lines under everything else, and this is the readout that survives a long pull. The counts are **what this session looted**, not what your bags hold; Loremaster reads only your log. They are derived from the same SPOILS ledger, so the two can never disagree, and **DETAILS → MOTES** breaks them out by tier name with a session total. The tracker is a normal card: unstar it with ✦ if you do not want it, and an existing config picks it up exactly once.
+**MOTES** tracks all ten grades of EverQuest Legends potential mote - Infinitesimal, Minor, Lesser, Potential, Major, Greater, Superior, Grand, Ascendant, Infinite - lowest grade on the left. Clearing a camp buries mote loot lines under everything else, and this is the readout that survives a long pull.
+
+* Printing ten numbers would be a twenty-character cell, so the readout **stops at the highest grade that has actually dropped**: `27` early on, `27/32/3/2/1` after a while, and the full run only once something rare earns the space. Nothing yet reads as a single `—`.
+* The counts are **what this session looted**, not what your bags hold; Loremaster reads only your log, never game memory. They are derived from the same SPOILS ledger, so the two can never disagree.
+* **DETAILS → MOTES** breaks every grade out by name with its own exp value, the session mote count, and the total potential earned.
+* `Infinite` and `Infinitesimal` share a prefix, so grade words are matched whole against a fixed set - a prefix match would silently fold the rarest grade into the most common one, and a test pins that.
 
 ### Lore Lens: EQL Wiki item intelligence
 
