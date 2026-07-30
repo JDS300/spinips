@@ -191,25 +191,28 @@ MOTE_RE = re.compile(
     re.IGNORECASE)
 
 
-def mote_tier_counts(loot) -> list[int]:
-    """Bucket looted potential motes into their grades, lowest tier first.
+def mote_tier_index(name) -> int | None:
+    """Which grade an item name is, or None when it is not a potential mote."""
+    match = MOTE_RE.match(str(name).strip())
+    if match is None:
+        return None
+    return MOTE_GRADES.index((match.group(1) or "").casefold())
 
-    Derived from the session loot ledger rather than a second parse, so the
-    tracker can never disagree with SPOILS about what actually dropped.
-    """
+
+def mote_tier_counts(loot) -> list[int]:
+    """Bucket a name -> quantity mapping into mote grades, lowest tier first."""
     counts = [0] * len(MOTE_TIERS)
     if not isinstance(loot, dict):
         return counts
     for name, quantity in loot.items():
-        match = MOTE_RE.match(str(name).strip())
-        if match is None:
+        tier = mote_tier_index(name)
+        if tier is None:
             continue
         try:
             amount = int(quantity)
         except (TypeError, ValueError):
             continue
-        counts[MOTE_GRADES.index((match.group(1) or "").casefold())] += max(
-            0, amount)
+        counts[tier] += max(0, amount)
     return counts
 
 
@@ -505,8 +508,14 @@ PATTERNS: list[tuple[str, re.Pattern]] = [
     ("skill", re.compile(r"^You have become better at (?P<skill>.+?)! \((?P<value>\d+)\)$")),
     ("aa", re.compile(r"^You have gained an ability point!.*$")),
     # --- loot / money ---
-    ("loot", re.compile(r"^--You have looted an? (?P<item>.+?)(?: from (?P<source>.+?)'s corpse)?\.--$")),
-    ("loot2", re.compile(r"^--(?P<who>\S+) has looted an? (?P<item>.+?)\.--$")),
+    # Stackables can arrive as a count rather than an article ("looted 5
+    # Motes of Minor Potential"), and the old article-only form dropped those
+    # lines on the floor entirely - they never reached the ledger at all.
+    ("loot", re.compile(
+        r"^--You have looted (?:an?|(?P<qty>\d+)) (?P<item>.+?)"
+        r"(?: from (?P<source>.+?)'s corpse)?\.--$")),
+    ("loot2", re.compile(
+        r"^--(?P<who>\S+) has looted (?:an?|(?P<qty>\d+)) (?P<item>.+?)\.--$")),
     ("money", re.compile(r"^You receive (?P<coins>.+?) (?:from the corpse|as your split)\.$")),
     ("money_sale", re.compile(r"^You receive (?P<coins>.+?) from (?P<vendor>.+?) for the (?P<item>.+?)\(s\)\.$")),
     # --- world ---
@@ -534,6 +543,21 @@ PATTERNS: list[tuple[str, re.Pattern]] = [
         rf"^(?P<attacker>.+?) hit (?P<target>.+?) for (?P<dmg>\d+) points? of \w+ damage by (?P<spell>.+?)\.{CRIT}$")),
     ("miss_third", re.compile(
         r"^(?P<attacker>.+?) tries to \w+(?: on)? (?P<target>.+?), but (?P<reason>.+)!$")),
+    # --- potential motes: last resort ---------------------------------------
+    # Motes are a progression currency, and Legends does not always announce
+    # one with the corpse-loot sentence the ledger above understands - it can
+    # be a plain "You receive ..." system line with no dashes and no article.
+    # This pattern is deliberately last so a real loot line is still counted as
+    # loot; it only catches the forms nothing else claims. It anchors on "You"
+    # plus an acquisition verb so a player typing the item name in chat is
+    # never counted.
+    ("mote_gain", re.compile(
+        r"^(?:--)?\s*You\s+(?:have\s+|just\s+)*"
+        r"(?:loot|looted|receive|receives|received|gain|gains|gained|"
+        r"acquire|acquires|acquired|find|found|get|got)\s+"
+        r"(?:an?|the|(?P<qty>\d+))?\s*"
+        r"(?P<item>motes?\s+of\s+(?:[A-Za-z]+\s+)?potential)\b",
+        re.IGNORECASE)),
 ]
 
 COIN_RE = re.compile(r"(\d+) (platinum|gold|silver|copper)")
@@ -673,6 +697,15 @@ def looks_like_player_actor(name: str) -> bool:
 
 def parse_coins(text: str) -> int:
     return sum(int(n) * COIN_COPPER[unit] for n, unit in COIN_RE.findall(text))
+
+
+def _quantity(groups) -> int:
+    """A loot line's stack count, defaulting to the single-item article form."""
+    try:
+        amount = int(groups.get("qty") or 1)
+    except (TypeError, ValueError):
+        return 1
+    return max(1, amount)
 
 
 def parse_line(line: str):
@@ -825,6 +858,9 @@ class SessionStats:
         # loot / money
         self.copper = 0
         self.loot: dict[str, int] = defaultdict(int)
+        # Motes are counted here rather than derived from the loot ledger,
+        # because not every way a mote arrives produces a loot line.
+        self.motes: list[int] = [0] * len(MOTE_TIERS)
         self.faction: dict[str, int] = defaultdict(int)
         self.skillups: dict[str, int] = defaultdict(int)
         self.aa_points = 0
@@ -990,6 +1026,12 @@ class SessionStats:
         self._record_actor_damage(actor, dmg)
         self.fight.observed_targets[normalize_mob(target)] += dmg
         self.fight.add_timeline(ts, "out", dmg)
+
+    def _count_motes(self, g: dict) -> None:
+        """Add one acquisition line's motes to the session tally."""
+        tier = mote_tier_index(g.get("item", ""))
+        if tier is not None:
+            self.motes[tier] += _quantity(g)
 
     # -- event application ----------------------------------------------
     def apply(self, ts: datetime, kind: str, g: dict, *, count_lifetime: bool = True):
@@ -1159,7 +1201,12 @@ class SessionStats:
         elif kind in ("loot", "loot2"):
             who = g.get("who")
             if who is None or who == self.character:
-                self.loot[g["item"]] += 1
+                self.loot[g["item"]] += _quantity(g)
+                self._count_motes(g)
+        elif kind == "mote_gain":
+            # Only reached by acquisition sentences no loot pattern claimed, so
+            # a mote is never counted twice for one line.
+            self._count_motes(g)
         elif kind in ("money", "money_sale"):
             coins = parse_coins(g["coins"])
             self.copper += coins
@@ -1320,6 +1367,7 @@ class SessionStats:
             "plat": self.copper / 1000.0,
             "plat_hr": (self.copper / 1000.0) / hours if hours else 0.0,
             "loot": dict(self.loot),
+            "motes": list(self.motes),
             "hours": hours,
             "lifetime": self.lifetime,
         }
@@ -3317,8 +3365,7 @@ def run_gui(args):
         if key == "money":
             return fmt_coins(snap["copper"])
         if key == "motes":
-            counts = mote_tier_counts(snap["loot"])
-            return fmt_mote_tiers(counts) if any(counts) else "none yet"
+            return fmt_mote_tiers(snap["motes"])
         if key == "progress":
             if snap["xp_pct_known"]:
                 # Time to level is the number that decides whether to keep the
@@ -3554,7 +3601,7 @@ def run_gui(args):
             if not rows:
                 out.append(("line", "Nothing looted yet", ""))
         elif key == "motes":
-            counts = mote_tier_counts(snap["loot"])
+            counts = snap["motes"]
             for label, exp, count in zip(MOTE_TIER_LABELS, MOTE_TIER_EXP,
                                          counts):
                 out.append(("row", f"{label} · {exp} xp", str(count)))
@@ -4606,6 +4653,13 @@ def selftest() -> int:
         line(9, "--You have looted a Motes of Infinitesimal Potential from a "
                 "froglok shin knight's corpse.--"),
         line(9, "--You have looted a Motes of Major Potential.--"),
+        # A stack, and a system line with no dashes and no article: neither
+        # reached the ledger before, so neither reached the tracker.
+        line(9, "--You have looted 4 Motes of Minor Potential.--"),
+        line(9, "You receive a Mote of Major Potential."),
+        line(9, "You have gained 3 Motes of Greater Potential."),
+        # Someone else naming the item in chat is never a mote you looted.
+        line(9, "Aria tells you, 'You looted a Mote of Infinite Potential'"),
         # 30s of nothing -> fight closes at 10s gap
         line(40, "You healed Grimlord for 500 (650) hit points by Light Healing."),
         line(41, "Nexus slashes a gnoll for 40 points of damage."),  # bystander, no fight
@@ -4646,7 +4700,13 @@ def selftest() -> int:
     assert snap["loot"]["Froglok Fine Mesh"] == 1
     # End to end: a real loot line reaches the mote tracker through the same
     # ledger SPOILS reads, so the two can never disagree.
-    assert mote_tier_counts(snap["loot"]) == [1, 0, 0, 0, 1] + [0] * 5
+    # Every acquisition shape lands in the session tally exactly once, chat
+    # does not, and a stack counts its whole stack.
+    assert snap["motes"] == [1, 4, 0, 0, 2, 3, 0, 0, 0, 0]
+    assert fmt_mote_tiers(snap["motes"]) == "1/4/0/0/2/3"
+    assert mote_exp_total(snap["motes"]) == 1 + 4 + 10 + 18
+    # The ledger itself now records the stack count rather than one item.
+    assert snap["loot"]["Motes of Minor Potential"] == 4
     assert snap["xp_events"] == 2
     assert abs(snap["xp_pct"] - 0.75) < 1e-9
     assert stats.level == 40 and stats.xp_since_level == 0.0
