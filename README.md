@@ -1,6 +1,6 @@
 # Spin's UI / LOREMASTER 
 
-**A complete Vellum & Ember interface for EverQuest Legends.** SpinUI rebuilds the aging EQ presentation around a crisp combat dock, cinematic equipment screen, effects rows whose durations read at a glance, its own consider-aware target ring, seven validated screen profiles from 1920×1080 through 4K, and **Spin's Loremaster**, a live Encounter Lab and EQL Wiki companion that never injects into the game.
+**A complete Vellum & Ember interface for EverQuest Legends.** SpinUI rebuilds the aging EQ presentation around a crisp combat dock, cinematic equipment screen, effects rows whose durations read at a glance, seven validated screen profiles from 1920×1080 through 4K, and **Spin's Loremaster**, a live Encounter Lab and EQL Wiki companion that never injects into the game.
 
 [**Download the latest release**](https://github.com/itsspin/spinips/releases/latest) · Windows · EverQuest Legends · Log-only companion · Standard-library runtime
 
@@ -41,12 +41,11 @@
 7. [The equipment screen](#the-equipment-screen)
 8. [The pet command center](#the-pet-command-center)
 9. [Effect countdowns](#effect-countdowns)
-10. [The target ring](#the-target-ring)
-11. [Bags, bank bags and the dock](#bags-bank-bags-and-the-dock)
-12. [Spin's Loremaster (log parser & DPS tracker)](#spins-loremaster)
-13. [Customizing & regenerating](#customizing--regenerating)
-14. [Troubleshooting](#troubleshooting)
-15. [Repository map](#repository-map)
+10. [Bags, bank bags and the dock](#bags-bank-bags-and-the-dock)
+11. [Spin's Loremaster (log parser & DPS tracker)](#spins-loremaster)
+12. [Customizing & regenerating](#customizing--regenerating)
+13. [Troubleshooting](#troubleshooting)
+14. [Repository map](#repository-map)
 
 ---
 
@@ -144,7 +143,6 @@ The layout generator validates all **21 resolution/preset combinations**: every 
 | In-game HUD strip | fixed width with dead space, SETTINGS on the strip | **fits its own content; LOCK + DETAILS only** | no gap between the last stat and the tools; SETTINGS is one click away on DETAILS |
 | Strip cells | five, including a three-part PROGRESSION value that overflowed | **four: SLAYING, COIN, COMBAT, MOTES** | the row fits its content again; PROGRESSION keeps every figure, plus time to level, on DETAILS |
 | Potential motes | invisible until you open your bags | **MOTES counter over all ten grades** | see what a long pull actually dropped |
-| Target ring | stock grey noise, one flat con hue | **SpinUI runic ring; threat escalates in hue, opacity, speed, density and radius** | judge a pull before you make it - see [The target ring](#the-target-ring) |
 | XP vs AA bars | both overlaid pure blue | **XP brass gold, AA spirit blue** - fills *and* sub-tick overlays, in the player plate, inventory, and AA window | tell the two progression bars apart at a glance |
 | Buff/Song style | RIGHT + number rail | **slim LEFT list, no numbering** | larger readable icons, transparent rows, no heavy black slab |
 | Player/Target rails | opaque bands and tight text | **transparent, full-width** | effects float cleanly; stance/empower labels fit |
@@ -269,41 +267,6 @@ EverQuest draws two overlays on a buff button, and **one button width controls b
 So a chip wide enough to give the countdown its own column beside the icon also stretches that plate into a slab of flat colour next to every effect. There is no width that gives a separate timer column *and* an icon-sized plate, and there is no per-buff duration binding the client exposes, so the plate cannot be turned into a duration gauge either. The plate wins: an icon-sized cell keeps it a frame around the art it belongs to, and gold-on-shadow keeps the number readable through the artwork.
 
 The constants live in one place per window - `EFFECT_*` in `tools/restyle_combat.py`, `BUFF_CELL` in `tools/restyle_pet.py` - and both audits import them to re-prove that a cell never outgrows its icon and that a worst-case countdown still cannot reach the name column.
-
----
-
-## The target ring
-
-![SpinUI target ring consider ramp](docs/previews/target_ring.png)
-
-The ring under your target is the only part of SpinUI that lives in the world instead of on a window, and it has one job: answer *can this thing kill me?* before you pull. The stock skin ships a sheet of flat grey noise there, so every consider tier reads as the same milky smear and the only thing separating "harmless" from "deadly" is a hue that bright zone lighting washes straight out.
-
-SpinUI ships its own ring. `TargetIndicator.tga` is a **soft breathing glow** - two slow, seamless swells crossing each other - on a neutral-grey sheet, so every con tint stays true and the ring reads as a lit band on the ground rather than a flat wash.
-
-**It deliberately has no hard feature on either axis, and that is the design.** The client does not document which way it lays a sheet across the indicator, and the obvious reading (texture across = angle, texture down = radius) is backwards here. Two structured sheets proved it in game: the first carried 12 features along its rows and drew about 12 streaks radiating out of the target; the second carried 16 ring cores and drew about 16. Image rows run around the circumference, so a bright row is a spoke, not a ring.
-
-Transposing would have been a third guess. A sheet with no edges cannot draw an edge in the wrong direction, so the art stays smooth and **every bit of the ring's meaning lives in the ramp** - which the same in-game passes confirmed is working: tint, opacity and radius all read correctly.
-
-If you want to settle the mapping, regenerate with `--style rings` and look at the ground: **rings** mean image columns run radially, **spokes** mean they run around the circumference. `--style flat` restores vanilla's featureless wash in one command. The release audit pins the shipped sheet to the safe style, so neither experiment can ship by accident, and it fails on any brightness step big enough to read as an edge.
-
-The ramp in `TargetIndicator.ini` states each tier's threat **five** ways at once, so it survives colour-blindness and noon on a beach alike:
-
-| Consider | Ring | Opacity | Inward pull | Sweep | Radius |
-|---|---|---|---|---|---|
-| Trivial | slate | 140 | 0.0004 | widest, slowest | smallest |
-| Very easy | jade | 175 | 0.0006 | ↓ | ↓ |
-| Easy | teal | 195 | 0.0008 | ↓ | ↓ |
-| Fairly easy | azure | 212 | 0.0010 | ↓ | ↓ |
-| Even match | parchment | 232 | 0.0013 | ↓ | ↓ |
-| Difficult | ember gold | 248 | 0.0018 | ↓ | ↓ |
-| **Deadly** | **crimson** | **255** | **0.0026** | tightest, busiest | widest, and the only tier that pulses |
-
-`PointCount` also rises from the stock 64 to 128, so the ring reads as a circle rather than a polygon when you are standing on top of your target.
-
-* Everything reloads live - `/indicator off` then `/indicator on` - so you can tune it without leaving the game.
-* Too much motion? Set `TwistSpeed=0.0` under `[Deadly]`; the rest of the ramp keeps working.
-* Regenerate the art and the ramp together with `python tools/generate_target_ring.py`; edit the `CON_TIERS` table in that script rather than hand-patching the ini, or the shipped texture, the ini and the preview above stop agreeing. `tools/audit_target_ring.py` fails the release if the ini drifts from the table, if the sheet is not the shipped style, if it picks up a colour cast or a hard edge, or if any tier stops escalating over the one below it.
-* Ground decals (`DecalIndicator.ini`) that draw the same sheet follow it at the same lattice density; the elemental `dcl_*` spell decals are untouched.
 
 ---
 
@@ -450,7 +413,6 @@ Everything was *generated* - change a constant, rerun, done. From the repo root:
 pip install pillow                                # visual build tools
 python3 tools/generate_spinui_textures.py         # repaint the theme textures
 python3 tools/generate_spinui_layout.py           # rebuild all layout INIs (validates!)
-python3 tools/generate_target_ring.py             # repaint the target ring + its consider ramp
 python3 tools/restyle_combat.py                    # rebuild the combat cluster and the effects rows
 python3 tools/restyle_pet.py                       # rebuild every Companion layout variant
 python3 tools/restyle_inventory.py                 # rebuild the native-slot Equipment composition
@@ -464,7 +426,6 @@ python3 tools/release_quality_gate.py              # run every source, layout, p
 * **Move a window:** edit its pixel coordinates in `PLACEMENTS` in `generate_spinui_layout.py` - the script converts to the client's percentage format and re-validates the whole screen for overlaps/off-screen.
 * **New chat preset or resolution:** add it to `CHAT_PRESETS` or `RESOLUTION_PROFILES`; generation emits every validated combination under `layouts/profiles/`.
 * **Retune the effects rows:** the constants at the top of `restyle_combat.py` (`EFFECT_ROW_WIDTH`, `EFFECT_CHIP`, `EFFECT_NAME_X`) own the icon / duration / name grid, and `audit_combat_ui.py` imports them so it re-proves the duration column instead of just re-checking coordinates. `BUFF_CELLS` in `restyle_pet.py` does the same job for the Companion rail.
-* **Retune the target ring:** edit `CON_TIERS` in `generate_target_ring.py` and rerun; the texture, the ini and the documentation preview are all rendered from that one table.
 * The texture and layout generators always start from the **pristine** stock files in git history, so reruns never compound. The two `restyle_*` scripts are staged, marker-guarded migrations (`SPIN-DECO-4` / `SPIN-PERSONA-4`) - rerunning them on an already-migrated file is a clean no-op.
 
 ---
@@ -515,7 +476,6 @@ spinips/
 ├── tools/
 │   ├── generate_spinui_textures.py   theme painter
 │   ├── generate_spinui_layout.py     layout builder + validator
-│   ├── generate_target_ring.py       target ring art + consider ramp
 │   ├── build_showcase_media.py       privacy-safe gallery builder
 │   ├── restyle_persona.py             Multiclass Loadouts composition
 │   └── render_preview.py             full-screen preview renderer
