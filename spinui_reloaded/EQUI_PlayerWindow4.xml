@@ -799,7 +799,7 @@
 			<G>214</G>
 			<B>140</B>
 		</LinesFillTint>
-		<DrawLinesFill>true</DrawLinesFill>
+		<DrawLinesFill>false</DrawLinesFill>
 		<EQType>4</EQType>
 		<GaugeDrawTemplate>
 			<Background>A_GaugeBackground</Background>

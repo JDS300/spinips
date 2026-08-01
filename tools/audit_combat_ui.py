@@ -125,7 +125,11 @@ def audit_player_and_target() -> None:
     require_binding(player, "Gauge", "Player_HP", "PlayerHP", 1)
     require_binding(player, "Gauge", "Player_Mana", "PlayerMana", 2)
     require_binding(player, "Gauge", "Player_Fatigue", "PlayerFatigue", 3)
-    require_binding(player, "Gauge", "PW_ExpGauge", "ExpGauge", 4)
+    exp = require_binding(player, "Gauge", "PW_ExpGauge", "ExpGauge", 4)
+    if child_text(exp, "DrawLinesFill") != "false":
+        fail(
+            "PW_ExpGauge must show total 0-100 XP without the 20% sub-tick overlay"
+        )
     require_binding(player, "Gauge", "PW_AltAdvGauge", "AltAdvGauge", 5)
     require_binding(player, "Gauge", "PW_Castspell_Gauge", "PW_Castspell_Gauge", 7)
     require_binding(player, "Label", "Player_ManaLabel", "ManaLabel", 1009)

@@ -335,21 +335,27 @@ def style_buff_file(path: Path, prefix: str, count: int,
 def style_player() -> None:
     path = SKIN / "EQUI_PlayerWindow.xml"
     text = path.read_text(encoding="ascii")
-    # XP is ember gold, AA is venom — including the LinesFill sub-tick
-    # overlay, which the stock skin left pure blue on both bars and made the
-    # two gauges indistinguishable at a glance.
+    # XP is ember gold and AA is venom.  The AA sub-tick retains the matching
+    # bright accent; level XP's misleading sub-tick is disabled below.
     gauges = {
         "Player_HP": (HP, None),
         "Player_Mana": (MANA, None),
         "Player_Fatigue": (ENDURANCE, None),
         "Pet_HP": (PET, None),
-        "PW_ExpGauge": (GOLD, GOLD_BRIGHT),
+        "PW_ExpGauge": (GOLD, None),
         "PW_AltAdvGauge": (CYAN, CYAN_BRIGHT),
         "PW_Castspell_Gauge": (CYAN, None),
     }
     for name, (color, lines) in gauges.items():
         text = change_item(text, "Gauge", name,
                            lambda b, c=color, l=lines: style_gauge(b, c, l))
+    # Draw only total level progress.  The legacy LinesFill layer represents
+    # progress inside the current 20% bubble, so 17% total XP would otherwise
+    # paint that overlay across 85% of the track.
+    text = change_item(
+        text, "Gauge", "PW_ExpGauge",
+        lambda b: set_value(b, "DrawLinesFill", "false"),
+    )
     for name, color in (("PW_Level", GOLD_BRIGHT), ("PW_Class", TEXT),
                         ("PW_StanceLabel", GOLD_BRIGHT),
                         ("PW_InvocationInfo", CYAN)):
