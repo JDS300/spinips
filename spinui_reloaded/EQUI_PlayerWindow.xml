@@ -846,7 +846,7 @@
 			<G>206</G>
 			<B>252</B>
 		</LinesFillTint>
-		<DrawLinesFill>true</DrawLinesFill>
+		<DrawLinesFill>false</DrawLinesFill>
 		<EQType>5</EQType>
 		<GaugeDrawTemplate>
 			<Background>A_GaugeBackground</Background>
