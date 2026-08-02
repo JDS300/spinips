@@ -128,6 +128,28 @@ def _clean_candidate(value: str) -> str:
     return re.sub(r"\s+\+\d+\s*$", "", value).strip()
 
 
+def _ocr_confusion_variants(value: str) -> list[str]:
+    """Return conservative one-glyph alternatives for exact validation.
+
+    EverQuest's compact serif font often closes the gap between ``r`` and
+    ``n``, causing Windows OCR to read names such as ``Carnal`` as ``Camal``.
+    The inverse split can also occur.  These variants are never accepted on
+    their own: the wiki client must still resolve one as an exact item page.
+    """
+    variants: list[str] = []
+    seen = {value.casefold()}
+    for pattern, replacement in (
+            (r"(?<=[A-Za-z])m(?=[a-z])", "rn"),
+            (r"(?<=[A-Za-z])rn(?=[a-z])", "m")):
+        for match in re.finditer(pattern, value):
+            variant = value[:match.start()] + replacement + value[match.end():]
+            key = variant.casefold()
+            if key not in seen:
+                variants.append(variant)
+                seen.add(key)
+    return variants
+
+
 def _candidate_score(line: OcrLine, cursor_x: float, cursor_y: float) -> float | None:
     text = _clean_candidate(line.text)
     folded = text.casefold()
@@ -192,7 +214,22 @@ def rank_item_candidates(lines: Iterable[OcrLine], cursor_x: float = 0.0,
             scored[key] = (max(best, score) + min(6.0, 2.5 * (count - 1)),
                            first_index, original, count)
     ordered = sorted(scored.values(), reverse=True)
-    return [candidate for _score, _index, candidate, _count in ordered[:limit]]
+    candidates: list[str] = []
+    seen_candidates: set[str] = set()
+    for rank, (_score, _index, candidate, _count) in enumerate(ordered):
+        # Spend at most two of the four lookup slots on ambiguity repair and
+        # only for the strongest title.  Lower-ranked OCR candidates still get
+        # a chance when the highest line was unrelated UI text.
+        alternatives = _ocr_confusion_variants(candidate)[:2] if rank == 0 else []
+        for possible in (candidate, *alternatives):
+            key = possible.casefold()
+            if key in seen_candidates:
+                continue
+            candidates.append(possible)
+            seen_candidates.add(key)
+            if len(candidates) >= limit:
+                return candidates
+    return candidates
 
 
 class _Point(ctypes.Structure):

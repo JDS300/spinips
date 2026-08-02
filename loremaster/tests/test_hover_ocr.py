@@ -79,6 +79,17 @@ class HoverCandidateTests(unittest.TestCase):
         for noise in ("No Trade", "SHM BST BER", "Wrist", "Tier 3", "Merge Place"):
             self.assertNotIn(noise, candidates)
 
+    def test_compact_font_rn_m_confusion_gets_exact_lookup_alternative(self):
+        lines = [
+            OcrLine("Camal Pauldrons +3", 155, 3, 120, 11),
+            OcrLine("Description", 177, 25, 72, 12),
+            OcrLine("Camal Pauldrons +3", 68, 54, 120, 11),
+            OcrLine("No Trade", 68, 71, 50, 10),
+            OcrLine("Shoulders", 68, 119, 55, 10),
+        ]
+        candidates = rank_item_candidates(lines, cursor_x=52, cursor_y=97)
+        self.assertEqual(candidates[:2], ["Camal Pauldrons", "Carnal Pauldrons"])
+
 
 class CaptureArtifactTests(unittest.TestCase):
     def test_capture_and_metadata_are_immutable_and_local_cursor_is_exact(self):

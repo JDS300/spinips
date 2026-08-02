@@ -9173,11 +9173,12 @@
 			<G>214</G>
 			<B>140</B>
 		</LinesFillTint>
-		<DrawLinesFill>true</DrawLinesFill>
+		<DrawLinesFill>false</DrawLinesFill>
 		<EQType>4</EQType>
 		<GaugeDrawTemplate>
 			<Background>A_GaugeBackground</Background>
 			<Fill>A_GaugeFill</Fill>
+			<Lines>A_GaugeLines</Lines>
 			<LinesFill>A_GaugeLinesFill</LinesFill>
 		</GaugeDrawTemplate>
 	</Gauge>	
@@ -9259,11 +9260,12 @@
 			<G>206</G>
 			<B>252</B>
 		</LinesFillTint>
-		<DrawLinesFill>true</DrawLinesFill>
+		<DrawLinesFill>false</DrawLinesFill>
 		<EQType>5</EQType>
 		<GaugeDrawTemplate>
 			<Background>A_GaugeBackground</Background>
 			<Fill>A_GaugeFill</Fill>
+			<Lines>A_GaugeLines</Lines>
 			<LinesFill>A_GaugeLinesFill</LinesFill>
 		</GaugeDrawTemplate>
 	</Gauge>
