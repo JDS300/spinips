@@ -70,6 +70,7 @@ SOURCE_REQUIRED = (
     "docs/screenshots/loremaster-live-tour.gif",
     "docs/screenshots/loremaster-session-live.png",
     "docs/screenshots/spinui-live-hero.jpg",
+    "loremaster/charm_break.py",
     "loremaster/hover_ocr.py",
     "loremaster/loremaster.py",
     "loremaster/log_ingest.py",
@@ -77,6 +78,8 @@ SOURCE_REQUIRED = (
     "loremaster/windows_tray.py",
     "loremaster/wiki_overlay.py",
     "loremaster/tests/test_compositions.py",
+    "loremaster/tests/test_charm_break.py",
+    "loremaster/tests/test_charmed_pets.py",
     "loremaster/tests/test_config.py",
     "loremaster/tests/test_hover_ocr.py",
     "loremaster/tests/test_log_ingest.py",
@@ -102,13 +105,17 @@ SOURCE_REQUIRED = (
 
 # Values: (format, allowed dimensions, byte cap).
 README_MEDIA = {
-    "docs/screenshots/spinui-live-hero.jpg": ("JPEG", {(1600, 670)}, 1_000_000),
-    "docs/screenshots/inventory-live.png": ("PNG", {(670, 671)}, 1_000_000),
-    "docs/screenshots/loremaster-encounter-live.png": ("PNG", {(400, 480)}, 1_000_000),
-    "docs/screenshots/loremaster-session-live.png": ("PNG", {(400, 480)}, 1_000_000),
-    "docs/screenshots/loremaster-live-tour.gif": ("GIF", {(960, 540)}, 4_000_000),
-    "docs/previews/loremaster_panel.png": ("PNG", {(1704, 1658)}, 2_000_000),
-    "docs/previews/target_ring.png": ("PNG", {(1344, 234)}, 1_000_000),
+    "docs/screenshots/spinui-logo.jpg": ("JPEG", {(1200, 480)}, 500_000),
+    "docs/screenshots/spinui-gameplay-overview.jpg": (
+        "JPEG", {(1920, 804)}, 700_000),
+    "docs/screenshots/spinui-combat-hud-detail.png": (
+        "PNG", {(1698, 342)}, 750_000),
+    "docs/screenshots/spinui-inventory-equipment.png": (
+        "PNG", {(666, 674)}, 600_000),
+    "docs/screenshots/loremaster-settings-and-hud.png": (
+        "PNG", {(1271, 586)}, 400_000),
+    "docs/screenshots/loremaster-charm-break-alert-detail.jpg": (
+        "JPEG", {(1200, 720)}, 500_000),
 }
 
 PUBLIC_LAYOUT_PRESETS = ("combat-focus", "social-focus", "hybrid")
@@ -268,16 +275,29 @@ def check_readme_media() -> None:
 
     section("README showcase media")
     readme = (REPO / "README.md").read_text(encoding="utf-8")
-    raw_links = re.findall(r"!\[[^\]]*\]\(([^)\s]+)", readme)
-    local_links = {
+    markdown_sources = re.findall(r"!\[[^\]]*\]\(([^)\s]+)", readme)
+    html_sources = re.findall(
+        r"<img\b[^>]*\bsrc=[\"']([^\"']+)[\"']",
+        readme,
+        flags=re.IGNORECASE,
+    )
+    displayed_links = {
         link.replace("\\", "/")
-        for link in raw_links
+        for link in markdown_sources + html_sources
         if "://" not in link and not link.startswith("#")
     }
     expected = set(README_MEDIA)
-    missing_links = sorted(expected - local_links)
+    missing_links = sorted(expected - displayed_links)
     if missing_links:
         fail("README does not display required showcase media: " + ", ".join(missing_links))
+
+    # Check image destinations as well as displayed sources. This catches a
+    # broken full-resolution target behind a linked detail crop.
+    local_links = {
+        link.replace("\\", "/")
+        for link in re.findall(
+            r"(?i)(docs/[a-z0-9_./-]+\.(?:png|jpe?g|gif))", readme)
+    }
     for relative in sorted(local_links):
         candidate = (REPO / relative).resolve()
         try:

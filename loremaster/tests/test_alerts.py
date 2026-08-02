@@ -6,6 +6,7 @@ import sys
 import tempfile
 import time
 import unittest
+from datetime import datetime
 from pathlib import Path
 
 
@@ -40,6 +41,20 @@ class AlertTriggerGatingTests(unittest.TestCase):
             "", {}, "Bob tells the group, 'Heal Soandso now'", "Soandso", cfg)
         self.assertTrue(called)
         self.assertIn("BOB CALLED YOU", called[0][1])
+
+    def test_charm_break_uses_danger_banner_and_its_own_switch(self):
+        event = LOREMASTER.CharmBreakEvent(
+            event_id=1, pet_name="A rock golem",
+            charm_spell="Cajoling Whispers", occurred_at=datetime.now())
+        on = LOREMASTER.check_alerts(
+            "spell_fade", {}, "", "Soandso", base_cfg(), (event,))
+        self.assertEqual(on, [("danger", "CHARM BROKE — A ROCK GOLEM")])
+        self.assertEqual(LOREMASTER.check_alerts(
+            "spell_fade", {}, "", "Soandso",
+            base_cfg(alert_charm_break=False), (event,)), [])
+        self.assertEqual(LOREMASTER.check_alerts(
+            "spell_fade", {}, "", "Soandso",
+            base_cfg(alerts_enabled=False), (event,)), [])
 
     def test_each_trigger_has_its_own_off_switch(self):
         cases = [
@@ -99,6 +114,7 @@ class AlertConfigDefaultTests(unittest.TestCase):
     def test_per_trigger_defaults_are_all_on(self):
         cfg = self.load_payload({})
         for key in ("alert_tells", "alert_summon", "alert_death",
+                    "alert_charm_break",
                     "alert_big_hit", "alert_name_called"):
             self.assertIs(cfg[key], True, key)
         # The master banner switch ships OFF; each trigger is pre-enabled so

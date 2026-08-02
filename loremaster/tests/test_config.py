@@ -33,6 +33,7 @@ class ConfigRecoveryTests(unittest.TestCase):
                 config = self.load_payload(payload)
                 self.assertEqual(config["wiki_hotkey"], "Ctrl+Shift+E")
                 self.assertEqual(config["opacity"], 1.0)
+                self.assertFalse(config["summary_collapsed"])
 
     def test_legacy_visual_and_hotkey_defaults_migrate(self):
         config = self.load_payload({"opacity": 0.94, "wiki_hotkey": "Alt+E"})
@@ -49,6 +50,20 @@ class ConfigRecoveryTests(unittest.TestCase):
         self.assertEqual(config["opacity"], 0.90)
         self.assertEqual(config["wiki_hotkey"], "Alt+E")
 
+    def test_explicit_collapsed_summary_choice_is_preserved(self):
+        config = self.load_payload({"summary_collapsed": True})
+        self.assertTrue(config["summary_collapsed"])
+
+    def test_retired_compare_preferences_are_removed(self):
+        config = self.load_payload({
+            "compare_enabled": True,
+            "compare_hotkey": "Ctrl+Shift+C",
+            "compare_hotkey_customized": True,
+            "compare_position": [10, 20],
+        })
+        for key in ("compare_enabled", "compare_hotkey",
+                    "compare_hotkey_customized", "compare_position"):
+            self.assertNotIn(key, config)
 
 if __name__ == "__main__":
     unittest.main()
