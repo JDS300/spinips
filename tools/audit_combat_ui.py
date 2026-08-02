@@ -135,6 +135,21 @@ def audit_player_and_target() -> None:
                 f"{gauge.get('item')} must show total 0-100 progression "
                 "without the 20% sub-tick overlay"
             )
+        if child_text(gauge, "GaugeDrawTemplate/Lines") != "A_GaugeLines":
+            fail(f"{gauge.get('item')} lost its fixed progression ticks")
+    shared_progression_paths = (
+        "GaugeOffsetY",
+        "AutoStretch",
+        "LeftAnchorOffset",
+        "RightAnchorOffset",
+        "RightAnchorToLeft",
+        "GaugeDrawTemplate/Background",
+        "GaugeDrawTemplate/Fill",
+        "GaugeDrawTemplate/Lines",
+    )
+    for path in shared_progression_paths:
+        if child_text(exp, path) != child_text(alt_adv, path):
+            fail(f"player EXP and AA horizontal rendering differs at {path}")
     require_binding(player, "Gauge", "PW_Castspell_Gauge", "PW_Castspell_Gauge", 7)
     require_binding(player, "Label", "Player_ManaLabel", "ManaLabel", 1009)
     require_binding(player, "Label", "PW_MPNumbers", "PW_MPNumbers", 128)

@@ -218,6 +218,14 @@ def style_gauge(block: str, color: tuple[int, int, int],
     return block
 
 
+def show_total_progression_ticks(block: str) -> str:
+    """Draw fixed gauge ticks without EQ's misleading 20% sub-progress."""
+    block = set_value(block, "DrawLinesFill", "false")
+    return set_or_add_value(
+        block, "Lines", "A_GaugeLines", after="Fill"
+    )
+
+
 def set_root_widths(block: str, width: int) -> str:
     # Group Size and GroupSizeN records are all direct children of the root.
     return re.sub(r"(<CX>)\d+(</CX>)", rf"\g<1>{width}\g<2>", block)
@@ -335,8 +343,9 @@ def style_buff_file(path: Path, prefix: str, count: int,
 def style_player() -> None:
     path = SKIN / "EQUI_PlayerWindow.xml"
     text = path.read_text(encoding="ascii")
-    # XP is ember gold and AA is venom.  Both progression bars hide the legacy
-    # sub-tick so their fills match the client's total percentage labels.
+    # XP is ember gold and AA is venom. Both progression bars use a fixed tick
+    # overlay while hiding the legacy sub-progress fill so their lengths match
+    # the client's total percentage labels.
     gauges = {
         "Player_HP": (HP, None),
         "Player_Mana": (MANA, None),
@@ -349,13 +358,13 @@ def style_player() -> None:
     for name, (color, lines) in gauges.items():
         text = change_item(text, "Gauge", name,
                            lambda b, c=color, l=lines: style_gauge(b, c, l))
-    # Draw only total progression.  LinesFill represents progress inside the
-    # current 20% bubble, so 17% XP appears 85% full and 10% AA appears 50%
-    # full when that secondary layer is enabled.
+    # LinesFill represents progress inside the current 20% bubble, so 17% XP
+    # appears 85% full and 10% AA appears 50% full when it is enabled. The
+    # static Lines layer retains clear increments without changing fill length.
     for name in ("PW_ExpGauge", "PW_AltAdvGauge"):
         text = change_item(
             text, "Gauge", name,
-            lambda b: set_value(b, "DrawLinesFill", "false"),
+            show_total_progression_ticks,
         )
     for name, color in (("PW_Level", GOLD_BRIGHT), ("PW_Class", TEXT),
                         ("PW_StanceLabel", GOLD_BRIGHT),
@@ -776,17 +785,27 @@ def sync_canonical_variants() -> None:
 def style_experience_gauges() -> None:
     """One color identity per progression bar, everywhere it appears.
 
-    XP is ember gold and AA is venom — including the LinesFill sub-tick
-    overlay, which the stock skin left pure blue on every experience-type
-    gauge so the two bars were indistinguishable at a glance.
+    XP is ember gold and AA is venom. Inventory gauges show total 0-100
+    progression without EQ's legacy 20-percent LinesFill sub-tick overlay.
     """
-    path = SKIN / "EQUI_InventoryWindow.xml"
-    text = path.read_text(encoding="utf-8")
-    text = change_item(text, "Gauge", "IW_ExpGauge",
-                       lambda b: style_gauge(b, GOLD, GOLD_BRIGHT))
-    text = change_item(text, "Gauge", "IW_AltAdvGauge",
-                       lambda b: style_gauge(b, CYAN, CYAN_BRIGHT))
-    path.write_text(text, encoding="utf-8")
+    inventory_names = (
+        "EQUI_InventoryWindow.xml",
+        "EQUI_InventoryWindow1.xml",
+        "EQUI_InventoryWindow2.xml",
+        "EQUI_InventoryWindow3.xml",
+    )
+    for inventory_name in inventory_names:
+        path = SKIN / inventory_name
+        text = path.read_text(encoding="utf-8")
+        text = change_item(
+            text, "Gauge", "IW_ExpGauge",
+            lambda b: show_total_progression_ticks(style_gauge(b, GOLD)),
+        )
+        text = change_item(
+            text, "Gauge", "IW_AltAdvGauge",
+            lambda b: show_total_progression_ticks(style_gauge(b, CYAN)),
+        )
+        path.write_text(text, encoding="utf-8")
 
     path = SKIN / "EQUI_AAWindow.xml"
     text = path.read_text(encoding="ascii")

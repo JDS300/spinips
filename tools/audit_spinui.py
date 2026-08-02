@@ -574,6 +574,62 @@ def audit_pet_geometry() -> None:
                 )
 
 
+def audit_inventory_progression() -> None:
+    expected_names = {
+        "EQUI_InventoryWindow.xml",
+        "EQUI_InventoryWindow1.xml",
+        "EQUI_InventoryWindow2.xml",
+        "EQUI_InventoryWindow3.xml",
+    }
+    paths = sorted(SKIN.glob("EQUI_InventoryWindow*.xml"))
+    actual_names = {path.name for path in paths}
+    if actual_names != expected_names:
+        fail(
+            "inventory variants changed: "
+            f"found {sorted(actual_names)}, expected {sorted(expected_names)}"
+        )
+
+    for path in paths:
+        root = ET.parse(path).getroot()
+        gauges: list[ET.Element] = []
+        for gauge_name, eq_type in (
+                ("IW_ExpGauge", 4), ("IW_AltAdvGauge", 5)):
+            gauge = item(root, "Gauge", gauge_name)
+            gauges.append(gauge)
+            if child_int(gauge, "EQType") != eq_type:
+                fail(f"{path.name} {gauge_name} lost EQType {eq_type}")
+            draw_lines = (gauge.findtext("DrawLinesFill") or "").strip().casefold()
+            if draw_lines != "false":
+                fail(
+                    f"{path.name} {gauge_name} must show total 0-100 "
+                    "progression without the 20-percent sub-tick overlay"
+                )
+            lines = (gauge.findtext("GaugeDrawTemplate/Lines") or "").strip()
+            if lines != "A_GaugeLines":
+                fail(f"{path.name} {gauge_name} lost its fixed progression ticks")
+        shared_paths = (
+            "GaugeOffsetY",
+            "Location/X",
+            "Size/CX",
+            "AutoStretch",
+            "LeftAnchorOffset",
+            "RightAnchorOffset",
+            "RightAnchorToLeft",
+            "GaugeDrawTemplate/Background",
+            "GaugeDrawTemplate/Fill",
+            "GaugeDrawTemplate/Lines",
+        )
+        for shared_path in shared_paths:
+            values = tuple(
+                (gauge.findtext(shared_path) or "").strip() for gauge in gauges
+            )
+            if values[0] != values[1]:
+                fail(
+                    f"{path.name} EXP and AA horizontal rendering differs "
+                    f"at {shared_path}: {values}"
+                )
+
+
 def audit_inventory_geometry() -> None:
     root = ET.parse(SKIN / "EQUI_InventoryWindow.xml").getroot()
     equipment = item(root, "Screen", "IW_Equipment")
@@ -1077,6 +1133,7 @@ def main() -> int:
     xml_files, texture_refs, template_count, template_reference_files = audit_xml()
     tga_count, dds_count, cur_count = audit_binary_assets()
     audit_pet_geometry()
+    audit_inventory_progression()
     audit_inventory_geometry()
     print("SpinUI asset audit: ALL PASS")
     print(f"  XML {len(xml_files)} | texture refs {len(texture_refs)} | "

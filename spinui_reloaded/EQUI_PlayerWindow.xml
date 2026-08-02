@@ -802,6 +802,7 @@
 		<GaugeDrawTemplate>
 			<Background>A_GaugeBackground</Background>
 			<Fill>A_GaugeFill</Fill>
+			<Lines>A_GaugeLines</Lines>
 			<LinesFill>A_GaugeLinesFill</LinesFill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
@@ -851,6 +852,7 @@
 		<GaugeDrawTemplate>
 			<Background>A_GaugeBackground</Background>
 			<Fill>A_GaugeFill</Fill>
+			<Lines>A_GaugeLines</Lines>
 			<LinesFill>A_GaugeLinesFill</LinesFill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
