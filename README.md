@@ -122,7 +122,7 @@ Hover an item and press **Ctrl+Shift+E** by default. Lore Lens freezes one bound
 | **A cockpit, not a collage** | Combat information shares one lower eye-line while the middle of the screen remains available for positioning and awareness. |
 | **Resolution-aware** | Native controls stay crisp because each profile is recomputed instead of globally scaled. |
 | **Adventure-aware** | Loremaster treats combat, progression, loot, travel, and item research as one journey rather than isolated utilities. |
-| **Built to be changed** | Textures, layouts, inventory, pet controls, target art, and previews come from rerunnable generators with audits and release gates. |
+| **Built to be changed** | Textures, layouts, inventory, pet controls, and previews come from rerunnable generators with audits and release gates. |
 
 ### Vellum & Ember
 
@@ -165,7 +165,6 @@ The installer reads `eqclient.ini` to recommend the exact or nearest profile, bu
 | **Three-window chat** | Main, Social, and Combat are real windows—not tabs—with preset-specific proportions and predictable routing. |
 | **Pet command center** | A `356×236` four-column command panel retaining all 14 native commands plus 28 effect positions across two rows. |
 | **Effect rails** | Buff, song, and pet durations render directly on icon art in shadowed ember gold; sparse client-assigned slots remain sparse instead of being falsified. |
-| **Target indicator** | A custom 128-point breathing ring improves con readability through tier-driven hue, opacity, sweep, motion, and radius. |
 | **Bags and bank** | Eight inventory bags park in one lower-right row; sixteen bank bags tile in an `8×2` grid beside the bank. |
 | **Progression** | The player plate and inventory show distinct XP and AA gauges; the AA window carries the same segmented AA treatment, with correctly scaled fills throughout. |
 
@@ -173,23 +172,6 @@ The installer reads `eqclient.ini` to recommend the exact or nearest profile, bu
 <summary><strong>Why effect timers stay on the icons</strong></summary>
 
 EverQuest draws a countdown and a beneficial/detrimental plate on the same buff button, and one width controls both. Making the button wide enough for a separate duration column also stretches the colored plate into an opaque slab. SpinUI keeps the cell icon-sized and makes the number readable with ember gold and a shadow. The generators and audits share the same cell constants so the released geometry cannot drift silently.
-
-</details>
-
-<details>
-<summary><strong>Target indicator consider ramp</strong></summary>
-
-| Consider | Color | Opacity | Motion / sweep | Radius |
-|---|---|---:|---|---|
-| Trivial | slate | 140 | widest and slowest | smallest |
-| Very easy | jade | 175 | restrained | small |
-| Easy | teal | 195 | rising | rising |
-| Fairly easy | azure | 212 | rising | rising |
-| Even match | parchment | 232 | clear | medium |
-| Difficult | ember gold | 248 | tighter and busier | wide |
-| Deadly | crimson | 255 | tightest, busiest, and pulsing | widest |
-
-The indicator communicates the con tier the client supplies; it is an awareness aid, not a prediction of the outcome of a pull.
 
 </details>
 
@@ -314,7 +296,6 @@ python loremaster.py --wait-for-eq
 pip install pillow
 python3 tools/generate_spinui_textures.py
 python3 tools/generate_spinui_layout.py
-python3 tools/generate_target_ring.py
 python3 tools/restyle_combat.py
 python3 tools/restyle_pet.py
 python3 tools/restyle_inventory.py
@@ -328,7 +309,6 @@ python3 tools/release_quality_gate.py
 - Move windows through `PLACEMENTS` in `generate_spinui_layout.py`; generation converts coordinates and re-validates the managed layout.
 - Add a chat preset or resolution through `CHAT_PRESETS` or `RESOLUTION_PROFILES`.
 - Retune effect geometry through the shared `EFFECT_*` / pet buff-cell constants used by both generators and audits.
-- Retune the target indicator through `CON_TIERS`; regenerate its texture, INI, and reference together.
 - Generators start from pristine stock sources. Marker-guarded restyle migrations are safe no-ops after they have already applied.
 
 </details>
