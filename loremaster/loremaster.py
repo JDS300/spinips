@@ -15,8 +15,8 @@ What it does
   within a 20 s grace window of your own last action.
 * Encounter Lab with current/previous/session views, actor/ability/healing
   meters, multi-mob target breakdowns, and a two-second combat timeline.
-* Pet damage attribution (learns pet names from pet speech) + active pet
-  count for swarm/multiclass play.
+* Pet damage attribution for summoned and charmed pets, plus active pet count
+  for swarm/multiclass play.
 * Bard song counting (songs twisted, songs/min) — WAR/DRU/BRD approved.
 * XP tracking: xp events, xp %/hr when the server logs percentages, level
   ups, and estimated time to level.
@@ -56,6 +56,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from charm_break import CharmBreakDetector, CharmBreakEvent
 from hover_ocr import HoverOcrService
 from log_ingest import (
     LineBatchRecord,
@@ -150,6 +151,7 @@ WIKI_CACHE_DIR = APP_DATA_DIR / "wiki_cache"
 # Combat pacing constants
 COMBAT_GAP = timedelta(seconds=10)
 BYSTANDER_GRACE = timedelta(seconds=20)
+CHARM_LAND_WINDOW = timedelta(seconds=12)
 SESSION_GAP = timedelta(minutes=60)
 POLL_MS = 500
 LOG_RESCAN_SECONDS = 2.0
@@ -158,6 +160,18 @@ INITIAL_BACKFILL_BYTES = 2 * 1024 * 1024
 INITIAL_BACKFILL_MINUTES = 30
 MAX_FIGHT_HISTORY = 500
 TIMELINE_BUCKET_SECONDS = 2
+CHARM_SPELL_FAMILIES = frozenset({
+    # Enchanter
+    "charm", "beguile", "cajoling whispers", "allure",
+    "boltran's agacerie", "dictate", "command of druzzil",
+    # Druid / ranger animal charm
+    "befriend animal", "charm animals", "beguile animals",
+    "allure of the wild", "call of karana", "tunare's request",
+    "command of tunare",
+    # Necromancer undead charm
+    "beguile undead", "cajole undead", "allure of death",
+    "thrall of bones", "control undead",
+})
 # EverQuest Legends drops ten grades of potential mote, and a night of clearing
 # camps buries their loot lines under everything else.  The client names the
 # items in the plural ("Motes of Minor Potential") while a loot line reads
@@ -502,6 +516,8 @@ PATTERNS: list[tuple[str, re.Pattern]] = [
     ("resist", re.compile(r"^Your target resisted the (?P<spell>.+?) spell\.$")),
     ("resist2", re.compile(r"^.+? resisted your (?P<spell>.+?)!$")),
     ("interrupt", re.compile(r"^Your spell is interrupted\.$")),
+    ("spell_fade", re.compile(
+        r"^Your (?P<spell>.+?) spell has worn off(?: of (?P<target>.+?))?\.$")),
     # --- xp / progression ---
     ("xp", re.compile(r"^You gain (?P<party>party )?experience!+(?: \((?P<pct>[\d.]+)%\))?.*$")),
     ("level", re.compile(r"^You have gained a level! Welcome to level (?P<level>\d+)!$")),
@@ -529,8 +545,18 @@ PATTERNS: list[tuple[str, re.Pattern]] = [
         r"Your class composition is|Active classes:)\s+(?P<classes>.+?)[.!]?$",
         re.I)),
     # --- pets ---
-    ("pet_attack", re.compile(r"^(?P<pet>\S+) (?:tells|told) you, 'Attacking (?P<target>.+?) Master\.'$")),
-    ("pet_leader", re.compile(r"^(?P<pet>\S+) says,? 'My leader is (?P<leader>\S+?)\.'$")),
+    # Summoned pets have one-word names, while charmed creatures retain names
+    # such as "A rock golem". Both ownership messages are visible only to the
+    # owner, making them safe claims even in a group or a busy camp.
+    ("pet_attack", re.compile(
+        r"^(?P<pet>.+?) (?:tells|told) you, 'Attacking (?P<target>.+?) Master\.'$")),
+    ("pet_leader", re.compile(
+        r"^(?P<pet>.+?) says,? 'My leader is (?P<leader>\S+?)\.'$")),
+    # Legends emits the first form when charm lands; some EQ clients use the
+    # older blink emote. Neither proves ownership alone because groupmates'
+    # charms are also visible, so application requires our own recent cast.
+    ("pet_charm", re.compile(r"^(?P<pet>.+?) has been charmed\.$", re.I)),
+    ("pet_charm", re.compile(r"^(?P<pet>.+?) blinks\.$", re.I)),
     # --- alert-worthy lines ---
     ("tell_in", re.compile(r"^(?P<sender>[A-Za-z]+) tells you, '(?P<msg>.*)'$")),
     ("summoned", re.compile(r"^You have been summoned!?$")),
@@ -687,6 +713,29 @@ def normalize_mob(name: str) -> str:
     return n[:1].upper() + n[1:] if n else name
 
 
+def pet_identity(name: str) -> str:
+    """Canonical key shared by pet chatter and sentence-cased combat lines."""
+    return (name or "").strip().casefold()
+
+
+def normalize_pet_name(name: str) -> str:
+    """Normalize sentence casing without discarding a creature's article."""
+    value = (name or "").strip()
+    return value[:1].upper() + value[1:] if value else value
+
+
+def looks_like_charmed_actor(name: str) -> bool:
+    value = (name or "").strip()
+    return bool(re.match(r"^(?:a|an|the)\s+", value, re.I)
+                or not looks_like_player_actor(value))
+
+
+def is_known_charm_spell(name: str) -> bool:
+    """Recognize charm families while accepting Legends rank suffixes."""
+    value = re.sub(r"\s+(?:[IVXLCDM]+|\d+)$", "", name.strip(), flags=re.I)
+    return value.casefold() in CHARM_SPELL_FAMILIES
+
+
 PLAYER_ACTOR_RE = re.compile(r"^[A-Z][A-Za-z'`-]{1,31}$")
 
 
@@ -735,6 +784,10 @@ class Fight:
     composition: str = ""
     composition_source: str = "unset"
     damage: int = 0
+    # Text logs do not carry actor IDs. When a charmed creature attacks an
+    # identically named NPC, the direction of each line cannot be proven; we
+    # still include the damage, but surface this subtotal as an estimate.
+    ambiguous_pet_damage: int = 0
     targets: dict = field(default_factory=lambda: defaultdict(int))
     sources: dict = field(default_factory=lambda: defaultdict(
         lambda: {"t": 0, "h": 0, "max": 0}))
@@ -834,7 +887,14 @@ class SessionStats:
         # pets
         self.pet_names: set[str] = set()
         self.pet_last_seen: dict[str, datetime] = {}
+        # Charm aliases are intentionally ephemeral. Unlike summoned-pet
+        # names, a creature name can also belong to unrelated NPCs later.
+        self.charmed_pet_names: set[str] = set()
+        self.charm_breaks = CharmBreakDetector()
+        self.charm_spells: set[str] = set()
+        self.pending_cast: tuple[str, datetime] | None = None
         self.pet_damage = 0
+        self.ambiguous_pet_damage = 0
         self.max_hit: tuple[int, str, str] | None = None   # (dmg, source, target)
         self.damage_taken_by: dict[str, dict] = defaultdict(lambda: {"t": 0, "h": 0})
         self.group_kills: dict[str, int] = defaultdict(int)
@@ -882,14 +942,50 @@ class SessionStats:
         return max(1 / 3600, (self.last_event - self.session_start).total_seconds() / 3600)
 
     def is_pet(self, name: str) -> bool:
-        return name.strip() in self.pet_names
+        key = pet_identity(name)
+        return any(pet_identity(pet) == key for pet in self.pet_names)
+
+    def is_charmed_pet(self, name: str) -> bool:
+        key = pet_identity(name)
+        return any(pet_identity(pet) == key for pet in self.charmed_pet_names)
+
+    def _pet_display_name(self, name: str) -> str | None:
+        key = pet_identity(name)
+        return next((pet for pet in self.pet_names
+                     if pet_identity(pet) == key), None)
+
+    def _drop_pet(self, name: str) -> None:
+        key = pet_identity(name)
+        self.charm_breaks.clear_silently(name)
+        self.pet_names = {pet for pet in self.pet_names
+                          if pet_identity(pet) != key}
+        self.charmed_pet_names = {
+            pet for pet in self.charmed_pet_names
+            if pet_identity(pet) != key
+        }
+        for pet in list(self.pet_last_seen):
+            if pet_identity(pet) == key:
+                del self.pet_last_seen[pet]
+
+    def _drop_charmed_pets(self) -> None:
+        for pet in list(self.charmed_pet_names):
+            self._drop_pet(pet)
+        # Defensive synchronization if ownership state was learned before a
+        # display alias was populated. Lifecycle cleanup never means "break".
+        self.charm_breaks.clear_silently()
+
+    def persistent_pet_names(self) -> list[str]:
+        """Only stable summoned-pet identities may survive an app restart."""
+        charm_keys = {pet_identity(pet) for pet in self.charmed_pet_names}
+        return sorted(pet for pet in self.pet_names
+                      if pet_identity(pet) not in charm_keys)
 
     def _touch(self, ts: datetime):
         if self.session_start is None:
             self.session_start = ts
         elif self.session_gap and self.last_event and ts - self.last_event > self.session_gap:
             level, xsl, known = self.level, self.xp_since_level, self.xp_pct_known
-            pets = set(self.pet_names)
+            pets = set(self.persistent_pet_names())
             zone = self.zone
             self.reset()
             self.session_start = ts
@@ -1034,7 +1130,14 @@ class SessionStats:
             self.motes[tier] += _quantity(g)
 
     # -- event application ----------------------------------------------
-    def apply(self, ts: datetime, kind: str, g: dict, *, count_lifetime: bool = True):
+    def apply(self, ts: datetime, kind: str, g: dict, *, count_lifetime: bool = True
+              ) -> tuple[CharmBreakEvent, ...]:
+        """Apply one parsed log event and return any proven charm breaks.
+
+        The tuple belongs only to this input line. Callers can immediately
+        turn it into banners/sounds without polling mutable model state.
+        """
+        charm_break_events: list[CharmBreakEvent] = []
         if self.fight:
             ref = self.last_combat_signal or self.fight.end
             if ts - ref > COMBAT_GAP:
@@ -1104,6 +1207,8 @@ class SessionStats:
                 self.fight.kill_targets[mob] += 1
                 self.fight.add_timeline(ts, "kills", 1)
         elif kind == "death_you":
+            self.pending_cast = None
+            self._drop_charmed_pets()
             self.deaths += 1
             if count_lifetime:
                 self._lifetime_inc("deaths")
@@ -1129,6 +1234,13 @@ class SessionStats:
             self._combat_signal(ts)
             if ally_death:
                 self._feed(ts, "ally_death", 0, raw_target)
+                # A differently named NPC killing the controlled creature is
+                # the only useful death signal the text log can provide. If
+                # both names are identical, keep ownership until charm fade:
+                # the line could instead describe an enemy of the same type.
+                if (self.is_charmed_pet(raw_target)
+                        and pet_identity(raw_target) != pet_identity(killer)):
+                    self._drop_pet(raw_target)
             else:
                 if self.fight:
                     self.fight.kills += 1
@@ -1175,12 +1287,33 @@ class SessionStats:
             self.songs += 1
         elif kind == "cast_begin":
             self.casts += 1
+            self.pending_cast = (g["spell"], ts)
         elif kind == "fizzle":
             self.fizzles += 1
+            self.pending_cast = None
         elif kind in ("resist", "resist2"):
             self.resists += 1
+            self.pending_cast = None
         elif kind == "interrupt":
             self.interrupts += 1
+            self.pending_cast = None
+        elif kind == "spell_fade":
+            target = (g.get("target") or "").strip()
+            charm_faded = (g["spell"].casefold() in self.charm_spells
+                           or is_known_charm_spell(g["spell"]))
+            if charm_faded:
+                event = self.charm_breaks.observe_fade(
+                    spell_name=g["spell"], occurred_at=ts,
+                    target_name=target or None, is_charm_spell=True)
+                if event is not None:
+                    charm_break_events.append(event)
+                if target and self.is_charmed_pet(target):
+                    self._drop_pet(target)
+                elif not target:
+                    # Some clients omit the target from worn-off messages.
+                    # The ownership model permits only one active charm, so a
+                    # recognized targetless fade safely releases it.
+                    self._drop_charmed_pets()
 
         elif kind == "xp":
             self.xp_events += 1
@@ -1215,6 +1348,10 @@ class SessionStats:
             self.faction[g["faction"]] += int(g["delta"])
         elif kind == "zone":
             if not any(fp in g["zone"] for fp in ZONE_FALSE_POSITIVES):
+                # Charm never crosses a zone boundary. Keeping an NPC alias
+                # here would turn a future same-named mob into personal DPS.
+                self.pending_cast = None
+                self._drop_charmed_pets()
                 self.zone = g["zone"]
                 if not self.zones or self.zones[-1] != g["zone"]:
                     self.zones.append(g["zone"])
@@ -1231,34 +1368,75 @@ class SessionStats:
         elif kind == "summoned":
             pass  # alert layer handles it
         elif kind == "pet_attack":
-            self._register_pet(g["pet"], ts)
+            pet = g["pet"]
+            charmed = (self.is_charmed_pet(pet)
+                       or looks_like_charmed_actor(pet))
+            self._register_pet(pet, ts, charmed=charmed)
             self._own_combat(ts)
         elif kind == "pet_leader":
-            if g["leader"] == self.character or self.character == "?":
-                self._register_pet(g["pet"], ts)
+            if (g["leader"].casefold() == self.character.casefold()
+                    or self.character == "?"):
+                pet = g["pet"]
+                charmed = (self.is_charmed_pet(pet)
+                           or looks_like_charmed_actor(pet))
+                self._register_pet(pet, ts, charmed=charmed)
+        elif kind == "pet_charm":
+            # Everyone nearby sees this success line. Claim it only when it
+            # follows *our* cast; another Enchanter's charm must stay observed
+            # NPC activity rather than inflate our personal DPS.
+            if self.pending_cast:
+                spell, cast_at = self.pending_cast
+                if (timedelta(0) <= ts - cast_at <= CHARM_LAND_WINDOW
+                        and is_known_charm_spell(spell)):
+                    self.charm_spells.add(spell.casefold())
+                    self._register_pet(
+                        g["pet"], ts, charmed=True, charm_spell=spell)
+                self.pending_cast = None
 
         elif kind in ("melee_third", "nuke_third", "dot_third"):
             attacker = (g.get("attacker") or g.get("caster") or "").strip()
             dmg = int(g["dmg"])
             if attacker and self.is_pet(attacker):
-                self.pet_last_seen[attacker] = ts
+                pet = self._pet_display_name(attacker) or normalize_mob(attacker)
+                self.pet_last_seen[pet] = ts
                 self.pet_damage += dmg
-                self._deal(ts, g["target"], dmg, f"Pet ({attacker})",
-                           actor=f"{attacker} (pet)")
+                self._deal(ts, g["target"], dmg, f"Pet ({pet})",
+                           actor=f"{pet} (pet)")
+                if (self.is_charmed_pet(attacker)
+                        and pet_identity(attacker) == pet_identity(g["target"])):
+                    self.ambiguous_pet_damage += dmg
+                    if self.fight:
+                        self.fight.ambiguous_pet_damage += dmg
                 self.melee_hits += 0  # pet swings tracked via source hits
             else:
                 self._observe_actor_damage(ts, attacker, g["target"], dmg)
         elif kind == "miss_third":
             attacker = (g.get("attacker") or "").strip()
             if attacker and self.is_pet(attacker):
+                pet = self._pet_display_name(attacker) or normalize_mob(attacker)
+                self.pet_last_seen[pet] = ts
                 self._own_combat(ts)
             else:
                 self._combat_signal(ts)
 
-    def _register_pet(self, pet: str, ts: datetime):
-        pet = pet.strip()
-        self.pet_names.add(pet)
-        self.pet_last_seen[pet] = ts
+        return tuple(charm_break_events)
+
+    def _register_pet(self, pet: str, ts: datetime, *, charmed: bool = False,
+                      charm_spell: str = ""):
+        pet = normalize_pet_name(pet)
+        key = pet_identity(pet)
+        if charmed:
+            # One controlled creature at a time: a new charm claim invalidates
+            # the previous NPC alias but leaves summoned/swarm names intact.
+            for old in list(self.charmed_pet_names):
+                if pet_identity(old) != key:
+                    self._drop_pet(old)
+        display = self._pet_display_name(pet) or pet
+        self.pet_names.add(display)
+        self.pet_last_seen[display] = ts
+        if charmed:
+            self.charmed_pet_names.add(display)
+            self.charm_breaks.claim(display, ts, charm_spell)
 
     # -- snapshot for the UI ---------------------------------------------
     def snapshot(self, now: datetime | None = None) -> dict:
@@ -1338,6 +1516,7 @@ class SessionStats:
             "session_start": self.session_start,
             "copper": self.copper,
             "pet_damage": self.pet_damage,
+            "ambiguous_pet_damage": self.ambiguous_pet_damage,
             "active_pets": active_pets,
             "pet_names": sorted(self.pet_names),
             "kills": sum(self.kills.values()),
@@ -1514,12 +1693,17 @@ class LogWatcher:
 # ---------------------------------------------------------------------------
 # Alerts — DBM/WeakAuras-style banners driven by log lines
 # ---------------------------------------------------------------------------
-def check_alerts(kind: str, g: dict, raw_msg: str, character: str, cfg: dict):
+def check_alerts(kind: str, g: dict, raw_msg: str, character: str, cfg: dict,
+                 charm_break_events: tuple[CharmBreakEvent, ...] = ()):
     """Return a list of (severity, text) alerts for one parsed event.
     severity: 'danger' (red), 'warn' (gold), 'info' (cyan)."""
     if not cfg.get("alerts_enabled", False):
         return []
     out = []
+    if cfg.get("alert_charm_break", True):
+        for event in charm_break_events:
+            pet = (event.pet_name or "CHARMED PET").upper()
+            out.append(("danger", f"CHARM BROKE — {pet}"))
     if kind == "tell_in" and cfg.get("alert_tells", True):
         out.append(("info", f"TELL \u2014 {g['sender']}: {g['msg'][:60]}"))
     elif kind == "summoned" and cfg.get("alert_summon", True):
@@ -1572,6 +1756,9 @@ def load_config() -> dict:
         "mini_position": None,
         "panel_size": [400, 480],
         "locked": False,
+        # Full-panel summary can collapse without changing the user's saved
+        # window size, turning the reclaimed height into ledger viewport.
+        "summary_collapsed": False,
         "starred": ["session_dps", "xp_hr", "hours_to_level", "kills"],
         "starred_cards": ["kills", "money", "combat", "motes"],
         "hud_cards_version": 2,
@@ -1586,6 +1773,7 @@ def load_config() -> dict:
         "alert_tells": True,
         "alert_summon": True,
         "alert_death": True,
+        "alert_charm_break": True,
         "alert_big_hit": True,
         "alert_name_called": True,
         "auto_reset_minutes": 0,
@@ -1620,6 +1808,11 @@ def load_config() -> dict:
             cfg.update(loaded)
     except (OSError, ValueError):
         pass
+    # Gear Compare was removed. Drop its retired preferences so the next
+    # normal config save also cleans up installations that tried the feature.
+    for retired_key in ("compare_enabled", "compare_hotkey",
+                        "compare_hotkey_customized", "compare_position"):
+        cfg.pop(retired_key, None)
     # Migrate the old untouched Alt+E default once, while preserving every
     # other custom binding (including an explicitly re-selected Alt+E).
     legacy = re.sub(r"\s+", "", str(cfg.get("wiki_hotkey", ""))).casefold()
@@ -1742,7 +1935,9 @@ def save_character_state(char: str, stats: SessionStats) -> None:
             "character": char,
             "level": snap["level"],
             "xp_since_level": snap["xp_since_level"],
-            "pet_names": snap["pet_names"],
+            # Charmed NPC aliases never survive a restart; the same creature
+            # name may be an unrelated enemy in the next session.
+            "pet_names": stats.persistent_pet_names(),
             "zone": snap["zone"],
             "composition": stats.composition,
             "last_session_key": session_key,
@@ -1763,7 +1958,9 @@ def restore_character_state(stats: SessionStats) -> datetime | None:
     if stats.xp_since_level:
         stats.xp_pct_known = True
     for p in st.get("pet_names", []):
-        stats.pet_names.add(p)
+        # Older saves only contained one-word summoned pet names because the
+        # former parser could not learn multi-word charm pets at all.
+        stats.pet_names.add(normalize_pet_name(str(p)))
     stats.zone = st.get("zone", stats.zone)
     try:
         if st.get("composition"):
@@ -1960,6 +2157,27 @@ def wiki_status_label(item) -> str:
     return "LIVE"
 
 
+def summary_toggle_label(collapsed: bool) -> str:
+    """Compact affordance for hiding or restoring the full-panel summary."""
+    return "SHOW TOP ▾" if collapsed else "TOP ▴"
+
+
+def apply_summary_visibility(summary, restore, ledger, collapsed: bool) -> None:
+    """Show or hide the packed summary without rebuilding or resizing UI."""
+    if summary is None or restore is None or ledger is None:
+        return
+    if collapsed:
+        if summary.winfo_manager():
+            summary.pack_forget()
+        if not restore.winfo_manager():
+            restore.pack(fill="x", before=ledger)
+    else:
+        if restore.winfo_manager():
+            restore.pack_forget()
+        if not summary.winfo_manager():
+            summary.pack(fill="x", before=ledger)
+
+
 # ---------------------------------------------------------------------------
 # Alert banners — frameless EQ-overlay strips, center-top, auto-fading
 # ---------------------------------------------------------------------------
@@ -2120,6 +2338,7 @@ def run_gui(args):
              "fights_seen": 0, "expanded": {"combat"}, "scope": "fight",
              "lab_view": "overview", "compare_filter": "same",
              "lifetime_cutoff": None, "selected_fight": None,
+             "summary_collapsed": bool(cfg.get("summary_collapsed", False)),
              "locked": bool(cfg.get("locked", False)), "click_through": False,
              "hidden_to_tray": False, "manual_show": False}
     alerts = AlertManager(tk, root, cfg)
@@ -3044,6 +3263,8 @@ def run_gui(args):
         tells_var = tk.BooleanVar(value=bool(cfg.get("alert_tells", True)))
         summon_var = tk.BooleanVar(value=bool(cfg.get("alert_summon", True)))
         death_var = tk.BooleanVar(value=bool(cfg.get("alert_death", True)))
+        charm_break_var = tk.BooleanVar(value=bool(
+            cfg.get("alert_charm_break", True)))
         big_hit_var = tk.BooleanVar(value=bool(cfg.get("alert_big_hit", True)))
         name_called_var = tk.BooleanVar(value=bool(
             cfg.get("alert_name_called", True)))
@@ -3054,6 +3275,7 @@ def run_gui(args):
         check("Incoming tells", tells_var, alerts_frame)
         check("You are summoned", summon_var, alerts_frame)
         check("You die", death_var, alerts_frame)
+        check("Charmed pet breaks", charm_break_var, alerts_frame)
         check("Big hits on you", big_hit_var, alerts_frame)
         check("Your name is called in chat", name_called_var, alerts_frame)
 
@@ -3145,6 +3367,7 @@ def run_gui(args):
             if rebind is not None and not rebind.success:
                 hotkey_entry.delete(0, "end")
                 hotkey_entry.insert(0, active_after.binding.label)
+
             cfg.update(wiki_enabled=bool(enabled_var.get()),
                        wiki_network_enabled=bool(network_var.get()),
                        wiki_hover_ocr_enabled=bool(hover_ocr_var.get()),
@@ -3158,6 +3381,7 @@ def run_gui(args):
                        alert_tells=bool(tells_var.get()),
                        alert_summon=bool(summon_var.get()),
                        alert_death=bool(death_var.get()),
+                       alert_charm_break=bool(charm_break_var.get()),
                        alert_big_hit=bool(big_hit_var.get()),
                        alert_name_called=bool(name_called_var.get()),
                        big_hit_threshold=threshold_value,
@@ -3404,6 +3628,10 @@ def run_gui(args):
             out.append(("line", f"{fmt_num(fight.damage)} personal damage · "
                                 f"{fmt_num(fight.dps)} dps · {fight.crits} crits · "
                                 f"{fight.misses} misses", ""))
+            if fight.ambiguous_pet_damage:
+                out.append(("line", "Charm estimate: "
+                            f"{fmt_num(fight.ambiguous_pet_damage)} same-name damage "
+                            "included; the EQ log has no actor IDs.", ""))
             if fight.kills or len(target_types) > 1:
                 kill_text = (f"{fight.kills} enem{'y' if fight.kills == 1 else 'ies'} slain"
                              if fight.kills else "pull in progress")
@@ -3530,6 +3758,10 @@ def run_gui(args):
             out.append(("line", f"Dealt {fmt_num(snap['combat_damage'])} "
                                 f"({fmt_num(snap['melee_dealt'])} melee / {fmt_num(snap['spell_dealt'])} spell)"
                                 f" \u00b7 {snap['crits']} crits{acc}", ""))
+            if snap["ambiguous_pet_damage"]:
+                out.append(("line", "Charm estimate: "
+                            f"{fmt_num(snap['ambiguous_pet_damage'])} same-name damage "
+                            "included; the EQ log has no actor IDs.", ""))
             if snap["max_hit"]:
                 d, src, tgt = snap["max_hit"]
                 out.append(("line", f"Biggest hit: {fmt_num(d)} ({src} on {tgt})", ""))
@@ -3702,6 +3934,24 @@ def run_gui(args):
         save_config(cfg)
         refresh(force_detail=True)
 
+    def toggle_summary():
+        """Give the full-height ledger the space occupied by its top summary."""
+        state["summary_collapsed"] = not state["summary_collapsed"]
+        cfg["summary_collapsed"] = state["summary_collapsed"]
+        summary = widgets.get("top_summary")
+        restore = widgets.get("summary_restore")
+        ledger = widgets.get("ledger_wrap")
+        apply_summary_visibility(
+            summary, restore, ledger, state["summary_collapsed"])
+        toggle = widgets.get("summary_toggle")
+        if toggle:
+            _set_text(toggle, summary_toggle_label(False))
+        restore_label = widgets.get("summary_restore_label")
+        if restore_label:
+            _set_text(restore_label, summary_toggle_label(True))
+        save_config(cfg)
+        refresh(force_detail=True)
+
     def build_full():
         clear_scroll_bindings()
         for w in body.winfo_children():
@@ -3726,16 +3976,19 @@ def run_gui(args):
         widgets["dot"].pack(side="right", padx=2)
         tk.Frame(body, bg=T["ember"], height=2).pack(fill="x")
 
-        identity = tk.Frame(body, bg=T["bg"])
+        top_summary = tk.Frame(body, bg=T["bg"])
+        top_summary.pack(fill="x")
+        widgets["top_summary"] = top_summary
+
+        identity = tk.Frame(top_summary, bg=T["bg"])
         identity.pack(fill="x", padx=10, pady=(4, 0))
         widgets["who"] = L(identity, "", fg=T["parchment"], font=FONT_RUNE)
         widgets["who"].pack(side="left")
         widgets["session"] = L(identity, "", fg=T["dim"], font=FONT_S, anchor="e")
         widgets["session"].pack(side="right")
-        sub = tk.Frame(body, bg=T["bg"])
+        sub = tk.Frame(top_summary, bg=T["bg"])
         sub.pack(fill="x", padx=10)
         widgets["zone"] = L(sub, "", fg=T["text"], font=FONT_S)
-        widgets["zone"].pack(side="left", pady=1)
         wiki_hotkey_label, wiki_state_label, wiki_state_color = (
             wiki_hotkey_presentation())
         widgets["lore_shortcut"] = tk.Label(
@@ -3744,8 +3997,16 @@ def run_gui(args):
             font=FONT_RUNE, cursor="hand2", padx=6, pady=2, anchor="e")
         widgets["lore_shortcut"].pack(side="right")
         widgets["lore_shortcut"].bind("<Button-1>", open_wiki_from_hotkey)
+        widgets["summary_toggle"] = tk.Label(
+            sub, text=summary_toggle_label(False), fg=T["dim"], bg=T["raised"],
+            font=FONT_RUNE, cursor="hand2", padx=5, pady=2)
+        widgets["summary_toggle"].pack(side="right", padx=(0, 4))
+        widgets["summary_toggle"].bind("<Button-1>", lambda _e: toggle_summary())
+        # Pack fixed actions before the variable-length zone so TOP always
+        # remains reachable at the panel's 360px minimum width.
+        widgets["zone"].pack(side="left", pady=1)
 
-        scopes = tk.Frame(body, bg=T["void"])
+        scopes = tk.Frame(top_summary, bg=T["void"])
         scopes.pack(fill="x", padx=10, pady=(4, 1))
         for scope, label in (("fight", "ENCOUNTER"),
                              ("session", "SESSION"),
@@ -3756,7 +4017,7 @@ def run_gui(args):
             tab.bind("<Button-1>", lambda _e, s=scope: set_scope(s))
             widgets[f"scope_{scope}"] = tab
 
-        encounter = tk.Frame(body, bg=T["bg"])
+        encounter = tk.Frame(top_summary, bg=T["bg"])
         encounter.pack(fill="x", padx=10, pady=(2, 0))
         widgets["encounter_nav"] = encounter
         for name, label, direction in (("encounter_prev", "‹ PREVIOUS", -1),
@@ -3771,7 +4032,7 @@ def run_gui(args):
                                          font=FONT_RUNE, anchor="center")
         widgets["encounter_label"].pack(side="left", fill="x", expand=True)
 
-        lab_nav = tk.Frame(body, bg=T["bg"])
+        lab_nav = tk.Frame(top_summary, bg=T["bg"])
         lab_nav.pack(fill="x", padx=10, pady=(3, 0))
         widgets["lab_nav"] = lab_nav
         for view, label in (("overview", "OVERVIEW"), ("damage", "DAMAGE"),
@@ -3784,7 +4045,7 @@ def run_gui(args):
             widgets[f"lab_{view}"] = tab
 
         # Ember hero band: live combat at a glance, or the permanent chronicle.
-        hero = tk.Frame(body, bg=T["raised"])
+        hero = tk.Frame(top_summary, bg=T["raised"])
         hero.pack(fill="x", padx=10, pady=(3, 2))
         widgets["hero"] = hero
         tk.Frame(hero, bg=T["cyan"], width=3).pack(side="left", fill="y")
@@ -3801,12 +4062,24 @@ def run_gui(args):
             widgets[f"{key}_label"] = L(cell, label, fg=T["dim"], font=FONT_RUNE,
                                          bg=T["raised"], anchor="center")
             widgets[f"{key}_label"].pack(fill="x")
-        rule = tk.Frame(body, bg=T["gold"], height=2)
+        rule = tk.Frame(top_summary, bg=T["gold"], height=2)
         rule.pack(fill="x", padx=10, pady=(3, 4))
+
+        summary_restore = tk.Frame(body, bg=T["bg"])
+        widgets["summary_restore"] = summary_restore
+        widgets["summary_restore_label"] = tk.Label(
+            summary_restore, text=summary_toggle_label(True), fg=T["cyan"],
+            bg=T["raised"], font=FONT_RUNE, cursor="hand2", pady=3)
+        widgets["summary_restore_label"].pack(fill="x", padx=10, pady=(3, 2))
+        widgets["summary_restore_label"].bind(
+            "<Button-1>", lambda _e: toggle_summary())
 
         # scrollable ledger
         wrap = tk.Frame(body, bg=T["bg"])
         wrap.pack(fill="both", expand=True, padx=6, pady=(0, 4))
+        widgets["ledger_wrap"] = wrap
+        apply_summary_visibility(
+            top_summary, summary_restore, wrap, state["summary_collapsed"])
         canvas = tk.Canvas(wrap, bg=T["bg"], highlightthickness=0, width=396)
         vsb = tk.Scrollbar(wrap, orient="vertical", command=canvas.yview,
                            troughcolor=T["bg"], bg=T["raised"], width=8)
@@ -4187,16 +4460,19 @@ def run_gui(args):
         raw_msg = raw.split("] ", 1)[1] if "] " in raw else raw
         parsed = parse_line(raw)
         kind, groups = "", {}
+        charm_break_events = ()
         if parsed:
             ts, kind, groups = parsed
             cutoff = state.get("lifetime_cutoff")
-            stats.apply(ts, kind, groups,
-                        count_lifetime=(cutoff is None or ts > cutoff))
+            charm_break_events = stats.apply(
+                ts, kind, groups,
+                count_lifetime=(cutoff is None or ts > cutoff))
             if kind == "composition" and stats.composition:
                 remember_composition(cfg, stats.character, stats.composition)
                 save_config(cfg)
         for severity, text_msg in check_alerts(
-                kind, groups, raw_msg, stats.character, cfg):
+                kind, groups, raw_msg, stats.character, cfg,
+                charm_break_events):
             alerts.show(severity, text_msg)
 
     def tick():
@@ -4910,6 +5186,30 @@ def selftest() -> int:
     p = parse_line(line(0, "Gkzzallk says 'My leader is Spin.'"))
     s5.apply(*p)
     assert "Gkzzallk" in s5.pet_names
+
+    # Multi-word Enchanter charms are owned through pet chatter, matched
+    # case-insensitively, and counted as personal pet damage. Same-name combat
+    # is included but explicitly tracked as an estimate because logs have no
+    # actor IDs to distinguish the two rock golems.
+    charm = SessionStats("Spin")
+    for raw in (
+        line(0, "A rock golem told you, 'Attacking a rock golem Master.'"),
+        line(1, "A rock golem hits YOU for 40 points of damage."),
+        line(2, "A rock golem slashes a rock golem for 91 points of damage."),
+        line(3, "A rock golem slashes a rock golem for 123 points of damage."),
+        line(4, "You bash a rock golem for 2 points of damage."),
+        line(5, "You slash a rock golem for 36 points of damage."),
+        line(6, "You slash a rock golem for 79 points of damage."),
+    ):
+        charm.apply(*parse_line(raw))
+    charm_snap = charm.snapshot(now + timedelta(seconds=6))
+    assert charm_snap["combat_damage"] == 331
+    assert charm_snap["pet_damage"] == 214
+    assert charm_snap["ambiguous_pet_damage"] == 214
+    assert charm.is_charmed_pet("a rock golem")
+    charm.apply(*parse_line(line(
+        7, "Your Cajoling Whispers spell has worn off of a rock golem.")))
+    assert not charm.is_pet("a rock golem")
 
     # enriched engine fields (card detail views)
     assert snap["damage_by_source"]["Pet (Gann)"]["t"] == 50

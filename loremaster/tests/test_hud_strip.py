@@ -212,6 +212,50 @@ class StripGeometryTests(unittest.TestCase):
         self.assertIn('widgets["settings"] = tk.Label', source)
 
 
+class FullPanelSummaryTests(unittest.TestCase):
+    class Packable:
+        def __init__(self, managed=True):
+            self.managed = managed
+            self.pack_calls = []
+            self.forget_calls = 0
+
+        def winfo_manager(self):
+            return "pack" if self.managed else ""
+
+        def pack_forget(self):
+            self.managed = False
+            self.forget_calls += 1
+
+        def pack(self, **kwargs):
+            self.managed = True
+            self.pack_calls.append(kwargs)
+
+    def test_title_toggle_label_matches_the_available_action(self):
+        self.assertEqual(LOREMASTER.summary_toggle_label(False), "TOP ▴")
+        self.assertEqual(LOREMASTER.summary_toggle_label(True), "SHOW TOP ▾")
+
+    def test_collapsing_reclaims_space_without_repacking_the_ledger(self):
+        summary = self.Packable(managed=True)
+        restore = self.Packable(managed=False)
+        ledger = object()
+        LOREMASTER.apply_summary_visibility(summary, restore, ledger, True)
+        self.assertFalse(summary.managed)
+        self.assertTrue(restore.managed)
+        self.assertEqual(summary.forget_calls, 1)
+        self.assertEqual(summary.pack_calls, [])
+        self.assertEqual(restore.pack_calls, [{"fill": "x", "before": ledger}])
+
+    def test_expanding_restores_summary_immediately_before_ledger(self):
+        summary = self.Packable(managed=False)
+        restore = self.Packable(managed=True)
+        ledger = object()
+        LOREMASTER.apply_summary_visibility(summary, restore, ledger, False)
+        self.assertTrue(summary.managed)
+        self.assertFalse(restore.managed)
+        self.assertEqual(summary.pack_calls, [{"fill": "x", "before": ledger}])
+        self.assertEqual(restore.forget_calls, 1)
+
+
 class StarredCardMigrationTests(unittest.TestCase):
     def load_payload(self, payload):
         with tempfile.TemporaryDirectory() as tmp:
