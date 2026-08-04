@@ -1,56 +1,6 @@
 <?xml version="1.0" encoding="us-ascii"?>
 <XML ID="EQInterfaceDefinitionLanguage">
 	<Schema xmlns="EverQuestData" xmlns:dt="EverQuestDataTypes" />
-
-	<!-- SPIN-SPELL-LEDGER: Vellum & Ember row plate states. -->
-	<TextureInfo item="spin_spell_ledger.tga">
-		<Size>
-			<CX>256</CX>
-			<CY>96</CY>
-		</Size>
-	</TextureInfo>
-	<Ui2DAnimation item="A_SpinSpellLedgerBackground">
-		<Cycle>false</Cycle>
-		<Frames>
-			<Texture>spin_spell_ledger.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>0</Y>
-			</Location>
-			<Size>
-				<CX>155</CX>
-				<CY>30</CY>
-			</Size>
-		</Frames>
-	</Ui2DAnimation>
-	<Ui2DAnimation item="A_SpinSpellLedgerHolder">
-		<Cycle>false</Cycle>
-		<Frames>
-			<Texture>spin_spell_ledger.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>32</Y>
-			</Location>
-			<Size>
-				<CX>155</CX>
-				<CY>30</CY>
-			</Size>
-		</Frames>
-	</Ui2DAnimation>
-	<Ui2DAnimation item="A_SpinSpellLedgerHighlight">
-		<Cycle>false</Cycle>
-		<Frames>
-			<Texture>spin_spell_ledger.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>64</Y>
-			</Location>
-			<Size>
-				<CX>155</CX>
-				<CY>30</CY>
-			</Size>
-		</Frames>
-	</Ui2DAnimation>
 	<Ui2DAnimation item="Spell_Gem_Background">
 		<Cycle>false</Cycle>
 		<Frames>

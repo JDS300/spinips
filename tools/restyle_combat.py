@@ -76,6 +76,21 @@ SPELL_LEDGER_ICON_SIZE = (26, 26)
 SPELL_LEDGER_WINDOW_SIZE = (165, 477)
 SPELL_LEDGER_WINDOW_BOUNDS = (165, 96, 640, 477)
 
+# Extended targets remain a familiar single column at the current default
+# width, but each complete 34px target row is now a tile.  Horizontal-first
+# flow makes widening the window useful: a second, third, or later column is
+# added only when a whole row fits, while the existing vertical scrollbar
+# remains the safe fallback at narrow sizes.
+EXTENDED_TARGET_COUNT = 23
+EXTENDED_TARGET_ROW_SIZE = (146, 34)
+EXTENDED_TARGET_WINDOW_SIZE = (178, 300)
+EXTENDED_TARGET_MIN_SIZE = (170, 58)
+EXTENDED_TARGET_GUTTER = 4
+EXTENDED_TARGET_LAYOUT = "ETW_ResponsiveLayout"
+EXTENDED_TARGET_TILE = "ETW_Targets"
+EXTENDED_TARGET_BLOCK_BEGIN = "SPIN-XTAR-RESPONSIVE:BEGIN"
+EXTENDED_TARGET_BLOCK_END = "SPIN-XTAR-RESPONSIVE:END"
+
 CANONICAL_VARIANTS = {
     "EQUI_PlayerWindow.xml": tuple(f"EQUI_PlayerWindow{i}.xml" for i in range(1, 7)),
     "EQUI_TargetWindow.xml": tuple(f"EQUI_TargetWindow{i}.xml" for i in range(1, 7)),
@@ -530,11 +545,141 @@ def style_extended_targets() -> None:
                             insert=True),
     )
 
+    # The stock file anchors every slot directly to the root with cumulative
+    # Y offsets.  A row wrapper needs the exact same geometry expressed in its
+    # own local 34px coordinate system.  Assign canonical offsets rather than
+    # subtracting in-place so repeated generator runs remain idempotent.
+    local_offsets = (
+        ("Label", "ETW_AggroPct", 20, 32),
+        ("Gauge", "ETW_Gauge", 1, 23),
+        ("Gauge", "ETW_ManaGauge", 24, 28),
+        ("Gauge", "ETW_CastGauge", 24, 28),
+        ("Gauge", "ETW_STAGauge", 29, 31),
+        ("Label", "ETW_HPLabel", 14, 30),
+        ("Label", "ETW_HPPercLabel", 14, 30),
+        ("Button", "ETW_Role", 3, 19),
+    )
+    for index in range(EXTENDED_TARGET_COUNT):
+        for tag, stem, top, bottom in local_offsets:
+            def localize(block: str, top_offset: int = top,
+                         bottom_offset: int = bottom) -> str:
+                block = set_value(block, "TopAnchorOffset", top_offset)
+                return set_value(block, "BottomAnchorOffset", bottom_offset)
+
+            text = change_item(text, tag, f"{stem}{index}", localize)
+
+    # Replace our prior generated block before rebuilding it.  The canonical
+    # target controls stay hand-authored and untouched outside the local Y
+    # normalization above; only wrappers and layout mechanics are generated.
+    marked = re.compile(
+        rf"(?:\r?\n[ \t]*)+"
+        rf"<!-- {re.escape(EXTENDED_TARGET_BLOCK_BEGIN)} -->.*?"
+        rf"<!-- {re.escape(EXTENDED_TARGET_BLOCK_END)} -->[ \t]*"
+        rf"(?:\r?\n[ \t]*)*",
+        re.DOTALL,
+    )
+    text, marked_count = marked.subn("\n\n", text)
+    if marked_count > 1:
+        fail("duplicate generated responsive XTAR blocks")
+
+    rows = []
+    for index in range(EXTENDED_TARGET_COUNT):
+        row_pieces = "\n".join(
+            f"\t\t<Pieces>{stem}{index}</Pieces>"
+            for stem in (
+                "ETW_AggroPct", "ETW_Gauge", "ETW_ManaGauge",
+                "ETW_CastGauge", "ETW_STAGauge", "ETW_HPLabel",
+                "ETW_HPPercLabel", "ETW_Role",
+            )
+        )
+        rows.append(f'''\t<Screen item="ETW_Ext{index}">
+\t\t<ScreenID>ETW_Ext{index}</ScreenID>
+\t\t<RelativePosition>true</RelativePosition>
+\t\t<Size>
+\t\t\t<CX>{EXTENDED_TARGET_ROW_SIZE[0]}</CX>
+\t\t\t<CY>{EXTENDED_TARGET_ROW_SIZE[1]}</CY>
+\t\t</Size>
+\t\t<Style_Transparent>true</Style_Transparent>
+\t\t<Style_TransparentControl>true</Style_TransparentControl>
+\t\t<Style_Border>false</Style_Border>
+\t\t<Style_Sizable>false</Style_Sizable>
+{row_pieces}
+\t</Screen>''')
+
+    tile_pieces = "\n".join(
+        f"\t\t<Pieces>Screen:ETW_Ext{index}</Pieces>"
+        for index in range(EXTENDED_TARGET_COUNT)
+    )
+    responsive_block = f'''\t<!-- {EXTENDED_TARGET_BLOCK_BEGIN} -->
+\t<LayoutVertical item="{EXTENDED_TARGET_LAYOUT}">
+\t\t<Padding>0</Padding>
+\t\t<ResizeVertical>true</ResizeVertical>
+\t\t<ResizeHorizontal>true</ResizeHorizontal>
+\t</LayoutVertical>
+
+{chr(10).join(rows)}
+
+\t<TileLayoutBox item="{EXTENDED_TARGET_TILE}">
+\t\t<ScreenID>{EXTENDED_TARGET_TILE}</ScreenID>
+\t\t<RelativePosition>true</RelativePosition>
+\t\t<AutoStretch>true</AutoStretch>
+\t\t<TopAnchorOffset>1</TopAnchorOffset>
+\t\t<BottomAnchorOffset>1</BottomAnchorOffset>
+\t\t<LeftAnchorOffset>1</LeftAnchorOffset>
+\t\t<RightAnchorOffset>1</RightAnchorOffset>
+\t\t<TopAnchorToTop>true</TopAnchorToTop>
+\t\t<BottomAnchorToTop>false</BottomAnchorToTop>
+\t\t<LeftAnchorToLeft>true</LeftAnchorToLeft>
+\t\t<RightAnchorToLeft>false</RightAnchorToLeft>
+\t\t<Style_Transparent>true</Style_Transparent>
+\t\t<Style_TransparentControl>true</Style_TransparentControl>
+\t\t<Spacing>0</Spacing>
+\t\t<SecondarySpacing>{EXTENDED_TARGET_GUTTER}</SecondarySpacing>
+\t\t<HorizontalFirst>true</HorizontalFirst>
+\t\t<AnchorToTop>true</AnchorToTop>
+\t\t<AnchorToLeft>true</AnchorToLeft>
+\t\t<FirstPieceTemplate>true</FirstPieceTemplate>
+\t\t<SnapToChildren>true</SnapToChildren>
+{tile_pieces}
+\t</TileLayoutBox>
+\t<!-- {EXTENDED_TARGET_BLOCK_END} -->'''
+
+    root_match = item_pattern("Screen", "ExtendedTargetWnd").search(text)
+    if root_match is None:
+        fail("missing Screen item ExtendedTargetWnd")
+    root_line_start = text.rfind("\n", 0, root_match.start()) + 1
+    text = (
+        text[:root_line_start] + responsive_block + "\n\n"
+        + text[root_line_start:]
+    )
+
     def root_style(block: str) -> str:
-        block = set_container(block, "Size", CX=178, CY=300)
+        block = set_container(
+            block, "Size",
+            CX=EXTENDED_TARGET_WINDOW_SIZE[0],
+            CY=EXTENDED_TARGET_WINDOW_SIZE[1],
+        )
+        block = set_or_add_value(
+            block, "Layout", EXTENDED_TARGET_LAYOUT,
+            after="RelativePosition",
+        )
         block = set_value(block, "Text", "EXTENDED TARGETS")
-        block = set_value(block, "MinHSize", 170)
-        return block
+        block = set_value(block, "MinHSize", EXTENDED_TARGET_MIN_SIZE[0])
+        block = set_value(block, "MinVSize", EXTENDED_TARGET_MIN_SIZE[1])
+        # Replace the legacy 184-control flat list as one operation.  This also
+        # corrects its slot-20 typo (CastGauge21 appeared twice while
+        # CastGauge20 was omitted) and makes every target move as a complete
+        # responsive row.
+        block, piece_count = re.subn(
+            r"\n[ \t]*<Pieces>.*?</Pieces>", "", block,
+        )
+        if piece_count == 0:
+            fail("ExtendedTargetWnd has no child pieces to replace")
+        closing = block.rfind("\n\t</Screen>")
+        if closing < 0:
+            fail("malformed ExtendedTargetWnd closing tag")
+        piece = f"\n\t\t<Pieces>TileLayoutBox:{EXTENDED_TARGET_TILE}</Pieces>"
+        return block[:closing] + piece + block[closing:]
 
     text = change_item(text, "Screen", "ExtendedTargetWnd", root_style)
     write_ascii(path, text)
@@ -600,9 +745,13 @@ def style_spell_gems() -> None:
     write_ascii(path, text)
 
 
-SPELL_LEDGER_ASSETS = r'''
-
-	<!-- SPIN-SPELL-LEDGER: Vellum & Ember row plate states. -->
+SPELL_LEDGER_ASSET_BEGIN = "SPIN-SPELL-LEDGER-ASSETS:BEGIN"
+SPELL_LEDGER_ASSET_END = "SPIN-SPELL-LEDGER-ASSETS:END"
+SPELL_LEDGER_ASSETS = rf'''
+	<!-- {SPELL_LEDGER_ASSET_BEGIN} -->
+	<!-- Vellum & Ember row plate states.  These live in the central animation
+	     registry because dynamically selected display-type XML cannot publish
+	     new Ui2DAnimation symbols reliably in the EverQuest client. -->
 	<TextureInfo item="spin_spell_ledger.tga">
 		<Size>
 			<CX>256</CX>
@@ -650,7 +799,35 @@ SPELL_LEDGER_ASSETS = r'''
 				<CY>30</CY>
 			</Size>
 		</Frames>
-	</Ui2DAnimation>'''
+	</Ui2DAnimation>
+	<!-- {SPELL_LEDGER_ASSET_END} -->'''
+
+
+def register_spell_ledger_assets() -> None:
+    """Publish the ledger draw symbols where EverQuest builds its registry."""
+    path = SKIN / "EQUI_Animations.xml"
+    text = path.read_text(encoding="ascii")
+    marked = re.compile(
+        rf"(?:\r?\n[ \t]*)+"
+        rf"<!-- {re.escape(SPELL_LEDGER_ASSET_BEGIN)} -->.*?"
+        rf"<!-- {re.escape(SPELL_LEDGER_ASSET_END)} -->[ \t]*"
+        rf"(?:\r?\n[ \t]*)*",
+        re.DOTALL,
+    )
+    text, count = marked.subn("", text)
+    if count > 1:
+        fail("duplicate central Spell Ledger animation blocks")
+    text, schema_count = re.subn(
+        r"(<Schema\b[^>]*/>)",
+        lambda match: (
+            match.group(1) + "\n\n" + SPELL_LEDGER_ASSETS + "\n\n"
+        ),
+        text,
+        count=1,
+    )
+    if schema_count != 1:
+        fail("missing Schema declaration in EQUI_Animations.xml")
+    write_ascii(path, text)
 
 
 def spell_ledger_row(index: int) -> str:
@@ -737,14 +914,6 @@ def style_spell_ledger_variant() -> None:
     """
     source_path = SKIN / "EQUI_CastSpellWnd.xml"
     text = source_path.read_text(encoding="ascii")
-    text, count = re.subn(
-        r"(<Schema\b[^>]*/>)",
-        lambda match: match.group(1) + SPELL_LEDGER_ASSETS,
-        text,
-        count=1,
-    )
-    if count != 1:
-        fail("missing Schema declaration in EQUI_CastSpellWnd.xml")
 
     for index in range(14):
         def gem_style(block: str, row_index: int = index) -> str:
@@ -1071,6 +1240,7 @@ def main() -> int:
     style_experience_gauges()
     style_raid()
     sync_canonical_variants()
+    register_spell_ledger_assets()
     style_spell_ledger_variant()
     print("Combat Command Center restyle: complete")
     return 0

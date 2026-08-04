@@ -175,9 +175,9 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>54</TopAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
-		<BottomAnchorOffset>66</BottomAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
 	<Gauge item="ETW_Gauge1">
@@ -202,8 +202,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>35</TopAnchorOffset>
-		<BottomAnchorOffset>57</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -223,8 +223,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>58</TopAnchorOffset>
-		<BottomAnchorOffset>62</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -244,8 +244,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>58</TopAnchorOffset>
-		<BottomAnchorOffset>62</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -265,8 +265,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>63</TopAnchorOffset>
-		<BottomAnchorOffset>65</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -280,8 +280,8 @@
 		<Font>2</Font>
 		<EQType>152</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>48</TopAnchorOffset>
-		<BottomAnchorOffset>64</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -294,8 +294,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>48</TopAnchorOffset>
-		<BottomAnchorOffset>64</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -311,8 +311,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>37</TopAnchorOffset>
-		<BottomAnchorOffset>53</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -334,8 +334,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>88</TopAnchorOffset>
-		<BottomAnchorOffset>100</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -361,8 +361,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>69</TopAnchorOffset>
-		<BottomAnchorOffset>91</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -382,8 +382,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>92</TopAnchorOffset>
-		<BottomAnchorOffset>96</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -403,8 +403,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>92</TopAnchorOffset>
-		<BottomAnchorOffset>96</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -424,8 +424,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>97</TopAnchorOffset>
-		<BottomAnchorOffset>99</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -439,8 +439,8 @@
 		<Font>2</Font>
 		<EQType>153</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>82</TopAnchorOffset>
-		<BottomAnchorOffset>98</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -453,8 +453,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>82</TopAnchorOffset>
-		<BottomAnchorOffset>98</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -470,8 +470,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>71</TopAnchorOffset>
-		<BottomAnchorOffset>87</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -493,8 +493,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>122</TopAnchorOffset>
-		<BottomAnchorOffset>134</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -520,8 +520,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>103</TopAnchorOffset>
-		<BottomAnchorOffset>125</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -541,8 +541,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>126</TopAnchorOffset>
-		<BottomAnchorOffset>130</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -562,8 +562,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>126</TopAnchorOffset>
-		<BottomAnchorOffset>130</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -583,8 +583,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>131</TopAnchorOffset>
-		<BottomAnchorOffset>133</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -598,8 +598,8 @@
 		<Font>2</Font>
 		<EQType>154</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>116</TopAnchorOffset>
-		<BottomAnchorOffset>132</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -612,8 +612,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>116</TopAnchorOffset>
-		<BottomAnchorOffset>132</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -629,8 +629,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>105</TopAnchorOffset>
-		<BottomAnchorOffset>121</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -652,8 +652,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>156</TopAnchorOffset>
-		<BottomAnchorOffset>168</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -679,8 +679,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>137</TopAnchorOffset>
-		<BottomAnchorOffset>159</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -700,8 +700,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>160</TopAnchorOffset>
-		<BottomAnchorOffset>164</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -721,8 +721,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>160</TopAnchorOffset>
-		<BottomAnchorOffset>164</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -742,8 +742,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>165</TopAnchorOffset>
-		<BottomAnchorOffset>167</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -757,8 +757,8 @@
 		<Font>2</Font>
 		<EQType>155</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>150</TopAnchorOffset>
-		<BottomAnchorOffset>166</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -771,8 +771,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>150</TopAnchorOffset>
-		<BottomAnchorOffset>166</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -788,8 +788,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>139</TopAnchorOffset>
-		<BottomAnchorOffset>155</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -811,8 +811,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>190</TopAnchorOffset>
-		<BottomAnchorOffset>202</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -838,8 +838,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>171</TopAnchorOffset>
-		<BottomAnchorOffset>193</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -859,8 +859,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>194</TopAnchorOffset>
-		<BottomAnchorOffset>198</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -880,8 +880,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>194</TopAnchorOffset>
-		<BottomAnchorOffset>198</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -901,8 +901,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>199</TopAnchorOffset>
-		<BottomAnchorOffset>201</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -916,8 +916,8 @@
 		<Font>2</Font>
 		<EQType>156</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>184</TopAnchorOffset>
-		<BottomAnchorOffset>200</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -930,8 +930,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>184</TopAnchorOffset>
-		<BottomAnchorOffset>200</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -947,8 +947,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>173</TopAnchorOffset>
-		<BottomAnchorOffset>189</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -970,8 +970,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>224</TopAnchorOffset>
-		<BottomAnchorOffset>236</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -997,8 +997,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>205</TopAnchorOffset>
-		<BottomAnchorOffset>227</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1018,8 +1018,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>228</TopAnchorOffset>
-		<BottomAnchorOffset>232</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1039,8 +1039,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>228</TopAnchorOffset>
-		<BottomAnchorOffset>232</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1060,8 +1060,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>233</TopAnchorOffset>
-		<BottomAnchorOffset>235</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1075,8 +1075,8 @@
 		<Font>2</Font>
 		<EQType>157</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>218</TopAnchorOffset>
-		<BottomAnchorOffset>234</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -1089,8 +1089,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>218</TopAnchorOffset>
-		<BottomAnchorOffset>234</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -1106,8 +1106,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>207</TopAnchorOffset>
-		<BottomAnchorOffset>223</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -1129,8 +1129,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>258</TopAnchorOffset>
-		<BottomAnchorOffset>270</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -1156,8 +1156,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>239</TopAnchorOffset>
-		<BottomAnchorOffset>261</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1177,8 +1177,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>262</TopAnchorOffset>
-		<BottomAnchorOffset>266</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1198,8 +1198,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>262</TopAnchorOffset>
-		<BottomAnchorOffset>266</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1219,8 +1219,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>267</TopAnchorOffset>
-		<BottomAnchorOffset>269</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1234,8 +1234,8 @@
 		<Font>2</Font>
 		<EQType>158</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>252</TopAnchorOffset>
-		<BottomAnchorOffset>268</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -1248,8 +1248,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>252</TopAnchorOffset>
-		<BottomAnchorOffset>268</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -1265,8 +1265,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>241</TopAnchorOffset>
-		<BottomAnchorOffset>257</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -1288,8 +1288,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>292</TopAnchorOffset>
-		<BottomAnchorOffset>304</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -1315,8 +1315,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>273</TopAnchorOffset>
-		<BottomAnchorOffset>295</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1336,8 +1336,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>296</TopAnchorOffset>
-		<BottomAnchorOffset>300</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1357,8 +1357,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>296</TopAnchorOffset>
-		<BottomAnchorOffset>300</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1378,8 +1378,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>301</TopAnchorOffset>
-		<BottomAnchorOffset>303</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1393,8 +1393,8 @@
 		<Font>2</Font>
 		<EQType>159</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>286</TopAnchorOffset>
-		<BottomAnchorOffset>302</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -1407,8 +1407,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>286</TopAnchorOffset>
-		<BottomAnchorOffset>302</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -1424,8 +1424,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>275</TopAnchorOffset>
-		<BottomAnchorOffset>291</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -1447,8 +1447,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>326</TopAnchorOffset>
-		<BottomAnchorOffset>338</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -1474,8 +1474,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>307</TopAnchorOffset>
-		<BottomAnchorOffset>329</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1495,8 +1495,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>330</TopAnchorOffset>
-		<BottomAnchorOffset>334</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1516,8 +1516,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>330</TopAnchorOffset>
-		<BottomAnchorOffset>334</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1537,8 +1537,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>335</TopAnchorOffset>
-		<BottomAnchorOffset>337</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1552,8 +1552,8 @@
 		<Font>2</Font>
 		<EQType>160</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>320</TopAnchorOffset>
-		<BottomAnchorOffset>336</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -1566,8 +1566,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>320</TopAnchorOffset>
-		<BottomAnchorOffset>336</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -1583,8 +1583,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>309</TopAnchorOffset>
-		<BottomAnchorOffset>325</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -1606,8 +1606,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>360</TopAnchorOffset>
-		<BottomAnchorOffset>372</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -1633,8 +1633,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>341</TopAnchorOffset>
-		<BottomAnchorOffset>363</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1654,8 +1654,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>364</TopAnchorOffset>
-		<BottomAnchorOffset>368</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1675,8 +1675,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>364</TopAnchorOffset>
-		<BottomAnchorOffset>368</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1696,8 +1696,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>369</TopAnchorOffset>
-		<BottomAnchorOffset>371</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1711,8 +1711,8 @@
 		<Font>2</Font>
 		<EQType>161</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>354</TopAnchorOffset>
-		<BottomAnchorOffset>370</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -1725,8 +1725,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>354</TopAnchorOffset>
-		<BottomAnchorOffset>370</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -1742,8 +1742,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>343</TopAnchorOffset>
-		<BottomAnchorOffset>359</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -1765,8 +1765,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>394</TopAnchorOffset>
-		<BottomAnchorOffset>406</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -1792,8 +1792,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>375</TopAnchorOffset>
-		<BottomAnchorOffset>397</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1813,8 +1813,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>398</TopAnchorOffset>
-		<BottomAnchorOffset>402</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1834,8 +1834,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>398</TopAnchorOffset>
-		<BottomAnchorOffset>402</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1855,8 +1855,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>403</TopAnchorOffset>
-		<BottomAnchorOffset>405</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1870,8 +1870,8 @@
 		<Font>2</Font>
 		<EQType>162</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>388</TopAnchorOffset>
-		<BottomAnchorOffset>404</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -1884,8 +1884,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>388</TopAnchorOffset>
-		<BottomAnchorOffset>404</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -1901,8 +1901,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>377</TopAnchorOffset>
-		<BottomAnchorOffset>393</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -1924,8 +1924,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>428</TopAnchorOffset>
-		<BottomAnchorOffset>440</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -1951,8 +1951,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>409</TopAnchorOffset>
-		<BottomAnchorOffset>431</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1972,8 +1972,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>432</TopAnchorOffset>
-		<BottomAnchorOffset>436</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -1993,8 +1993,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>432</TopAnchorOffset>
-		<BottomAnchorOffset>436</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2014,8 +2014,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>437</TopAnchorOffset>
-		<BottomAnchorOffset>439</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2029,8 +2029,8 @@
 		<Font>2</Font>
 		<EQType>163</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>422</TopAnchorOffset>
-		<BottomAnchorOffset>438</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -2043,8 +2043,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>422</TopAnchorOffset>
-		<BottomAnchorOffset>438</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -2060,8 +2060,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>411</TopAnchorOffset>
-		<BottomAnchorOffset>427</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -2083,8 +2083,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>462</TopAnchorOffset>
-		<BottomAnchorOffset>474</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -2110,8 +2110,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>443</TopAnchorOffset>
-		<BottomAnchorOffset>465</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2131,8 +2131,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>466</TopAnchorOffset>
-		<BottomAnchorOffset>470</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2152,8 +2152,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>466</TopAnchorOffset>
-		<BottomAnchorOffset>470</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2173,8 +2173,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>471</TopAnchorOffset>
-		<BottomAnchorOffset>473</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2188,8 +2188,8 @@
 		<Font>2</Font>
 		<EQType>164</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>456</TopAnchorOffset>
-		<BottomAnchorOffset>472</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -2202,8 +2202,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>456</TopAnchorOffset>
-		<BottomAnchorOffset>472</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -2219,8 +2219,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>445</TopAnchorOffset>
-		<BottomAnchorOffset>461</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -2242,8 +2242,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>492</TopAnchorOffset>
-		<BottomAnchorOffset>508</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -2269,8 +2269,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>477</TopAnchorOffset>
-		<BottomAnchorOffset>499</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2290,8 +2290,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>500</TopAnchorOffset>
-		<BottomAnchorOffset>504</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2311,8 +2311,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>500</TopAnchorOffset>
-		<BottomAnchorOffset>504</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2332,8 +2332,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>505</TopAnchorOffset>
-		<BottomAnchorOffset>507</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2347,8 +2347,8 @@
 		<Font>2</Font>
 		<EQType>165</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>490</TopAnchorOffset>
-		<BottomAnchorOffset>506</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -2361,8 +2361,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>490</TopAnchorOffset>
-		<BottomAnchorOffset>506</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -2378,8 +2378,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>479</TopAnchorOffset>
-		<BottomAnchorOffset>495</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -2401,8 +2401,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>530</TopAnchorOffset>
-		<BottomAnchorOffset>542</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -2428,8 +2428,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>511</TopAnchorOffset>
-		<BottomAnchorOffset>533</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2449,8 +2449,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>534</TopAnchorOffset>
-		<BottomAnchorOffset>538</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2470,8 +2470,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>534</TopAnchorOffset>
-		<BottomAnchorOffset>538</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2491,8 +2491,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>539</TopAnchorOffset>
-		<BottomAnchorOffset>541</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2506,8 +2506,8 @@
 		<Font>2</Font>
 		<EQType>166</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>524</TopAnchorOffset>
-		<BottomAnchorOffset>540</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -2520,8 +2520,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>524</TopAnchorOffset>
-		<BottomAnchorOffset>540</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -2537,8 +2537,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>513</TopAnchorOffset>
-		<BottomAnchorOffset>529</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -2560,8 +2560,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>564</TopAnchorOffset>
-		<BottomAnchorOffset>576</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -2587,8 +2587,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>545</TopAnchorOffset>
-		<BottomAnchorOffset>567</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2608,8 +2608,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>568</TopAnchorOffset>
-		<BottomAnchorOffset>572</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2629,8 +2629,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>568</TopAnchorOffset>
-		<BottomAnchorOffset>572</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2650,8 +2650,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>573</TopAnchorOffset>
-		<BottomAnchorOffset>575</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2665,8 +2665,8 @@
 		<Font>2</Font>
 		<EQType>167</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>558</TopAnchorOffset>
-		<BottomAnchorOffset>574</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -2679,8 +2679,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>558</TopAnchorOffset>
-		<BottomAnchorOffset>574</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -2696,8 +2696,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>547</TopAnchorOffset>
-		<BottomAnchorOffset>563</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -2719,8 +2719,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>598</TopAnchorOffset>
-		<BottomAnchorOffset>610</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -2746,8 +2746,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>579</TopAnchorOffset>
-		<BottomAnchorOffset>601</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2767,8 +2767,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>602</TopAnchorOffset>
-		<BottomAnchorOffset>606</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2788,8 +2788,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>602</TopAnchorOffset>
-		<BottomAnchorOffset>606</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2809,8 +2809,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>607</TopAnchorOffset>
-		<BottomAnchorOffset>609</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2824,8 +2824,8 @@
 		<Font>2</Font>
 		<EQType>168</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>592</TopAnchorOffset>
-		<BottomAnchorOffset>608</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -2838,8 +2838,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>592</TopAnchorOffset>
-		<BottomAnchorOffset>608</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -2855,8 +2855,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>581</TopAnchorOffset>
-		<BottomAnchorOffset>597</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -2878,8 +2878,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>632</TopAnchorOffset>
-		<BottomAnchorOffset>644</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -2905,8 +2905,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>613</TopAnchorOffset>
-		<BottomAnchorOffset>635</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2926,8 +2926,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>636</TopAnchorOffset>
-		<BottomAnchorOffset>640</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2947,8 +2947,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>636</TopAnchorOffset>
-		<BottomAnchorOffset>640</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2968,8 +2968,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>641</TopAnchorOffset>
-		<BottomAnchorOffset>643</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -2983,8 +2983,8 @@
 		<Font>2</Font>
 		<EQType>169</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>626</TopAnchorOffset>
-		<BottomAnchorOffset>642</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -2997,8 +2997,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>626</TopAnchorOffset>
-		<BottomAnchorOffset>642</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -3014,8 +3014,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>615</TopAnchorOffset>
-		<BottomAnchorOffset>631</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -3037,8 +3037,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>666</TopAnchorOffset>
-		<BottomAnchorOffset>678</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -3064,8 +3064,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>647</TopAnchorOffset>
-		<BottomAnchorOffset>669</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -3085,8 +3085,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>670</TopAnchorOffset>
-		<BottomAnchorOffset>674</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -3106,8 +3106,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>670</TopAnchorOffset>
-		<BottomAnchorOffset>674</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -3127,8 +3127,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>675</TopAnchorOffset>
-		<BottomAnchorOffset>677</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -3142,8 +3142,8 @@
 		<Font>2</Font>
 		<EQType>170</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>660</TopAnchorOffset>
-		<BottomAnchorOffset>676</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -3156,8 +3156,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>660</TopAnchorOffset>
-		<BottomAnchorOffset>676</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -3173,8 +3173,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>649</TopAnchorOffset>
-		<BottomAnchorOffset>665</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -3196,8 +3196,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>700</TopAnchorOffset>
-		<BottomAnchorOffset>712</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -3223,8 +3223,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>681</TopAnchorOffset>
-		<BottomAnchorOffset>703</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -3244,8 +3244,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>704</TopAnchorOffset>
-		<BottomAnchorOffset>708</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -3265,8 +3265,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>704</TopAnchorOffset>
-		<BottomAnchorOffset>708</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -3286,8 +3286,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>709</TopAnchorOffset>
-		<BottomAnchorOffset>711</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -3301,8 +3301,8 @@
 		<Font>2</Font>
 		<EQType>361</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>694</TopAnchorOffset>
-		<BottomAnchorOffset>710</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -3315,8 +3315,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>694</TopAnchorOffset>
-		<BottomAnchorOffset>710</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -3332,8 +3332,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>683</TopAnchorOffset>
-		<BottomAnchorOffset>699</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -3355,8 +3355,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>734</TopAnchorOffset>
-		<BottomAnchorOffset>746</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -3382,8 +3382,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>715</TopAnchorOffset>
-		<BottomAnchorOffset>737</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -3403,8 +3403,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>738</TopAnchorOffset>
-		<BottomAnchorOffset>742</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -3424,8 +3424,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>738</TopAnchorOffset>
-		<BottomAnchorOffset>742</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -3445,8 +3445,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>743</TopAnchorOffset>
-		<BottomAnchorOffset>745</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -3460,8 +3460,8 @@
 		<Font>2</Font>
 		<EQType>362</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>728</TopAnchorOffset>
-		<BottomAnchorOffset>744</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -3474,8 +3474,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>728</TopAnchorOffset>
-		<BottomAnchorOffset>744</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -3491,8 +3491,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>717</TopAnchorOffset>
-		<BottomAnchorOffset>733</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -3514,8 +3514,8 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignLeft>true</AlignLeft>
-		<TopAnchorOffset>768</TopAnchorOffset>
-		<BottomAnchorOffset>780</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>32</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</Label>
@@ -3541,8 +3541,8 @@
 		</GaugeDrawTemplate>
 		<GaugeOffsetY>15</GaugeOffsetY>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>749</TopAnchorOffset>
-		<BottomAnchorOffset>771</BottomAnchorOffset>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>23</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -3562,8 +3562,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>772</TopAnchorOffset>
-		<BottomAnchorOffset>776</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -3583,8 +3583,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>772</TopAnchorOffset>
-		<BottomAnchorOffset>776</BottomAnchorOffset>
+		<TopAnchorOffset>24</TopAnchorOffset>
+		<BottomAnchorOffset>28</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -3604,8 +3604,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>777</TopAnchorOffset>
-		<BottomAnchorOffset>779</BottomAnchorOffset>
+		<TopAnchorOffset>29</TopAnchorOffset>
+		<BottomAnchorOffset>31</BottomAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>24</LeftAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
@@ -3619,8 +3619,8 @@
 		<Font>2</Font>
 		<EQType>363</EQType>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>762</TopAnchorOffset>
-		<BottomAnchorOffset>778</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -3633,8 +3633,8 @@
 		<AlignCenter>true</AlignCenter>
 		<Font>1</Font>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>762</TopAnchorOffset>
-		<BottomAnchorOffset>778</BottomAnchorOffset>
+		<TopAnchorOffset>14</TopAnchorOffset>
+		<BottomAnchorOffset>30</BottomAnchorOffset>
 		<LeftAnchorOffset>31</LeftAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<Style_Tooltip>false</Style_Tooltip>
@@ -3650,8 +3650,8 @@
 			<CX>16</CX>
 			<CY>16</CY>
 		</DecalSize>
-		<TopAnchorOffset>751</TopAnchorOffset>
-		<BottomAnchorOffset>767</BottomAnchorOffset>
+		<TopAnchorOffset>3</TopAnchorOffset>
+		<BottomAnchorOffset>19</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>19</RightAnchorOffset>
 		<AutoStretch>true</AutoStretch>
@@ -3659,8 +3659,524 @@
 		<RightAnchorToLeft>true</RightAnchorToLeft>
 	</Button>
 
-	<Screen item="ExtendedTargetWnd">
+	<!-- SPIN-XTAR-RESPONSIVE:BEGIN -->
+	<LayoutVertical item="ETW_ResponsiveLayout">
+		<Padding>0</Padding>
+		<ResizeVertical>true</ResizeVertical>
+		<ResizeHorizontal>true</ResizeHorizontal>
+	</LayoutVertical>
+
+	<Screen item="ETW_Ext0">
+		<ScreenID>ETW_Ext0</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct0</Pieces>
+		<Pieces>ETW_Gauge0</Pieces>
+		<Pieces>ETW_ManaGauge0</Pieces>
+		<Pieces>ETW_CastGauge0</Pieces>
+		<Pieces>ETW_STAGauge0</Pieces>
+		<Pieces>ETW_HPLabel0</Pieces>
+		<Pieces>ETW_HPPercLabel0</Pieces>
+		<Pieces>ETW_Role0</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext1">
+		<ScreenID>ETW_Ext1</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct1</Pieces>
+		<Pieces>ETW_Gauge1</Pieces>
+		<Pieces>ETW_ManaGauge1</Pieces>
+		<Pieces>ETW_CastGauge1</Pieces>
+		<Pieces>ETW_STAGauge1</Pieces>
+		<Pieces>ETW_HPLabel1</Pieces>
+		<Pieces>ETW_HPPercLabel1</Pieces>
+		<Pieces>ETW_Role1</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext2">
+		<ScreenID>ETW_Ext2</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct2</Pieces>
+		<Pieces>ETW_Gauge2</Pieces>
+		<Pieces>ETW_ManaGauge2</Pieces>
+		<Pieces>ETW_CastGauge2</Pieces>
+		<Pieces>ETW_STAGauge2</Pieces>
+		<Pieces>ETW_HPLabel2</Pieces>
+		<Pieces>ETW_HPPercLabel2</Pieces>
+		<Pieces>ETW_Role2</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext3">
+		<ScreenID>ETW_Ext3</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct3</Pieces>
+		<Pieces>ETW_Gauge3</Pieces>
+		<Pieces>ETW_ManaGauge3</Pieces>
+		<Pieces>ETW_CastGauge3</Pieces>
+		<Pieces>ETW_STAGauge3</Pieces>
+		<Pieces>ETW_HPLabel3</Pieces>
+		<Pieces>ETW_HPPercLabel3</Pieces>
+		<Pieces>ETW_Role3</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext4">
+		<ScreenID>ETW_Ext4</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct4</Pieces>
+		<Pieces>ETW_Gauge4</Pieces>
+		<Pieces>ETW_ManaGauge4</Pieces>
+		<Pieces>ETW_CastGauge4</Pieces>
+		<Pieces>ETW_STAGauge4</Pieces>
+		<Pieces>ETW_HPLabel4</Pieces>
+		<Pieces>ETW_HPPercLabel4</Pieces>
+		<Pieces>ETW_Role4</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext5">
+		<ScreenID>ETW_Ext5</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct5</Pieces>
+		<Pieces>ETW_Gauge5</Pieces>
+		<Pieces>ETW_ManaGauge5</Pieces>
+		<Pieces>ETW_CastGauge5</Pieces>
+		<Pieces>ETW_STAGauge5</Pieces>
+		<Pieces>ETW_HPLabel5</Pieces>
+		<Pieces>ETW_HPPercLabel5</Pieces>
+		<Pieces>ETW_Role5</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext6">
+		<ScreenID>ETW_Ext6</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct6</Pieces>
+		<Pieces>ETW_Gauge6</Pieces>
+		<Pieces>ETW_ManaGauge6</Pieces>
+		<Pieces>ETW_CastGauge6</Pieces>
+		<Pieces>ETW_STAGauge6</Pieces>
+		<Pieces>ETW_HPLabel6</Pieces>
+		<Pieces>ETW_HPPercLabel6</Pieces>
+		<Pieces>ETW_Role6</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext7">
+		<ScreenID>ETW_Ext7</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct7</Pieces>
+		<Pieces>ETW_Gauge7</Pieces>
+		<Pieces>ETW_ManaGauge7</Pieces>
+		<Pieces>ETW_CastGauge7</Pieces>
+		<Pieces>ETW_STAGauge7</Pieces>
+		<Pieces>ETW_HPLabel7</Pieces>
+		<Pieces>ETW_HPPercLabel7</Pieces>
+		<Pieces>ETW_Role7</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext8">
+		<ScreenID>ETW_Ext8</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct8</Pieces>
+		<Pieces>ETW_Gauge8</Pieces>
+		<Pieces>ETW_ManaGauge8</Pieces>
+		<Pieces>ETW_CastGauge8</Pieces>
+		<Pieces>ETW_STAGauge8</Pieces>
+		<Pieces>ETW_HPLabel8</Pieces>
+		<Pieces>ETW_HPPercLabel8</Pieces>
+		<Pieces>ETW_Role8</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext9">
+		<ScreenID>ETW_Ext9</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct9</Pieces>
+		<Pieces>ETW_Gauge9</Pieces>
+		<Pieces>ETW_ManaGauge9</Pieces>
+		<Pieces>ETW_CastGauge9</Pieces>
+		<Pieces>ETW_STAGauge9</Pieces>
+		<Pieces>ETW_HPLabel9</Pieces>
+		<Pieces>ETW_HPPercLabel9</Pieces>
+		<Pieces>ETW_Role9</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext10">
+		<ScreenID>ETW_Ext10</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct10</Pieces>
+		<Pieces>ETW_Gauge10</Pieces>
+		<Pieces>ETW_ManaGauge10</Pieces>
+		<Pieces>ETW_CastGauge10</Pieces>
+		<Pieces>ETW_STAGauge10</Pieces>
+		<Pieces>ETW_HPLabel10</Pieces>
+		<Pieces>ETW_HPPercLabel10</Pieces>
+		<Pieces>ETW_Role10</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext11">
+		<ScreenID>ETW_Ext11</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct11</Pieces>
+		<Pieces>ETW_Gauge11</Pieces>
+		<Pieces>ETW_ManaGauge11</Pieces>
+		<Pieces>ETW_CastGauge11</Pieces>
+		<Pieces>ETW_STAGauge11</Pieces>
+		<Pieces>ETW_HPLabel11</Pieces>
+		<Pieces>ETW_HPPercLabel11</Pieces>
+		<Pieces>ETW_Role11</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext12">
+		<ScreenID>ETW_Ext12</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct12</Pieces>
+		<Pieces>ETW_Gauge12</Pieces>
+		<Pieces>ETW_ManaGauge12</Pieces>
+		<Pieces>ETW_CastGauge12</Pieces>
+		<Pieces>ETW_STAGauge12</Pieces>
+		<Pieces>ETW_HPLabel12</Pieces>
+		<Pieces>ETW_HPPercLabel12</Pieces>
+		<Pieces>ETW_Role12</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext13">
+		<ScreenID>ETW_Ext13</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct13</Pieces>
+		<Pieces>ETW_Gauge13</Pieces>
+		<Pieces>ETW_ManaGauge13</Pieces>
+		<Pieces>ETW_CastGauge13</Pieces>
+		<Pieces>ETW_STAGauge13</Pieces>
+		<Pieces>ETW_HPLabel13</Pieces>
+		<Pieces>ETW_HPPercLabel13</Pieces>
+		<Pieces>ETW_Role13</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext14">
+		<ScreenID>ETW_Ext14</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct14</Pieces>
+		<Pieces>ETW_Gauge14</Pieces>
+		<Pieces>ETW_ManaGauge14</Pieces>
+		<Pieces>ETW_CastGauge14</Pieces>
+		<Pieces>ETW_STAGauge14</Pieces>
+		<Pieces>ETW_HPLabel14</Pieces>
+		<Pieces>ETW_HPPercLabel14</Pieces>
+		<Pieces>ETW_Role14</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext15">
+		<ScreenID>ETW_Ext15</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct15</Pieces>
+		<Pieces>ETW_Gauge15</Pieces>
+		<Pieces>ETW_ManaGauge15</Pieces>
+		<Pieces>ETW_CastGauge15</Pieces>
+		<Pieces>ETW_STAGauge15</Pieces>
+		<Pieces>ETW_HPLabel15</Pieces>
+		<Pieces>ETW_HPPercLabel15</Pieces>
+		<Pieces>ETW_Role15</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext16">
+		<ScreenID>ETW_Ext16</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct16</Pieces>
+		<Pieces>ETW_Gauge16</Pieces>
+		<Pieces>ETW_ManaGauge16</Pieces>
+		<Pieces>ETW_CastGauge16</Pieces>
+		<Pieces>ETW_STAGauge16</Pieces>
+		<Pieces>ETW_HPLabel16</Pieces>
+		<Pieces>ETW_HPPercLabel16</Pieces>
+		<Pieces>ETW_Role16</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext17">
+		<ScreenID>ETW_Ext17</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct17</Pieces>
+		<Pieces>ETW_Gauge17</Pieces>
+		<Pieces>ETW_ManaGauge17</Pieces>
+		<Pieces>ETW_CastGauge17</Pieces>
+		<Pieces>ETW_STAGauge17</Pieces>
+		<Pieces>ETW_HPLabel17</Pieces>
+		<Pieces>ETW_HPPercLabel17</Pieces>
+		<Pieces>ETW_Role17</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext18">
+		<ScreenID>ETW_Ext18</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct18</Pieces>
+		<Pieces>ETW_Gauge18</Pieces>
+		<Pieces>ETW_ManaGauge18</Pieces>
+		<Pieces>ETW_CastGauge18</Pieces>
+		<Pieces>ETW_STAGauge18</Pieces>
+		<Pieces>ETW_HPLabel18</Pieces>
+		<Pieces>ETW_HPPercLabel18</Pieces>
+		<Pieces>ETW_Role18</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext19">
+		<ScreenID>ETW_Ext19</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct19</Pieces>
+		<Pieces>ETW_Gauge19</Pieces>
+		<Pieces>ETW_ManaGauge19</Pieces>
+		<Pieces>ETW_CastGauge19</Pieces>
+		<Pieces>ETW_STAGauge19</Pieces>
+		<Pieces>ETW_HPLabel19</Pieces>
+		<Pieces>ETW_HPPercLabel19</Pieces>
+		<Pieces>ETW_Role19</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext20">
+		<ScreenID>ETW_Ext20</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct20</Pieces>
+		<Pieces>ETW_Gauge20</Pieces>
+		<Pieces>ETW_ManaGauge20</Pieces>
+		<Pieces>ETW_CastGauge20</Pieces>
+		<Pieces>ETW_STAGauge20</Pieces>
+		<Pieces>ETW_HPLabel20</Pieces>
+		<Pieces>ETW_HPPercLabel20</Pieces>
+		<Pieces>ETW_Role20</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext21">
+		<ScreenID>ETW_Ext21</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct21</Pieces>
+		<Pieces>ETW_Gauge21</Pieces>
+		<Pieces>ETW_ManaGauge21</Pieces>
+		<Pieces>ETW_CastGauge21</Pieces>
+		<Pieces>ETW_STAGauge21</Pieces>
+		<Pieces>ETW_HPLabel21</Pieces>
+		<Pieces>ETW_HPPercLabel21</Pieces>
+		<Pieces>ETW_Role21</Pieces>
+	</Screen>
+	<Screen item="ETW_Ext22">
+		<ScreenID>ETW_Ext22</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Size>
+			<CX>146</CX>
+			<CY>34</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<Pieces>ETW_AggroPct22</Pieces>
+		<Pieces>ETW_Gauge22</Pieces>
+		<Pieces>ETW_ManaGauge22</Pieces>
+		<Pieces>ETW_CastGauge22</Pieces>
+		<Pieces>ETW_STAGauge22</Pieces>
+		<Pieces>ETW_HPLabel22</Pieces>
+		<Pieces>ETW_HPPercLabel22</Pieces>
+		<Pieces>ETW_Role22</Pieces>
+	</Screen>
+
+	<TileLayoutBox item="ETW_Targets">
+		<ScreenID>ETW_Targets</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<AutoStretch>true</AutoStretch>
+		<TopAnchorOffset>1</TopAnchorOffset>
+		<BottomAnchorOffset>1</BottomAnchorOffset>
+		<LeftAnchorOffset>1</LeftAnchorOffset>
+		<RightAnchorOffset>1</RightAnchorOffset>
+		<TopAnchorToTop>true</TopAnchorToTop>
+		<BottomAnchorToTop>false</BottomAnchorToTop>
+		<LeftAnchorToLeft>true</LeftAnchorToLeft>
+		<RightAnchorToLeft>false</RightAnchorToLeft>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_TransparentControl>true</Style_TransparentControl>
+		<Spacing>0</Spacing>
+		<SecondarySpacing>4</SecondarySpacing>
+		<HorizontalFirst>true</HorizontalFirst>
+		<AnchorToTop>true</AnchorToTop>
+		<AnchorToLeft>true</AnchorToLeft>
+		<FirstPieceTemplate>true</FirstPieceTemplate>
+		<SnapToChildren>true</SnapToChildren>
+		<Pieces>Screen:ETW_Ext0</Pieces>
+		<Pieces>Screen:ETW_Ext1</Pieces>
+		<Pieces>Screen:ETW_Ext2</Pieces>
+		<Pieces>Screen:ETW_Ext3</Pieces>
+		<Pieces>Screen:ETW_Ext4</Pieces>
+		<Pieces>Screen:ETW_Ext5</Pieces>
+		<Pieces>Screen:ETW_Ext6</Pieces>
+		<Pieces>Screen:ETW_Ext7</Pieces>
+		<Pieces>Screen:ETW_Ext8</Pieces>
+		<Pieces>Screen:ETW_Ext9</Pieces>
+		<Pieces>Screen:ETW_Ext10</Pieces>
+		<Pieces>Screen:ETW_Ext11</Pieces>
+		<Pieces>Screen:ETW_Ext12</Pieces>
+		<Pieces>Screen:ETW_Ext13</Pieces>
+		<Pieces>Screen:ETW_Ext14</Pieces>
+		<Pieces>Screen:ETW_Ext15</Pieces>
+		<Pieces>Screen:ETW_Ext16</Pieces>
+		<Pieces>Screen:ETW_Ext17</Pieces>
+		<Pieces>Screen:ETW_Ext18</Pieces>
+		<Pieces>Screen:ETW_Ext19</Pieces>
+		<Pieces>Screen:ETW_Ext20</Pieces>
+		<Pieces>Screen:ETW_Ext21</Pieces>
+		<Pieces>Screen:ETW_Ext22</Pieces>
+	</TileLayoutBox>
+	<!-- SPIN-XTAR-RESPONSIVE:END -->
+
+<Screen item="ExtendedTargetWnd">
 		<RelativePosition>false</RelativePosition>
+		<Layout>ETW_ResponsiveLayout</Layout>
 		<Location>
 			<X>134</X>
 			<Y>134</Y>
@@ -3680,7 +4196,7 @@
 		<Style_Border>true</Style_Border>
 		<Style_Sizable>true</Style_Sizable>
 		<Escapable>false</Escapable>
-		<MinVSize>34</MinVSize>
+		<MinVSize>58</MinVSize>
 		<MinHSize>170</MinHSize>
 		<DrawTemplate>WDT_Rounded</DrawTemplate>
 		<KeepOnScreen>true</KeepOnScreen>
@@ -3688,189 +4204,6 @@
 			<X>-3</X>
 			<Y>-3</Y>
 		</KeepOnScreenOffset>
-		<Pieces>ETW_AggroPct0</Pieces>
-		<Pieces>ETW_Gauge0</Pieces>
-		<Pieces>ETW_ManaGauge0</Pieces>
-		<Pieces>ETW_CastGauge0</Pieces>
-		<Pieces>ETW_STAGauge0</Pieces>
-		<Pieces>ETW_HPLabel0</Pieces>
-		<Pieces>ETW_HPPercLabel0</Pieces>
-		<Pieces>ETW_Role0</Pieces>
-		<Pieces>ETW_AggroPct1</Pieces>
-		<Pieces>ETW_Gauge1</Pieces>
-		<Pieces>ETW_ManaGauge1</Pieces>
-		<Pieces>ETW_CastGauge1</Pieces>
-		<Pieces>ETW_STAGauge1</Pieces>
-		<Pieces>ETW_HPLabel1</Pieces>
-		<Pieces>ETW_HPPercLabel1</Pieces>
-		<Pieces>ETW_Role1</Pieces>
-		<Pieces>ETW_AggroPct2</Pieces>
-		<Pieces>ETW_Gauge2</Pieces>
-		<Pieces>ETW_ManaGauge2</Pieces>
-		<Pieces>ETW_CastGauge2</Pieces>
-		<Pieces>ETW_STAGauge2</Pieces>
-		<Pieces>ETW_HPLabel2</Pieces>
-		<Pieces>ETW_HPPercLabel2</Pieces>
-		<Pieces>ETW_Role2</Pieces>
-		<Pieces>ETW_AggroPct3</Pieces>
-		<Pieces>ETW_Gauge3</Pieces>
-		<Pieces>ETW_ManaGauge3</Pieces>
-		<Pieces>ETW_CastGauge3</Pieces>
-		<Pieces>ETW_STAGauge3</Pieces>
-		<Pieces>ETW_HPLabel3</Pieces>
-		<Pieces>ETW_HPPercLabel3</Pieces>
-		<Pieces>ETW_Role3</Pieces>
-		<Pieces>ETW_AggroPct4</Pieces>
-		<Pieces>ETW_Gauge4</Pieces>
-		<Pieces>ETW_ManaGauge4</Pieces>
-		<Pieces>ETW_CastGauge4</Pieces>
-		<Pieces>ETW_STAGauge4</Pieces>
-		<Pieces>ETW_HPLabel4</Pieces>
-		<Pieces>ETW_HPPercLabel4</Pieces>
-		<Pieces>ETW_Role4</Pieces>
-		<Pieces>ETW_AggroPct5</Pieces>
-		<Pieces>ETW_Gauge5</Pieces>
-		<Pieces>ETW_ManaGauge5</Pieces>
-		<Pieces>ETW_CastGauge5</Pieces>
-		<Pieces>ETW_STAGauge5</Pieces>
-		<Pieces>ETW_HPLabel5</Pieces>
-		<Pieces>ETW_HPPercLabel5</Pieces>
-		<Pieces>ETW_Role5</Pieces>
-		<Pieces>ETW_AggroPct6</Pieces>
-		<Pieces>ETW_Gauge6</Pieces>
-		<Pieces>ETW_ManaGauge6</Pieces>
-		<Pieces>ETW_CastGauge6</Pieces>
-		<Pieces>ETW_STAGauge6</Pieces>
-		<Pieces>ETW_HPLabel6</Pieces>
-		<Pieces>ETW_HPPercLabel6</Pieces>
-		<Pieces>ETW_Role6</Pieces>
-		<Pieces>ETW_AggroPct7</Pieces>
-		<Pieces>ETW_Gauge7</Pieces>
-		<Pieces>ETW_ManaGauge7</Pieces>
-		<Pieces>ETW_CastGauge7</Pieces>
-		<Pieces>ETW_STAGauge7</Pieces>
-		<Pieces>ETW_HPLabel7</Pieces>
-		<Pieces>ETW_HPPercLabel7</Pieces>
-		<Pieces>ETW_Role7</Pieces>
-		<Pieces>ETW_AggroPct8</Pieces>
-		<Pieces>ETW_Gauge8</Pieces>
-		<Pieces>ETW_ManaGauge8</Pieces>
-		<Pieces>ETW_CastGauge8</Pieces>
-		<Pieces>ETW_STAGauge8</Pieces>
-		<Pieces>ETW_HPLabel8</Pieces>
-		<Pieces>ETW_HPPercLabel8</Pieces>
-		<Pieces>ETW_Role8</Pieces>
-		<Pieces>ETW_AggroPct9</Pieces>
-		<Pieces>ETW_Gauge9</Pieces>
-		<Pieces>ETW_ManaGauge9</Pieces>
-		<Pieces>ETW_CastGauge9</Pieces>
-		<Pieces>ETW_STAGauge9</Pieces>
-		<Pieces>ETW_HPLabel9</Pieces>
-		<Pieces>ETW_HPPercLabel9</Pieces>
-		<Pieces>ETW_Role9</Pieces>
-		<Pieces>ETW_AggroPct10</Pieces>
-		<Pieces>ETW_Gauge10</Pieces>
-		<Pieces>ETW_ManaGauge10</Pieces>
-		<Pieces>ETW_CastGauge10</Pieces>
-		<Pieces>ETW_STAGauge10</Pieces>
-		<Pieces>ETW_HPLabel10</Pieces>
-		<Pieces>ETW_HPPercLabel10</Pieces>
-		<Pieces>ETW_Role10</Pieces>
-		<Pieces>ETW_AggroPct11</Pieces>
-		<Pieces>ETW_Gauge11</Pieces>
-		<Pieces>ETW_ManaGauge11</Pieces>
-		<Pieces>ETW_CastGauge11</Pieces>
-		<Pieces>ETW_STAGauge11</Pieces>
-		<Pieces>ETW_HPLabel11</Pieces>
-		<Pieces>ETW_HPPercLabel11</Pieces>
-		<Pieces>ETW_Role11</Pieces>
-		<Pieces>ETW_AggroPct12</Pieces>
-		<Pieces>ETW_Gauge12</Pieces>
-		<Pieces>ETW_ManaGauge12</Pieces>
-		<Pieces>ETW_CastGauge12</Pieces>
-		<Pieces>ETW_STAGauge12</Pieces>
-		<Pieces>ETW_HPLabel12</Pieces>
-		<Pieces>ETW_HPPercLabel12</Pieces>
-		<Pieces>ETW_Role12</Pieces>
-		<Pieces>ETW_AggroPct13</Pieces>
-		<Pieces>ETW_Gauge13</Pieces>
-		<Pieces>ETW_ManaGauge13</Pieces>
-		<Pieces>ETW_CastGauge13</Pieces>
-		<Pieces>ETW_STAGauge13</Pieces>
-		<Pieces>ETW_HPLabel13</Pieces>
-		<Pieces>ETW_HPPercLabel13</Pieces>
-		<Pieces>ETW_Role13</Pieces>
-		<Pieces>ETW_AggroPct14</Pieces>
-		<Pieces>ETW_Gauge14</Pieces>
-		<Pieces>ETW_ManaGauge14</Pieces>
-		<Pieces>ETW_CastGauge14</Pieces>
-		<Pieces>ETW_STAGauge14</Pieces>
-		<Pieces>ETW_HPLabel14</Pieces>
-		<Pieces>ETW_HPPercLabel14</Pieces>
-		<Pieces>ETW_Role14</Pieces>
-		<Pieces>ETW_AggroPct15</Pieces>
-		<Pieces>ETW_Gauge15</Pieces>
-		<Pieces>ETW_ManaGauge15</Pieces>
-		<Pieces>ETW_CastGauge15</Pieces>
-		<Pieces>ETW_STAGauge15</Pieces>
-		<Pieces>ETW_HPLabel15</Pieces>
-		<Pieces>ETW_HPPercLabel15</Pieces>
-		<Pieces>ETW_Role15</Pieces>
-		<Pieces>ETW_AggroPct16</Pieces>
-		<Pieces>ETW_Gauge16</Pieces>
-		<Pieces>ETW_ManaGauge16</Pieces>
-		<Pieces>ETW_CastGauge16</Pieces>
-		<Pieces>ETW_STAGauge16</Pieces>
-		<Pieces>ETW_HPLabel16</Pieces>
-		<Pieces>ETW_HPPercLabel16</Pieces>
-		<Pieces>ETW_Role16</Pieces>
-		<Pieces>ETW_AggroPct17</Pieces>
-		<Pieces>ETW_Gauge17</Pieces>
-		<Pieces>ETW_ManaGauge17</Pieces>
-		<Pieces>ETW_CastGauge17</Pieces>
-		<Pieces>ETW_STAGauge17</Pieces>
-		<Pieces>ETW_HPLabel17</Pieces>
-		<Pieces>ETW_HPPercLabel17</Pieces>
-		<Pieces>ETW_Role17</Pieces>
-		<Pieces>ETW_AggroPct18</Pieces>
-		<Pieces>ETW_Gauge18</Pieces>
-		<Pieces>ETW_ManaGauge18</Pieces>
-		<Pieces>ETW_CastGauge18</Pieces>
-		<Pieces>ETW_STAGauge18</Pieces>
-		<Pieces>ETW_HPLabel18</Pieces>
-		<Pieces>ETW_HPPercLabel18</Pieces>
-		<Pieces>ETW_Role18</Pieces>
-		<Pieces>ETW_AggroPct19</Pieces>
-		<Pieces>ETW_Gauge19</Pieces>
-		<Pieces>ETW_ManaGauge19</Pieces>
-		<Pieces>ETW_CastGauge19</Pieces>
-		<Pieces>ETW_STAGauge19</Pieces>
-		<Pieces>ETW_HPLabel19</Pieces>
-		<Pieces>ETW_HPPercLabel19</Pieces>
-		<Pieces>ETW_Role19</Pieces>
-		<Pieces>ETW_AggroPct20</Pieces>
-		<Pieces>ETW_Gauge20</Pieces>
-		<Pieces>ETW_ManaGauge20</Pieces>
-		<Pieces>ETW_CastGauge21</Pieces>
-		<Pieces>ETW_STAGauge20</Pieces>
-		<Pieces>ETW_HPLabel20</Pieces>
-		<Pieces>ETW_HPPercLabel20</Pieces>
-		<Pieces>ETW_Role20</Pieces>
-		<Pieces>ETW_AggroPct21</Pieces>
-		<Pieces>ETW_Gauge21</Pieces>
-		<Pieces>ETW_ManaGauge21</Pieces>
-		<Pieces>ETW_CastGauge21</Pieces>
-		<Pieces>ETW_STAGauge21</Pieces>
-		<Pieces>ETW_HPLabel21</Pieces>
-		<Pieces>ETW_HPPercLabel21</Pieces>
-		<Pieces>ETW_Role21</Pieces>
-		<Pieces>ETW_AggroPct22</Pieces>
-		<Pieces>ETW_Gauge22</Pieces>
-		<Pieces>ETW_ManaGauge22</Pieces>
-		<Pieces>ETW_CastGauge22</Pieces>
-		<Pieces>ETW_STAGauge22</Pieces>
-		<Pieces>ETW_HPLabel22</Pieces>
-		<Pieces>ETW_HPPercLabel22</Pieces>
-		<Pieces>ETW_Role22</Pieces>
+		<Pieces>TileLayoutBox:ETW_Targets</Pieces>
 	</Screen>
 </XML>

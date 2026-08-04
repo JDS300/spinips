@@ -14,10 +14,16 @@ from pathlib import Path
 from restyle_combat import (EFFECT_CHIP, EFFECT_ICON, EFFECT_NAME_WIDTH,
                            EFFECT_NAME_X, EFFECT_PLATE_BLEED,
                            EFFECT_ROW_WIDTH, EFFECT_TIMER_FONT,
-                           EFFECT_TIMER_HALF_WIDTH, SPELL_LEDGER_EQTYPES,
-                           SPELL_LEDGER_ICON_SIZE, SPELL_LEDGER_MENU_NAME,
-                           SPELL_LEDGER_ROW_SIZE, SPELL_LEDGER_VARIANT,
-                           SPELL_LEDGER_WINDOW_BOUNDS,
+                           EFFECT_TIMER_HALF_WIDTH, EXTENDED_TARGET_COUNT,
+                           EXTENDED_TARGET_GUTTER,
+                           EXTENDED_TARGET_LAYOUT,
+                           EXTENDED_TARGET_MIN_SIZE,
+                           EXTENDED_TARGET_ROW_SIZE,
+                           EXTENDED_TARGET_TILE,
+                           EXTENDED_TARGET_WINDOW_SIZE,
+                           SPELL_LEDGER_EQTYPES, SPELL_LEDGER_ICON_SIZE,
+                           SPELL_LEDGER_MENU_NAME, SPELL_LEDGER_ROW_SIZE,
+                           SPELL_LEDGER_VARIANT, SPELL_LEDGER_WINDOW_BOUNDS,
                            SPELL_LEDGER_WINDOW_SIZE)
 
 
@@ -278,19 +284,150 @@ def audit_group_and_extended_targets() -> None:
 
     extended = root_for("EQUI_ExtendedTargetWnd.xml")
     extended_window = item(extended, "Screen", "ExtendedTargetWnd")
-    if dimensions(extended_window) != (178, 300):
-        fail("ExtendedTargetWnd must remain 178x300")
-    for index in range(23):
-        for tag, stem in (("Label", "ETW_AggroPct"), ("Gauge", "ETW_Gauge"),
-                          ("Gauge", "ETW_ManaGauge"), ("Gauge", "ETW_CastGauge"),
-                          ("Gauge", "ETW_STAGauge"), ("Label", "ETW_HPLabel"),
-                          ("Label", "ETW_HPPercLabel"), ("Button", "ETW_Role")):
-            item(extended, tag, f"{stem}{index}")
+    if dimensions(extended_window) != EXTENDED_TARGET_WINDOW_SIZE:
+        fail(
+            "ExtendedTargetWnd default size changed: "
+            f"{dimensions(extended_window)}"
+        )
+    if tuple(child_int(extended_window, field) for field in (
+            "MinHSize", "MinVSize")) != EXTENDED_TARGET_MIN_SIZE:
+        fail("ExtendedTargetWnd no longer preserves one complete compact row")
+    if child_text(extended_window, "Layout") != EXTENDED_TARGET_LAYOUT:
+        fail("ExtendedTargetWnd lost its responsive layout strategy")
+    if [node.text for node in extended_window.findall("Pieces")] != [
+            f"TileLayoutBox:{EXTENDED_TARGET_TILE}"]:
+        fail("ExtendedTargetWnd must mount only its responsive target tile")
+    for field, expected in (
+        ("Style_Sizable", "true"),
+        ("Style_VScroll", "true"),
+        ("Style_AutoVScroll", "true"),
+        ("Style_Titlebar", "true"),
+        ("Style_Minimizebox", "true"),
+        ("KeepOnScreen", "true"),
+    ):
+        if child_text(extended_window, field) != expected:
+            fail(f"ExtendedTargetWnd {field} changed")
+    if child_text(extended_window, "DrawTemplate") != "WDT_Rounded":
+        fail("ExtendedTargetWnd lost its SpinUI frame")
+
+    layout_rules = item(extended, "LayoutVertical", EXTENDED_TARGET_LAYOUT)
+    if (child_text(layout_rules, "ResizeVertical") != "true"
+            or child_text(layout_rules, "ResizeHorizontal") != "true"):
+        fail("ExtendedTargetWnd can no longer resize on both axes")
+
+    expected_tile_members = [
+        f"Screen:ETW_Ext{index}" for index in range(EXTENDED_TARGET_COUNT)
+    ]
+    tile = item(extended, "TileLayoutBox", EXTENDED_TARGET_TILE)
+    if [node.text for node in tile.findall("Pieces")] != expected_tile_members:
+        fail("extended-target tile order no longer covers slots 0 through 22")
+    if (child_int(tile, "Spacing"), child_int(tile, "SecondarySpacing")) != (
+            0, EXTENDED_TARGET_GUTTER):
+        fail("extended-target row or column spacing changed")
+    for field in (
+            "HorizontalFirst", "FirstPieceTemplate", "SnapToChildren",
+            "AnchorToTop", "AnchorToLeft"):
+        if child_text(tile, field) != "true":
+            fail(f"extended-target tile {field} must remain true")
+
+    local_geometry = {
+        "ETW_AggroPct": (20, 32),
+        "ETW_Gauge": (1, 23),
+        "ETW_ManaGauge": (24, 28),
+        "ETW_CastGauge": (24, 28),
+        "ETW_STAGauge": (29, 31),
+        "ETW_HPLabel": (14, 30),
+        "ETW_HPPercLabel": (14, 30),
+        "ETW_Role": (3, 19),
+    }
+    row_stems = tuple(local_geometry)
+    mounted_controls = []
+    for index in range(EXTENDED_TARGET_COUNT):
+        def extended_eq_type(legacy_start: int, legends_start: int) -> int:
+            return (legacy_start + index if index < 20
+                    else legends_start + index - 20)
+
+        bound = {
+            "ETW_AggroPct": require_binding(
+                extended, "Label", f"ETW_AggroPct{index}",
+                f"ETW_AggroPct{index}", extended_eq_type(314, 391),
+            ),
+            "ETW_Gauge": require_binding(
+                extended, "Gauge", f"ETW_Gauge{index}",
+                f"ETW_Gauge{index}", extended_eq_type(42, 151),
+            ),
+            "ETW_ManaGauge": require_binding(
+                extended, "Gauge", f"ETW_ManaGauge{index}",
+                f"ETW_ManaGauge{index}", extended_eq_type(62, 161),
+            ),
+            "ETW_CastGauge": require_binding(
+                extended, "Gauge", f"ETW_CastGauge{index}",
+                f"ETW_CastGauge{index}", 189 + index,
+            ),
+            "ETW_STAGauge": require_binding(
+                extended, "Gauge", f"ETW_STAGauge{index}",
+                f"ETW_STAGauge{index}", extended_eq_type(82, 171),
+            ),
+            "ETW_HPLabel": require_binding(
+                extended, "Label", f"ETW_HPLabel{index}",
+                f"ETW_HPLabel{index}", extended_eq_type(151, 361),
+            ),
+            "ETW_HPPercLabel": require_binding(
+                extended, "Label", f"ETW_HPPercLabel{index}",
+                f"ETW_HPPercLabel{index}",
+            ),
+            "ETW_Role": require_binding(
+                extended, "Button", f"ETW_Role{index}",
+                f"ETW_Role{index}",
+            ),
+        }
+        for stem, node in bound.items():
+            actual = (
+                child_int(node, "TopAnchorOffset"),
+                child_int(node, "BottomAnchorOffset"),
+            )
+            if actual != local_geometry[stem]:
+                fail(f"{stem}{index} left its responsive row geometry")
+
+        row = require_binding(
+            extended, "Screen", f"ETW_Ext{index}", f"ETW_Ext{index}"
+        )
+        if dimensions(row) != EXTENDED_TARGET_ROW_SIZE:
+            fail(f"extended-target row {index} geometry changed")
+        expected_row_members = [f"{stem}{index}" for stem in row_stems]
+        actual_row_members = [node.text for node in row.findall("Pieces")]
+        if actual_row_members != expected_row_members:
+            fail(f"extended-target row {index} membership changed")
+        mounted_controls.extend(actual_row_members)
+
         for name, expected in ((f"ETW_Gauge{index}", HP),
                                (f"ETW_ManaGauge{index}", MANA),
                                (f"ETW_CastGauge{index}", CYAN),
                                (f"ETW_STAGauge{index}", ENDURANCE)):
             require_fill(extended, name, expected)
+
+    expected_controls = [
+        f"{stem}{index}"
+        for index in range(EXTENDED_TARGET_COUNT)
+        for stem in row_stems
+    ]
+    if mounted_controls != expected_controls:
+        fail("extended-target controls are missing, duplicated, or reordered")
+
+    # The 24px allowance models the rounded frame plus active vertical
+    # scrollbar at the narrow default.  These breakpoints prove widening the
+    # outer window creates useful columns while 170px remains one column.
+    breakpoint_results = []
+    for outer_width in (170, 320, 470, 620):
+        usable_width = outer_width - 24
+        columns = max(1, (usable_width + EXTENDED_TARGET_GUTTER) // (
+            EXTENDED_TARGET_ROW_SIZE[0] + EXTENDED_TARGET_GUTTER
+        ))
+        breakpoint_results.append((columns, math.ceil(
+            EXTENDED_TARGET_COUNT / columns
+        )))
+    if breakpoint_results != [(1, 23), (2, 12), (3, 8), (4, 6)]:
+        fail(f"extended-target responsive breakpoints drifted: {breakpoint_results}")
 
 
 def audit_effect_row_geometry(root: ET.Element, prefix: str, label: str) -> None:
@@ -595,7 +732,13 @@ def audit_default_visibility() -> None:
 def audit_spell_ledger_variant() -> None:
     """Prove Alternate3 is readable, resizable, and binding-complete."""
     root = root_for(SPELL_LEDGER_VARIANT)
-    texture = item(root, "TextureInfo", "spin_spell_ledger.tga")
+    animations = root_for("EQUI_Animations.xml")
+    texture_matches = animations.findall(
+        ".//TextureInfo[@item='spin_spell_ledger.tga']"
+    )
+    if len(texture_matches) != 1:
+        fail("spell ledger texture must be declared once in EQUI_Animations.xml")
+    texture = texture_matches[0]
     if dimensions(texture) != (256, 96):
         fail("spell ledger texture declaration must remain 256x96")
     texture_path = SKIN / "spin_spell_ledger.tga"
@@ -615,7 +758,20 @@ def audit_spell_ledger_variant() -> None:
         "A_SpinSpellLedgerHighlight": 64,
     }
     for animation_name, expected_y in animation_rows.items():
-        animation = item(root, "Ui2DAnimation", animation_name)
+        if root.find(f".//Ui2DAnimation[@item='{animation_name}']") is not None:
+            fail(
+                f"{animation_name} must not be declared in the dynamic "
+                "CastSpellWnd3 display-type file"
+            )
+        matches = animations.findall(
+            f".//Ui2DAnimation[@item='{animation_name}']"
+        )
+        if len(matches) != 1:
+            fail(
+                f"{animation_name} must be declared exactly once in "
+                "EQUI_Animations.xml"
+            )
+        animation = matches[0]
         if child_text(animation, "Frames/Texture") != "spin_spell_ledger.tga":
             fail(f"{animation_name} lost its dedicated themed texture")
         if dimensions_at(animation, "Frames/Size") != SPELL_LEDGER_ROW_SIZE:
@@ -623,6 +779,13 @@ def audit_spell_ledger_variant() -> None:
         if (child_int(animation, "Frames/Location/X"),
                 child_int(animation, "Frames/Location/Y")) != (0, expected_y):
             fail(f"{animation_name} atlas position changed")
+
+    equi = root_for("EQUI.xml")
+    includes = [
+        node.text.strip() for node in equi.findall(".//Include") if node.text
+    ]
+    if "EQUI_Animations.xml" not in includes:
+        fail("EQUI.xml no longer loads the central animation registry")
 
     expected_layout_members = []
     for index, eq_type in enumerate(SPELL_LEDGER_EQTYPES):
