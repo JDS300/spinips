@@ -94,7 +94,7 @@ def _tour_frame(background: Image.Image, panel: Image.Image, phase: int,
     draw.rounded_rectangle((right_x, 30, 932, 510), radius=8,
                            fill=PANEL, outline=GOLD, width=2)
     draw.rectangle((right_x, 30, right_x + 4, 510), fill=CYAN)
-    draw.text((right_x + 28, 58), "SPIN'S LOREMASTER",
+    draw.text((right_x + 28, 58), "LOREMASTER",
               font=_font(24, bold=True, serif=True), fill=GOLD_BRIGHT)
     draw.text((right_x + 28, 96), "A live chronicle beside EverQuest",
               font=_font(15), fill=DIM)

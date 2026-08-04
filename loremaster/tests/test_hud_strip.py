@@ -1,4 +1,4 @@
-"""Tests for the compact in-game HUD strip and its potential-mote tracker."""
+"""Tests for the compact Rune Seed HUD and its potential-mote tracker."""
 
 import importlib.util
 import json
@@ -76,7 +76,7 @@ class MoteTrackerTests(unittest.TestCase):
             [0] * 10,
         )
 
-    def test_malformed_ledger_entries_cannot_crash_the_strip(self):
+    def test_malformed_ledger_entries_cannot_crash_the_compact_readout(self):
         for loot in (None, [], "loot", 7):
             with self.subTest(loot=loot):
                 self.assertEqual(
@@ -106,7 +106,7 @@ class MoteTrackerTests(unittest.TestCase):
             with self.subTest(counts=counts):
                 self.assertEqual(LOREMASTER.fmt_mote_tiers(counts), "\u2014")
 
-    def test_tracker_is_a_first_class_card_with_a_strip_label(self):
+    def test_tracker_is_a_first_class_card_with_a_seed_label(self):
         self.assertEqual(LOREMASTER.MINI_CARD_LABELS["motes"], "MOTES")
         self.assertEqual(len(LOREMASTER.MOTE_TIERS), 10)
         self.assertEqual(len(LOREMASTER.MOTE_TIER_LABELS), 10)
@@ -194,22 +194,131 @@ class MoteAcquisitionTests(unittest.TestCase):
         self.assertEqual(stats.motes, [0] * 10)
 
 
-class StripGeometryTests(unittest.TestCase):
-    def test_strip_can_shrink_below_its_starting_width(self):
-        # The strip fits itself to its content; without a floor under the base
-        # width it could only ever grow, which is what left dead space between
-        # the last stat cell and the right-hand tools.
-        self.assertLess(LOREMASTER.MINI_MIN_WIDTH, LOREMASTER.MINI_BASE_WIDTH)
-        self.assertGreater(LOREMASTER.MINI_MIN_WIDTH, 0)
+class RuneSeedGeometryTests(unittest.TestCase):
+    def test_seed_matches_the_approved_compact_footprint(self):
+        self.assertEqual(LOREMASTER.RUNE_SEED_WIDTH, 92)
+        self.assertEqual(LOREMASTER.RUNE_SEED_HEIGHT, 48)
+        self.assertEqual(LOREMASTER.RUNE_SEED_COMBAT_LABEL, "DPS")
+        # The one-pixel Vellum frame is outside the seed canvas.
+        self.assertEqual(LOREMASTER.MINI_BASE_WIDTH, 94)
+        self.assertEqual(LOREMASTER.MINI_BASE_HEIGHT, 50)
+        self.assertEqual(LOREMASTER.MINI_MIN_WIDTH, 94)
 
-    def test_strip_seats_four_cells(self):
+    def test_generated_cog_is_a_tiny_transparent_rgba_asset(self):
+        path = LOREMASTER.bundled_resource_path(
+            "assets", LOREMASTER.BRAND_COG_FILE)
+        self.assertTrue(path.is_file())
+        self.assertEqual(LOREMASTER.png_asset_identity(path), (32, 32, 6))
+
+    def test_cog_and_metric_lanes_never_overlap(self):
+        for scale in (1.0, 1.15, 1.4):
+            with self.subTest(scale=scale):
+                layout = LOREMASTER.rune_seed_content_layout(
+                    LOREMASTER.RUNE_SEED_WIDTH * scale,
+                    LOREMASTER.RUNE_SEED_HEIGHT * scale)
+                self.assertLess(layout["icon"][2], layout["text"][0])
+                self.assertGreaterEqual(
+                    layout["text"][0] - layout["icon"][2], 5.0)
+
+    def test_seed_capsule_points_are_bounded_and_reach_every_edge(self):
+        points = LOREMASTER.rounded_rectangle_points(1, 2, 79, 46, 13)
+        xs, ys = points[::2], points[1::2]
+        self.assertEqual((min(xs), max(xs)), (1.0, 79.0))
+        self.assertEqual((min(ys), max(ys)), (2.0, 46.0))
+        self.assertGreater(len(set(zip(xs, ys))), 8)
+
+    def test_alpha_free_color_blend_is_clamped_and_deterministic(self):
+        self.assertEqual(
+            LOREMASTER.blend_hex_color("#000000", "#ffffff", 0.5),
+            "#808080")
+        self.assertEqual(
+            LOREMASTER.blend_hex_color("#123456", "#abcdef", -1),
+            "#123456")
+        self.assertEqual(
+            LOREMASTER.blend_hex_color("#123456", "#abcdef", 2),
+            "#abcdef")
+
+    def test_seed_carousel_retains_four_starred_metrics(self):
         self.assertEqual(LOREMASTER.MINI_MAX_CELLS, 4)
+        self.assertEqual(
+            LOREMASTER.rune_seed_keys(
+                ["combat", "kills", "money", "motes", "loot"]),
+            ["combat", "kills", "money", "motes"],
+        )
+        self.assertEqual(LOREMASTER.rune_seed_keys("combat"), ["combat"])
+        self.assertEqual(
+            LOREMASTER.rune_seed_keys(
+                ["combat", "combat", "kills", "money", "motes", "loot"]),
+            ["combat", "kills", "money", "motes"],
+        )
 
-    def test_settings_is_not_rebuilt_onto_the_glance_strip(self):
+    def test_selecting_a_fifth_metric_replaces_the_oldest(self):
+        starred = ["combat", "kills", "money", "motes"]
+        self.assertEqual(
+            LOREMASTER.toggle_rune_seed_star(starred, "progress"),
+            ["kills", "money", "motes", "progress"],
+        )
+        self.assertEqual(
+            LOREMASTER.toggle_rune_seed_star(starred, "kills"),
+            ["combat", "money", "motes"],
+        )
+        self.assertEqual(
+            LOREMASTER.toggle_rune_seed_star(["combat"], "combat"),
+            ["combat"],
+        )
+
+    def test_metric_carousel_wraps_in_both_directions(self):
+        self.assertEqual(LOREMASTER.cycle_rune_seed_index(3, 1, 4), 0)
+        self.assertEqual(LOREMASTER.cycle_rune_seed_index(0, -1, 4), 3)
+        self.assertEqual(LOREMASTER.cycle_rune_seed_index("bad", 1, 4), 0)
+
+    def test_large_values_stay_glanceable(self):
+        self.assertEqual(LOREMASTER.compact_hud_number(946), "946")
+        self.assertEqual(LOREMASTER.compact_hud_number(1284), "1.28k")
+        self.assertEqual(LOREMASTER.compact_hud_number(48800), "48.8k")
+        self.assertEqual(LOREMASTER.compact_hud_number(2_105_000), "2.1m")
+
+    def test_morph_has_cached_bounded_frames_and_exact_endpoints(self):
+        start = (58, 46, 1400, 800)
+        end = (550, 820, 900, 180)
+        frames = LOREMASTER.geometry_morph_frames(start, end)
+        self.assertEqual(len(frames), LOREMASTER.HUD_MORPH_STEPS)
+        self.assertEqual(frames[0], start)
+        self.assertEqual(frames[-1], end)
+        self.assertTrue(all(a[0] <= b[0] for a, b in zip(frames, frames[1:])))
+        self.assertTrue(all(a[1] <= b[1] for a, b in zip(frames, frames[1:])))
+
+    def test_wall_clock_morph_clamps_and_skips_to_elapsed_progress(self):
+        start = (94, 50, 1500, 800)
+        end = (550, 820, 900, 180)
+        self.assertEqual(LOREMASTER.geometry_morph_at(start, end, -1), start)
+        self.assertEqual(LOREMASTER.geometry_morph_at(start, end, 2), end)
+        late = LOREMASTER.geometry_morph_at(start, end, 0.75)
+        early = LOREMASTER.geometry_morph_at(start, end, 0.25)
+        self.assertGreater(late[0], early[0])
+        self.assertGreater(late[1], early[1])
+        self.assertLess(late[2], early[2])
+
+    def test_expanded_panel_fits_short_work_areas_at_large_text_scale(self):
+        width, height = LOREMASTER.fit_panel_size_to_bounds(
+            LOREMASTER.FULL_DEFAULT_SIZE, 1.40, (0, 0, 1366, 728))
+        self.assertLessEqual(width, 1350)
+        self.assertLessEqual(height, 712)
+        self.assertEqual((width, height), (616, 712))
+
+    def test_expanded_panel_keeps_its_design_size_when_space_allows(self):
+        self.assertEqual(
+            LOREMASTER.fit_panel_size_to_bounds(
+                LOREMASTER.FULL_DEFAULT_SIZE, 1.0, (0, 0, 1920, 1040)),
+            LOREMASTER.FULL_DEFAULT_SIZE,
+        )
+
+    def test_settings_stays_off_the_glance_seed(self):
         source = (LOREMASTER_DIR / "loremaster.py").read_text(encoding="utf-8")
         self.assertNotIn("mini_settings", source)
-        # It has to remain one click away on the DETAILS footer.
+        # It remains in the expanded footer and on the seed's right click.
         self.assertIn('widgets["settings"] = tk.Label', source)
+        self.assertIn('seed.bind("<Button-3>", open_settings)', source)
 
 
 class FullPanelSummaryTests(unittest.TestCase):
@@ -291,16 +400,41 @@ class StarredCardMigrationTests(unittest.TestCase):
         self.assertEqual(
             config["starred_cards"], ["combat", "kills", "progress"])
 
-    def test_default_strip_ships_the_tracker_and_fits_the_cell_budget(self):
+    def test_default_seed_carousel_ships_the_tracker_and_fits_its_budget(self):
         config = self.load_payload({})
-        self.assertIn("motes", config["starred_cards"])
+        self.assertEqual(
+            config["starred_cards"], ["combat", "kills", "money", "motes"])
+        keys = LOREMASTER.rune_seed_keys(config["starred_cards"])
+        self.assertEqual(
+            keys[config["mini_stat_index"] % len(keys)], "combat")
         self.assertLessEqual(
             len(config["starred_cards"]), LOREMASTER.MINI_MAX_CELLS)
+
+    def test_loaded_wheel_order_and_selection_are_not_reset(self):
+        config = self.load_payload({
+            "starred_cards": ["kills", "combat", "motes"],
+            "mini_stat_index": 2,
+            "hud_cards_version": 2,
+        })
+        self.assertEqual(
+            config["starred_cards"], ["kills", "combat", "motes"])
+        self.assertEqual(config["mini_stat_index"], 2)
+        self.assertEqual(
+            config["starred_cards"][config["mini_stat_index"]], "motes")
 
     def test_malformed_starred_cards_do_not_break_the_migration(self):
         config = self.load_payload({"starred_cards": "combat"})
         self.assertEqual(config["hud_cards_version"], 2)
-        self.assertEqual(config["starred_cards"], "combat")
+        self.assertEqual(config["starred_cards"], ["combat"])
+
+    def test_legacy_hidden_stars_are_normalized_to_the_wheel_budget(self):
+        config = self.load_payload({
+            "starred_cards": [
+                "combat", "combat", "kills", "money", "motes", "loot"],
+            "hud_cards_version": 2,
+        })
+        self.assertEqual(
+            config["starred_cards"], ["combat", "kills", "money", "motes"])
 
 
 if __name__ == "__main__":

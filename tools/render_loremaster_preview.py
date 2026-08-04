@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render the current Loremaster full panel and mini strip for the README."""
+"""Render the current Loremaster expanded panel and Rune Seed for docs."""
 
 import math
 from pathlib import Path
@@ -10,6 +10,8 @@ from spinui_theme import (BG1, BG2, BG3, CYAN, EMBER, GOLD, GOLD_BRIGHT, GREEN,
 
 REPO = Path(__file__).resolve().parent.parent
 OUT = REPO / "docs" / "previews"
+COG = Image.open(REPO / "loremaster" / "assets" /
+                 "loremaster-cog.png").convert("RGBA")
 
 BG = BG1
 PANEL = BG2
@@ -66,6 +68,58 @@ def hexagon(draw, cx, cy, radius, color, width=1, inner=False):
     draw.line(pts, fill=color, width=width, joint="curve")
     if inner:
         draw.ellipse([cx - 2, cy - 2, cx + 2, cy + 2], fill=EMBER)
+
+
+def paste_cog(draw, cx, cy):
+    surface = draw._image
+    surface.paste(COG, (round(cx - COG.width / 2),
+                        round(cy - COG.height / 2)), COG)
+
+
+def rune_seed(draw, x, y, value="1.28k", label="DPS", state="live",
+              width=92, height=48):
+    """Draw the canvas-rendered Rune Seed vocabulary used by the Tk overlay."""
+    states = {
+        "idle": (GOLD, LINE, LINE, "\u2014"),
+        "live": (CYAN, GREEN, LINE, value),
+        "alert": ((222, 62, 72), EMBER, (222, 62, 72), "!"),
+        "stale": (LINE, LINE, LINE, value),
+    }
+    left, right, edge, shown = states.get(state, states["live"])
+    scale = height / 48
+    radius = max(8, round(13 * scale))
+    draw.rounded_rectangle(
+        [x + 2 * scale, y + 3 * scale,
+         x + width - scale, y + height - scale],
+        radius=radius, fill=VOID)
+    draw.rounded_rectangle(
+        [x + scale, y + scale, x + width - 2 * scale,
+         y + height - 3 * scale], radius=radius,
+        fill=PANEL, outline=edge, width=max(1, round(scale)))
+    draw.line([(x + 16 * scale, y + 3 * scale),
+               (x + width - 14 * scale, y + 3 * scale)], fill=LINE)
+    center_x, center_y = x + 23 * scale, y + height / 2
+    draw.ellipse([center_x - 18, center_y - 18,
+                  center_x + 18, center_y + 18], outline=edge,
+                 width=max(1, round(scale)))
+    paste_cog(draw, center_x, center_y)
+    text_left = max(center_x + 21, x + 45 * scale)
+    text_x = (text_left + x + width - 4 * scale) / 2
+    if value or label:
+        draw.text((text_x, y + 16 * scale), shown,
+                  font=F(max(7, round(14 * scale)), bold=True),
+                  fill=TEXT, anchor="mm")
+        draw.text((text_x, y + 31 * scale),
+                  "CHARM" if state == "alert" else label,
+                  font=F(max(5, round(7 * scale)), bold=True),
+                  fill=EMBER if state == "alert" else GOLD_BRIGHT,
+                  anchor="mm")
+    if width >= 70:
+        for index in range(4):
+            px = text_x - 7.5 * scale + index * 5 * scale
+            draw.ellipse([px - scale, y + 40.5 * scale,
+                          px + scale, y + 42.5 * scale],
+                         fill=GOLD_BRIGHT if index == 0 else LINE)
 
 
 def section(draw, width, y, name, value, pinned, expanded=False):
@@ -149,163 +203,263 @@ def render_lore_lens():
     return lens
 
 
+def render_seed_showcase():
+    width, height = 720, 230
+    image = Image.new("RGB", (width, height), VOID)
+    draw = ImageDraw.Draw(image)
+    draw.rounded_rectangle([0, 0, width - 1, height - 1], radius=18,
+                           fill=VOID, outline=LINE)
+    draw.text((24, 25), "RUNE SEED · 92 × 48", font=F(10, serif=True),
+              fill=GOLD)
+    draw.text((width - 24, 25), "EXPANDED · 550 × 820",
+              font=F(8, serif=True), fill=DIM, anchor="ra")
+    draw.text((24, 49), "scroll starred metrics · click to unfold · drag when unlocked",
+              font=F(8), fill=DIM)
+    for index, (state, caption) in enumerate((
+            ("idle", "IDLE"), ("live", "LIVE"),
+            ("alert", "ALERT"), ("stale", "STALE"))):
+        x = 26 + index * 105
+        rune_seed(draw, x, 78, state=state)
+        draw.text((x + 46, 137), caption, font=F(7, serif=True),
+                  fill=CYAN if state == "live" else EMBER if state == "alert" else DIM,
+                  anchor="mm")
+    draw.rounded_rectangle([498, 74, 692, 132], radius=13,
+                           fill=BG, outline=(95, 39, 37))
+    draw.ellipse([508, 88, 536, 116], outline=(222, 62, 72), width=2)
+    draw.arc([505, 85, 539, 119], 35, 120, fill=EMBER, width=2)
+    draw.text((522, 102), "!", font=F(13, bold=True), fill=EMBER, anchor="mm")
+    draw.text((547, 94), "DANGER ALERT", font=F(7, serif=True), fill=EMBER)
+    draw.text((547, 115), "BIG HIT · 3,942", font=F(11, bold=True), fill=TEXT)
+    draw.text((24, 184), "MORPH", font=F(7, serif=True), fill=GOLD)
+    rune_seed(draw, 87, 166, width=60, height=38)
+    draw.line([(158, 185), (196, 185)], fill=LINE, width=2)
+    draw.polygon([(196, 181), (204, 185), (196, 189)], fill=LINE)
+    draw.rounded_rectangle([220, 160, 340, 210], radius=18,
+                           fill=BG, outline=LINE)
+    draw.arc([229, 168, 265, 204], 30, 300, fill=CYAN, width=3)
+    draw.text((278, 177), "LORE LENS", font=F(6, serif=True), fill=GOLD)
+    draw.text((278, 195), "1,284 DPS", font=F(10, bold=True), fill=TEXT)
+    draw.text((374, 187), "240 ms · time-sampled motion · reduced motion: instant",
+              font=F(8), fill=DIM)
+    return image
+
+
+def render_mez_overlay():
+    """Render the live three-row crowd-control stack at documentation scale."""
+    width = 612
+    header_height = 54
+    row_height = 82
+    height = header_height + row_height * 3 + 2
+    image = Image.new("RGB", (width, height), GOLD)
+    draw = ImageDraw.Draw(image)
+    draw.rounded_rectangle([1, 1, width - 2, height - 2], radius=15,
+                           fill=BG, outline=GOLD)
+    draw.rectangle([2, 2, width - 3, 5], fill=CYAN)
+    draw.rectangle([2, 6, width - 3, header_height], fill=PANEL)
+    draw.text((20, 31), "CONTROL  ·  MEZ", font=F(15, serif=True),
+              fill=CYAN, anchor="lm")
+    draw.text((width - 20, 31), "5 TRACKED \u00b7 +1", font=F(14),
+              fill=DIM, anchor="rm")
+
+    rows = (
+        ("a thought spoiler \u00d72", "Mesmerization V", "18s", "SAFE",
+         CYAN, .42),
+        ("an elite gnoll shaman", "Enthrall II", "8s", "SAFE",
+         GOLD_BRIGHT, .17),
+        ("Sabertooth Overseer", "Mesmerize III", "LAST TICK", "WAKE WINDOW",
+         EMBER, 0.0),
+    )
+    for index, (target, spell, remaining, phase, color, fraction) in enumerate(rows):
+        top = header_height + index * row_height
+        bottom = top + row_height
+        if index:
+            draw.line([(2, top), (width - 3, top)], fill=LINE)
+        draw.rectangle([2, top, 6, bottom - 1], fill=color)
+        draw.text((22, top + 27), target, font=F(19, bold=True),
+                  fill=PARCHMENT, anchor="lm")
+        draw.text((22, top + 55), spell, font=F(14), fill=DIM, anchor="lm")
+        draw.text((width - 20, top + 27), remaining,
+                  font=F(20, bold=True), fill=color, anchor="rm")
+        draw.text((width - 20, top + 55), phase, font=F(12, serif=True),
+                  fill=color if phase != "SAFE" else DIM, anchor="rm")
+        meter_top = bottom - 4
+        draw.rectangle([7, meter_top, width - 3, bottom - 2], fill=LINE)
+        if fraction:
+            meter_right = 7 + round((width - 10) * fraction)
+            draw.rectangle([7, meter_top, meter_right, bottom - 2], fill=color)
+    return image
+
+
 def main():
-    width, height = 400, 740
+    # Matches Loremaster's FULL_DEFAULT_SIZE exactly.
+    width, height = 550, 820
     panel = Image.new("RGB", (width, height), GOLD)
     d = ImageDraw.Draw(panel)
-    d.rectangle([1, 1, width - 2, height - 2], fill=BG)
+    d.rounded_rectangle([1, 1, width - 2, height - 2], radius=18,
+                        fill=BG, outline=LINE)
 
-    # Heraldic masthead, identity, and mode switcher.
-    d.rectangle([2, 2, width - 3, 33], fill=PANEL)
-    hexagon(d, 16, 17, 8, GOLD_BRIGHT, 2, inner=True)
-    d.text((30, 17), "SPIN'S LOREMASTER", font=F(11, serif=True), fill=GOLD_BRIGHT, anchor="lm")
-    d.ellipse([width - 197, 13, width - 189, 21], fill=GREEN)
-    d.text((width - 12, 17), "LOCK   RESET   LORE   HUD   ×", font=F(8, bold=True), fill=DIM, anchor="rm")
-    d.rectangle([2, 34, width - 3, 35], fill=EMBER)
-    d.text((10, 48), "SPIN · QEYNOS", font=F(8, serif=True), fill=PARCHMENT, anchor="lm")
-    d.text((width - 10, 48), "session 1h44m · since 3:38 PM", font=F(8), fill=DIM, anchor="rm")
-    d.text((10, 64), "Blackburrow", font=F(9), fill=TEXT, anchor="lm")
-    d.rectangle([218, 55, width - 10, 72], fill=RAISED)
-    d.text((width - 16, 64), f"LORE LENS  •  {LORE_HOTKEY}  •  READY",
-           font=F(7, serif=True), fill=CYAN, anchor="rm")
+    # Rune-anchored masthead.
+    d.rounded_rectangle([2, 2, width - 3, 70], radius=17, fill=RAISED)
+    d.rectangle([2, 52, width - 3, 70], fill=RAISED)
+    paste_cog(d, 35, 35)
+    d.text((72, 27), "LOREMASTER", font=F(14, serif=True),
+           fill=PARCHMENT)
+    d.ellipse([72, 45, 80, 53], fill=GREEN)
+    d.text((86, 49), "LIVE · 38s", font=F(8, bold=True), fill=GREEN, anchor="lm")
+    d.text((width - 14, 35), "RESET   LORE   SEED   —   ○   ×",
+           font=F(8, serif=True), fill=DIM, anchor="rm")
+    d.line([(2, 70), (width - 3, 70)], fill=LINE)
 
-    d.rectangle([10, 75, width - 10, 98], fill=VOID)
-    tab_w = (width - 20) / 3
-    d.rectangle([10, 75, int(10 + tab_w), 98], fill=RAISED)
-    for i, (label, color) in enumerate((("FIGHT", CYAN), ("SESSION", DIM), ("RECORDS", DIM))):
-        d.text((10 + tab_w * (i + .5), 87), label, font=F(8, serif=True), fill=color, anchor="mm")
+    # Identity and scope.
+    d.text((20, 92), "SPIN · 67 · ENC / CLR / MAG", font=F(8, serif=True),
+           fill=PARCHMENT)
+    d.text((width - 20, 92), "The Dreadlands · session 1h44m",
+           font=F(8), fill=DIM, anchor="ra")
+    d.rounded_rectangle([18, 106, width - 18, 143], radius=10,
+                        fill=VOID, outline=LINE)
+    tab_width = (width - 36) / 3
+    d.rounded_rectangle([22, 110, int(18 + tab_width), 139], radius=8,
+                        fill=RAISED, outline=LINE)
+    for index, label in enumerate(("ENCOUNTER", "SESSION", "RECORDS")):
+        d.text((18 + tab_width * (index + .5), 125), label,
+               font=F(8, serif=True), fill=TEXT if index == 0 else DIM,
+               anchor="mm")
 
-    # Encounter browser keeps history one click away without leaving the HUD.
-    d.rectangle([10, 103, width - 10, 125], fill=BG)
-    d.rectangle([10, 103, 67, 124], fill=RAISED, outline=LINE)
-    d.text((38, 114), "‹ OLDER", font=F(7, serif=True), fill=CYAN, anchor="mm")
-    d.text((width // 2, 114), "LIVE · FROGLOK SHIN KNIGHT",
-           font=F(7, serif=True), fill=GOLD_BRIGHT, anchor="mm")
-    d.rectangle([width - 67, 103, width - 10, 124], fill=RAISED, outline=LINE)
-    d.text((width - 38, 114), "NEWER ›", font=F(7, serif=True), fill=LINE, anchor="mm")
+    d.text((22, 161), "‹ PREVIOUS", font=F(7, serif=True), fill=CYAN)
+    d.text((width // 2, 161), "AN ABHORRENT · CURRENT FIGHT",
+           font=F(8, serif=True), fill=GOLD, anchor="ma")
+    d.text((width - 22, 161), "NEXT ›", font=F(7, serif=True),
+           fill=LINE, anchor="ra")
 
-    # Encounter Lab pivots keep deep analysis one click away.
-    lab_top, lab_bottom = 129, 149
-    lab_w = (width - 20) / 5
-    for i, label in enumerate((
-        "OVERVIEW", "DAMAGE", "HEALING", "TARGETS", "TIMELINE",
-    )):
-        x0 = int(10 + i * lab_w)
-        x1 = int(10 + (i + 1) * lab_w) - 1
-        d.rectangle([x0, lab_top, x1, lab_bottom],
-                    fill=RAISED if label == "OVERVIEW" else VOID)
-        d.text(((x0 + x1) // 2, (lab_top + lab_bottom) // 2), label,
-               font=F(6, serif=True),
-               fill=CYAN if label == "OVERVIEW" else DIM, anchor="mm")
+    # Encounter hero and cached meter.
+    hero_top, hero_bottom = 174, 302
+    d.rounded_rectangle([18, hero_top, width - 18, hero_bottom], radius=14,
+                        fill=RAISED, outline=LINE)
+    d.text((34, 198), "1,284", font=F(34, bold=True), fill=GOLD_BRIGHT)
+    d.text((158, 218), "DPS", font=F(8, serif=True), fill=GOLD)
+    d.line([(270, 190), (270, 258)], fill=LINE)
+    d.text((292, 198), "SESSION", font=F(7, serif=True), fill=DIM)
+    d.text((292, 225), "946", font=F(17, bold=True), fill=PARCHMENT)
+    d.text((414, 198), "BEST", font=F(7, serif=True), fill=DIM)
+    d.text((414, 225), "2,105", font=F(17, bold=True), fill=PARCHMENT)
+    d.text((292, 249), "Previous 812 · Next —", font=F(7), fill=DIM)
+    d.rounded_rectangle([34, 270, width - 34, 278], radius=4,
+                        fill=(46, 28, 16), outline=(76, 44, 24))
+    d.rounded_rectangle([34, 270, 376, 278], radius=4, fill=CYAN)
+    d.text((34, 290), "71% of personal best", font=F(7), fill=DIM)
+    d.text((width - 34, 290), "00:38", font=F(7), fill=DIM, anchor="ra")
 
-    # Raised three-stat hero band.
-    hero_top, hero_bottom = 156, 210
-    d.rectangle([10, hero_top, width - 10, hero_bottom], fill=RAISED)
-    d.rectangle([10, hero_top, 12, hero_bottom], fill=CYAN)
-    for x in (width // 3, 2 * width // 3):
-        d.line([(x, hero_top + 7), (x, hero_bottom - 7)], fill=LINE)
-    for i, (value, label, color) in enumerate((
-        ("1,284", "FIGHT DPS", GOLD_BRIGHT),
-        ("946", "SESSION", TEXT),
-        ("2,105", "BEST", CYAN),
-    )):
-        cx = int((i + 0.5) * width / 3)
-        d.text((cx, hero_top + 21), value, font=F(20, bold=True),
-               fill=color, anchor="mm")
-        d.text((cx, hero_top + 42), label, font=F(7, serif=True),
-               fill=DIM, anchor="mm")
-    d.rectangle([10, 215, width - 10, 216], fill=GOLD)
+    # Quick metrics.
+    quick_y = 314
+    cell_gap = 6
+    cell_width = (width - 36 - cell_gap * 3) // 4
+    for index, (label, value) in enumerate((
+            ("DAMAGE", "48.8k"), ("TAKEN", "1.9k"),
+            ("HEALING", "3.2k"), ("ENEMIES", "7"))):
+        x0 = 18 + index * (cell_width + cell_gap)
+        d.rounded_rectangle([x0, quick_y, x0 + cell_width, quick_y + 57],
+                            radius=9, fill=VOID, outline=LINE)
+        d.text((x0 + 11, quick_y + 17), label, font=F(6, serif=True), fill=DIM)
+        d.text((x0 + 11, quick_y + 43), value, font=F(14, bold=True), fill=TEXT)
 
-    y = section(d, width, 224, "COMBAT", "1,284 dps", True, expanded=True)
-    for text in (
-        "LIVE ENCOUNTER · Froglok shin knight · 9s",
-        "11.5k damage · 1,284 dps · 21 crits · 3 misses",
-        "7 enemies slain · 2 target types",
-        "Taken 1,973 · healed 2,410 · received 1,235",
-    ):
-        d.text((31, y), text, font=F(8), fill=DIM)
-        y += 14
+    # Parse pivots and contributors.
+    tab_y = 390
+    labels = ("OVERVIEW", "DAMAGE", "HEALING", "TARGETS", "TIMELINE")
+    lab_width = (width - 36) / len(labels)
+    for index, label in enumerate(labels):
+        x = 18 + lab_width * (index + .5)
+        d.text((x, tab_y + 12), label, font=F(7, serif=True),
+               fill=TEXT if label == "DAMAGE" else DIM, anchor="mm")
+    d.line([(18 + lab_width, tab_y + 27),
+            (18 + lab_width * 2, tab_y + 27)], fill=GOLD, width=2)
 
-    d.text((31, y + 2), "Compared with previous", font=F(8, bold=True), fill=GOLD)
-    d.text((width - 17, y + 2), "+178 dps · previous 1,106 dps", font=F(7),
-           fill=GOLD_BRIGHT, anchor="ra")
-    y += 18
-    d.text((31, y + 2), "Observed encounter actors", font=F(8, bold=True), fill=GOLD)
-    d.text((width - 17, y + 2), "damage · share · dps", font=F(7),
-           fill=GOLD_BRIGHT, anchor="ra")
-    y += 18
-    for name, value, share in (
-        ("Spin", "11.5k · 100% · 1,284/s", 1.0),
-        ("Froglok shin knight", "target · 7 slain", .68),
-    ):
-        d.rectangle([31, y + 11, 31 + int(330 * share), y + 12], fill=CYAN)
-        d.text((31, y), name, font=F(8), fill=TEXT)
-        d.text((width - 17, y), value, font=F(7), fill=GOLD_BRIGHT, anchor="ra")
-        y += 17
-    y += 4
+    content_top = 428
+    d.rounded_rectangle([18, content_top, width - 18, content_top + 112],
+                        radius=11, fill=VOID, outline=LINE)
+    d.text((32, content_top + 22), "CONTRIBUTORS", font=F(8, serif=True),
+           fill=GOLD)
+    d.text((width - 32, content_top + 22), "TOTAL · SHARE · DPS",
+           font=F(7), fill=DIM, anchor="ra")
+    for row, (name, value, share, color) in enumerate((
+            ("Spin", "32.4k · 66% · 1,284", .66, CYAN),
+            ("An abhorrent (pet)", "16.4k · 34% · 648", .34, GOLD))):
+        y = content_top + 54 + row * 35
+        d.ellipse([32, y - 5, 42, y + 5], fill=color)
+        d.text((50, y), name, font=F(8, bold=(row == 0)),
+               fill=TEXT if row == 0 else PARCHMENT, anchor="lm")
+        d.rounded_rectangle([210, y - 4, 390, y + 4], radius=4,
+                            fill=(46, 28, 16))
+        d.rounded_rectangle([210, y - 4, 210 + int(180 * share), y + 4],
+                            radius=4, fill=color)
+        d.text((width - 32, y), value, font=F(7),
+               fill=TEXT if row == 0 else PARCHMENT, anchor="rm")
 
-    for name, value, pinned in (
-        ("SLAYING", "47 (+9)", True),
-        ("SPOILS", "23 items", False),
-        ("COIN", "2p 9g 1s 6c", True),
-        ("PROGRESSION", "18.6% xp, +3 AA", True),
-        ("STANDING", "7 factions", False),
-        ("JOURNEY", "0 deaths", False),
-    ):
-        y = section(d, width, y, name, value, pinned)
+    # Card ledger: the real panel keeps these expandable and scrollable.
+    d.text((20, 558), "THE LEDGER", font=F(9, serif=True), fill=GOLD)
+    d.text((width - 20, 558), "STAR TO PIN IN SEED ☆", font=F(7),
+           fill=DIM, anchor="ra")
+    for index, (label, value, pinned) in enumerate((
+            ("SLAYING", "47", True), ("SPOILS", "23", False),
+            ("COIN", "2p 9g", False), ("PROGRESS", "+18.6%", True))):
+        y = 570 + index * 30
+        d.rounded_rectangle([18, y, width - 18, y + 27], radius=7,
+                            fill=VOID, outline=LINE)
+        hexagon(d, 34, y + 13, 5, CYAN if index == 0 else LINE)
+        d.text((48, y + 13), label, font=F(7, serif=True),
+               fill=CYAN if index == 0 else DIM, anchor="lm")
+        d.text((width - 54, y + 13), value, font=F(10, bold=True),
+               fill=GREEN if label == "PROGRESS" else TEXT, anchor="rm")
+        d.text((width - 32, y + 13), "✦" if pinned else "◇", font=FS(9),
+               fill=GOLD_BRIGHT if pinned else LINE, anchor="mm")
 
-    # Actionable footer makes first-run setup discoverable.
-    d.rectangle([2, height - 29, width - 3, height - 3], fill=PANEL)
-    d.text((10, height - 16), "live · eqlog_Spin_qeynos.txt", font=F(8), fill=GREEN, anchor="lm")
-    d.rectangle([width - 140, height - 25, width - 69, height - 7], fill=RAISED, outline=LINE)
-    d.text((width - 104, height - 16), "CLICK-THRU", font=F(6, serif=True), fill=CYAN, anchor="mm")
-    d.rectangle([width - 65, height - 25, width - 8, height - 7], fill=RAISED, outline=LINE)
-    d.text((width - 36, height - 16), "CHANGE", font=F(7, serif=True), fill=GOLD_BRIGHT, anchor="mm")
+    # Expanded alert rail.
+    rail_y = 696
+    d.rounded_rectangle([18, rail_y, width - 18, rail_y + 58], radius=11,
+                        fill=RAISED, outline=(105, 59, 31))
+    d.ellipse([31, rail_y + 21, 43, rail_y + 33], fill=GREEN)
+    d.text((52, rail_y + 20), "ALERTS ON", font=F(7, serif=True), fill=GOLD)
+    d.text((52, rail_y + 40), "6 armed · click to tune", font=F(7), fill=DIM)
+    chip_x = 224
+    for label, active in (("CHARM", True), ("TELL", True), ("BIG HIT", True)):
+        chip_w = 66 if label != "BIG HIT" else 78
+        d.rounded_rectangle([chip_x, rail_y + 16, chip_x + chip_w, rail_y + 44],
+                            radius=14, fill=BG,
+                            outline=(222, 62, 72) if label == "BIG HIT" else LINE)
+        d.text((chip_x + chip_w // 2, rail_y + 30), label,
+               font=F(6, serif=True), fill=GOLD_BRIGHT if active else DIM,
+               anchor="mm")
+        chip_x += chip_w + 7
+    d.rounded_rectangle([chip_x, rail_y + 16, chip_x + 34, rail_y + 44],
+                        radius=14, fill=BG, outline=LINE)
+    d.text((chip_x + 17, rail_y + 30), "⚙", font=FS(8), fill=DIM, anchor="mm")
 
-    # Mini mode uses the same material and the same pinned ledger vocabulary.
-    mini_w, mini_h = 720, 34
-    mini = Image.new("RGB", (mini_w, mini_h), GOLD)
-    md = ImageDraw.Draw(mini)
-    md.rectangle([1, 1, mini_w - 2, mini_h - 2], fill=BG)
-    md.rectangle([1, 1, 4, mini_h - 2], fill=EMBER)
-    x = 14
-    for i, (name, value) in enumerate((
-        ("COMBAT", "1,284 dps"), ("SLAYING", "47"),
-        ("COIN", "2p 9g"), ("PROGRESSION", "18.6% · +3 AA"),
-    )):
-        if i:
-            md.line([(x, 7), (x, mini_h - 8)], fill=GOLD)
-            x += 10
-        md.text((x, mini_h // 2), name, font=F(7, serif=True), fill=GOLD, anchor="lm")
-        x += int(md.textlength(name, font=F(7, serif=True))) + 5
-        md.text((x, mini_h // 2), value, font=F(9, bold=True), fill=TEXT, anchor="lm")
-        x += int(md.textlength(value, font=F(9, bold=True))) + 12
-    controls_left = mini_w - 286
-    if x > controls_left - 6:
-        raise RuntimeError("720px Loremaster HUD stat cells overlap its controls")
-    md.rectangle([controls_left, 4, mini_w - 132, mini_h - 5],
-                 fill=RAISED, outline=LINE)
-    md.text(((controls_left + mini_w - 132) // 2, mini_h // 2),
-            f"LORE LENS  {LORE_HOTKEY}  READY", font=F(6, serif=True),
-            fill=CYAN, anchor="mm")
-    md.text((mini_w - 126, mini_h // 2), "● LIVE", font=F(6, bold=True),
-            fill=GREEN, anchor="rm")
-    md.rectangle([mini_w - 122, 4, mini_w - 72, mini_h - 5], fill=RAISED, outline=LINE)
-    md.text((mini_w - 97, mini_h // 2), "LOCK", font=F(7, serif=True), fill=DIM, anchor="mm")
-    md.rectangle([mini_w - 69, 4, mini_w - 4, mini_h - 5], fill=RAISED, outline=LINE)
-    md.text((mini_w - 36, mini_h // 2), "DETAILS", font=F(7, serif=True),
-            fill=CYAN, anchor="mm")
+    # Persistent operational controls.
+    d.line([(2, 767), (width - 3, 767)], fill=LINE)
+    d.ellipse([18, 783, 25, 790], fill=GREEN)
+    d.text((31, 787), "log live · 4 Hz", font=F(7), fill=DIM, anchor="lm")
+    d.text((width - 20, 787), "LOCK   CLICK-THROUGH   SETTINGS   ↘",
+           font=F(7, serif=True), fill=PARCHMENT, anchor="rm")
+    d.rounded_rectangle([18, 801, width - 18, 816], radius=7, fill=VOID)
+    d.text((28, 809), "Fight · Session · Records / Overview · Damage · Healing · Targets · Timeline",
+           font=F(6), fill=DIM, anchor="lm")
 
     lore_lens = render_lore_lens()
+    seed_showcase = render_seed_showcase()
+    mez_overlay = render_mez_overlay()
     OUT.mkdir(parents=True, exist_ok=True)
-    canvas = Image.new("RGB", (width * 2 + lore_lens.width * 2 + 120,
-                                height * 2 + mini_h * 2 + 110), (26, 24, 30))
-    canvas.paste(panel.resize((width * 2, height * 2), Image.Resampling.LANCZOS), (40, 40))
+    canvas_width = width * 2 + lore_lens.width * 2 + 120
+    canvas_height = max(1816, height * 2 + 80,
+                        lore_lens.height * 2 + seed_showcase.height + 140)
+    canvas = Image.new("RGB", (canvas_width, canvas_height), (26, 24, 30))
+    canvas.paste(panel.resize((width * 2, height * 2), Image.Resampling.LANCZOS),
+                 (40, 40))
+    right_x = width * 2 + 80
     canvas.paste(lore_lens.resize((lore_lens.width * 2, lore_lens.height * 2),
                                   Image.Resampling.LANCZOS),
-                 (width * 2 + 80, 40))
-    canvas.paste(mini.resize((mini_w * 2, mini_h * 2), Image.Resampling.LANCZOS),
-                 (40, height * 2 + 70))
+                 (right_x, 40))
+    canvas.paste(seed_showcase, (right_x, lore_lens.height * 2 + 80))
+    mez_x = right_x + (lore_lens.width * 2 - mez_overlay.width) // 2
+    canvas.paste(mez_overlay, (mez_x, lore_lens.height * 2 + 340))
     canvas.save(OUT / "loremaster_panel.png")
     print("wrote docs/previews/loremaster_panel.png")
 

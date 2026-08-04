@@ -71,9 +71,11 @@ SOURCE_REQUIRED = (
     "docs/screenshots/loremaster-session-live.png",
     "docs/screenshots/spinui-live-hero.jpg",
     "loremaster/charm_break.py",
+    "loremaster/assets/loremaster-cog.png",
     "loremaster/hover_ocr.py",
     "loremaster/loremaster.py",
     "loremaster/log_ingest.py",
+    "loremaster/mez_timer.py",
     "loremaster/windows_hotkeys.py",
     "loremaster/windows_tray.py",
     "loremaster/wiki_overlay.py",
@@ -83,6 +85,8 @@ SOURCE_REQUIRED = (
     "loremaster/tests/test_config.py",
     "loremaster/tests/test_hover_ocr.py",
     "loremaster/tests/test_log_ingest.py",
+    "loremaster/tests/test_mez_integration.py",
+    "loremaster/tests/test_mez_timer.py",
     "loremaster/tests/test_windows_hotkeys.py",
     "loremaster/tests/test_windows_tray.py",
     "loremaster/tests/test_wiki_overlay.py",
@@ -105,6 +109,8 @@ SOURCE_REQUIRED = (
 
 # Values: (format, allowed dimensions, byte cap).
 README_MEDIA = {
+    "docs/previews/loremaster_panel.png": (
+        "PNG", {(2004, 1816)}, 650_000),
     "docs/screenshots/spinui-logo.jpg": ("JPEG", {(1200, 480)}, 500_000),
     "docs/screenshots/spinui-gameplay-overview.jpg": (
         "JPEG", {(1920, 804)}, 700_000),

@@ -6,25 +6,18 @@ character-layout profiles, and alternate chat presets. Seven validated screen
 profiles cover 1920×1080, 2048×1080, 2560×1080, 2560×1440, 3440×1440,
 3840×1600, and 3840×2160.
 
-> **Safest layout option:** use `SpinUIInstaller.exe` from the guided Installer
-> package when you want a resolution profile without replacing character data.
-> **Keep Existing** is its recommended default. If you opt into Combat Focus,
-> Social Focus, or Hybrid, it changes `UISkin`, audited window anchors,
-> positions, sizes, and visibility (Show, Alpha, and fade settings), and it
-> replaces the `[ChatManager]` section so the preset's Main/Combat/Social chat
-> routing takes effect. It preserves locks, click-through, hotbar and spell
-> data, loadouts, client-added settings, and all unknown values in every other
-> section. An actual change receives a byte-exact,
-> timestamped backup such as
-> `UI_Spin_qeynos_LO1.ini.spinui-backup-20260720-214500`; applying an identical
-> preset again writes nothing and creates no extra backup.
+> **Safest layout option:** install only the `spinui_reloaded` skin and keep
+> your current character UI INI. Combat Focus, Social Focus, and Hybrid are
+> optional full-file profiles: they replace the selected character UI file,
+> including its window and chat preferences. Make a byte-exact backup before
+> applying one so the original arrangement is easy to restore.
 
-> **Antivirus note:** the unsigned `Loremaster.exe` and `SpinUIInstaller.exe`
-> can trip machine-learning heuristics (commonly `Wacatac!ml` or "suspicious
-> PE"). Every release publishes a `SHA256SUMS.txt`; verify a download with
+> **Antivirus note:** the unsigned `Loremaster.exe` can trip machine-learning
+> heuristics (commonly `Wacatac!ml` or "suspicious PE"). Every release
+> publishes a `SHA256SUMS.txt`; verify a download with
 > `Get-FileHash -Algorithm SHA256 <file>` in PowerShell before restoring it
-> from quarantine. Both executables are built in public by GitHub Actions
-> from the repository source.
+> from quarantine. The executable is built in public by GitHub Actions from
+> the repository source.
 
 ## 1. Close EverQuest completely
 
@@ -70,8 +63,7 @@ layouts\profiles\<resolution>\<combat-focus|social-focus|hybrid>\
 Do not apply a 3440×1440 character INI to a narrower screen; choose its
 validated profile instead.
 
-The Manual package cannot perform the guided installer's surgical merge.
-Copying one of its preset INIs over an existing character INI replaces that
+Copying one of the preset INIs over an existing character INI replaces that
 whole file, including any chat/window preferences stored there. Before doing
 so, make a separate backup of the character INI in the EverQuest folder. Its
 name follows this pattern:
@@ -104,10 +96,9 @@ UI_Spin_qeynos_LO1.ini
 | Qeynos | `qeynos` |
 | Rivervale | `rivervale` |
 
-The guided installer offers these exact choices and previews the final
-filename before writing. If a manually entered name resolves to an existing
-INI, it safely merges that file rather than treating the entry as permission
-to overwrite it.
+Before copying, verify that the destination filename matches the intended
+character, server token, and existing layout suffix exactly. Never treat a
+matching filename as permission to overwrite it without a backup.
 
 ## 4. Run Spin's Loremaster
 

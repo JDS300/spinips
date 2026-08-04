@@ -22,7 +22,8 @@ What it does
   ups, and estimated time to level.
 * Kills (per-creature breakdown), deaths, heals in/out, damage taken,
   loot log, coin (plat/hr), faction hits, skill-ups, fizzles/resists.
-* HUD mode: a slim EQ-only overlay strip with your starred stats.
+* Rune Seed HUD: a tiny EQ-only combat sigil that cycles starred stats and
+  unfolds into the full encounter panel on click.
 * Lore Lens: Ctrl+Shift+E reads a hovered item with on-demand Windows OCR,
   then uses safe EQL Wiki parsing, background I/O, and an offline cache.
 * Per-character persistence in loremaster_data/<Character>.json.
@@ -40,6 +41,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import sys
@@ -64,6 +66,7 @@ from log_ingest import (
     StatusRecord,
     SwitchRecord,
 )
+from mez_timer import MezTracker, format_mez_remaining
 from windows_hotkeys import (
     HOTKEY_RECOVERY,
     HOTKEY_WIKI,
@@ -147,6 +150,24 @@ else:
 CONFIG_PATH = APP_DATA_DIR / "loremaster_config.json"
 DATA_DIR = APP_DATA_DIR / "loremaster_data"
 WIKI_CACHE_DIR = APP_DATA_DIR / "wiki_cache"
+BRAND_COG_FILE = "loremaster-cog.png"
+
+
+def bundled_resource_path(*parts) -> Path:
+    """Resolve a source or PyInstaller one-file data asset."""
+    root = Path(getattr(sys, "_MEIPASS", SOURCE_DIR))
+    return root.joinpath(*parts)
+
+
+def png_asset_identity(path) -> tuple[int, int, int]:
+    """Return PNG width, height, and color type without runtime dependencies."""
+    payload = Path(path).read_bytes()[:26]
+    if (len(payload) < 26 or payload[:8] != b"\x89PNG\r\n\x1a\n"
+            or payload[12:16] != b"IHDR"):
+        raise ValueError("brand asset is not a valid PNG")
+    width = int.from_bytes(payload[16:20], "big")
+    height = int.from_bytes(payload[20:24], "big")
+    return width, height, payload[25]
 
 # Combat pacing constants
 COMBAT_GAP = timedelta(seconds=10)
@@ -237,7 +258,7 @@ def mote_exp_total(counts) -> int:
 
 
 def fmt_mote_tiers(counts) -> str:
-    """The slim strip readout: tier counts, lowest tier on the left.
+    """The compact ledger readout: tier counts, lowest tier on the left.
 
     Ten grades would be a twenty-character cell if every one were printed, so
     the readout stops at the highest grade that has actually dropped.  Early in
@@ -251,20 +272,35 @@ def fmt_mote_tiers(counts) -> str:
     return "/".join(str(n) for n in values[:highest + 1])
 
 
-MINI_BASE_WIDTH = 520
-# The strip fits itself to its content; this is the floor, so a quiet session
-# with short values still reads as a deliberate bar rather than a chip.
-MINI_MIN_WIDTH = 380
-# The strip shows at most this many stat cells; beyond that it stops being a
-# glance readout and starts being a second window.  PROGRESSION in particular
-# is a three-part value ("23.9% xp - +1 lvl - 2h24m to lvl") that on its own
-# pushed the strip past its width cap and clipped the cell after it, so it
-# lives on DETAILS where it has room.
+# Rune Seed dimensions are the inner canvas size at 100% font scaling.  The
+# one-pixel Vellum frame makes the actual toplevel 82x50.  The extra width turns
+# the old gem-like square into a readable capsule while remaining a tiny HUD.
+RUNE_SEED_WIDTH = 92
+RUNE_SEED_HEIGHT = 48
+RUNE_SEED_COMBAT_LABEL = "DPS"
+RUNE_SEED_ICON_SIZE = 32
+MINI_BASE_WIDTH = RUNE_SEED_WIDTH + 2
+MINI_MIN_WIDTH = MINI_BASE_WIDTH
+# Starred cards now form a scrollable carousel.  Keeping the existing four-card
+# budget preserves user configuration while rendering only one metric at once.
 MINI_MAX_CELLS = 4
 # Windows names the diagonal resize cursor "size_nw_se"; X11 uses
 # "bottom_right_corner".
 RESIZE_CURSOR = "size_nw_se" if os.name == "nt" else "bottom_right_corner"
-MINI_BASE_HEIGHT = 30
+MINI_BASE_HEIGHT = RUNE_SEED_HEIGHT + 2
+
+# The expanded HUD is deliberately substantial: it is the high-detail state,
+# not a second compact mode.  Saved custom sizes remain supported and are
+# clamped into this wider, more legible range.
+FULL_DEFAULT_SIZE = (550, 820)
+FULL_MIN_WIDTH = 440
+FULL_MIN_HEIGHT = 520
+FULL_MAX_WIDTH = 820
+FULL_MAX_HEIGHT = 1000
+HUD_MORPH_STEPS = 16
+HUD_MORPH_MS = 240
+HUD_MORPH_FRAME_MS = 16
+RUNE_ALERT_SECONDS = 2.0
 
 MINI_CARD_LABELS = {
     "combat": "COMBAT",
@@ -283,6 +319,152 @@ MINI_COMPACT_LABELS = {
     "faction": "REP",
     "travels": "TRAVEL",
 }
+
+
+def compact_hud_number(value) -> str:
+    """Compact a numeric HUD value without hiding meaningful precision."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return "\u2014"
+    magnitude = abs(number)
+    if magnitude >= 1_000_000:
+        text = f"{number / 1_000_000:.1f}m"
+    elif magnitude >= 10_000:
+        text = f"{number / 1_000:.1f}k"
+    elif magnitude >= 1_000:
+        text = f"{number / 1_000:.2f}k"
+    else:
+        text = f"{number:.0f}"
+    return text.replace(".0m", "m").replace(".0k", "k")
+
+
+def rune_seed_keys(starred) -> list[str]:
+    """Return the stable, bounded metric carousel used by the Rune Seed."""
+    if not isinstance(starred, list):
+        return ["combat"]
+    keys = []
+    for key in starred:
+        if key in MINI_CARD_LABELS and key not in keys:
+            keys.append(key)
+    return (keys or ["combat"])[:MINI_MAX_CELLS]
+
+
+def toggle_rune_seed_star(starred, key) -> list[str]:
+    """Toggle one metric while keeping the visible carousel honest.
+
+    The Rune Seed can expose four metrics.  When a fifth is selected, the
+    oldest selection is replaced instead of silently keeping an unreachable
+    starred card in the expanded ledger.
+    """
+    keys = []
+    for item in (starred if isinstance(starred, list) else []):
+        if item in MINI_CARD_LABELS and item not in keys:
+            keys.append(item)
+    if key not in MINI_CARD_LABELS:
+        return keys[:MINI_MAX_CELLS]
+    if key in keys:
+        if len(keys) == 1:
+            return keys
+        keys.remove(key)
+    else:
+        keys.append(key)
+        if len(keys) > MINI_MAX_CELLS:
+            keys = keys[-MINI_MAX_CELLS:]
+    return keys
+
+
+def cycle_rune_seed_index(index, direction, count) -> int:
+    """Wrap a mouse-wheel carousel index in either direction."""
+    try:
+        size = max(1, int(count))
+        current = int(index)
+        step = 1 if int(direction) >= 0 else -1
+    except (TypeError, ValueError):
+        return 0
+    return (current + step) % size
+
+
+def rounded_rectangle_points(x1, y1, x2, y2, radius) -> list[float]:
+    """Control points for a smooth Tk canvas capsule/rounded rectangle."""
+    left, right = sorted((float(x1), float(x2)))
+    top, bottom = sorted((float(y1), float(y2)))
+    corner = max(0.0, min(float(radius), (right - left) / 2,
+                          (bottom - top) / 2))
+    return [
+        left + corner, top, right - corner, top,
+        right, top, right, top + corner,
+        right, bottom - corner, right, bottom,
+        right - corner, bottom, left + corner, bottom,
+        left, bottom, left, bottom - corner,
+        left, top + corner, left, top,
+    ]
+
+
+def rune_seed_content_layout(width, height) -> dict[str, tuple[float, ...]]:
+    """Reserve non-overlapping cog and metric lanes in the compact capsule."""
+    try:
+        canvas_width = max(1.0, float(width))
+        canvas_height = max(1.0, float(height))
+    except (TypeError, ValueError):
+        canvas_width, canvas_height = RUNE_SEED_WIDTH, RUNE_SEED_HEIGHT
+    scale = max(0.5, canvas_height / RUNE_SEED_HEIGHT)
+    center_x = 23.0 * scale
+    center_y = canvas_height / 2.0
+    half_icon = RUNE_SEED_ICON_SIZE / 2.0
+    icon = (center_x - half_icon, center_y - half_icon,
+            center_x + half_icon, center_y + half_icon)
+    text_left = max(icon[2] + 5.0, 45.0 * scale)
+    text = (text_left, 4.0 * scale,
+            max(text_left + 1.0, canvas_width - 4.0 * scale),
+            canvas_height - 4.0 * scale)
+    return {"icon": icon, "text": text,
+            "center": (center_x, center_y), "scale": (scale,)}
+
+
+def blend_hex_color(first: str, second: str, amount: float) -> str:
+    """Blend two #RRGGBB colors for small, alpha-free canvas animations."""
+    try:
+        ratio = max(0.0, min(1.0, float(amount)))
+        start = tuple(int(first[index:index + 2], 16) for index in (1, 3, 5))
+        end = tuple(int(second[index:index + 2], 16) for index in (1, 3, 5))
+    except (TypeError, ValueError):
+        return str(second if amount else first)
+    values = [round(a + (b - a) * ratio) for a, b in zip(start, end)]
+    return "#" + "".join(f"{value:02x}" for value in values)
+
+
+def geometry_morph_at(start, end, progress):
+    """Interpolate one clamped smoothstep HUD rectangle."""
+    try:
+        first = tuple(int(value) for value in start)
+        last = tuple(int(value) for value in end)
+        amount = max(0.0, min(1.0, float(progress)))
+    except (TypeError, ValueError):
+        return ()
+    if len(first) != 4 or len(last) != 4:
+        return ()
+    eased = amount * amount * (3.0 - 2.0 * amount)
+    return tuple(round(a + (b - a) * eased)
+                 for a, b in zip(first, last))
+
+
+def geometry_morph_frames(start, end, steps=HUD_MORPH_STEPS):
+    """Return a smoothstep geometry sequence for a non-blocking HUD morph."""
+    try:
+        count = max(2, int(steps))
+        a = tuple(int(v) for v in start)
+        b = tuple(int(v) for v in end)
+    except (TypeError, ValueError):
+        return []
+    if len(a) != 4 or len(b) != 4:
+        return []
+    frames = []
+    for index in range(count):
+        frames.append(geometry_morph_at(a, b, index / (count - 1)))
+    frames[0] = a
+    frames[-1] = b
+    return frames
 
 
 def mini_stat_label_plan(keys, available_width: int,
@@ -510,14 +692,52 @@ PATTERNS: list[tuple[str, re.Pattern]] = [
     ("heal_in", re.compile(
         r"^You have been healed for (?P<amount>\d+) (?:hit )?points?(?: of damage)?\.?$")),
     # --- casting / songs ---
-    ("song_begin", re.compile(r"^You begin to sing (?P<song>.+?)\.$")),
+    ("song_begin", re.compile(
+        r"^You begin (?:to sing|singing) (?P<song>.+?)\.$")),
     ("cast_begin", re.compile(r"^You begin casting (?P<spell>.+?)\.$")),
+    ("song_begin_other", re.compile(
+        r"^(?P<caster>.+?) begins (?:to sing|singing) (?P<song>.+?)\.$")),
+    ("cast_begin_other", re.compile(
+        r"^(?P<caster>.+?) begins casting (?P<spell>.+?)\.$")),
     ("fizzle", re.compile(r"^Your (?P<spell>.+?) spell fizzles!$")),
     ("resist", re.compile(r"^Your target resisted the (?P<spell>.+?) spell\.$")),
-    ("resist2", re.compile(r"^.+? resisted your (?P<spell>.+?)!$")),
-    ("interrupt", re.compile(r"^Your spell is interrupted\.$")),
+    ("resist2", re.compile(
+        r"^(?P<target>.+?) resisted your (?P<spell>.+?)!$")),
+    ("interrupt", re.compile(
+        r"^Your (?:(?P<spell>.+?) spell|spell) is interrupted\.$")),
+    ("mez_immune", re.compile(r"^Your target cannot be mesmerized\.$")),
+    ("spell_overwritten", re.compile(
+        r"^Your (?P<spell>.+?) spell on (?P<target>.+?) has been overwritten\.$")),
     ("spell_fade", re.compile(
         r"^Your (?P<spell>.+?) spell has worn off(?: of (?P<target>.+?))?\.$")),
+    # --- confirmed crowd-control outcomes -------------------------------
+    # These lines are visible for nearby casters too. The independent mez
+    # tracker accepts one only while a compatible local cast is pending.
+    ("mez_landed_mesmerized", re.compile(
+        r"^(?P<target>.+?) has been mesmerized\.$", re.I)),
+    ("mez_landed_enthralled", re.compile(
+        r"^(?P<target>.+?) has been enthralled\.$", re.I)),
+    ("mez_landed_entranced", re.compile(
+        r"^(?P<target>.+?) has been entranced\.$", re.I)),
+    ("mez_landed_lights", re.compile(
+        r"^(?P<target>.+?) gawks at the glowing lights\.$", re.I)),
+    ("mez_landed_screaming", re.compile(
+        r"^(?P<target>.+?) begins to scream\.$", re.I)),
+    ("mez_landed_lullaby", re.compile(
+        r"^(?P<target>.+?)'s head nods\.$", re.I)),
+    ("mez_landed_pixie", re.compile(
+        r"^(?P<target>.+?)'s eyes glaze over\.$", re.I)),
+    ("mez_landed_fascinated", re.compile(
+        r"^(?P<target>.+?) has been fascinated\.$", re.I)),
+    ("mez_landed_glamour", re.compile(
+        r"^(?P<target>.+?) has been mesmerized by the Glamour of Kintaz\.$",
+        re.I)),
+    ("mez_landed_rapture", re.compile(
+        r"^(?P<target>.+?) (?:swoons in raptured bliss|"
+        r"(?:has entered|enters) a state of rapture)\.$",
+        re.I)),
+    ("mez_awakened", re.compile(
+        r"^(?P<target>.+?) has been awakened by (?P<breaker>.+?)\.$", re.I)),
     # --- xp / progression ---
     ("xp", re.compile(r"^You gain (?P<party>party )?experience!+(?: \((?P<pct>[\d.]+)%\))?.*$")),
     ("level", re.compile(r"^You have gained a level! Welcome to level (?P<level>\d+)!$")),
@@ -586,10 +806,110 @@ PATTERNS: list[tuple[str, re.Pattern]] = [
         re.IGNORECASE)),
 ]
 
+# Landing prose is not a spell identity: Mesmerize, Mesmerization, and Dazzle
+# deliberately share the same line. Compatibility is checked against the
+# pending local cast so another player's visible mez cannot create a timer.
+MEZ_LANDING_COMPATIBILITY = {
+    "mez_landed_mesmerized": frozenset({
+        "Mesmerize", "Mesmerization", "Dazzle",
+    }),
+    "mez_landed_enthralled": frozenset({"Enthrall"}),
+    "mez_landed_entranced": frozenset({"Entrance"}),
+    "mez_landed_lights": frozenset({"Entrancing Lights"}),
+    "mez_landed_screaming": frozenset({"Screaming Terror"}),
+    "mez_landed_lullaby": frozenset({"Kelin's Lucid Lullaby"}),
+    "mez_landed_pixie": frozenset({
+        "Crission's Pixie Strike", "Sionachie's Dreams",
+    }),
+    "mez_landed_fascinated": frozenset({"Fascination"}),
+    "mez_landed_glamour": frozenset({"Glamour of Kintaz"}),
+    "mez_landed_rapture": frozenset({"Rapture"}),
+}
+MEZ_ONLY_KINDS = frozenset((
+    *MEZ_LANDING_COMPATIBILITY,
+    "cast_begin_other", "song_begin_other", "mez_immune",
+    "spell_overwritten", "mez_awakened",
+))
+
+
+def observe_mez_log_event(tracker: MezTracker, ts: datetime,
+                          kind: str, groups: dict) -> None:
+    """Feed one parsed line to the independent crowd-control state machine."""
+    if kind == "cast_begin":
+        # Every own cast replaces stale correlation, including a non-mez cast.
+        tracker.begin_cast(groups.get("spell", ""), ts)
+    elif kind == "song_begin":
+        tracker.begin_cast(groups.get("song", ""), ts)
+    elif kind == "cast_begin_other":
+        tracker.observe_nearby_cast(groups.get("spell", ""), ts)
+    elif kind == "song_begin_other":
+        tracker.observe_nearby_cast(groups.get("song", ""), ts)
+    elif kind == "fizzle":
+        tracker.observe_fizzle()
+    elif kind == "interrupt":
+        tracker.observe_interrupt()
+    elif kind in ("resist", "resist2"):
+        tracker.observe_resist(groups.get("spell"), ts)
+    elif kind == "mez_immune":
+        tracker.observe_resist(occurred_at=ts)
+    elif kind in MEZ_LANDING_COMPATIBILITY:
+        pending = tracker.pending
+        if (pending is not None
+                and pending.resolved.name in MEZ_LANDING_COMPATIBILITY[kind]):
+            tracker.observe_landing(groups.get("target", ""), ts)
+        else:
+            tracker.observe_unattributed_landing(ts)
+    elif kind == "spell_fade":
+        tracker.observe_fade(groups.get("target"), ts, groups.get("spell"))
+    elif kind == "spell_overwritten":
+        # A nearby caster now owns the effect and its duration is unknowable
+        # from our log.  Remove our row rather than offering false confidence.
+        tracker.observe_overwrite(
+            groups.get("target"), ts, groups.get("spell"))
+    elif kind == "mez_awakened":
+        tracker.observe_damage(groups.get("target", ""), ts)
+    elif kind in {
+            "melee_out", "dot_out", "nuke_out_plain", "nuke_out_school",
+            "ds_out", "melee_third", "dot_third", "nuke_third"}:
+        tracker.observe_damage(groups.get("target", ""), ts)
+        if kind in {"melee_third", "nuke_third"}:
+            tracker.observe_damage(groups.get("attacker", ""), ts)
+    elif kind in {"melee_in", "miss_in", "nuke_in", "miss_third"}:
+        # A tracked actor attacking anyone is definitive evidence it is awake,
+        # even when the swing misses and no damage line can break the row.
+        tracker.observe_damage(groups.get("attacker", ""), ts)
+    elif kind in ("kill_you", "kill_other"):
+        tracker.observe_kill(groups.get("target", ""), ts)
+    elif kind == "death_you":
+        tracker.clear()
+    elif kind == "zone":
+        zone = groups.get("zone", "")
+        if is_real_zone_transition(zone):
+            tracker.clear()
+
+
+def apply_log_models(stats, tracker: MezTracker, ts: datetime, kind: str,
+                     groups: dict, *, count_lifetime: bool = True):
+    """Apply a parsed line without letting timer-only prose alter DPS state."""
+    charm_break_events = ()
+    if kind not in MEZ_ONLY_KINDS:
+        charm_break_events = stats.apply(
+            ts, kind, groups, count_lifetime=count_lifetime)
+    observe_mez_log_event(tracker, ts, kind, groups)
+    return charm_break_events
+
 COIN_RE = re.compile(r"(\d+) (platinum|gold|silver|copper)")
 COIN_COPPER = {"platinum": 1000, "gold": 100, "silver": 10, "copper": 1}
 
 ZONE_FALSE_POSITIVES = ("an area", "area where", "an Arena")
+
+
+def is_real_zone_transition(zone_name: str) -> bool:
+    """Reject environmental prose that shares EQ's zone-message prefix."""
+
+    folded = (zone_name or "").casefold()
+    return not any(false_positive.casefold() in folded
+                   for false_positive in ZONE_FALSE_POSITIVES)
 
 # EverQuest Legends characters carry three active classes.  Keep this list
 # deliberately closed so a stray chat line can never silently mislabel an
@@ -1347,7 +1667,7 @@ class SessionStats:
         elif kind == "faction":
             self.faction[g["faction"]] += int(g["delta"])
         elif kind == "zone":
-            if not any(fp in g["zone"] for fp in ZONE_FALSE_POSITIVES):
+            if is_real_zone_transition(g["zone"]):
                 # Charm never crosses a zone boundary. Keeping an NPC alias
                 # here would turn a future same-named mob into personal DPS.
                 self.pending_cast = None
@@ -1751,16 +2071,19 @@ def load_config() -> dict:
         "log_dir": None,
         "mini_mode": True,
         "opacity": 1.0,
-        "ui_rendering_version": 2,
+        "ui_rendering_version": 3,
         "position": None,
         "mini_position": None,
-        "panel_size": [400, 480],
+        "panel_size": list(FULL_DEFAULT_SIZE),
+        "mini_stat_index": 0,
         "locked": False,
         # Full-panel summary can collapse without changing the user's saved
         # window size, turning the reclaimed height into ledger viewport.
         "summary_collapsed": False,
         "starred": ["session_dps", "xp_hr", "hours_to_level", "kills"],
-        "starred_cards": ["kills", "money", "combat", "motes"],
+        # Index zero is the first-run Rune Seed face, so combat/DPS must lead.
+        # Loaded profiles still preserve their saved order and selection.
+        "starred_cards": ["combat", "kills", "money", "motes"],
         "hud_cards_version": 2,
         # Banners are opt-in: quiet by default, one switch in Settings.
         "alerts_enabled": False,
@@ -1768,6 +2091,9 @@ def load_config() -> dict:
         "alert_seconds": 4,
         "big_hit_threshold": 800,
         "alert_position": None,
+        # Compact banners normally follow the Rune Seed. Players can pin
+        # their preferred side without giving up monitor-edge clamping.
+        "mini_alert_anchor": "auto",
         "fight_toasts": True,
         # Per-trigger switches for the built-in alert banners.
         "alert_tells": True,
@@ -1776,6 +2102,12 @@ def load_config() -> dict:
         "alert_charm_break": True,
         "alert_big_hit": True,
         "alert_name_called": True,
+        # Mez timers are a separate, always-honest control surface. Sound is
+        # opt-in so enabling the visual does not make a previously quiet HUD
+        # noisy; the warning fires once as the guaranteed-safe window closes.
+        "mez_timers_enabled": True,
+        "mez_timer_sound": False,
+        "mez_warning_seconds": 10,
         "auto_reset_minutes": 0,
         "custom_alerts": [],
         # Exact EQL three-class identity.  Profiles are keyed by character so
@@ -1831,7 +2163,17 @@ def load_config() -> dict:
                 cfg["opacity"] = 1.0
         except (TypeError, ValueError):
             cfg["opacity"] = 1.0
-    cfg["ui_rendering_version"] = 2
+    # Rendering v3 replaces the legacy 400x480 detail panel with the wider
+    # Rune Seed expansion.  Only migrate the untouched old default; a size the
+    # player deliberately chose is preserved and clamped at render time.
+    if rendering_version < 3:
+        try:
+            old_size = [int(v) for v in cfg.get("panel_size", [])[:2]]
+        except (TypeError, ValueError):
+            old_size = []
+        if old_size == [400, 480]:
+            cfg["panel_size"] = list(FULL_DEFAULT_SIZE)
+    cfg["ui_rendering_version"] = 3
     # Two one-time strip migrations, each applied exactly once so a deliberate
     # later change is never undone: version 1 added the mote tracker, and
     # version 2 moved PROGRESSION off the strip because its three-part value
@@ -1846,7 +2188,13 @@ def load_config() -> dict:
             starred.append("motes")
         if hud_cards_version < 2 and "progress" in starred:
             starred.remove("progress")
+    # The legacy strip could leave more than four flags in the config even
+    # though only four were visible. Rune Seed has one honest four-item wheel,
+    # so normalize old/hand-edited lists instead of hiding unreachable stars.
+    cfg["starred_cards"] = rune_seed_keys(starred)
     cfg["hud_cards_version"] = 2
+    cfg["mini_alert_anchor"] = normalize_alert_anchor(
+        cfg.get("mini_alert_anchor", "auto"))
     # Broken custom alert regexes are skipped silently per log line; warn
     # exactly once here so the config author can find and fix them.
     bad_patterns = invalid_custom_alert_patterns(cfg.get("custom_alerts", []))
@@ -2121,6 +2469,84 @@ def desktop_bounds(root) -> tuple[int, int, int, int]:
     return 0, 0, root.winfo_screenwidth(), root.winfo_screenheight()
 
 
+def monitor_work_area(root, rect=None) -> tuple[int, int, int, int]:
+    """Return the nearest monitor's taskbar-safe work area in Tk pixels."""
+    fallback = desktop_bounds(root)
+    if os.name != "nt":
+        return fallback
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class RECT(ctypes.Structure):
+            _fields_ = [
+                ("left", wintypes.LONG), ("top", wintypes.LONG),
+                ("right", wintypes.LONG), ("bottom", wintypes.LONG),
+            ]
+
+        class MONITORINFO(ctypes.Structure):
+            _fields_ = [
+                ("cbSize", wintypes.DWORD), ("rcMonitor", RECT),
+                ("rcWork", RECT), ("dwFlags", wintypes.DWORD),
+            ]
+
+        user32 = ctypes.windll.user32
+        if rect is not None:
+            x, y, width, height = (int(value) for value in rect)
+            native_rect = RECT(x, y, x + max(1, width), y + max(1, height))
+            user32.MonitorFromRect.argtypes = [ctypes.POINTER(RECT), wintypes.DWORD]
+            user32.MonitorFromRect.restype = wintypes.HANDLE
+            monitor = user32.MonitorFromRect(ctypes.byref(native_rect), 2)
+        else:
+            user32.GetParent.argtypes = [wintypes.HWND]
+            user32.GetParent.restype = wintypes.HWND
+            hwnd = int(root.winfo_id())
+            parent = int(user32.GetParent(wintypes.HWND(hwnd)) or 0)
+            user32.MonitorFromWindow.argtypes = [wintypes.HWND, wintypes.DWORD]
+            user32.MonitorFromWindow.restype = wintypes.HANDLE
+            monitor = user32.MonitorFromWindow(
+                wintypes.HWND(parent or hwnd), 2)
+        if not monitor:
+            return fallback
+        info = MONITORINFO()
+        info.cbSize = ctypes.sizeof(MONITORINFO)
+        user32.GetMonitorInfoW.argtypes = [wintypes.HANDLE,
+                                          ctypes.POINTER(MONITORINFO)]
+        user32.GetMonitorInfoW.restype = wintypes.BOOL
+        if not user32.GetMonitorInfoW(monitor, ctypes.byref(info)):
+            return fallback
+        work = info.rcWork
+        return (work.left, work.top, work.right - work.left,
+                work.bottom - work.top)
+    except (AttributeError, OSError, TypeError, ValueError):
+        return fallback
+
+
+def fit_panel_size_to_bounds(requested_size, scale, bounds, margin=8):
+    """Fit the expanded HUD to a work area, even when scaled minima cannot."""
+    try:
+        requested_width, requested_height = (
+            int(requested_size[0]), int(requested_size[1]))
+    except (TypeError, ValueError, IndexError):
+        requested_width, requested_height = FULL_DEFAULT_SIZE
+    try:
+        value_scale = max(1.0, min(1.40, float(scale)))
+    except (TypeError, ValueError):
+        value_scale = 1.0
+    _vx, _vy, work_width, work_height = (int(value) for value in bounds)
+    available_width = max(1, work_width - max(0, int(margin)) * 2)
+    available_height = max(1, work_height - max(0, int(margin)) * 2)
+    ideal_width = max(
+        int(FULL_MIN_WIDTH * value_scale),
+        min(FULL_MAX_WIDTH, requested_width),
+    )
+    ideal_height = max(
+        int(FULL_MIN_HEIGHT * value_scale),
+        min(FULL_MAX_HEIGHT, requested_height),
+    )
+    return min(ideal_width, available_width), min(ideal_height, available_height)
+
+
 def clamp_alert_position(pos, width, height, bounds, default_x, default_y):
     """Keep a remembered banner fully reachable on the virtual desktop."""
     try:
@@ -2131,6 +2557,117 @@ def clamp_alert_position(pos, width, height, bounds, default_x, default_y):
     x = max(vx, min(x, vx + max(0, vw - width)))
     y = max(vy, min(y, vy + max(0, vh - height)))
     return x, y
+
+
+ALERT_ANCHORS = ("auto", "right", "left", "above", "below")
+
+
+def normalize_alert_anchor(value) -> str:
+    """Return a supported compact-banner anchor, safe for old configs."""
+    candidate = str(value or "").strip().casefold()
+    return candidate if candidate in ALERT_ANCHORS else "auto"
+
+
+def alert_banner_position(root_rect, banner_size, bounds, *, mini_mode,
+                          saved_position=None, stack_index=0, gap=10,
+                          anchor="auto"):
+    """Place compact alerts beside the Rune Seed; expanded alerts stay saved."""
+    try:
+        root_x, root_y, root_width, root_height = (
+            int(value) for value in root_rect)
+        width, height = (int(value) for value in banner_size)
+        vx, vy, vw, vh = (int(value) for value in bounds)
+        index = max(0, int(stack_index))
+    except (TypeError, ValueError):
+        return 0, 0
+    anchor_mode = normalize_alert_anchor(anchor)
+    resolved_anchor = anchor_mode
+    if mini_mode:
+        right_x = root_x + root_width + int(gap)
+        left_x = root_x - width - int(gap)
+        centered_x = root_x + (root_width - width) // 2
+        centered_y = root_y + (root_height - height) // 2
+        candidates = {
+            "right": (right_x, centered_y),
+            "left": (left_x, centered_y),
+            "above": (centered_x, root_y - height - int(gap)),
+            "below": (centered_x, root_y + root_height + int(gap)),
+        }
+        orders = {
+            "auto": ("right", "left", "above", "below"),
+            "right": ("right", "left", "above", "below"),
+            "left": ("left", "right", "above", "below"),
+            "above": ("above", "below", "right", "left"),
+            "below": ("below", "above", "right", "left"),
+        }
+        order = orders[anchor_mode]
+        resolved_anchor = order[0]
+        default_x, default_y = candidates[resolved_anchor]
+        for candidate_anchor in order:
+            candidate_x, candidate_y = candidates[candidate_anchor]
+            if (vx <= candidate_x and candidate_x + width <= vx + vw
+                    and vy <= candidate_y
+                    and candidate_y + height <= vy + vh):
+                resolved_anchor = candidate_anchor
+                default_x, default_y = candidate_x, candidate_y
+                break
+        # A legacy/expanded banner coordinate must never detach compact alerts
+        # from the Rune Seed.
+        position = (default_x, default_y)
+    else:
+        default_x = vx + max(0, (vw - width) // 2)
+        default_y = vy + 64
+        position = saved_position if saved_position else (default_x, default_y)
+    x, y = clamp_alert_position(
+        position, width, height, bounds, default_x, default_y)
+    if index:
+        spacing = height + 6
+        below_y = y + index * spacing
+        above_y = y - index * spacing
+        if mini_mode and resolved_anchor == "above":
+            stacked_y = above_y
+        elif mini_mode and resolved_anchor == "below":
+            stacked_y = below_y
+        else:
+            stacked_y = below_y if below_y + height <= vy + vh else above_y
+        x, y = clamp_alert_position(
+            (x, stacked_y), width, height, bounds, x, y)
+    return x, y
+
+
+def signed_window_position(x, y) -> str:
+    """Tk geometry coordinates, including valid signs on negative monitors."""
+    return f"{int(x):+d}{int(y):+d}"
+
+
+def native_window_position_plan(rect=None, *, show=False):
+    """Build one SetWindowPos operation without losing a queued Tk move.
+
+    A withdrawn Tk window may not have applied its requested coordinates when
+    Windows first creates the native wrapper. Initial mapping therefore moves
+    and sizes that wrapper atomically; later z-order syncs leave its rectangle
+    untouched.
+    """
+    flags = 0x0010  # SWP_NOACTIVATE
+    if rect is None:
+        if show:
+            raise ValueError("an initial native show requires a rectangle")
+        x = y = width = height = 0
+        flags |= 0x0001 | 0x0002  # SWP_NOSIZE | SWP_NOMOVE
+    else:
+        try:
+            x, y, width, height = (int(value) for value in rect)
+        except (TypeError, ValueError):
+            if show:
+                raise ValueError(
+                    "an initial native show requires a valid rectangle")
+            x = y = width = height = 0
+            flags |= 0x0001 | 0x0002
+        else:
+            width, height = max(1, width), max(1, height)
+    if show:
+        flags |= 0x0040 | 0x0020  # SWP_SHOWWINDOW | SWP_FRAMECHANGED
+    return x, y, width, height, flags
 
 
 def rescale_capture_anchor(cursor_x, cursor_y, physical_bounds, tk_bounds):
@@ -2179,17 +2716,192 @@ def apply_summary_visibility(summary, restore, ledger, collapsed: bool) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Alert banners — frameless EQ-overlay strips, center-top, auto-fading
+# Alert banners — frameless EQ-overlay toasts, seed-adjacent when compact
 # ---------------------------------------------------------------------------
 class AlertManager:
-    COLORS = {"danger": ("#d93a3f", "#1a0d0e"), "warn": ("#c9a227", "#14110a"),
-              "info": ("#7eaaf4", "#0e1118")}
+    COLORS = {
+        "danger": ("#de3e48", "#160b08", "#f2762c"),
+        "warn": ("#d0a254", "#181108", "#f8d68c"),
+        "info": ("#7eaaf4", "#0e1118", "#7eaaf4"),
+    }
+    LABELS = {"danger": "DANGER", "warn": "WARNING", "info": "NOTICE"}
 
     def __init__(self, tk_module, root, cfg):
         self.tk = tk_module
         self.root = root
         self.cfg = cfg
         self.active = []
+        self._callbacks = {}
+        self.on_show = None
+
+    def _schedule(self, win, delay, callback):
+        """Track every toast callback so eviction and shutdown are clean."""
+        if win not in self._callbacks:
+            return None
+        token = None
+
+        def run():
+            callbacks = self._callbacks.get(win)
+            if callbacks is not None:
+                callbacks.discard(token)
+            try:
+                if win.winfo_exists():
+                    callback()
+            except Exception:
+                pass
+
+        try:
+            token = win.after(max(0, int(delay)), run)
+            self._callbacks[win].add(token)
+            return token
+        except Exception:
+            return None
+
+    def _cancel_and_destroy(self, win):
+        for token in tuple(self._callbacks.pop(win, ())):
+            try:
+                win.after_cancel(token)
+            except Exception:
+                pass
+        if win in self.active:
+            self.active.remove(win)
+        try:
+            win.destroy()
+        except Exception:
+            pass
+
+    @staticmethod
+    def _round_window(win, width, height, radius=11):
+        """Clip a Windows toast to real rounded corners without alpha blur."""
+        if os.name != "nt":
+            return
+        try:
+            import ctypes
+            from ctypes import wintypes
+            user32 = ctypes.windll.user32
+            gdi32 = ctypes.windll.gdi32
+            user32.GetParent.argtypes = [wintypes.HWND]
+            user32.GetParent.restype = wintypes.HWND
+            user32.SetWindowRgn.argtypes = [
+                wintypes.HWND, wintypes.HRGN, wintypes.BOOL]
+            user32.SetWindowRgn.restype = ctypes.c_int
+            gdi32.CreateRoundRectRgn.argtypes = [
+                ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+                ctypes.c_int, ctypes.c_int]
+            gdi32.CreateRoundRectRgn.restype = wintypes.HRGN
+            gdi32.DeleteObject.argtypes = [wintypes.HGDIOBJ]
+            hwnd = int(win.winfo_id())
+            parent = int(user32.GetParent(wintypes.HWND(hwnd)) or 0)
+            handle = wintypes.HWND(parent or hwnd)
+            region = gdi32.CreateRoundRectRgn(
+                0, 0, int(width) + 1, int(height) + 1,
+                int(radius) * 2, int(radius) * 2)
+            if not region:
+                return
+            if not user32.SetWindowRgn(handle, region, True):
+                gdi32.DeleteObject(region)
+        except (AttributeError, OSError, TypeError, ValueError):
+            pass
+
+    @staticmethod
+    def _set_native_topmost(win, floating, *, show=False, rect=None):
+        """Set toast z-order without activation; optionally map it visibly."""
+        if os.name != "nt":
+            try:
+                if rect is not None:
+                    x, y, width, height, _flags = native_window_position_plan(
+                        rect, show=show)
+                    win.geometry(
+                        f"{width}x{height}{signed_window_position(x, y)}")
+                win.attributes("-topmost", bool(floating))
+                if show:
+                    win.deiconify()
+                return True
+            except Exception:
+                return False
+        try:
+            import ctypes
+            from ctypes import wintypes
+            handle_value = int(getattr(win, "_lore_native_handle", 0) or 0)
+            if not handle_value:
+                return False
+            user32 = ctypes.windll.user32
+            user32.SetWindowPos.argtypes = [
+                wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int,
+                ctypes.c_int, ctypes.c_int, ctypes.c_uint]
+            user32.SetWindowPos.restype = wintypes.BOOL
+            user32.IsWindowVisible.argtypes = [wintypes.HWND]
+            user32.IsWindowVisible.restype = wintypes.BOOL
+            insert_after = wintypes.HWND(-1 if floating else -2)
+            x, y, width, height, flags = native_window_position_plan(
+                rect, show=show)
+            if not user32.SetWindowPos(
+                    wintypes.HWND(handle_value), insert_after,
+                    x, y, width, height, flags):
+                return False
+            return (not show or bool(user32.IsWindowVisible(
+                wintypes.HWND(handle_value))))
+        except (AttributeError, OSError, TypeError, ValueError):
+            return False
+
+    def _show_nonactivating(self, win, floating, rect=None):
+        """Show an informational toast without taking keyboard focus from EQ."""
+        if os.name != "nt":
+            return self._set_native_topmost(
+                win, floating, show=True, rect=rect)
+        try:
+            import ctypes
+            from ctypes import wintypes
+            user32 = ctypes.windll.user32
+            user32.GetParent.argtypes = [wintypes.HWND]
+            user32.GetParent.restype = wintypes.HWND
+            user32.GetWindowLongW.argtypes = [wintypes.HWND, ctypes.c_int]
+            user32.GetWindowLongW.restype = ctypes.c_long
+            user32.SetWindowLongW.argtypes = [
+                wintypes.HWND, ctypes.c_int, ctypes.c_long]
+            user32.SetWindowLongW.restype = ctypes.c_long
+            user32.SetWindowPos.argtypes = [
+                wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int,
+                ctypes.c_int, ctypes.c_int, ctypes.c_uint]
+            user32.SetWindowPos.restype = wintypes.BOOL
+            hwnd = int(win.winfo_id())
+            parent = int(user32.GetParent(wintypes.HWND(hwnd)) or 0)
+            handle = wintypes.HWND(parent or hwnd)
+            style = int(user32.GetWindowLongW(handle, -20))
+            # TOOLWINDOW | TRANSPARENT | NOACTIVATE; remove APPWINDOW.
+            style = (style | 0x00000080 | 0x00000020 | 0x08000000) & ~0x00040000
+            user32.SetWindowLongW(handle, -20, style)
+            user32.SetWindowPos(
+                handle, wintypes.HWND(0), 0, 0, 0, 0,
+                0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020)
+            win._lore_native_handle = int(handle.value or 0)
+            return self._set_native_topmost(
+                win, floating, show=True, rect=rect)
+        except (AttributeError, OSError, TypeError, ValueError):
+            return False
+
+    def _animate_icon(self, win, icon, edge, bright, step=0):
+        """One short fixed-geometry flare; never a distracting loop."""
+        if self.cfg.get("reduced_motion", False) or step >= 12:
+            try:
+                icon.itemconfigure("alert_ring", outline=edge, width=1)
+                icon.itemconfigure("alert_sweep", state="hidden")
+            except Exception:
+                pass
+            return
+        wave = math.sin(math.pi * min(1.0, step / 11))
+        try:
+            icon.itemconfigure(
+                "alert_ring", outline=blend_hex_color(edge, bright, wave),
+                width=1 + round(wave * 2))
+            icon.itemconfigure(
+                "alert_sweep", state="normal", outline=bright,
+                start=90 - step * 30)
+        except Exception:
+            return
+        self._schedule(
+            win, 50,
+            lambda: self._animate_icon(win, icon, edge, bright, step + 1))
 
     def _beep(self, severity):
         if not self.cfg.get("alert_sound", True):
@@ -2207,84 +2919,703 @@ class AlertManager:
     def show(self, severity, text_msg):
         tk = self.tk
         if len(self.active) >= 3:
-            old_win = self.active.pop(0)
-            try:
-                old_win.destroy()
-            except Exception:
-                pass
-        edge, body = self.COLORS.get(severity, self.COLORS["info"])
+            self._cancel_and_destroy(self.active[0])
+        edge, body, label_color = self.COLORS.get(
+            severity, self.COLORS["info"])
         win = tk.Toplevel(self.root)
         win.withdraw()
         win.overrideredirect(True)
-        win.attributes("-topmost", foreground_is_everquest_or_loremaster(
-            self.root.winfo_id()))
-        outer = tk.Frame(win, bg=edge, padx=2, pady=2)
+        floating = foreground_is_everquest_or_loremaster(
+            self.root.winfo_id())
+        win.attributes("-topmost", floating)
+        self._callbacks[win] = set()
+        outer = tk.Frame(win, bg=edge, padx=1, pady=1)
         outer.pack()
-        inner = tk.Frame(outer, bg=body, padx=18, pady=8)
+        inner = tk.Frame(outer, bg=body)
         inner.pack()
-        tk.Label(inner, text=text_msg, fg="#f1e7d4", bg=body,
-                 font=("Segoe UI Semibold", 14)).pack()
+        icon = tk.Canvas(
+            inner, width=32, height=34, bg=body, highlightthickness=0, bd=0)
+        icon.pack(side="left", padx=(9, 2), pady=5)
+        icon.create_oval(
+            5, 6, 27, 28, fill="", outline=edge, width=1,
+            tags="alert_ring")
+        icon.create_arc(
+            3, 4, 29, 30, start=90, extent=76, style="arc",
+            outline=label_color, width=2, tags="alert_sweep")
+        icon.create_text(
+            16, 17, text="!" if severity != "info" else "\u2022",
+            fill=label_color, font=("Segoe UI Semibold", 13),
+            tags="alert_glyph")
+        copy = tk.Frame(inner, bg=body, padx=9, pady=7)
+        copy.pack(side="left")
+        is_charm_break = str(text_msg).upper().startswith("CHARM BROKE")
+        heading = ("CHARM CONTROL LOST" if is_charm_break else
+                   f"{self.LABELS.get(severity, 'NOTICE')} ALERT")
+        tk.Label(
+            copy, text=heading,
+            fg=label_color, bg=body, font=("Georgia", 8, "bold"),
+            anchor="w",
+        ).pack(fill="x")
+        tk.Label(copy, text=text_msg, fg="#f1e7d4", bg=body,
+                 font=("Segoe UI Semibold", 12), anchor="w").pack(fill="x")
         win.update_idletasks()
         width, height = win.winfo_width(), win.winfo_height()
-        bounds = desktop_bounds(self.root)
-        default_x = (win.winfo_screenwidth() - width) // 2
-        default_y = 64
-        pos = self.cfg.get("alert_position")
-        ax, ay = clamp_alert_position(
-            pos if pos else (default_x, default_y), width, height, bounds,
-            default_x, default_y)
-        ax, ay = clamp_alert_position(
-            (ax, ay + len(self.active) * 56), width, height, bounds, ax, ay)
-        win.geometry(f"+{ax}+{ay}")
-        win.deiconify()
-        self.active.append(win)
+        bounds = monitor_work_area(self.root, (
+            self.root.winfo_x(), self.root.winfo_y(),
+            self.root.winfo_width(), self.root.winfo_height()))
+        ax, ay = alert_banner_position(
+            (self.root.winfo_x(), self.root.winfo_y(),
+             self.root.winfo_width(), self.root.winfo_height()),
+            (width, height), bounds,
+            mini_mode=bool(self.cfg.get("mini_mode", False)),
+            saved_position=self.cfg.get("alert_position"),
+            stack_index=len(self.active),
+            anchor=self.cfg.get("mini_alert_anchor", "auto"),
+        )
+        native_rect = (ax, ay, width, height)
+        win.geometry(f"{width}x{height}{signed_window_position(ax, ay)}")
+        # Flush Tk's requested rectangle before realizing the native wrapper.
+        # The native show below repeats the exact rectangle atomically because
+        # Windows can otherwise map a withdrawn Toplevel at (0, 0).
+        win.update_idletasks()
+        self._round_window(win, width, height)
+        # The compact seed and sound are independent fallbacks: a transient
+        # native-window failure must never suppress the actual danger signal.
+        if callable(self.on_show):
+            try:
+                self.on_show(severity, text_msg)
+            except Exception:
+                pass
         self._beep(severity)
+        if not self._show_nonactivating(win, floating, rect=native_rect):
+            self._cancel_and_destroy(win)
+            return
+        self.active.append(win)
+        self._animate_icon(win, icon, edge, label_color)
         ttl = int(self.cfg.get("alert_seconds", 4) * 1000)
-        win.after(ttl, lambda: self._dismiss(win))
+        self._schedule(win, ttl, lambda: self._dismiss(win))
 
     def sync_topmost(self, floating: bool) -> None:
         """Keep every live banner in the same EQ-only z-order policy."""
         for win in list(self.active):
             try:
                 if win.winfo_exists():
-                    win.attributes("-topmost", floating)
+                    self._set_native_topmost(win, floating)
                 else:
                     self.active.remove(win)
             except Exception:
                 if win in self.active:
                     self.active.remove(win)
 
-    def clear(self) -> None:
+    def occupied_rects(self) -> tuple[tuple[int, int, int, int], ...]:
+        """Return live banner rectangles for shared overlay placement."""
+        rects = []
         for win in list(self.active):
             try:
-                win.destroy()
+                if not win.winfo_exists() or not win.winfo_viewable():
+                    continue
+                win.update_idletasks()
+                rects.append((
+                    win.winfo_x(), win.winfo_y(),
+                    win.winfo_width(), win.winfo_height(),
+                ))
             except Exception:
-                pass
-        self.active.clear()
+                continue
+        return tuple(rects)
+
+    def clear(self) -> None:
+        for win in list(self.active):
+            self._cancel_and_destroy(win)
 
     def _dismiss(self, win, step=0):
         """Fade without blocking Tk's parser/UI update loop."""
-        if step == 0 and win in self.active:
-            self.active.remove(win)
         if self.cfg.get("reduced_motion", False):
-            try:
-                win.destroy()
-            except Exception:
-                pass
+            self._cancel_and_destroy(win)
             return
         try:
             if step < 8:
-                win.attributes("-topmost", foreground_is_everquest_or_loremaster(
-                    self.root.winfo_id()))
+                self._set_native_topmost(
+                    win, foreground_is_everquest_or_loremaster(
+                        self.root.winfo_id()))
                 win.attributes("-alpha", 1.0 - step / 8)
-                win.after(20, lambda: self._dismiss(win, step + 1))
+                self._schedule(win, 20, lambda: self._dismiss(win, step + 1))
                 return
         except Exception:
             pass
+        self._cancel_and_destroy(win)
+
+
+def _rects_overlap(first, second, gap=0):
+    ax, ay, aw, ah = first
+    bx, by, bw, bh = second
+    return not (
+        ax + aw + gap <= bx or bx + bw + gap <= ax
+        or ay + ah + gap <= by or by + bh + gap <= ay)
+
+
+def mez_overlay_position(root_geometry, overlay_size, bounds, gap=10,
+                         occupied_rects=()):
+    """Place mez rows near the HUD without covering transient alerts."""
+    try:
+        root_x, root_y, root_width, root_height = (
+            int(value) for value in root_geometry)
+        width, height = (int(value) for value in overlay_size)
+        vx, vy, vw, vh = (int(value) for value in bounds)
+    except (TypeError, ValueError):
+        return 0, 0
+    right_x = root_x + root_width + int(gap)
+    left_x = root_x - width - int(gap)
+    desired_x = right_x
+    if desired_x + width > vx + vw:
+        desired_x = left_x
+    desired_y = root_y + max(0, min(72, (root_height - height) // 2))
+    base = clamp_alert_position(
+        (desired_x, desired_y), width, height, bounds,
+        desired_x, desired_y)
+    normalized = []
+    for rect in occupied_rects or ():
         try:
-            win.destroy()
+            normalized.append(tuple(int(value) for value in rect))
+        except (TypeError, ValueError):
+            continue
+    overlay_rect = (base[0], base[1], width, height)
+    if not any(_rects_overlap(overlay_rect, rect, gap=4)
+               for rect in normalized):
+        return base
+
+    same_side = base[0]
+    opposite = left_x if desired_x == right_x else right_x
+    blockers = [rect for rect in normalized
+                if _rects_overlap(overlay_rect, rect, gap=4)]
+    below = max(rect[1] + rect[3] for rect in blockers) + 8
+    above = min(rect[1] for rect in blockers) - height - 8
+    candidates = (
+        (same_side, below), (same_side, above),
+        (opposite, desired_y), (opposite, below), (opposite, above),
+    )
+    for candidate in candidates:
+        x, y = clamp_alert_position(
+            candidate, width, height, bounds, candidate[0], candidate[1])
+        candidate_rect = (x, y, width, height)
+        if not any(_rects_overlap(candidate_rect, rect, gap=4)
+                   for rect in normalized):
+            return x, y
+    return base
+
+
+def mez_spell_label(spell_name: str, rank: int) -> str:
+    """Compact spell/rank copy for one timer row."""
+    roman = ("", "I", "II", "III", "IV", "V", "VI", "VII", "VIII",
+             "IX", "X")
+    try:
+        value = max(0, int(rank))
+    except (TypeError, ValueError):
+        value = 0
+    suffix = roman[value] if value < len(roman) else f"R{value}"
+    return f"{spell_name} {suffix}".rstrip()
+
+
+def mez_meter_edge(width, remaining_seconds, duration_seconds,
+                   last_tick=False) -> int:
+    """Return a clamped, monotonically shrinking timer-meter edge."""
+    try:
+        pixel_width = max(1, int(width))
+        remaining = max(0.0, float(remaining_seconds))
+        duration = max(0.0, float(duration_seconds))
+    except (TypeError, ValueError):
+        return 0
+    fraction = remaining / duration if duration > 0 and not last_tick else 0.0
+    return max(0, min(pixel_width, round(pixel_width * fraction)))
+
+
+def mez_motion_mix(now, entered_at, urgency_changed_at, urgency,
+                   last_tick=False, reduced_motion=False) -> tuple[float, float]:
+    """Return bounded glow and one-shot sheen strengths for a timer row."""
+    if reduced_motion:
+        return 0.0, 0.0
+    try:
+        moment = float(now)
+        landing_age = max(0.0, moment - float(entered_at))
+        urgency_age = max(0.0, moment - float(urgency_changed_at))
+    except (TypeError, ValueError):
+        return 0.0, 0.0
+    landing = max(0.0, 1.0 - landing_age / 0.36)
+    transition = (max(0.0, 1.0 - urgency_age / 0.32)
+                  if urgency in {"warning", "critical"} or last_tick else 0.0)
+    critical = bool(last_tick or urgency == "critical")
+    breath = (((math.sin(moment * math.tau / 1.45) + 1.0) / 2) * 0.18
+              if critical else 0.0)
+    glow = max(landing * 0.72, transition * 0.42, breath)
+    return min(0.72, glow), min(1.0, max(landing, transition))
+
+
+class MezTimerOverlay:
+    """Persistent, non-activating crowd-control countdown beside Loremaster."""
+
+    MAX_ROWS = 3
+    WIDTH = 306
+    ROW_HEIGHT = 43
+
+    def __init__(self, tk_module, root, cfg, theme, font_scale=1.0):
+        self.tk = tk_module
+        self.root = root
+        self.cfg = cfg
+        self.theme = theme
+        self.scale = max(0.85, min(1.40, float(font_scale)))
+        self.win = None
+        self.header_count = None
+        self.row_container = None
+        self.rows = []
+        self.visible = False
+        self.floating = None
+        self.native_handle = None
+        self._animation_after = None
+        self._last_rect = None
+        self._rounded_size = None
+
+    def _font(self, family, size, *styles):
+        return (family, max(7, round(size * self.scale)), *styles)
+
+    def _ensure_window(self):
+        if self.win is not None:
+            try:
+                if self.win.winfo_exists():
+                    return
+            except Exception:
+                pass
+        tk = self.tk
+        t = self.theme
+        win = tk.Toplevel(self.root)
+        win.withdraw()
+        win.overrideredirect(True)
+        win.configure(bg=t["gold"])
+        win.attributes("-topmost", False)
+        self.win = win
+        self.visible = False
+
+        shell = tk.Frame(win, bg=t["gold"], padx=1, pady=1)
+        shell.pack(fill="both", expand=True)
+        inner = tk.Frame(shell, bg=t["bg"])
+        inner.pack(fill="both", expand=True)
+        tk.Frame(inner, bg=t["cyan"], height=2).pack(fill="x")
+        header = tk.Frame(inner, bg=t["panel"], width=round(self.WIDTH * self.scale),
+                          height=round(27 * self.scale))
+        header.pack(fill="x")
+        header.pack_propagate(False)
+        tk.Label(
+            header, text="CONTROL  ·  MEZ", fg=t["cyan"], bg=t["panel"],
+            font=self._font("Georgia", 8, "bold"), anchor="w",
+        ).pack(side="left", padx=(10, 4), fill="y")
+        self.header_count = tk.Label(
+            header, text="", fg=t["dim"], bg=t["panel"],
+            font=self._font("Segoe UI", 8), anchor="e",
+        )
+        self.header_count.pack(side="right", padx=(4, 10), fill="y")
+        self.row_container = tk.Frame(inner, bg=t["bg"])
+        self.row_container.pack(fill="both", expand=True)
+        self.rows = [self._create_row() for _ in range(self.MAX_ROWS)]
+
+    def _create_row(self):
+        tk = self.tk
+        t = self.theme
+        width = round(self.WIDTH * self.scale)
+        height = round(self.ROW_HEIGHT * self.scale)
+        row = tk.Frame(self.row_container, bg=t["bg"], width=width, height=height)
+        row.pack_propagate(False)
+        accent = tk.Frame(row, bg=t["cyan"], width=max(2, round(2 * self.scale)))
+        accent.pack(side="left", fill="y")
+        copy = tk.Frame(row, bg=t["bg"])
+        copy.pack(side="left", fill="both", expand=True, padx=(8, 4), pady=(4, 2))
+        target = tk.Label(
+            copy, text="", fg=t["parchment"], bg=t["bg"],
+            font=self._font("Segoe UI Semibold", 10), anchor="w",
+        )
+        target.pack(fill="x")
+        spell = tk.Label(
+            copy, text="", fg=t["dim"], bg=t["bg"],
+            font=self._font("Segoe UI", 7), anchor="w",
+        )
+        spell.pack(fill="x")
+        timing = tk.Frame(row, bg=t["bg"], width=round(72 * self.scale))
+        timing.pack(side="right", fill="y", padx=(2, 8), pady=(3, 2))
+        timing.pack_propagate(False)
+        countdown = tk.Label(
+            timing, text="", fg=t["cyan"], bg=t["bg"],
+            font=self._font("Segoe UI Semibold", 11), anchor="e",
+        )
+        countdown.pack(fill="x")
+        phase = tk.Label(
+            timing, text="SAFE", fg=t["dim"], bg=t["bg"],
+            font=self._font("Georgia", 7, "bold"), anchor="e",
+        )
+        phase.pack(fill="x")
+        meter = tk.Canvas(
+            row, height=max(3, round(3 * self.scale)), bg=t["line_soft"],
+            highlightthickness=0, bd=0,
+        )
+        meter.place(x=max(2, round(2 * self.scale)), rely=1.0,
+                    relwidth=1.0, anchor="sw")
+        fill = meter.create_rectangle(0, 0, 0, 3, fill=t["cyan"], outline="")
+        sheen = meter.create_rectangle(
+            0, 0, 0, 3, fill=t["gold_bright"], outline="", state="hidden")
+        return {
+            "frame": row, "accent": accent, "target": target, "spell": spell,
+            "countdown": countdown, "phase": phase, "meter": meter,
+            "fill": fill, "sheen": sheen, "identity": None,
+            "entered_at": 0.0, "edge": 0, "color": t["cyan"],
+            "urgency": "safe", "urgency_changed_at": 0.0,
+            "last_tick": False, "meter_width": 1,
+            "duration": 0.0, "deadline_mono": 0.0,
+        }
+
+    def _settle_rows(self):
+        """Restore stable pigment and remove any cached transient sheen."""
+        for widget_row in self.rows:
+            try:
+                color = widget_row["color"]
+                widget_row["accent"].configure(bg=color)
+                widget_row["countdown"].configure(fg=color)
+                widget_row["meter"].itemconfigure(
+                    widget_row["sheen"], state="hidden")
+            except Exception:
+                pass
+
+    def _stop_animation(self, *, settle=False):
+        pending = self._animation_after
+        self._animation_after = None
+        if pending is not None:
+            try:
+                self.root.after_cancel(pending)
+            except Exception:
+                pass
+        if settle:
+            self._settle_rows()
+
+    def _start_animation(self):
+        if (self.cfg.get("reduced_motion", False) or not self.visible
+                or self._animation_after is not None):
+            return
+        self._animation_after = self.root.after(50, self._animation_frame)
+
+    def _animation_frame(self):
+        """Animate cached pigment and meter items; never relayout the window."""
+        self._animation_after = None
+        if (not self.visible or self.win is None
+                or self.cfg.get("reduced_motion", False)):
+            self._stop_animation(settle=True)
+            return
+        now = time.monotonic()
+        needs_more = False
+        for widget_row in self.rows:
+            try:
+                if not widget_row["frame"].winfo_manager():
+                    continue
+                strength, sheen_strength = mez_motion_mix(
+                    now, widget_row["entered_at"],
+                    widget_row["urgency_changed_at"],
+                    widget_row["urgency"],
+                    last_tick=widget_row["last_tick"])
+                color = widget_row["color"]
+                bright = blend_hex_color(
+                    color, self.theme["gold_bright"], strength)
+                widget_row["accent"].configure(bg=bright)
+                widget_row["countdown"].configure(fg=bright)
+                meter = widget_row["meter"]
+                remaining = max(0.0, widget_row["deadline_mono"] - now)
+                edge = mez_meter_edge(
+                    widget_row["meter_width"], remaining,
+                    widget_row["duration"], widget_row["last_tick"])
+                if edge != widget_row["edge"]:
+                    widget_row["edge"] = edge
+                    meter.coords(widget_row["fill"], 0, 0, edge, 3)
+                    meter.itemconfigure(
+                        widget_row["fill"],
+                        state="normal" if edge else "hidden")
+                if edge > 3 and sheen_strength > 0.02:
+                    tip = max(0, edge - max(2, round(5 * self.scale)))
+                    meter.coords(widget_row["sheen"], tip, 0, edge, 3)
+                    meter.itemconfigure(
+                        widget_row["sheen"], fill=bright, state="normal")
+                else:
+                    meter.itemconfigure(widget_row["sheen"], state="hidden")
+                needs_more = bool(
+                    needs_more or remaining > 0.0 or sheen_strength > 0.0
+                    or widget_row["last_tick"]
+                    or widget_row["urgency"] == "critical")
+            except Exception:
+                continue
+        if needs_more and self.visible:
+            self._animation_after = self.root.after(50, self._animation_frame)
+
+    def _apply_nonactivating_style(self):
+        """Keep the persistent timer from stealing clicks or keyboard focus."""
+        if self.win is None:
+            return False
+        if os.name != "nt":
+            return True
+        try:
+            import ctypes
+            from ctypes import wintypes
+            user32 = ctypes.windll.user32
+            user32.GetParent.argtypes = [wintypes.HWND]
+            user32.GetParent.restype = wintypes.HWND
+            user32.GetWindowLongW.argtypes = [wintypes.HWND, ctypes.c_int]
+            user32.GetWindowLongW.restype = ctypes.c_long
+            user32.SetWindowLongW.argtypes = [
+                wintypes.HWND, ctypes.c_int, ctypes.c_long]
+            user32.SetWindowLongW.restype = ctypes.c_long
+            user32.SetWindowPos.argtypes = [
+                wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int,
+                ctypes.c_int, ctypes.c_int, ctypes.c_uint]
+            user32.SetWindowPos.restype = wintypes.BOOL
+            hwnd = int(self.win.winfo_id())
+            parent = int(user32.GetParent(wintypes.HWND(hwnd)) or 0)
+            handle = wintypes.HWND(parent or hwnd)
+            style = int(user32.GetWindowLongW(handle, -20))
+            # TOOLWINDOW | TRANSPARENT | NOACTIVATE; remove APPWINDOW.
+            style = (style | 0x00000080 | 0x00000020 | 0x08000000) & ~0x00040000
+            user32.SetWindowLongW(handle, -20, style)
+            # SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE |
+            # SWP_FRAMECHANGED makes the extended style effective while the
+            # Tk toplevel is still withdrawn.
+            user32.SetWindowPos(
+                handle, wintypes.HWND(0), 0, 0, 0, 0,
+                0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020)
+            self.native_handle = int(handle.value or 0)
+            return bool(self.native_handle)
+        except (AttributeError, OSError, TypeError, ValueError):
+            self.native_handle = None
+            return False
+
+    def _place_nonactivating(self, rect, *, show=False):
+        """Move/size—and optionally reveal—the timer in one native call."""
+        if self.win is None:
+            return False
+        if os.name != "nt":
+            try:
+                x, y, width, height, _flags = native_window_position_plan(
+                    rect, show=show)
+                self.win.geometry(
+                    f"{width}x{height}{signed_window_position(x, y)}")
+                if show:
+                    self.win.deiconify()
+                return True
+            except Exception:
+                return False
+        try:
+            import ctypes
+            from ctypes import wintypes
+            if not self.native_handle:
+                return False
+            user32 = ctypes.windll.user32
+            user32.SetWindowPos.argtypes = [
+                wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int,
+                ctypes.c_int, ctypes.c_int, ctypes.c_uint]
+            user32.SetWindowPos.restype = wintypes.BOOL
+            user32.IsWindowVisible.argtypes = [wintypes.HWND]
+            user32.IsWindowVisible.restype = wintypes.BOOL
+            x, y, width, height, flags = native_window_position_plan(
+                rect, show=show)
+            flags |= 0x0004  # SWP_NOZORDER
+            if not user32.SetWindowPos(
+                    wintypes.HWND(self.native_handle), wintypes.HWND(0),
+                    x, y, width, height, flags):
+                return False
+            return (not show or bool(user32.IsWindowVisible(
+                wintypes.HWND(self.native_handle))))
+        except (AttributeError, OSError, TypeError, ValueError):
+            return False
+
+    def _show_nonactivating(self, rect):
+        """Show the final timer rectangle without focus or an origin flash."""
+        if self.win is None:
+            return False
+        self.win.update_idletasks()
+        if not self._apply_nonactivating_style():
+            return False
+        try:
+            _x, _y, width, height = (int(value) for value in rect)
+            if self._rounded_size != (width, height):
+                AlertManager._round_window(
+                    self.win, width, height, radius=10)
+                self._rounded_size = (width, height)
+        except (TypeError, ValueError):
+            return False
+        return self._place_nonactivating(rect, show=True)
+
+    def _color(self, row):
+        t = self.theme
+        if row.last_tick or row.urgency == "critical":
+            return t["ember"]
+        if row.urgency == "warning":
+            return t["gold_bright"]
+        return t["cyan"]
+
+    def render(self, snapshot, *, enabled=True, hud_visible=True,
+               occupied_rects=()):
+        if not enabled or not hud_visible or not snapshot.rows:
+            self.hide()
+            return
+        self._ensure_window()
+        t = self.theme
+        visible_rows = tuple(snapshot.rows[:self.MAX_ROWS])
+        total_copy = f"{snapshot.active_count} TRACKED"
+        if snapshot.hidden_rows:
+            total_copy += f"  ·  +{snapshot.hidden_rows}"
+        self.header_count.configure(text=total_copy)
+        now_mono = time.monotonic()
+        pending_meter_rows = []
+        for index, widget_row in enumerate(self.rows):
+            if index >= len(visible_rows):
+                if widget_row["frame"].winfo_manager():
+                    widget_row["frame"].pack_forget()
+                continue
+            if not widget_row["frame"].winfo_manager():
+                widget_row["frame"].pack(fill="x")
+            row = visible_rows[index]
+            color = self._color(row)
+            identity = (
+                row.target_name.casefold(), row.spell_name.casefold(),
+                row.rank, row.landed_at, row.count)
+            if identity != widget_row["identity"]:
+                widget_row["identity"] = identity
+                widget_row["entered_at"] = now_mono
+                widget_row["urgency_changed_at"] = now_mono
+            if (row.urgency != widget_row["urgency"]
+                    or bool(row.last_tick) != widget_row["last_tick"]):
+                widget_row["urgency_changed_at"] = now_mono
+            widget_row["color"] = color
+            widget_row["urgency"] = row.urgency
+            widget_row["last_tick"] = row.last_tick
+            widget_row["duration"] = max(0.0, float(row.duration_seconds))
+            widget_row["deadline_mono"] = (
+                now_mono + max(0.0, float(row.safe_remaining_seconds)))
+            target = row.target_name
+            if row.count > 1:
+                target += f"  ×{row.count}"
+            if len(target) > 34:
+                target = target[:33].rstrip() + "…"
+            widget_row["target"].configure(text=target)
+            widget_row["spell"].configure(
+                text=mez_spell_label(row.spell_name, row.rank))
+            widget_row["countdown"].configure(
+                text=format_mez_remaining(
+                    row.safe_remaining_seconds, last_tick=row.last_tick),
+                fg=color,
+            )
+            widget_row["phase"].configure(
+                text="WAKE WINDOW" if row.last_tick else "SAFE",
+                fg=color if row.last_tick else t["dim"],
+            )
+            widget_row["accent"].configure(bg=color)
+            pending_meter_rows.append((widget_row, row, color))
+
+        # One layout pass establishes every packed row and meter width. The
+        # former per-row flushes were the timer overlay's largest jitter cost.
+        self.win.update_idletasks()
+        for widget_row, row, color in pending_meter_rows:
+            meter = widget_row["meter"]
+            meter_width = max(1, meter.winfo_width())
+            widget_row["meter_width"] = meter_width
+            edge = mez_meter_edge(
+                meter_width, row.safe_remaining_seconds,
+                row.duration_seconds, row.last_tick)
+            widget_row["edge"] = edge
+            meter.coords(widget_row["fill"], 0, 0, edge, 3)
+            meter.itemconfigure(
+                widget_row["fill"], fill=color,
+                state="normal" if edge else "hidden")
+        width, height = self.win.winfo_width(), self.win.winfo_height()
+        x, y = mez_overlay_position(
+            (self.root.winfo_x(), self.root.winfo_y(),
+             self.root.winfo_width(), self.root.winfo_height()),
+            (width, height), monitor_work_area(self.root, (
+                self.root.winfo_x(), self.root.winfo_y(),
+                self.root.winfo_width(), self.root.winfo_height())),
+            occupied_rects=occupied_rects,
+        )
+        rect = (x, y, width, height)
+        if not self.visible:
+            if self._show_nonactivating(rect):
+                self.visible = True
+                self._last_rect = rect
+            else:
+                self.hide()
+                return
+        elif rect != self._last_rect:
+            if self._place_nonactivating(rect):
+                self._last_rect = rect
+                if self._rounded_size != (width, height):
+                    AlertManager._round_window(
+                        self.win, width, height, radius=10)
+                    self._rounded_size = (width, height)
+        if self.cfg.get("reduced_motion", False):
+            self._stop_animation(settle=True)
+            return
+        self._start_animation()
+
+    def warning_sound(self, events):
+        if not events or not self.cfg.get("mez_timer_sound", False):
+            return
+        try:
+            import winsound
+            winsound.MessageBeep(winsound.MB_ICONASTERISK)
+        except Exception:
+            try:
+                self.root.bell()
+            except Exception:
+                pass
+
+    def sync_topmost(self, floating):
+        if self.win is None:
+            return
+        floating = bool(floating)
+        if self.floating == floating:
+            return
+        try:
+            if os.name == "nt":
+                if not self._apply_nonactivating_style():
+                    self.hide()
+                    return
+                import ctypes
+                from ctypes import wintypes
+                user32 = ctypes.windll.user32
+                insert_after = wintypes.HWND(-1 if floating else -2)
+                # SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE
+                user32.SetWindowPos(
+                    wintypes.HWND(self.native_handle), insert_after,
+                    0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010)
+            else:
+                self.win.attributes("-topmost", floating)
+            self.floating = floating
         except Exception:
             pass
+
+    def hide(self):
+        self._stop_animation(settle=True)
+        if self.win is not None and self.visible:
+            try:
+                self.win.withdraw()
+            except Exception:
+                pass
+        self.visible = False
+        self._last_rect = None
+        self.floating = None
+
+    def destroy(self):
+        self._stop_animation(settle=True)
+        if self.win is not None:
+            try:
+                self.win.destroy()
+            except Exception:
+                pass
+        self.win = None
+        self.rows = []
+        self.visible = False
+        self.floating = None
+        self.native_handle = None
+        self._last_rect = None
+        self._rounded_size = None
 
 
 # ---------------------------------------------------------------------------
@@ -2293,7 +3624,6 @@ class AlertManager:
 def run_gui(args):
     try:
         import tkinter as tk
-        from tkinter import font as tkfont
     except ImportError:
         print("Spin\'s Loremaster needs Python's tkinter module (bundled with the")
         print("standard python.org Windows installer).")
@@ -2308,6 +3638,7 @@ def run_gui(args):
     session_gap = timedelta(minutes=reset_minutes) if reset_minutes > 0 else None
     stats = SessionStats(session_gap=session_gap,
                          composition=configured_composition(cfg))
+    mez_tracker = MezTracker()
     demo = DemoFeed() if args.demo else None
     if demo:
         stats.character = "Spin"
@@ -2321,7 +3652,7 @@ def run_gui(args):
                  line="#74818a", line_soft="#3e474d", text="#ffffff",
                  dim="#c6cdd1", gold_bright="#ffe184", cyan="#9cc4ff")
     root = tk.Tk()
-    root.title("Spin\'s Loremaster")
+    root.title("Loremaster")
     root.configure(bg=T["bg"])
     root.overrideredirect(not args.windowed)
     root.attributes("-topmost", False)
@@ -2332,9 +3663,30 @@ def run_gui(args):
     except (tk.TclError, TypeError, ValueError):
         pass
 
+    # Load the generated SpinUI cog once and retain a root-owned reference.
+    # Rebuilt compact/full canvases reuse this exact 32 px RGBA asset, avoiding
+    # runtime resampling and Tk image garbage collection.
+    brand_images = {}
+    try:
+        brand_images["cog"] = tk.PhotoImage(
+            master=root,
+            file=str(bundled_resource_path("assets", BRAND_COG_FILE)),
+        )
+    except (OSError, tk.TclError):
+        brand_images["cog"] = None
+    root._lore_brand_images = brand_images
+
+    try:
+        mini_stat_index = int(cfg.get("mini_stat_index", 0) or 0)
+    except (TypeError, ValueError):
+        mini_stat_index = 0
     state = {"mini": bool(cfg.get("mini_mode")), "last_save": time.time(),
              "last_render": 0.0, "next_demo": 0.0, "closing": False,
              "ingest_error": "", "ingest_error_until": 0.0,
+             "mini_stat_index": mini_stat_index,
+             "mini_alert": None, "mini_save_after": None,
+             "seed_motion_after": None,
+             "morph_after": None, "morphing": False,
              "fights_seen": 0, "expanded": {"combat"}, "scope": "fight",
              "lab_view": "overview", "compare_filter": "same",
              "lifetime_cutoff": None, "selected_fight": None,
@@ -2342,7 +3694,7 @@ def run_gui(args):
              "locked": bool(cfg.get("locked", False)), "click_through": False,
              "hidden_to_tray": False, "manual_show": False}
     alerts = AlertManager(tk, root, cfg)
-    tray = WindowsTrayIcon("Spin's Loremaster")
+    tray = WindowsTrayIcon("Loremaster")
 
     def config_number(key, default, low, high):
         try:
@@ -2614,7 +3966,7 @@ def run_gui(args):
             x, y = int(pos[0]), int(pos[1])
         except (TypeError, ValueError, IndexError, KeyError):
             x, y = int(default_x), int(default_y)
-        vx, vy, vw, vh = virtual_desktop_bounds()
+        vx, vy, vw, vh = monitor_work_area(root, (x, y, width, height))
         x = max(vx, min(x, vx + max(0, vw - width)))
         y = max(vy, min(y, vy + max(0, vh - height)))
         return x, y
@@ -2623,6 +3975,126 @@ def run_gui(args):
         x, y = clamped_position(pos, width, height, default_x, default_y)
         root.geometry(f"{width}x{height}{x:+d}{y:+d}")
         return x, y
+
+    def set_capsule_window_region(enabled, width=0, height=0):
+        """Give compact mode real rounded corners without layered alpha."""
+        # The hidden --windowed QA/development mode keeps its native title bar;
+        # clipping that decorated frame would hide the seed being inspected.
+        if os.name != "nt" or args.windowed:
+            return
+        try:
+            import ctypes
+            from ctypes import wintypes
+            user32 = ctypes.windll.user32
+            gdi32 = ctypes.windll.gdi32
+            user32.GetParent.argtypes = [wintypes.HWND]
+            user32.GetParent.restype = wintypes.HWND
+            user32.SetWindowRgn.argtypes = [
+                wintypes.HWND, wintypes.HRGN, wintypes.BOOL]
+            user32.SetWindowRgn.restype = ctypes.c_int
+            hwnd = int(root.winfo_id())
+            parent = int(user32.GetParent(wintypes.HWND(hwnd)) or 0)
+            handle = wintypes.HWND(parent or hwnd)
+            if not enabled:
+                user32.SetWindowRgn(handle, wintypes.HRGN(0), True)
+                return
+            gdi32.CreateRoundRectRgn.argtypes = [
+                ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+                ctypes.c_int, ctypes.c_int]
+            gdi32.CreateRoundRectRgn.restype = wintypes.HRGN
+            gdi32.DeleteObject.argtypes = [wintypes.HGDIOBJ]
+            region = gdi32.CreateRoundRectRgn(
+                0, 0, int(width) + 1, int(height) + 1,
+                max(16, round(int(height) * 0.58)),
+                max(16, round(int(height) * 0.58)))
+            if region and not user32.SetWindowRgn(handle, region, True):
+                gdi32.DeleteObject(region)
+        except (AttributeError, OSError, TypeError, ValueError):
+            pass
+
+    def target_geometry_for_mode(mini):
+        """Resolve a saved, desktop-clamped geometry without showing it."""
+        scale = max(1.0, font_scale)
+        if mini:
+            width = int(round(RUNE_SEED_WIDTH * scale)) + 2
+            height = int(round(RUNE_SEED_HEIGHT * scale)) + 2
+            default_x = max(8, root.winfo_screenwidth() - width - 12)
+            default_y = max(8, root.winfo_screenheight() - height - 284)
+            pos = cfg.get("mini_position")
+        else:
+            panel_size = cfg.get("panel_size") or list(FULL_DEFAULT_SIZE)
+            try:
+                requested_width = int(panel_size[0])
+                requested_height = int(panel_size[1])
+            except (TypeError, ValueError, IndexError):
+                requested_width, requested_height = FULL_DEFAULT_SIZE
+            raw_pos = cfg.get("position")
+            try:
+                probe_x, probe_y = int(raw_pos[0]), int(raw_pos[1])
+            except (TypeError, ValueError, IndexError):
+                probe_x = max(8, root.winfo_screenwidth() - requested_width - 24)
+                probe_y = max(8, root.winfo_screenheight() - requested_height - 300)
+            work_area = monitor_work_area(
+                root, (probe_x, probe_y, requested_width, requested_height))
+            width, height = fit_panel_size_to_bounds(
+                (requested_width, requested_height), scale, work_area)
+            work_x, work_y, work_width, work_height = work_area
+            default_x = work_x + max(8, work_width - width - 24)
+            default_y = work_y + max(8, work_height - height - 300)
+            pos = cfg.get("position")
+        x, y = clamped_position(pos, width, height, default_x, default_y)
+        return width, height, x, y
+
+    def animate_geometry_transition(start, target, on_complete=None,
+                                    on_frame=None):
+        """Time-sample a smooth HUD morph without accumulating callback lag."""
+        pending = state.get("morph_after")
+        if pending is not None:
+            try:
+                root.after_cancel(pending)
+            except tk.TclError:
+                pass
+        state["morph_after"] = None
+        first = geometry_morph_at(start, target, 0.0)
+        last = geometry_morph_at(start, target, 1.0)
+        if (cfg.get("reduced_motion", False) or not first
+                or first == last):
+            width, height, x, y = last or target
+            root.geometry(f"{width}x{height}{x:+d}{y:+d}")
+            if callable(on_frame):
+                on_frame(1.0, (width, height, x, y))
+            if on_complete is not None:
+                on_complete()
+            return
+        started = time.monotonic()
+        duration = max(0.001, HUD_MORPH_MS / 1000.0)
+        last_rect = None
+
+        def show_frame():
+            nonlocal last_rect
+            if state["closing"]:
+                return
+            frame_started = time.monotonic()
+            progress = min(1.0, (frame_started - started) / duration)
+            rect = geometry_morph_at(start, target, progress)
+            if rect and rect != last_rect:
+                width, height, x, y = rect
+                root.geometry(f"{width}x{height}{x:+d}{y:+d}")
+                last_rect = rect
+            if callable(on_frame):
+                on_frame(progress, rect)
+            if progress < 1.0:
+                spent_ms = round((time.monotonic() - frame_started) * 1000)
+                delay = max(1, HUD_MORPH_FRAME_MS - spent_ms)
+                state["morph_after"] = root.after(delay, show_frame)
+            else:
+                state["morph_after"] = None
+                if on_complete is not None:
+                    # Let the target rectangle paint once before constructing
+                    # the detail tree; this removes the old end-of-morph hitch.
+                    root.after_idle(on_complete)
+
+        show_frame()
 
     def start_resize(e):
         if state["locked"] or state["click_through"]:
@@ -2642,10 +4114,22 @@ def run_gui(args):
         if (state["locked"] or state["click_through"]
                 or not resize.get("active")):
             return "break"
-        minimum_width = int(360 * max(1.0, font_scale))
-        minimum_height = int(360 * max(1.0, font_scale))
-        width = max(minimum_width, min(760, resize["w"] + e.x_root - resize["x"]))
-        height = max(minimum_height, min(940, resize["h"] + e.y_root - resize["y"]))
+        minimum_width = int(FULL_MIN_WIDTH * max(1.0, font_scale))
+        minimum_height = int(FULL_MIN_HEIGHT * max(1.0, font_scale))
+        bounds = monitor_work_area(root, (
+            root.winfo_x(), root.winfo_y(), root.winfo_width(),
+            root.winfo_height()))
+        vx, vy, vw, vh = bounds
+        available_width = max(1, vx + vw - root.winfo_x() - 8)
+        available_height = max(1, vy + vh - root.winfo_y() - 8)
+        maximum_width = min(FULL_MAX_WIDTH, available_width)
+        maximum_height = min(FULL_MAX_HEIGHT, available_height)
+        effective_min_width = min(minimum_width, maximum_width)
+        effective_min_height = min(minimum_height, maximum_height)
+        width = max(effective_min_width, min(
+            maximum_width, resize["w"] + e.x_root - resize["x"]))
+        height = max(effective_min_height, min(
+            maximum_height, resize["h"] + e.y_root - resize["y"]))
         resize["pending"] = (width, height)
         if resize.get("after_id") is None:
             resize["after_id"] = root.after(16, flush_resize)
@@ -2681,6 +4165,13 @@ def run_gui(args):
         font_scale = max(0.85, min(1.40, float(cfg.get("font_scale", 1.0))))
     except (TypeError, ValueError):
         font_scale = 1.0
+    mez_overlay = MezTimerOverlay(tk, root, cfg, T, font_scale)
+
+    def hide_child_overlay_on_unmap(event):
+        if event.widget is root:
+            mez_overlay.hide()
+
+    root.bind("<Unmap>", hide_child_overlay_on_unmap, add="+")
 
     def fs(size):
         return max(8, int(round(size * font_scale)))
@@ -2690,8 +4181,14 @@ def run_gui(args):
     FONT_B = ("Segoe UI Semibold", fs(11))
     FONT_BIG = ("Segoe UI Semibold", fs(19))
     FONT_MED = ("Segoe UI Semibold", fs(13))
+    FONT_HERO = ("Segoe UI Semibold", fs(30))
+    FONT_METRIC = ("Segoe UI Semibold", fs(15))
+    FONT_SEED = ("Segoe UI Semibold", fs(14))
+    FONT_SEED_LABEL = (
+        "Segoe UI Semibold", max(7, int(round(7 * font_scale))))
     FONT_TITLE = ("Georgia", fs(11), "bold")
     FONT_RUNE = ("Georgia", fs(8), "bold")
+    FONT_RUNE_S = ("Georgia", fs(7), "bold")
 
     outer = tk.Frame(root, bg=T["gold"], padx=1, pady=1)   # 1px ember frame
     outer.pack(fill="both", expand=True)
@@ -3104,6 +4601,9 @@ def run_gui(args):
             _wiki_plaintext_fallback(clipboard)
 
     def open_settings(_event=None):
+        # Settings opens beside the HUD and may occupy the timer's anchor side.
+        # Keep the control stack quiet until configuration closes.
+        mez_overlay.hide()
         existing = widgets.get("settings_window")
         if existing:
             try:
@@ -3166,7 +4666,40 @@ def run_gui(args):
             drag_target.bind("<Button-1>", start_settings_drag)
             drag_target.bind("<B1-Motion>", move_settings)
 
-        columns = tk.Frame(shell, bg=T["bg"], padx=16, pady=14)
+        settings_viewport = tk.Frame(shell, bg=T["bg"])
+        settings_viewport.pack(fill="both", expand=True)
+        settings_canvas = tk.Canvas(
+            settings_viewport, bg=T["bg"], highlightthickness=0, bd=0)
+        settings_canvas.pack(side="left", fill="both", expand=True)
+        settings_scroll = tk.Scrollbar(
+            settings_viewport, orient="vertical",
+            command=settings_canvas.yview, bg=T["raised"],
+            activebackground=T["panel"], troughcolor=T["void"],
+            relief="flat", bd=0, highlightthickness=0)
+        settings_canvas.configure(yscrollcommand=settings_scroll.set)
+        settings_content = tk.Frame(settings_canvas, bg=T["bg"])
+        settings_content_window = settings_canvas.create_window(
+            (0, 0), window=settings_content, anchor="nw")
+
+        def sync_settings_scrollregion(_event=None):
+            settings_canvas.configure(scrollregion=settings_canvas.bbox("all"))
+
+        def fit_settings_content(event):
+            settings_canvas.itemconfigure(
+                settings_content_window, width=max(1, event.width))
+
+        def scroll_settings(event):
+            delta = int(getattr(event, "delta", 0) or 0)
+            if delta:
+                settings_canvas.yview_scroll(-1 if delta > 0 else 1, "units")
+            return "break"
+
+        settings_content.bind("<Configure>", sync_settings_scrollregion)
+        settings_canvas.bind("<Configure>", fit_settings_content)
+        settings_canvas.bind("<MouseWheel>", scroll_settings)
+        settings_content.bind("<MouseWheel>", scroll_settings)
+
+        columns = tk.Frame(settings_content, bg=T["bg"], padx=16, pady=14)
         columns.pack(fill="both", expand=True)
         frame = tk.Frame(columns, bg=T["bg"])
         frame.pack(side="left", fill="both", expand=True)
@@ -3244,6 +4777,32 @@ def run_gui(args):
         scale_entry.pack(side="right", ipady=3)
         scale_entry.insert(0, str(cfg.get("font_scale", 1.0)))
 
+        # ---- Crowd-control timers -------------------------------------
+        tk.Frame(frame, bg=T["line_soft"], height=1).pack(
+            fill="x", pady=(12, 10))
+        L(frame, "CROWD CONTROL TIMERS", fg=T["cyan"], font=FONT_B).pack(
+            fill="x")
+        L(frame,
+          "Confirmed own-cast landings only. Same-named creatures group into "
+          "one conservative row; LAST TICK accounts for EQ's hidden server-tick phase.",
+          fg=T["dim"], font=FONT_S, justify="left", wraplength=410).pack(
+              fill="x", pady=(2, 7))
+        mez_enabled_var = tk.BooleanVar(value=bool(
+            cfg.get("mez_timers_enabled", True)))
+        mez_sound_var = tk.BooleanVar(value=bool(
+            cfg.get("mez_timer_sound", False)))
+        check("Show mez timers beside the HUD", mez_enabled_var)
+        check("Sound once as the safe window closes", mez_sound_var)
+        mez_warning_row = tk.Frame(frame, bg=T["bg"])
+        mez_warning_row.pack(fill="x", pady=(6, 2))
+        L(mez_warning_row, "Warning threshold (3-30 seconds)",
+          fg=T["gold"], font=FONT_S).pack(side="left")
+        mez_warning_entry = tk.Entry(
+            mez_warning_row, width=8, bg=T["void"], fg=T["text"],
+            insertbackground=T["cyan"], relief="flat", font=FONT)
+        mez_warning_entry.pack(side="right", ipady=3)
+        mez_warning_entry.insert(0, str(cfg.get("mez_warning_seconds", 10)))
+
         # ---- Alerts & notifications ----------------------------------
         L(alerts_frame, "ALERTS & NOTIFICATIONS", fg=T["cyan"],
           font=FONT_B).pack(fill="x")
@@ -3279,6 +4838,26 @@ def run_gui(args):
         check("Big hits on you", big_hit_var, alerts_frame)
         check("Your name is called in chat", name_called_var, alerts_frame)
 
+        alert_anchor_var = tk.StringVar(value=normalize_alert_anchor(
+            cfg.get("mini_alert_anchor", "auto")))
+        L(alerts_frame, "RUNE SEED ALERT PLACEMENT", fg=T["gold"],
+          font=FONT_S).pack(fill="x", pady=(9, 3))
+        anchor_row = tk.Frame(alerts_frame, bg=T["line_soft"], padx=1, pady=1)
+        anchor_row.pack(fill="x")
+        for anchor_value in ALERT_ANCHORS:
+            tk.Radiobutton(
+                anchor_row, text=anchor_value.upper(),
+                variable=alert_anchor_var, value=anchor_value,
+                indicatoron=False, relief="flat", bd=0,
+                bg=T["panel"], fg=T["dim"], selectcolor=T["raised"],
+                activebackground=T["raised"],
+                activeforeground=T["gold_bright"],
+                font=FONT_RUNE, padx=3, pady=3,
+            ).pack(side="left", fill="x", expand=True, padx=(0, 1))
+        L(alerts_frame,
+          "Auto chooses the clearest side. Every choice remains edge-safe.",
+          fg=T["dim"], font=FONT_S).pack(fill="x", pady=(3, 0))
+
         threshold_row = tk.Frame(alerts_frame, bg=T["bg"])
         threshold_row.pack(fill="x", pady=(8, 2))
         L(threshold_row, "Big-hit threshold", fg=T["gold"],
@@ -3304,10 +4883,15 @@ def run_gui(args):
         alert_status.pack(fill="x", pady=(6, 0))
 
         def test_alert():
-            # Preview with the on-screen sound/duration choices, unsaved.
+            # Preview with the on-screen sound/duration/placement choices,
+            # without requiring a save first.
             previous = {"alert_sound": cfg.get("alert_sound", True),
-                        "alert_seconds": cfg.get("alert_seconds", 4)}
+                        "alert_seconds": cfg.get("alert_seconds", 4),
+                        "mini_alert_anchor": cfg.get(
+                            "mini_alert_anchor", "auto")}
             cfg["alert_sound"] = bool(sound_var.get())
+            cfg["mini_alert_anchor"] = normalize_alert_anchor(
+                alert_anchor_var.get())
             try:
                 cfg["alert_seconds"] = max(1, min(15, int(seconds_entry.get())))
             except (TypeError, ValueError):
@@ -3321,7 +4905,8 @@ def run_gui(args):
             cfg["alert_position"] = None
             save_config(cfg)
             alert_status.configure(
-                text="Banner position reset to the default top-center.",
+                text=("Expanded banner reset to top-center. Compact alerts "
+                      "use the selected Rune Seed side."),
                 fg=T["green"])
 
         alert_actions = tk.Frame(alerts_frame, bg=T["bg"])
@@ -3357,6 +4942,11 @@ def run_gui(args):
             except (ValueError, TypeError):
                 seconds_value = int(cfg.get("alert_seconds", 4))
             seconds_value = max(1, min(15, seconds_value))
+            try:
+                mez_warning_value = int(str(mez_warning_entry.get()).strip())
+            except (ValueError, TypeError):
+                mez_warning_value = int(cfg.get("mez_warning_seconds", 10))
+            mez_warning_value = max(3, min(30, mez_warning_value))
             active_before = hotkey_service.status(HOTKEY_WIKI)
             rebind = None
             if (canonical != active_before.binding.label
@@ -3384,14 +4974,23 @@ def run_gui(args):
                        alert_charm_break=bool(charm_break_var.get()),
                        alert_big_hit=bool(big_hit_var.get()),
                        alert_name_called=bool(name_called_var.get()),
+                       mez_timers_enabled=bool(mez_enabled_var.get()),
+                       mez_timer_sound=bool(mez_sound_var.get()),
+                       mez_warning_seconds=mez_warning_value,
                        big_hit_threshold=threshold_value,
-                       alert_seconds=seconds_value)
+                       alert_seconds=seconds_value,
+                       mini_alert_anchor=normalize_alert_anchor(
+                           alert_anchor_var.get()))
             wiki_client.network_enabled = cfg["wiki_network_enabled"]
             save_config(cfg)
             threshold_entry.delete(0, "end")
             threshold_entry.insert(0, str(cfg["big_hit_threshold"]))
             seconds_entry.delete(0, "end")
             seconds_entry.insert(0, str(cfg["alert_seconds"]))
+            mez_warning_entry.delete(0, "end")
+            mez_warning_entry.insert(0, str(cfg["mez_warning_seconds"]))
+            if not cfg["mez_timers_enabled"]:
+                mez_overlay.hide()
             refresh(force_detail=True)
             if cfg["wiki_enabled"] and not hotkey["wiki_registered"]:
                 status.configure(text="CONFLICT — " + (hotkey["wiki_error"] or
@@ -3415,6 +5014,24 @@ def run_gui(args):
                   font=FONT_S, padx=12, pady=5).pack(side="right", padx=6)
         win.protocol("WM_DELETE_WINDOW", close_settings)
         win.bind("<Escape>", close_settings)
+        win.bind("<MouseWheel>", scroll_settings)
+        win.update_idletasks()
+        work_x, work_y, work_width, work_height = monitor_work_area(
+            root, (root.winfo_x(), root.winfo_y(),
+                   root.winfo_width(), root.winfo_height()))
+        header_height = max(1, header.winfo_reqheight())
+        actions_height = max(1, actions.winfo_reqheight())
+        available_content_height = max(
+            1, work_height - header_height - actions_height - 20)
+        content_height = min(
+            max(180, settings_content.winfo_reqheight()),
+            available_content_height)
+        content_width = max(1, min(
+            max(520, settings_content.winfo_reqwidth()), work_width - 28))
+        settings_canvas.configure(width=content_width, height=content_height)
+        if settings_content.winfo_reqheight() > content_height:
+            settings_scroll.pack(side="right", fill="y")
+        sync_settings_scrollregion()
         win.update_idletasks()
         x = root.winfo_x() - win.winfo_width() - 16
         y = root.winfo_y()
@@ -3523,6 +5140,204 @@ def run_gui(args):
         c.create_polygon(pts, outline=color or T["gold"], fill="", width=1.2)
         return c
 
+    def rune_seed_canvas(parent, width=RUNE_SEED_WIDTH,
+                         height=RUNE_SEED_HEIGHT, bg=None):
+        """Create the cog-led Rune Seed; refresh only changes cached items."""
+        canvas = tk.Canvas(
+            parent, width=width, height=height, bg=bg or T["bg"],
+            highlightthickness=0, bd=0,
+        )
+        scale = max(0.5, height / RUNE_SEED_HEIGHT)
+        canvas.create_polygon(
+            rounded_rectangle_points(
+                2 * scale, 3 * scale, width - 1 * scale,
+                height - 1 * scale, 13 * scale),
+            smooth=True, splinesteps=24, fill=T["void"], outline="",
+            tags="seed_shadow",
+        )
+        points = rounded_rectangle_points(
+            1 * scale, 1 * scale, width - 2 * scale,
+            height - 3 * scale, 13 * scale)
+        canvas.create_polygon(
+            points, smooth=True, splinesteps=24, fill="", outline=T["line_soft"],
+            width=2, tags="seed_glow",
+        )
+        canvas.create_polygon(
+            points, smooth=True, splinesteps=24, fill=T["panel"],
+            outline=T["line_soft"], width=1.4, tags="seed_body",
+        )
+        canvas.create_line(
+            16 * scale, 3 * scale, width - 14 * scale, 3 * scale,
+            fill=T["line_soft"], width=max(1, round(scale)),
+            tags="seed_highlight")
+        canvas.create_line(
+            13 * scale, 3 * scale, 23 * scale, 3 * scale,
+            fill=T["cyan"], width=max(1, round(scale)), state="hidden",
+            tags="seed_sheen")
+        layout = rune_seed_content_layout(width, height)
+        icon_left, icon_top, icon_right, icon_bottom = layout["icon"]
+        center_x, center_y = layout["center"]
+        canvas.create_oval(
+            icon_left - 2, icon_top - 2, icon_right + 2, icon_bottom + 2,
+            fill="", outline=T["line_soft"], width=1,
+            tags="seed_icon_halo")
+        cog = brand_images.get("cog")
+        if cog is not None:
+            canvas.create_image(
+                center_x, center_y, image=cog, anchor="center",
+                tags="seed_brand")
+            canvas._lore_brand_image = cog
+        else:
+            # Graceful source-development fallback; packaged selftest requires
+            # the generated asset, so release builds can never ship this path.
+            canvas.create_oval(
+                icon_left + 3, icon_top + 3, icon_right - 3, icon_bottom - 3,
+                fill=T["void"], outline=T["gold"], width=2,
+                tags="seed_brand")
+            canvas.create_line(
+                center_x, icon_top + 4, center_x, icon_bottom - 4,
+                fill=T["gold_bright"], width=2, tags="seed_brand")
+            canvas.create_line(
+                icon_left + 4, center_y, icon_right - 4, center_y,
+                fill=T["gold_bright"], width=2, tags="seed_brand")
+        text_left, _text_top, text_right, _text_bottom = layout["text"]
+        text_x = (text_left + text_right) / 2
+        canvas.create_text(
+            text_x, 16 * scale, text="\u2014", fill=T["text"],
+            font=FONT_SEED, anchor="center", tags="seed_value",
+        )
+        canvas.create_text(
+            text_x, 31 * scale, text=RUNE_SEED_COMBAT_LABEL,
+            fill=T["gold_bright"],
+            font=FONT_SEED_LABEL, anchor="center", tags="seed_label",
+        )
+        page_y = 41.5 * scale
+        page_start = text_x - 7.5 * scale
+        for index in range(MINI_MAX_CELLS):
+            x = page_start + index * 5 * scale
+            canvas.create_oval(
+                x - scale, page_y - scale, x + scale, page_y + scale,
+                fill=T["line_soft"], outline="", tags=f"seed_page_{index}")
+        canvas._lore_seed_state = None
+        canvas._lore_seed_scale = scale
+        canvas._lore_seed_motion = {}
+        return canvas
+
+    def paint_rune_seed(canvas, value="", label="", health="READY",
+                        health_color=None, alert=None, metric_index=0,
+                        metric_count=1, in_combat=False):
+        """Paint a cached Rune Seed state without recreating canvas items."""
+        severity = (alert or {}).get("severity") if alert else ""
+        if severity == "danger":
+            left, right, edge, shown = T["hp"], T["ember"], T["hp"], "!"
+        elif severity == "warn":
+            left = right = edge = T["gold_bright"]
+            shown = "!"
+        elif severity == "info":
+            left, right, edge, shown = T["cyan"], T["green"], T["cyan"], value
+        else:
+            left = T["cyan"] if health in {"LIVE", "DEMO"} else T["gold"]
+            right = health_color or T["dim"]
+            edge = T["line_soft"] if health != "STALE" else T["ember"]
+            shown = value
+        alert_text = str((alert or {}).get("text", "")).upper()
+        shown_label = ("CHARM" if "CHARM BROKE" in alert_text
+                       else "ALERT") if severity else label
+        try:
+            count = max(1, min(MINI_MAX_CELLS, int(metric_count)))
+            selected = int(metric_index) % count
+        except (TypeError, ValueError):
+            count, selected = 1, 0
+        alert_started = float((alert or {}).get("started", 0.0) or 0.0)
+        draw_state = (
+            shown, shown_label, health, left, right, edge, severity,
+            selected, count, bool(in_combat), alert_started)
+        if getattr(canvas, "_lore_seed_state", None) == draw_state:
+            return
+        old_state = getattr(canvas, "_lore_seed_state", None)
+        canvas._lore_seed_state = draw_state
+        if (old_state is None or old_state[1] != draw_state[1]
+                or old_state[6] != draw_state[6]):
+            canvas._lore_seed_change_at = time.monotonic()
+        canvas.itemconfigure("seed_body", outline=edge)
+        canvas.itemconfigure("seed_glow", outline=edge)
+        canvas.itemconfigure(
+            "seed_highlight", fill=blend_hex_color(T["line_soft"], edge, 0.35))
+        canvas.itemconfigure("seed_icon_halo", outline=edge)
+        canvas.itemconfigure(
+            "seed_value", text=shown if not label else (shown or "\u2014"))
+        canvas.itemconfigure(
+            "seed_label", text=shown_label,
+            fill=T["ember"] if severity else T["gold_bright"])
+        for index in range(MINI_MAX_CELLS):
+            canvas.itemconfigure(
+                f"seed_page_{index}",
+                fill=T["gold_bright"] if index == selected else T["line_soft"],
+                state="normal" if index < count else "hidden")
+        previous_motion = getattr(canvas, "_lore_seed_motion", {}) or {}
+        previous_origin = float(previous_motion.get("origin", time.monotonic()))
+        if severity:
+            origin = float((alert or {}).get("started", time.monotonic()))
+        elif in_combat and previous_motion.get("in_combat"):
+            origin = previous_origin
+        else:
+            origin = time.monotonic()
+        canvas._lore_seed_motion = {
+            "left": left, "right": right, "edge": edge,
+            "severity": severity, "alert": alert,
+            "in_combat": bool(in_combat), "origin": origin,
+        }
+
+    def render_rune_seed_motion(canvas, now=None, settled=False):
+        """Animate existing seed items only; return whether another frame helps."""
+        motion = getattr(canvas, "_lore_seed_motion", {}) or {}
+        now = time.monotonic() if now is None else float(now)
+        scale = getattr(canvas, "_lore_seed_scale", 1.0)
+        left = motion.get("left", T["gold"])
+        right = motion.get("right", T["dim"])
+        edge = motion.get("edge", T["line_soft"])
+        alert = motion.get("alert") or {}
+        severity = motion.get("severity", "")
+        in_combat = bool(motion.get("in_combat"))
+        origin = float(motion.get("origin", now))
+        elapsed = max(0.0, now - origin)
+        active_alert = bool(
+            severity and now < float(alert.get("until", now + 0.1)))
+        animated = not settled and not cfg.get("reduced_motion", False)
+        pulse = 0.0
+        if animated and active_alert and elapsed < 0.95:
+            pulse = ((math.sin(elapsed * math.tau * 2.2) + 1.0) / 2
+                     * (1.0 - elapsed / 0.95))
+        glow = blend_hex_color(
+            edge, T["gold_bright"], min(0.8, pulse))
+        canvas.itemconfigure(
+            "seed_glow", outline=glow, width=max(1, round(1 + pulse * 2)))
+        canvas.itemconfigure(
+            "seed_icon_halo", outline=blend_hex_color(
+                T["line_soft"], edge, 0.42 + 0.48 * pulse),
+            width=max(1, round(1 + pulse * 1.5)))
+        change_at = float(getattr(canvas, "_lore_seed_change_at", 0.0))
+        reveal = 1.0 if not animated else min(1.0, (now - change_at) / 0.22)
+        canvas.itemconfigure(
+            "seed_value", fill=blend_hex_color(T["dim"], T["text"], reveal))
+        label_target = T["ember"] if severity else T["gold_bright"]
+        canvas.itemconfigure(
+            "seed_label", fill=blend_hex_color(T["line"], label_target, reveal))
+        if animated and in_combat and not active_alert:
+            width = max(1, canvas.winfo_width())
+            travel = (elapsed % 2.8) / 2.8
+            start = 13 * scale + travel * max(1, width - 38 * scale)
+            canvas.coords(
+                "seed_sheen", start, 3 * scale,
+                min(width - 12 * scale, start + 10 * scale), 3 * scale)
+            canvas.itemconfigure(
+                "seed_sheen", state="normal",
+                fill=blend_hex_color(T["line_soft"], T["cyan"], 0.42))
+        else:
+            canvas.itemconfigure("seed_sheen", state="hidden")
+        changing = now - change_at < 0.22
+        return bool(animated and (in_combat or active_alert or changing))
+
     def displayed_fight(snap):
         selected = state.get("selected_fight")
         if selected is not None:
@@ -3593,7 +5408,7 @@ def run_gui(args):
         if key == "progress":
             if snap["xp_pct_known"]:
                 # Time to level is the number that decides whether to keep the
-                # camp, so it rides on the strip instead of only in DETAILS.
+                # camp, so the expanded ledger keeps it in the headline value.
                 parts = [f"{snap['xp_pct']:.1f}% xp"]
                 if stats.levelups:
                     parts.append(f"+{stats.levelups} lvl")
@@ -3613,6 +5428,34 @@ def run_gui(args):
         if key == "travels":
             return f"{snap['deaths']} death" + ("s" if snap["deaths"] != 1 else "")
         return ""
+
+    def rune_seed_metric(snap, key):
+        """One compact, honest metric for the in-game Rune Seed."""
+        if key == "combat":
+            value = snap["current_dps"] if snap["in_combat"] else snap["session_dps"]
+            return compact_hud_number(value), RUNE_SEED_COMBAT_LABEL
+        if key == "kills":
+            return compact_hud_number(snap["kills"]), "KILLS"
+        if key == "loot":
+            return compact_hud_number(sum(snap["loot"].values())), "SPOILS"
+        if key == "money":
+            copper = max(0, int(snap["copper"]))
+            if copper >= 1000:
+                return f"{copper / 1000:.1f}p".replace(".0p", "p"), "COIN"
+            if copper >= 100:
+                return f"{copper // 100}g", "COIN"
+            return f"{copper // 10}s", "COIN"
+        if key == "progress":
+            if snap["xp_pct_known"]:
+                return f"{snap['xp_pct']:.1f}%", "XP"
+            return compact_hud_number(snap["xp_events"]), "XP"
+        if key == "motes":
+            return compact_hud_number(sum(snap["motes"])), "MOTES"
+        if key == "faction":
+            return compact_hud_number(len(stats.faction)), "REP"
+        if key == "travels":
+            return compact_hud_number(snap["deaths"]), "JOURNEY"
+        return "\u2014", MINI_COMPACT_LABELS.get(key, "STAT")
 
     def card_detail(snap, key):
         """Return visual ledger rows; meter kinds embed a 0..1 bar share."""
@@ -3842,7 +5685,7 @@ def run_gui(args):
             if not any(counts):
                 out.append(("line", "No potential motes have dropped yet. "
                                     "Counts are what this session looted, not "
-                                    "what your bags hold. The strip lists the "
+                                    "what your bags hold. The ledger lists the "
                                     "grades in this order, lowest first.", ""))
         elif key == "money":
             out.append(("row", "Total", fmt_coins(snap["copper"])))
@@ -3926,11 +5769,21 @@ def run_gui(args):
         refresh(force_detail=True)
 
     def toggle_card_star(key):
-        starred = cfg.setdefault("starred_cards", [])
-        if key in starred:
-            starred.remove(key)
-        else:
-            starred.append(key)
+        starred = toggle_rune_seed_star(cfg.get("starred_cards"), key)
+        cfg["starred_cards"] = starred
+        state["mini_stat_index"] %= max(1, len(rune_seed_keys(starred)))
+        cfg["mini_stat_index"] = state["mini_stat_index"]
+        save_config(cfg)
+        refresh(force_detail=True)
+
+    def toggle_alert_flag(key):
+        """Persist a quick alert toggle exposed on the expanded HUD."""
+        if key not in {"alerts_enabled", "alert_charm_break",
+                       "alert_tells", "alert_big_hit"}:
+            return
+        cfg[key] = not bool(cfg.get(key, True))
+        if key == "alerts_enabled" and not cfg[key]:
+            alerts.clear()
         save_config(cfg)
         refresh(force_detail=True)
 
@@ -3952,7 +5805,49 @@ def run_gui(args):
         save_config(cfg)
         refresh(force_detail=True)
 
+    def stop_seed_motion():
+        pending = state.get("seed_motion_after")
+        state["seed_motion_after"] = None
+        if pending is not None:
+            try:
+                root.after_cancel(pending)
+            except tk.TclError:
+                pass
+
+    def seed_motion_frame():
+        state["seed_motion_after"] = None
+        if (state["closing"] or not state["mini"] or state.get("morphing")
+                or cfg.get("reduced_motion", False)):
+            return
+        seed = widgets.get("mini_seed")
+        try:
+            if seed and seed.winfo_exists() and render_rune_seed_motion(seed):
+                state["seed_motion_after"] = root.after(80, seed_motion_frame)
+        except tk.TclError:
+            state["seed_motion_after"] = None
+
+    def ensure_seed_motion():
+        seed = widgets.get("mini_seed")
+        if not seed:
+            return
+        if cfg.get("reduced_motion", False):
+            stop_seed_motion()
+            try:
+                render_rune_seed_motion(seed, settled=True)
+            except tk.TclError:
+                pass
+            return
+        if state.get("seed_motion_after") is None:
+            try:
+                if render_rune_seed_motion(seed):
+                    state["seed_motion_after"] = root.after(
+                        80, seed_motion_frame)
+            except tk.TclError:
+                pass
+
     def build_full():
+        stop_seed_motion()
+        set_capsule_window_region(False)
         clear_scroll_bindings()
         for w in body.winfo_children():
             w.destroy()
@@ -3960,28 +5855,49 @@ def run_gui(args):
                     "compare_same", "compare_other", "compare_all"):
             widgets.pop(key, None)
         card_widgets.clear()
-        head = tk.Frame(body, bg=T["panel"])
+        head = tk.Frame(body, bg=T["raised"])
         head.pack(fill="x")
-        hx = hex_bullet(head, size=20, color=T["gold_bright"], bg=T["panel"])
-        hx.pack(side="left", padx=(9, 5), pady=5)
-        widgets["title"] = L(head, "SPIN'S LOREMASTER", fg=T["gold_bright"],
-                             font=FONT_TITLE, bg=T["panel"])
-        widgets["title"].pack(side="left")
-        for txt, cmd in (("\u2715", do_quit), ("HUD", toggle_mini),
+        logo = tk.Canvas(
+            head, width=38, height=38, bg=T["raised"],
+            highlightthickness=0, bd=0)
+        logo.pack(side="left", padx=(12, 8), pady=7)
+        cog = brand_images.get("cog")
+        if cog is not None:
+            logo.create_image(19, 19, image=cog, anchor="center")
+            logo._lore_brand_image = cog
+        else:
+            logo.create_oval(4, 4, 34, 34, fill=T["void"],
+                             outline=T["gold"], width=2)
+            logo.create_line(19, 7, 19, 31, fill=T["gold_bright"], width=2)
+            logo.create_line(7, 19, 31, 19, fill=T["gold_bright"], width=2)
+        title_stack = tk.Frame(head, bg=T["raised"])
+        title_stack.pack(side="left", fill="y", pady=(8, 5))
+        widgets["title"] = L(
+            title_stack, "LOREMASTER", fg=T["parchment"],
+            font=FONT_TITLE, bg=T["raised"],
+        )
+        widgets["title"].pack(anchor="w")
+        widgets["dot"] = L(
+            title_stack, "\u25cf LIVE", fg=T["green"], font=FONT_S,
+            bg=T["raised"],
+        )
+        widgets["dot"].pack(anchor="w")
+        for txt, cmd in (("\u2715", do_quit), ("SEED", toggle_mini),
                          ("LORE", open_wiki_from_hotkey), ("RESET", do_reset)):
-            b = tk.Label(head, text=txt, fg=T["dim"], bg=T["panel"], font=FONT_B, cursor="hand2")
-            b.pack(side="right", padx=5)
-            b.bind("<Button-1>", lambda _e, c=cmd: c())
-        widgets["dot"] = L(head, "\u25cf", fg=T["green"], font=FONT_S, bg=T["panel"])
-        widgets["dot"].pack(side="right", padx=2)
-        tk.Frame(body, bg=T["ember"], height=2).pack(fill="x")
+            button = tk.Label(
+                head, text=txt, fg=T["dim"], bg=T["raised"],
+                font=FONT_RUNE, cursor="hand2", padx=6, pady=5,
+            )
+            button.pack(side="right", padx=(0, 3), pady=8)
+            button.bind("<Button-1>", lambda _e, command=cmd: command())
+        tk.Frame(body, bg=T["line_soft"], height=1).pack(fill="x")
 
         top_summary = tk.Frame(body, bg=T["bg"])
         top_summary.pack(fill="x")
         widgets["top_summary"] = top_summary
 
         identity = tk.Frame(top_summary, bg=T["bg"])
-        identity.pack(fill="x", padx=10, pady=(4, 0))
+        identity.pack(fill="x", padx=10, pady=(8, 0))
         widgets["who"] = L(identity, "", fg=T["parchment"], font=FONT_RUNE)
         widgets["who"].pack(side="left")
         widgets["session"] = L(identity, "", fg=T["dim"], font=FONT_S, anchor="e")
@@ -4006,25 +5922,28 @@ def run_gui(args):
         # remains reachable at the panel's 360px minimum width.
         widgets["zone"].pack(side="left", pady=1)
 
-        scopes = tk.Frame(top_summary, bg=T["void"])
-        scopes.pack(fill="x", padx=10, pady=(4, 1))
+        scopes = tk.Frame(
+            top_summary, bg=T["void"],
+            highlightbackground=T["line_soft"], highlightthickness=1,
+        )
+        scopes.pack(fill="x", padx=10, pady=(7, 2))
         for scope, label in (("fight", "ENCOUNTER"),
                              ("session", "SESSION"),
                              ("records", "RECORDS")):
             tab = tk.Label(scopes, text=label, fg=T["dim"], bg=T["void"],
-                           font=FONT_RUNE, cursor="hand2", pady=3)
-            tab.pack(side="left", expand=True, fill="x")
+                           font=FONT_RUNE, cursor="hand2", pady=5)
+            tab.pack(side="left", expand=True, fill="x", padx=2, pady=2)
             tab.bind("<Button-1>", lambda _e, s=scope: set_scope(s))
             widgets[f"scope_{scope}"] = tab
 
         encounter = tk.Frame(top_summary, bg=T["bg"])
-        encounter.pack(fill="x", padx=10, pady=(2, 0))
+        encounter.pack(fill="x", padx=10, pady=(3, 0))
         widgets["encounter_nav"] = encounter
         for name, label, direction in (("encounter_prev", "‹ PREVIOUS", -1),
                                        ("encounter_live", "CURRENT", 0),
                                        ("encounter_next", "NEXT ›", 1)):
             b = tk.Label(encounter, text=label, fg=T["cyan"], bg=T["raised"],
-                         font=FONT_RUNE, cursor="hand2", padx=6, pady=2)
+                         font=FONT_RUNE_S, cursor="hand2", padx=8, pady=3)
             b.pack(side="left" if direction < 1 else "right")
             b.bind("<Button-1>", lambda _e, d=direction: browse_fight(d))
             widgets[name] = b
@@ -4032,38 +5951,79 @@ def run_gui(args):
                                          font=FONT_RUNE, anchor="center")
         widgets["encounter_label"].pack(side="left", fill="x", expand=True)
 
+        # The high-detail state opens with one dominant encounter number and
+        # keeps context secondary.  Grid weights preserve that hierarchy as
+        # the user resizes the panel.
+        hero = tk.Frame(
+            top_summary, bg=T["raised"], highlightbackground=T["line_soft"],
+            highlightthickness=1,
+        )
+        hero.pack(fill="x", padx=10, pady=(4, 3))
+        widgets["hero"] = hero
+        metric_row = tk.Frame(hero, bg=T["raised"])
+        metric_row.pack(fill="x", padx=10, pady=(8, 3))
+        metric_row.grid_columnconfigure(0, weight=5)
+        metric_row.grid_columnconfigure(1, weight=2)
+        metric_row.grid_columnconfigure(2, weight=2)
+        for column, (key, label, color) in enumerate((
+                ("current_dps", "FIGHT DPS", T["gold_bright"]),
+                ("session_dps", "SESSION", T["parchment"]),
+                ("best_dps", "BEST", T["parchment"]))):
+            cell = tk.Frame(metric_row, bg=T["raised"])
+            cell.grid(row=0, column=column, sticky="nsew", padx=(0, 6))
+            widgets[key] = L(
+                cell, "0", fg=color,
+                font=FONT_HERO if key == "current_dps" else FONT_METRIC,
+                bg=T["raised"], anchor="w",
+            )
+            widgets[key].pack(fill="x")
+            widgets[f"{key}_label"] = L(
+                cell, label, fg=T["dim"], font=FONT_RUNE_S,
+                bg=T["raised"], anchor="w",
+            )
+            widgets[f"{key}_label"].pack(fill="x")
+        meter = tk.Canvas(
+            hero, height=12, bg=T["raised"], highlightthickness=0, bd=0,
+        )
+        meter._lore_pct = 0.0
+        meter._lore_draw_state = None
+        meter.pack(fill="x", padx=10, pady=(2, 8))
+        meter.bind("<Configure>", lambda _e: _draw_hero_meter(meter))
+        widgets["hero_meter"] = meter
+
+        quick_metrics = tk.Frame(top_summary, bg=T["bg"])
+        quick_metrics.pack(fill="x", padx=10, pady=(1, 3))
+        widgets["quick_metrics"] = quick_metrics
+        for index, (key, label) in enumerate((
+                ("damage", "DAMAGE"), ("taken", "TAKEN"),
+                ("healing", "HEALING"), ("enemies", "ENEMIES"))):
+            cell = tk.Frame(
+                quick_metrics, bg=T["void"],
+                highlightbackground=T["line_soft"], highlightthickness=1,
+            )
+            cell.pack(side="left", fill="both", expand=True,
+                      padx=(0, 3 if index < 3 else 0))
+            L(cell, label, fg=T["dim"], font=FONT_RUNE_S,
+              bg=T["void"]).pack(anchor="w", padx=7, pady=(5, 0))
+            widgets[f"quick_{key}"] = L(
+                cell, "0", fg=T["text"], font=FONT_METRIC, bg=T["void"],
+            )
+            widgets[f"quick_{key}"].pack(anchor="w", padx=7, pady=(0, 5))
+
         lab_nav = tk.Frame(top_summary, bg=T["bg"])
-        lab_nav.pack(fill="x", padx=10, pady=(3, 0))
+        lab_nav.pack(fill="x", padx=10, pady=(4, 2))
         widgets["lab_nav"] = lab_nav
         for view, label in (("overview", "OVERVIEW"), ("damage", "DAMAGE"),
                             ("healing", "HEALING"), ("targets", "TARGETS"),
                             ("timeline", "TIMELINE")):
-            tab = tk.Label(lab_nav, text=label, fg=T["dim"], bg=T["void"],
-                           font=FONT_RUNE, cursor="hand2", pady=3)
-            tab.pack(side="left", expand=True, fill="x", padx=(0, 1))
+            tab = tk.Label(
+                lab_nav, text=label, fg=T["dim"], bg=T["void"],
+                font=FONT_RUNE_S, cursor="hand2", pady=4,
+                highlightbackground=T["line_soft"], highlightthickness=1,
+            )
+            tab.pack(side="left", expand=True, fill="x", padx=(0, 2))
             tab.bind("<Button-1>", lambda _e, v=view: set_lab_view(v))
             widgets[f"lab_{view}"] = tab
-
-        # Ember hero band: live combat at a glance, or the permanent chronicle.
-        hero = tk.Frame(top_summary, bg=T["raised"])
-        hero.pack(fill="x", padx=10, pady=(3, 2))
-        widgets["hero"] = hero
-        tk.Frame(hero, bg=T["cyan"], width=3).pack(side="left", fill="y")
-        for key, label, color in (("current_dps", "FIGHT DPS", T["gold_bright"]),
-                                  ("session_dps", "SESSION", T["text"]),
-                                  ("best_dps", "BEST", T["cyan"])):
-            if key != "current_dps":
-                tk.Frame(hero, bg=T["line"], width=1).pack(side="left", fill="y", pady=7)
-            cell = tk.Frame(hero, bg=T["raised"])
-            cell.pack(side="left", expand=True, fill="both", pady=3)
-            widgets[key] = L(cell, "0", fg=color, font=FONT_BIG,
-                             bg=T["raised"], anchor="center")
-            widgets[key].pack(fill="x")
-            widgets[f"{key}_label"] = L(cell, label, fg=T["dim"], font=FONT_RUNE,
-                                         bg=T["raised"], anchor="center")
-            widgets[f"{key}_label"].pack(fill="x")
-        rule = tk.Frame(top_summary, bg=T["gold"], height=2)
-        rule.pack(fill="x", padx=10, pady=(3, 4))
 
         summary_restore = tk.Frame(body, bg=T["bg"])
         widgets["summary_restore"] = summary_restore
@@ -4076,11 +6036,11 @@ def run_gui(args):
 
         # scrollable ledger
         wrap = tk.Frame(body, bg=T["bg"])
-        wrap.pack(fill="both", expand=True, padx=6, pady=(0, 4))
+        wrap.pack(fill="both", expand=True, padx=10, pady=(2, 5))
         widgets["ledger_wrap"] = wrap
         apply_summary_visibility(
             top_summary, summary_restore, wrap, state["summary_collapsed"])
-        canvas = tk.Canvas(wrap, bg=T["bg"], highlightthickness=0, width=396)
+        canvas = tk.Canvas(wrap, bg=T["bg"], highlightthickness=0, width=520)
         vsb = tk.Scrollbar(wrap, orient="vertical", command=canvas.yview,
                            troughcolor=T["bg"], bg=T["raised"], width=8)
         inner = tk.Frame(canvas, bg=T["bg"])
@@ -4115,25 +6075,26 @@ def run_gui(args):
             "<Button-5>", scroll_linux(1), add="+")
 
         for key, label in CARDS:
-            sect = tk.Frame(inner, bg=T["bg"])
-            sect.pack(fill="x", pady=(5, 0))
-            row = tk.Frame(sect, bg=T["bg"], cursor="hand2")
-            row.pack(fill="x", padx=4)
-            hb = hex_bullet(row, size=12)
+            sect = tk.Frame(
+                inner, bg=T["void"], highlightbackground=T["line_soft"],
+                highlightthickness=1,
+            )
+            sect.pack(fill="x", pady=(4, 0), padx=1)
+            row = tk.Frame(sect, bg=T["void"], cursor="hand2")
+            row.pack(fill="x", padx=9, pady=5)
+            hb = hex_bullet(row, size=12, bg=T["void"])
             hb.pack(side="left", pady=2)
-            nm = L(row, label, fg=T["gold"], font=FONT_S, bg=T["bg"])
-            nm.pack(side="left", padx=(6, 0))
-            chev = L(row, "\u25b8", fg=T["dim"], font=FONT_S, bg=T["bg"])
+            nm = L(row, label, fg=T["gold"], font=FONT_RUNE, bg=T["void"])
+            nm.pack(side="left", padx=(7, 0))
+            chev = L(row, "\u25b8", fg=T["dim"], font=FONT_S, bg=T["void"])
             chev.pack(side="right")
-            star = L(row, "\u2726", fg=T["line"], font=FONT_S, bg=T["bg"], cursor="hand2")
+            star = L(row, "\u2726", fg=T["line"], font=FONT_S, bg=T["void"], cursor="hand2")
             star.pack(side="right", padx=6)
-            val = L(row, "\u2014", fg=T["text"], font=FONT_B, bg=T["bg"], anchor="e")
+            val = L(row, "\u2014", fg=T["text"], font=FONT_B, bg=T["void"], anchor="e")
             val.pack(side="right", padx=(0, 4), fill="x", expand=True)
             # the gold rule under each section header — equipment-screen DNA
-            rl = tk.Frame(sect, bg=T["gold"], height=1)
-            rl.pack(fill="x", padx=4, pady=(1, 0))
-            rl2 = tk.Frame(sect, bg="#090704", height=1)
-            rl2.pack(fill="x", padx=4)
+            rl = tk.Frame(sect, bg=T["line_soft"], height=1)
+            rl.pack(fill="x")
             detail = tk.Frame(sect, bg=T["bg"])
             for w in (row, hb, nm, val, chev):
                 w.bind("<Button-1>", lambda _e, k=key: toggle_card(k))
@@ -4142,6 +6103,58 @@ def run_gui(args):
                                  "name": nm, "hex": hb, "rule": rl,
                                  "detail": detail, "detail_signature": None,
                                  "detail_controls": []}
+
+        # Alerts stay in reach in the expanded state.  The master switch and
+        # three frequent triggers are true toggles; the gear opens the complete
+        # settings surface for thresholds, sounds, duration, and custom rules.
+        alert_rail = tk.Frame(
+            body, bg=T["raised"], highlightbackground=T["meter_edge"],
+            highlightthickness=1,
+        )
+        alert_rail.pack(fill="x", padx=10, pady=(0, 6))
+        alert_copy = tk.Frame(alert_rail, bg=T["raised"], cursor="hand2")
+        alert_copy.pack(side="left", padx=10, pady=7)
+        widgets["alert_master"] = L(
+            alert_copy, "\u25cf ALERTS OFF", fg=T["dim"], font=FONT_RUNE,
+            bg=T["raised"], cursor="hand2",
+        )
+        widgets["alert_master"].pack(anchor="w")
+        widgets["alert_summary"] = L(
+            alert_copy, "click to arm", fg=T["dim"], font=FONT_RUNE_S,
+            bg=T["raised"], cursor="hand2",
+        )
+        widgets["alert_summary"].pack(anchor="w")
+        for control in (alert_copy, widgets["alert_master"],
+                        widgets["alert_summary"]):
+            control.bind(
+                "<Button-1>", lambda _e: toggle_alert_flag("alerts_enabled"))
+
+        gear = tk.Label(
+            alert_rail, text="\u2699", fg=T["dim"], bg=T["void"],
+            font=FONT_B, cursor="hand2", padx=9, pady=5,
+            highlightbackground=T["line_soft"], highlightthickness=1,
+        )
+        gear.pack(side="right", padx=(2, 8), pady=8)
+        gear.bind("<Button-1>", open_settings)
+        more = tk.Label(
+            alert_rail, text="+", fg=T["dim"], bg=T["void"],
+            font=FONT_B, cursor="hand2", padx=9, pady=5,
+            highlightbackground=T["line_soft"], highlightthickness=1,
+        )
+        more.pack(side="right", padx=2, pady=8)
+        more.bind("<Button-1>", open_settings)
+        for key, label in (("alert_big_hit", "BIG HIT"),
+                           ("alert_tells", "TELL"),
+                           ("alert_charm_break", "CHARM")):
+            chip = tk.Label(
+                alert_rail, text=label, fg=T["dim"], bg=T["void"],
+                font=FONT_RUNE_S, cursor="hand2", padx=9, pady=5,
+                highlightbackground=T["line_soft"], highlightthickness=1,
+            )
+            chip.pack(side="right", padx=2, pady=8)
+            chip.bind("<Button-1>", lambda _e, flag=key: toggle_alert_flag(flag))
+            widgets[key] = chip
+
         footer = tk.Frame(body, bg=T["panel"])
         footer.pack(fill="x")
         widgets["status"] = L(footer, "Loremaster awaits your log\u2026",
@@ -4180,151 +6193,247 @@ def run_gui(args):
             font=FONT_RUNE, cursor="hand2", padx=7, pady=3)
         widgets["lock"].pack(side="right", padx=(0, 4), pady=3)
         widgets["lock"].bind("<Button-1>", lambda _e: toggle_lock())
-        pos = cfg.get("position")
-        panel_size = cfg.get("panel_size") or [400, 480]
-        minimum_width = int(360 * max(1.0, font_scale))
-        minimum_height = int(360 * max(1.0, font_scale))
-        width = max(minimum_width, min(760, int(panel_size[0])))
-        height = max(minimum_height, min(940, int(panel_size[1])))
-        default_x = max(8, root.winfo_screenwidth() - width - 24)
-        default_y = max(8, root.winfo_screenheight() - height - 300)
-        place_window(width, height, pos, default_x, default_y)
-
-    def fit_mini_stat_labels():
-        name_widgets = widgets.get("mini_names") or {}
-        value_widgets = widgets.get("mini_items") or {}
-        keys = list(name_widgets)
-        if not keys:
-            return
-        controls = widgets.get("mini_controls")
-        if controls:
-            controls.update_idletasks()
-            controls_reserved = controls.winfo_reqwidth() + 4
-            widgets["mini_available_width"] = max(
-                80, int(widgets.get("mini_width", MINI_BASE_WIDTH))
-                - controls_reserved - 3 - 2 - 8 - 8)
-        rune_font = tkfont.Font(root=root, font=FONT_RUNE)
-        value_font = tkfont.Font(root=root, font=FONT_B)
-        full_widths = {}
-        compact_widths = {}
-        for key in keys:
-            value_text = str(value_widgets[key].cget("text"))
-            value_width = value_font.measure(value_text) + 3
-            full_widths[key] = (
-                rune_font.measure(MINI_CARD_LABELS[key]) + value_width)
-            compact_widths[key] = (
-                rune_font.measure(MINI_COMPACT_LABELS.get(
-                    key, MINI_CARD_LABELS[key])) + value_width)
-        labels = mini_stat_label_plan(
-            keys, int(widgets.get("mini_available_width", 0)),
-            full_widths, compact_widths)
-        for key, label in labels.items():
-            _set_text(name_widgets[key], label)
-        # Even fully compacted labels can outgrow the strip when values get
-        # long (big DPS numbers, coin totals), and a clipped word is worse than
-        # a slightly wider HUD. But the strip used to only ever grow, so once a
-        # long value had been seen the extra pixels stayed forever as dead space
-        # between the last stat and the right-hand tools. Track the real
-        # measured need and follow it in both directions, so the strip is
-        # exactly as long as what it is showing.
-        if state.get("mini"):
-            cells = widgets.get("mini_cells")
-            if cells and controls:
-                cells.update_idletasks()
-                needed_width = min(1000, max(
-                    MINI_MIN_WIDTH,
-                    controls.winfo_reqwidth() + cells.winfo_reqwidth() + 25))
-                current_width = int(widgets.get("mini_width", MINI_BASE_WIDTH))
-                if needed_width != current_width:
-                    widgets["mini_width"] = needed_width
-                    widgets["mini_available_width"] = max(
-                        80, int(widgets.get("mini_available_width", 0))
-                        + needed_width - current_width)
-                    try:
-                        root.geometry(f"{needed_width}x{root.winfo_height()}")
-                    except tk.TclError:
-                        pass
+        width, height, x, y = target_geometry_for_mode(False)
+        root.geometry(f"{width}x{height}{x:+d}{y:+d}")
+        refresh(force_detail=True)
 
     def build_mini():
+        stop_seed_motion()
         clear_scroll_bindings()
         for w in body.winfo_children():
             w.destroy()
         card_widgets.clear()
-        pos = cfg.get("mini_position")
-        mini_width = min(1000, int(MINI_BASE_WIDTH * max(1.0, font_scale)))
-        mini_height = min(48, int(MINI_BASE_HEIGHT * max(1.0, font_scale)))
-        strip = tk.Frame(body, bg=T["bg"])
-        strip.pack(fill="both", expand=True)
-        cap = tk.Frame(strip, bg=T["gold"], width=3)
-        cap.pack(side="left", fill="y")
-        # Reserve the right-side tools before the expanding stat cells. Tk's
-        # packer allocates in order; the previous order could clip the tool at
-        # the exact 720x34 production size.
-        controls = tk.Frame(strip, bg=T["bg"])
-        controls.pack(side="right", fill="y", padx=(1, 3))
-        widgets["mini_controls"] = controls
+        scale = max(1.0, font_scale)
+        seed_width = int(round(RUNE_SEED_WIDTH * scale))
+        seed_height = int(round(RUNE_SEED_HEIGHT * scale))
+        mini_width = seed_width + 2
+        mini_height = seed_height + 2
+        seed = rune_seed_canvas(
+            body, width=seed_width, height=seed_height, bg=T["bg"])
+        seed.pack(fill="both", expand=True)
+        widgets["mini_seed"] = seed
         widgets["mini_width"] = mini_width
-        # The mini strip is a stats readout, so it carries only the controls a
-        # glance needs: the log-health dot, LOCK, and DETAILS. SETTINGS and
-        # Lore Lens live on the DETAILS footer, one click away, which keeps
-        # every spare pixel here on the ledger cells.
-        widgets["mini_log"] = tk.Label(
-            controls, text="●", fg=T["dim"], bg=T["bg"], font=FONT_S,
-            cursor="hand2", padx=3)
-        widgets["mini_log"].pack(side="left", pady=3)
-        widgets["mini_log"].bind("<Button-1>", choose_log_dir)
-        widgets["mini_lock"] = tk.Label(
-            controls, text="LOCK", fg=T["dim"], bg=T["raised"],
-            font=FONT_RUNE, cursor="hand2", padx=5)
-        widgets["mini_lock"].pack(side="left", pady=3)
-        widgets["mini_lock"].bind("<Button-1>", lambda _e: toggle_lock())
-        details = tk.Label(controls, text="DETAILS", fg=T["cyan"], bg=T["raised"],
-                           font=FONT_RUNE, cursor="hand2", padx=6)
-        details.pack(side="left", padx=(3, 0), pady=3)
-        details.bind("<Button-1>", lambda _e: toggle_mini())
-        controls.update_idletasks()
-        # Account for the 1px outer frame, ember cap, external pack padding,
-        # and a small anti-clipping safety margin. Controls are measured first
-        # and therefore can never steal pixels from a partially drawn stat word.
-        controls_reserved = controls.winfo_reqwidth() + 4
-        widgets["mini_available_width"] = max(
-            80, mini_width - controls_reserved - 3 - 2 - 8 - 8)
-        cells = tk.Frame(strip, bg=T["bg"])
-        cells.pack(side="left", fill="both", expand=True, padx=4, pady=3)
-        widgets["mini_cells"] = cells
-        widgets["mini_items"] = {}
-        widgets["mini_names"] = {}
-        names = MINI_CARD_LABELS
-        starred = [k for k in (cfg.get("starred_cards") or ["combat"])
-                   if k in names][:MINI_MAX_CELLS]
-        for i, key in enumerate(starred):
-            if i:
-                tk.Frame(cells, bg=T["gold"], width=1, height=14).pack(
-                    side="left", padx=4, pady=2)
-            name = tk.Label(cells, text=names[key], fg=T["gold"], bg=T["bg"],
-                            font=FONT_RUNE)
-            name.pack(side="left")
-            value = tk.Label(cells, text="—", fg=T["text"], bg=T["bg"], font=FONT_B)
-            value.pack(side="left", padx=(3, 0))
-            widgets["mini_names"][key] = name
-            widgets["mini_items"][key] = value
-        fit_mini_stat_labels()
-        # Four default ledger cards plus the log dot, lock, and details
-        # controls fit in 560 px at the standard font size.  Keeping an
-        # explicit width also makes the companion reservation deterministic
-        # for installer-provided layouts instead of clipping right-side tools.
-        default_x = max(8, root.winfo_screenwidth() - mini_width - 12)
-        default_y = max(8, root.winfo_screenheight() - mini_height - 284)
-        place_window(mini_width, mini_height, pos, default_x, default_y)
+
+        def cycle_seed(direction):
+            keys = rune_seed_keys(cfg.get("starred_cards"))
+            state["mini_stat_index"] = cycle_rune_seed_index(
+                state.get("mini_stat_index", 0), direction, len(keys))
+            cfg["mini_stat_index"] = state["mini_stat_index"]
+            pending = state.get("mini_save_after")
+            if pending is not None:
+                try:
+                    root.after_cancel(pending)
+                except tk.TclError:
+                    pass
+
+            def persist_seed_index():
+                state["mini_save_after"] = None
+                save_config(cfg)
+
+            state["mini_save_after"] = root.after(250, persist_seed_index)
+            refresh()
+            return "break"
+
+        def wheel(event):
+            delta = int(getattr(event, "delta", 0) or 0)
+            return cycle_seed(1 if delta < 0 else -1)
+
+        # A click unfolds the seed; the same surface remains draggable when
+        # unlocked.  Motion is coalesced to ~60 Hz so a window drag cannot
+        # starve the parser/UI loop.
+        seed_drag = {"mouse": (0, 0), "origin": (0, 0), "moved": False,
+                     "pending": None, "after": None}
+
+        def flush_seed_drag():
+            seed_drag["after"] = None
+            pending = seed_drag.get("pending")
+            seed_drag["pending"] = None
+            if pending is not None:
+                root.geometry(f"{pending[0]:+d}{pending[1]:+d}")
+
+        def seed_press(event):
+            seed_drag["mouse"] = (event.x_root, event.y_root)
+            seed_drag["origin"] = (root.winfo_x(), root.winfo_y())
+            seed_drag["moved"] = False
+            seed_drag["pending"] = None
+            return "break"
+
+        def seed_motion(event):
+            if state["locked"] or state["click_through"]:
+                return "break"
+            dx = event.x_root - seed_drag["mouse"][0]
+            dy = event.y_root - seed_drag["mouse"][1]
+            if abs(dx) + abs(dy) < 4 and not seed_drag["moved"]:
+                return "break"
+            seed_drag["moved"] = True
+            x, y = clamped_position(
+                (seed_drag["origin"][0] + dx, seed_drag["origin"][1] + dy),
+                mini_width, mini_height, root.winfo_x(), root.winfo_y())
+            seed_drag["pending"] = (x, y)
+            if seed_drag["after"] is None:
+                seed_drag["after"] = root.after(16, flush_seed_drag)
+            return "break"
+
+        def seed_release(_event):
+            pending = seed_drag.get("after")
+            if pending is not None:
+                try:
+                    root.after_cancel(pending)
+                except tk.TclError:
+                    pass
+                seed_drag["after"] = None
+            flush_seed_drag()
+            if seed_drag["moved"]:
+                cfg["mini_position"] = [root.winfo_x(), root.winfo_y()]
+                save_config(cfg)
+            else:
+                toggle_mini()
+            return "break"
+
+        seed.configure(cursor="hand2" if state["locked"] else "fleur")
+        seed.bind("<Button-1>", seed_press)
+        seed.bind("<B1-Motion>", seed_motion)
+        seed.bind("<ButtonRelease-1>", seed_release)
+        seed.bind("<MouseWheel>", wheel)
+        seed.bind("<Button-4>", lambda _e: cycle_seed(-1))
+        seed.bind("<Button-5>", lambda _e: cycle_seed(1))
+        seed.bind("<Button-2>", lambda _e: (toggle_lock(), "break")[1])
+        seed.bind("<Button-3>", open_settings)
+
+        _width, _height, x, y = target_geometry_for_mode(True)
+        root.geometry(f"{mini_width}x{mini_height}{x:+d}{y:+d}")
+        root.update_idletasks()
+        set_capsule_window_region(True, mini_width, mini_height)
+        refresh()
+
+    def show_morph_bridge(target_mini):
+        """Show one cached, configure-light brand bridge during the morph."""
+        stop_seed_motion()
+        # The timer tracker continues running, but its independent window is
+        # hidden until the destination HUD can place it correctly.
+        mez_overlay.hide()
+        set_capsule_window_region(False)
+        clear_scroll_bindings()
+        for child in body.winfo_children():
+            child.destroy()
+        card_widgets.clear()
+        bridge = tk.Canvas(
+            body, bg=T["bg"], highlightthickness=0, bd=0)
+        bridge.pack(fill="both", expand=True)
+        bridge.create_oval(
+            0, 0, 1, 1, fill=T["void"], outline=T["line_soft"], width=1,
+            tags="bridge_halo")
+        bridge.create_arc(
+            0, 0, 1, 1, start=90, extent=88, style="arc",
+            outline=T["gold_bright"], width=2, tags="bridge_sweep")
+        cog = brand_images.get("cog")
+        if cog is not None:
+            bridge.create_image(0, 0, image=cog, anchor="center",
+                                tags="bridge_brand")
+            bridge._lore_brand_image = cog
+        else:
+            bridge.create_oval(0, 0, 1, 1, fill=T["void"],
+                               outline=T["gold"], width=2,
+                               tags="bridge_brand")
+        bridge.create_text(
+            0, 0, text="LOREMASTER", fill=T["parchment"],
+            font=FONT_TITLE, tags="bridge_title")
+        bridge.create_text(
+            0, 0,
+            text="RETURNING TO RUNE" if target_mini else "OPENING LEDGER",
+            fill=T["dim"], font=FONT_RUNE_S, tags="bridge_direction")
+        bridge.create_line(
+            0, 0, 1, 0, fill=T["line_soft"], width=2,
+            tags="bridge_rail")
+        bridge.create_line(
+            0, 0, 1, 0, fill=T["cyan"], width=2,
+            tags="bridge_progress")
+        visual = {"width": 1, "height": 1, "progress": 0.0}
+
+        def paint_bridge(event=None):
+            if event is not None:
+                visual["width"] = max(1, int(event.width))
+                visual["height"] = max(1, int(event.height))
+            width = visual["width"]
+            height = visual["height"]
+            progress = visual["progress"]
+            cx, cy = width // 2, height // 2
+            radius = max(18, min(23, min(width, height) // 3))
+            bridge.coords(
+                "bridge_halo", cx - radius, cy - radius,
+                cx + radius, cy + radius)
+            bridge.coords(
+                "bridge_sweep", cx - radius, cy - radius,
+                cx + radius, cy + radius)
+            bridge.itemconfigure(
+                "bridge_sweep", start=90 - progress * 300,
+                outline=blend_hex_color(T["gold"], T["cyan"], progress))
+            if cog is not None:
+                bridge.coords("bridge_brand", cx, cy)
+            else:
+                bridge.coords(
+                    "bridge_brand", cx - 15, cy - 15, cx + 15, cy + 15)
+            expanded_copy = width >= 190 and height >= 110
+            copy_state = "normal" if expanded_copy else "hidden"
+            bridge.coords("bridge_title", cx, cy + radius + 23)
+            bridge.coords("bridge_direction", cx, cy + radius + 41)
+            bridge.itemconfigure("bridge_title", state=copy_state)
+            bridge.itemconfigure("bridge_direction", state=copy_state)
+            rail_half = max(25, min(112, (width - 48) // 2))
+            rail_y = cy + radius + 59
+            bridge.coords(
+                "bridge_rail", cx - rail_half, rail_y,
+                cx + rail_half, rail_y)
+            bridge.coords(
+                "bridge_progress", cx - rail_half, rail_y,
+                cx - rail_half + rail_half * 2 * progress, rail_y)
+            bridge.itemconfigure("bridge_rail", state=copy_state)
+            bridge.itemconfigure("bridge_progress", state=copy_state)
+
+        bridge.bind("<Configure>", paint_bridge)
+        paint_bridge()
+
+        def update_progress(progress, _rect):
+            visual["progress"] = max(0.0, min(1.0, float(progress)))
+            paint_bridge()
+
+        return update_progress
 
     def toggle_mini():
-        state["mini"] = not state["mini"]
-        cfg["mini_mode"] = state["mini"]
-        save_config(cfg)
-        (build_mini if state["mini"] else build_full)()
+        if state.get("morphing"):
+            return
+        start = (root.winfo_width(), root.winfo_height(),
+                 root.winfo_x(), root.winfo_y())
+        pending = state.get("mini_save_after")
+        if pending is not None:
+            try:
+                root.after_cancel(pending)
+            except tk.TclError:
+                pass
+            state["mini_save_after"] = None
+        target_mini = not state["mini"]
+        target = target_geometry_for_mode(target_mini)
+
+        def finish_transition():
+            if state["closing"]:
+                return
+            state["morphing"] = False
+            state["mini"] = target_mini
+            cfg["mini_mode"] = target_mini
+            (build_mini if target_mini else build_full)()
+            # Disk I/O is intentionally off the visual critical path.
+            root.after(
+                100, lambda: None if state["closing"] else save_config(cfg))
+
+        state["morphing"] = True
+        update_bridge = show_morph_bridge(target_mini)
+        animate_geometry_transition(
+            start, target, finish_transition, on_frame=update_bridge)
 
     def do_reset():
         stats.reset()
+        mez_tracker.clear()
+        mez_overlay.hide()
         state["fights_seen"] = 0
         state["selected_fight"] = None
 
@@ -4351,6 +6460,8 @@ def run_gui(args):
         watcher = LogWatcher(cfg["log_dir"], args.log)
         ingest_worker = LogIngestWorker(watcher)
         ingest_pending.clear()
+        mez_tracker.clear()
+        mez_overlay.hide()
         if widgets.get("status"):
             widgets["status"].configure(text="searching for the newest eqlog…")
         state["fights_seen"] = 0
@@ -4372,6 +6483,7 @@ def run_gui(args):
             except tk.TclError:
                 pass
         alerts.clear()
+        mez_overlay.hide()
         try:
             root.attributes("-topmost", False)
             root.withdraw()
@@ -4401,6 +6513,15 @@ def run_gui(args):
         if state["closing"]:
             return
         state["closing"] = True
+        for callback_key in (
+                "morph_after", "mini_save_after", "seed_motion_after"):
+            pending = state.get(callback_key)
+            if pending is not None:
+                try:
+                    root.after_cancel(pending)
+                except tk.TclError:
+                    pass
+                state[callback_key] = None
         tray.close(timeout=1.0)
         if state["click_through"]:
             state["click_through"] = False
@@ -4408,6 +6529,7 @@ def run_gui(args):
         remove_recovery_hotkey()
         hover_ocr_service.close()
         wiki_service.close()
+        mez_overlay.destroy()
         if not demo:
             save_character_state(stats.character, stats)
         save_config(cfg)
@@ -4446,6 +6568,8 @@ def run_gui(args):
 
     def _apply_character_switch(record):
         save_character_state(stats.character, stats)
+        mez_tracker.clear()
+        mez_overlay.hide()
         character = record.character or "?"
         stats.__init__(character, session_gap=session_gap,
                        composition=configured_composition(cfg, character))
@@ -4464,8 +6588,8 @@ def run_gui(args):
         if parsed:
             ts, kind, groups = parsed
             cutoff = state.get("lifetime_cutoff")
-            charm_break_events = stats.apply(
-                ts, kind, groups,
+            charm_break_events = apply_log_models(
+                stats, mez_tracker, ts, kind, groups,
                 count_lifetime=(cutoff is None or ts > cutoff))
             if kind == "composition" and stats.composition:
                 remember_composition(cfg, stats.character, stats.composition)
@@ -4562,6 +6686,31 @@ def run_gui(args):
     def _set_text(label, value):
         _set_widget(label, text=value)
 
+    def _draw_hero_meter(canvas):
+        """Update the two cached hero-meter rectangles in place."""
+        width = max(1, canvas.winfo_width())
+        pct = max(0.0, min(1.0, float(getattr(canvas, "_lore_pct", 0.0))))
+        fill_width = round(width * pct)
+        draw_state = (width, round(pct, 4))
+        if getattr(canvas, "_lore_draw_state", None) == draw_state:
+            return
+        canvas._lore_draw_state = draw_state
+        items = getattr(canvas, "_lore_items", None)
+        if not items:
+            track = canvas.create_rectangle(
+                0, 3, width, 9, fill=T["meter"], outline=T["meter_edge"],
+            )
+            fill = canvas.create_rectangle(
+                0, 3, fill_width, 9, fill=T["cyan"], outline="",
+                state="normal" if fill_width else "hidden",
+            )
+            canvas._lore_items = (track, fill)
+        else:
+            track, fill = items
+            canvas.coords(track, 0, 3, width, 9)
+            canvas.coords(fill, 0, 3, fill_width, 9)
+            canvas.itemconfigure(fill, state="normal" if fill_width else "hidden")
+
     def _draw_detail_meter(canvas):
         width = max(1, canvas.winfo_width())
         pct = canvas._lore_pct
@@ -4648,33 +6797,76 @@ def run_gui(args):
                     _set_text(control["right"], right)
 
     def refresh(force_detail=False):
-        snap = stats.snapshot(datetime.now())
+        # The short Rune Seed morph temporarily replaces the widget tree with
+        # a transition canvas.  Let the completed target build own the next
+        # refresh instead of touching widgets that were just destroyed.
+        if state.get("morphing"):
+            return
+        now = datetime.now()
+        snap = stats.snapshot(now)
+        warning_seconds = config_number("mez_warning_seconds", 10, 3, 30)
+        mez_snapshot = mez_tracker.snapshot(
+            now, limit=MezTimerOverlay.MAX_ROWS,
+            warning_seconds=warning_seconds,
+            critical_seconds=min(5.0, warning_seconds),
+        )
+        timer_enabled = bool(cfg.get("mez_timers_enabled", True))
+        settings_window = widgets.get("settings_window")
+        lore_window = wiki_ui.get("win")
+        try:
+            interactive_window_visible = bool(
+                (settings_window and settings_window.winfo_viewable())
+                or (lore_window and lore_window.winfo_viewable()))
+            root_visible = bool(
+                root.winfo_viewable() and root.state() == "normal")
+        except tk.TclError:
+            interactive_window_visible = False
+            root_visible = False
+        hud_visible = not (
+            state["hidden_to_tray"] or z_order.get("window_hidden")
+            or interactive_window_visible
+        ) and root_visible
+        mez_overlay.render(
+            mez_snapshot, enabled=timer_enabled, hud_visible=hud_visible,
+            occupied_rects=alerts.occupied_rects())
+        mez_overlay.warning_sound(mez_tracker.pop_warning_events(
+            now, threshold_seconds=warning_seconds,
+            enabled=(timer_enabled and bool(cfg.get("mez_timer_sound", False))),
+        ))
         if state["mini"]:
-            items = widgets.get("mini_items")
-            if not items:
+            seed = widgets.get("mini_seed")
+            if not seed:
                 return
-            for key, label in items.items():
-                value = card_value(snap, key)
-                _set_text(label, value)
-            health, color = log_health()
-            mini_log = widgets.get("mini_log")
-            if mini_log:
-                _set_widget(mini_log, text=f"\u25cf {health}", fg=color)
-            mini_lock = widgets.get("mini_lock")
-            if mini_lock:
-                _set_widget(
-                    mini_lock,
-                    text="MOVE" if state["locked"] else "LOCK",
-                    fg=T["gold_bright"] if state["locked"] else T["dim"])
-            fit_mini_stat_labels()
+            keys = rune_seed_keys(cfg.get("starred_cards"))
+            index = state.get("mini_stat_index", 0) % len(keys)
+            state["mini_stat_index"] = index
+            value, label = rune_seed_metric(snap, keys[index])
+            health, color = ("DEMO", T["green"]) if demo else log_health()
+            alert = state.get("mini_alert")
+            if alert and time.monotonic() >= alert.get("until", 0.0):
+                state["mini_alert"] = None
+                alert = None
+            paint_rune_seed(
+                seed, value, label, health, color, alert,
+                metric_index=index, metric_count=len(keys),
+                in_combat=snap["in_combat"])
+            ensure_seed_motion()
+            try:
+                seed.configure(cursor="hand2" if state["locked"] else "fleur")
+            except tk.TclError:
+                pass
             return
 
-        title = snap["character"]
+        title = snap["character"].upper()
+        if snap.get("level"):
+            title += f"  ·  {snap['level']}"
+        if snap.get("composition"):
+            title += f"  ·  {snap['composition']}"
         if watcher.server != "?":
-            title += f" ({watcher.server})"
+            title += f"  ·  {watcher.server.upper()}"
         _set_text(widgets["who"], title)
         health, health_color = ("DEMO", T["green"]) if demo else log_health()
-        _set_widget(widgets["dot"], fg=health_color)
+        _set_widget(widgets["dot"], text=f"\u25cf {health}", fg=health_color)
         _set_text(widgets["zone"], snap["zone"] or "\u2014")
         lore_shortcut = widgets.get("lore_shortcut")
         if lore_shortcut:
@@ -4702,7 +6894,9 @@ def run_gui(args):
                 if not nav.winfo_manager():
                     nav.pack(fill="x", padx=10, pady=(2, 0), before=widgets["hero"])
                 if lab_nav and not lab_nav.winfo_manager():
-                    lab_nav.pack(fill="x", padx=10, pady=(3, 0), before=widgets["hero"])
+                    lab_nav.pack(
+                        fill="x", padx=10, pady=(4, 2),
+                        after=widgets["quick_metrics"])
             else:
                 if nav.winfo_manager():
                     nav.pack_forget()
@@ -4734,8 +6928,42 @@ def run_gui(args):
             else:
                 _set_widget(pass_button, text="CLICK-THRU", fg=(T["cyan"]
                             if hotkey["registered"] else T["line"]))
+        alert_master = widgets.get("alert_master")
+        if alert_master:
+            master_on = bool(cfg.get("alerts_enabled", False))
+            trigger_keys = (
+                "alert_charm_break", "alert_tells", "alert_summon",
+                "alert_death", "alert_big_hit", "alert_name_called",
+            )
+            armed = sum(bool(cfg.get(key, True)) for key in trigger_keys)
+            _set_widget(
+                alert_master,
+                text=f"\u25cf ALERTS {'ON' if master_on else 'OFF'}",
+                fg=T["green"] if master_on else T["dim"],
+            )
+            _set_text(
+                widgets["alert_summary"],
+                f"{armed} armed \u00b7 click to {'disarm' if master_on else 'enable'}",
+            )
+            for key in ("alert_charm_break", "alert_tells", "alert_big_hit"):
+                chip = widgets.get(key)
+                if not chip:
+                    continue
+                enabled = bool(cfg.get(key, True))
+                _set_widget(
+                    chip,
+                    fg=(T["gold_bright"] if enabled and master_on
+                        else T["parchment"] if enabled else T["line"]),
+                    bg=T["raised"] if enabled and master_on else T["void"],
+                    highlightbackground=(T["meter_edge"] if enabled
+                                         else T["line_soft"]),
+                )
+        hero_primary = 0.0
+        hero_best = 0.0
         if state["scope"] == "records":
             life = snap["lifetime"]
+            hero_primary = float(life["best_dps"] or 0)
+            hero_best = hero_primary
             _set_widget(widgets["current_dps"], text=fmt_num(life["kills"]),
                         fg=T["gold_bright"])
             _set_text(widgets["session_dps"], fmt_num(len(life["kill_breakdown"])))
@@ -4748,17 +6976,46 @@ def run_gui(args):
             shown = displayed_fight(snap) if state["scope"] == "fight" else snap["fight"]
             shown_live = fight_is_live(snap, shown)
             fight_dps = snap["current_dps"] if shown_live else (shown.dps if shown else 0)
+            hero_primary = float(fight_dps or 0)
             _set_widget(
                 widgets["current_dps"],
                 text=fmt_num(fight_dps),
                 fg=T["gold_bright"] if shown_live else T["dim"])
             _set_text(widgets["session_dps"], fmt_num(snap["session_dps"]))
             best = snap["best_fight"]
+            hero_best = float(best.dps if best else 0)
             _set_text(widgets["best_dps"], fmt_num(best.dps) if best else "0")
             for key, label in (("current_dps", "FIGHT DPS"),
                                ("session_dps", "SESSION"),
                                ("best_dps", "BEST")):
                 _set_text(widgets[f"{key}_label"], label)
+        hero_meter = widgets.get("hero_meter")
+        if hero_meter:
+            hero_meter._lore_pct = (hero_primary / hero_best
+                                    if hero_best > 0 else 0.0)
+            _draw_hero_meter(hero_meter)
+
+        quick_fight = displayed_fight(snap) if state["scope"] == "fight" else None
+        if quick_fight:
+            target_types = (set(quick_fight.observed_targets)
+                            | set(quick_fight.kill_targets))
+            quick_values = {
+                "damage": quick_fight.damage,
+                "taken": quick_fight.damage_taken,
+                "healing": quick_fight.healing_done,
+                "enemies": quick_fight.kills or len(target_types),
+            }
+        else:
+            quick_values = {
+                "damage": snap["combat_damage"],
+                "taken": snap["damage_taken"],
+                "healing": snap["healing_done"],
+                "enemies": snap["kills"] + sum(snap["group_kills"].values()),
+            }
+        for key, value in quick_values.items():
+            label = widgets.get(f"quick_{key}")
+            if label:
+                _set_text(label, compact_hud_number(value))
         if state["scope"] == "fight":
             fights = snap["fights"]
             shown = displayed_fight(snap)
@@ -4851,6 +7108,7 @@ def run_gui(args):
                         except tk.TclError:
                             pass
                     alerts.clear()
+                    mez_overlay.hide()
                     root.withdraw()
                     z_order["window_hidden"] = True
                 floating = False
@@ -4875,9 +7133,23 @@ def run_gui(args):
                             pass
                 z_order["floating"] = floating
             alerts.sync_topmost(floating)
+            mez_overlay.sync_topmost(floating)
         finally:
             if not state["closing"]:
                 root.after(250, sync_z_order)
+
+    def note_hud_alert(severity, text_msg):
+        """Ignite the Rune Seed briefly while the adjacent toast is visible."""
+        state["mini_alert"] = {
+            "severity": severity,
+            "text": text_msg,
+            "started": time.monotonic(),
+            "until": time.monotonic() + RUNE_ALERT_SECONDS,
+        }
+        if state["mini"] and widgets.get("mini_seed"):
+            refresh()
+
+    alerts.on_show = note_hud_alert
 
     install_recovery_hotkey()
     install_wiki_hotkey()
@@ -5109,15 +7381,23 @@ def selftest() -> int:
         "Cloak of Flames")
     assert extract_item_query("[Cloak of Flames +4]")[0] == "Cloak of Flames"
     assert r"C:\EQLegends\Logs" in DEFAULT_LOG_DIRS
-    # The strip fits itself to its content, so these are its floor and its
-    # deck height, not the width it ends up at.
-    assert MINI_BASE_WIDTH == 520 and MINI_BASE_HEIGHT == 30
-    assert MINI_MIN_WIDTH < MINI_BASE_WIDTH
-    # SETTINGS belongs to the DETAILS footer; the strip carries LOCK + DETAILS.
+    # Rune Seed: the widened capsule reserves separate cog and metric lanes.
+    assert RUNE_SEED_WIDTH == 92 and RUNE_SEED_HEIGHT == 48
+    assert MINI_BASE_WIDTH == 94 and MINI_BASE_HEIGHT == 50
+    assert MINI_MIN_WIDTH == MINI_BASE_WIDTH
+    assert png_asset_identity(
+        bundled_resource_path("assets", BRAND_COG_FILE)) == (32, 32, 6)
+    seed_layout = rune_seed_content_layout(
+        RUNE_SEED_WIDTH, RUNE_SEED_HEIGHT)
+    assert seed_layout["icon"][2] < seed_layout["text"][0]
+    assert len(geometry_morph_frames(
+        (MINI_BASE_WIDTH, MINI_BASE_HEIGHT, 0, 0),
+        FULL_DEFAULT_SIZE + (0, 0))) == HUD_MORPH_STEPS
+    # SETTINGS belongs to the expanded footer and the seed's right click.
     assert "MOTES" in MINI_CARD_LABELS.values()
     assert MINI_MAX_CELLS == 4
-    # PROGRESSION is a three-part value that overflowed the strip; it lives on
-    # DETAILS now, where card_detail already shows the same figures.
+    # PROGRESSION remains available in the expanded ledger and can be starred
+    # into the one-metric Rune Seed carousel.
     assert "progress" in MINI_CARD_LABELS and "motes" in MINI_CARD_LABELS
 
     # Potential-mote tracking across all ten grades: plural item names, the
@@ -5140,7 +7420,7 @@ def selftest() -> int:
     # "Infinite" and "Infinitesimal" share a prefix and must never merge.
     assert mote_tier_counts({"Mote of Infinitesimal Potential": 1})[0] == 1
     assert mote_tier_counts({"Mote of Infinite Potential": 1})[9] == 1
-    # The strip readout stops at the highest grade that actually dropped.
+    # The compact ledger readout stops at the highest grade that dropped.
     assert fmt_mote_tiers([27, 32, 3, 2, 1] + [0] * 5) == "27/32/3/2/1"
     assert fmt_mote_tiers([5] + [0] * 9) == "5"
     assert fmt_mote_tiers([0] * 9 + [1]) == "0/0/0/0/0/0/0/0/0/1"

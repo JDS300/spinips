@@ -453,7 +453,7 @@ def draw_loremaster(canvas, x, y, w, h):
     rect(canvas, (x + 1, y + 1, x + w - 1, y + 28), fill=BG2 + (255,))
     d.line([(x + 1, y + 1), (x + 120, y + 1)], fill=EMBER + (255,), width=2)
     d.line([(x + 1, y + 27), (x + w - 2, y + 27)], fill=GOLD + (255,), width=2)
-    text(canvas, (x + 10, y + 7), "SPIN'S LOREMASTER", size=13, color=GOLD_BRIGHT, bold=True)
+    text(canvas, (x + 10, y + 7), "LOREMASTER", size=13, color=GOLD_BRIGHT, bold=True)
     text(canvas, (x + w - 12, y + 8), "—   ↺   ✕", size=12, color=DIM, anchor="ra")
     text(canvas, (x + 10, y + 35), "SPIN · QEYNOS", size=9, color=PARCHMENT, bold=True)
     text(canvas, (x + w - 10, y + 35), "Blackburrow", size=10, color=DIM, anchor="ra")
