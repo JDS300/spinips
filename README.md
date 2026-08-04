@@ -70,29 +70,40 @@ The compact **660×668 Equipment tab** preserves all **23 native equipment slots
 
 Loremaster turns the text log EverQuest already writes into a live **Adventurer's Chronicle**. It understands encounters, pets, charmed creatures, healing, progression, loot, factions, and travel, then presents them in a movable companion that looks like part of SpinUI—not a generic meter pasted over it.
 
-[![Loremaster Settings showing Lore Lens and Alerts & Notifications, including Play alert sound and Charmed pet breaks, beside the compact encounter HUD](docs/screenshots/loremaster-settings-and-hud.png)](docs/screenshots/loremaster-settings-and-hud.png)
+[![Spin's Loremaster showing the rounded 92 by 48 Rune Seed states, expanded encounter parser, integrated alert rail, and Lore Lens](docs/previews/loremaster_panel.png)](docs/previews/loremaster_panel.png)
 
-<p align="center"><em>Loremaster, your way: Lore Lens, accessibility, alert rules, sound, and a collapsible encounter HUD from one settings screen.</em></p>
+<p align="center"><em>Quiet in play, rich on demand: the Rune Seed unfolds into the complete parser, ledger, alert controls, and Lore Lens.</em></p>
+
+[![Loremaster Settings showing Lore Lens and Alerts & Notifications, including sound, charm-break, and accessibility controls](docs/screenshots/loremaster-settings-and-hud.png)](docs/screenshots/loremaster-settings-and-hud.png)
+
+<p align="center"><em>The full settings surface remains available for alert thresholds, sound, accessibility, Lore Lens, and advanced trigger choices.</em></p>
 
 | Capability | What Loremaster does |
 |---|---|
 | **Encounter Lab** | Encounter, Session, and Records views with multi-enemy pulls plus actor, ability, healing, target, and a timeline grouped into two-second buckets. |
 | **Adventure ledger** | XP/hour, time to level, kills, loot, all ten mote grades, coin and plat/hour, factions, skills, zones, and a bounded death recap. |
 | **Pets and charms** | Credits summoned pets and conservatively claimed charmed creatures; same-name charm totals are included but clearly labeled as estimates when the text log cannot distinguish actor IDs. |
-| **Adaptive HUD** | Four sections are pinned by default; choose any ledger sections, let the strip fit its real content, expand into Details, collapse the TOP summary for more ledger space, resize, lock, or use safely recoverable click-through. |
+| **Mez control** | Starts a sleek target countdown only after your own recognized mez actually lands. Ranked durations use EQL's whole-tick scaling; identical mob names group honestly, and `LAST TICK` exposes the server-tick uncertainty instead of inventing an exact wake-up second. |
+| **Rune Seed HUD** | A rounded 92×48 combat capsule pairs the generated SpinUI brass cog with a separate, overlap-free DPS lane. It opens on DPS and encodes LIVE, READY, STALE, and ALERT with restrained trim motion. Four subtle page pips make the scrollable starred-metric wheel discoverable; click to morph into the full parser, drag when unlocked, or right-click for settings. |
 | **Lore Lens** | One-shot hovered-item OCR, exact EQL Wiki validation, cached results, and a configurable `Ctrl+Shift+E` shortcut. |
-| **Alerts** | Opt-in banners and sound for tells, summons, deaths, charm breaks, big hits, name calls, and fight completion. |
+| **Alerts** | Opt-in banners and sound for tells, summons, deaths, charm breaks, big hits, name calls, and fight completion. Compact banners stay beside the Rune Seed with edge-safe Auto, Right, Left, Above, and Below placement choices. |
 | **Character continuity** | Follows standard `eqlog_*.txt` activity and supports manual log-folder selection. Packaged builds store selected records and settings under `%LOCALAPPDATA%\SpinsLoremaster`; source runs keep state beside `loremaster.py`. |
 
 ### Charm intelligence that respects the log
 
 [![Close-up of EverQuest combat using SpinUI with a red CHARM BROKE — AN ABHORRENT Loremaster warning beside the charmed creature](docs/screenshots/loremaster-charm-break-alert-detail.jpg)](docs/screenshots/loremaster-charm-break-alert.jpg)
 
-<p align="center"><em>When alerts are enabled, a proven charm break can raise a centered danger banner and optional sound immediately while the encounter remains visible.</em></p>
+<p align="center"><em>When alerts are enabled, a proven charm break ignites the Rune Seed and raises a short adjacent danger toast with optional sound while the encounter remains visible.</em></p>
 
 Loremaster does not claim every nearby creature as yours. Ownership comes from owner-only pet chatter or a known charm landing shortly after your cast. A charm-break alert fires once only when a positively claimed active charm receives a recognized charm-spell fade. Zoning, player or pet death, intentional replacement, a wrong target, and duplicate fade lines stay silent.
 
 The global alert switch ships **off**. The **Charmed pet breaks** and **Play alert sound** preferences are ready by default, so enabling alerts is enough to activate the warning; each can still be disabled independently.
+
+### Mez timing without fake precision
+
+Loremaster recognizes the Enchanter mez line plus supported Bard and Necromancer control songs/spells directly from the normal EQ text log. A cast alone never starts a timer: the target-specific success line must follow your own recent cast. Fizzles, interrupts, single-target resists, fades, overwrites, damage breaks, deaths, zoning, character changes, and reset all close the appropriate state. AE mez keeps accepting interleaved successes even when another target resists. If a nearby caster overlaps a spell that shares the same actorless landing message, Loremaster quarantines the ambiguous result instead of double-counting it as yours.
+
+EQ applies spell durations in six-second server ticks, but the log does not reveal the tick phase. Loremaster therefore counts down the duration that is guaranteed safe, then shows **LAST TICK** until the fade arrives or the final possible tick passes. Same-named enemies appear as `×N` with the earliest deadline. The timer stack stays at three rows plus an overflow count, follows the Rune Seed or expanded HUD, never takes keyboard focus, and is click-through during play. Visual timers are enabled by default; the one-shot warning sound is optional in **Settings → Crowd Control Timers**.
 
 ### An honest encounter model
 
@@ -153,7 +164,7 @@ Each resolution includes three play styles:
 
 That produces **21 generated combinations**. Validation keeps managed windows on-screen and checks default-visible HUDs for overlap, with explicit checks for optional pet, map, and bag states. On narrow 1080-tall profiles, the full inventory intentionally overlays some HUD space rather than shrinking into unreadability.
 
-The installer reads `eqclient.ini` to recommend the exact or nearest profile, but does not modify it. **KEEP MY CURRENT LAYOUT** remains the default.
+Choose the exact profile for your display when possible, or the nearest validated profile with the same aspect ratio. Keeping your current character layout and installing only the skin remains the safest default.
 
 > **Raid chat:** the Raid Say filter index is not stable enough to rewrite blindly. In game, right-click the Social title area → **Filters** → **Raid Say** → **Social** (and repeat for Raid Chat if listed). EverQuest saves the choice.
 
@@ -180,24 +191,21 @@ EverQuest draws a countdown and a beneficial/detrimental plate on the same buff 
 > [!IMPORTANT]
 > Fully close EverQuest before copying or changing character UI INI files. The client rewrites them on logout.
 
-### Recommended: Windows installer
+### Release package
 
-1. Download and extract **`SpinUI-Installer.zip`** from the [latest release](https://github.com/itsspin/spinips/releases/latest).
-2. Close EverQuest, then run **`SpinUIInstaller.exe`**. It detects common Daybreak and Steam locations; **Browse** can select any folder containing `eqgame.exe`.
-3. Keep **KEEP MY CURRENT LAYOUT** selected if you only want the skin. If you opt into a layout, review the detected character, recommended resolution, and Combat Focus, Social Focus, or Hybrid preset. An unlisted character can be added with exact name capitalization and the canonical server; the installer previews the exact target filename before writing.
-4. Existing character INIs receive a surgical merge: `UISkin`, audited window geometry/visibility/fade keys, and the three-window `ChatManager` are applied while unrelated sections and unknown settings outside `ChatManager`—including hotbuttons, macros, spells, and loadouts—remain untouched.
-5. A byte-exact timestamped backup is created when an existing file actually changes. Reapplying the same preset is a no-op.
-6. Startup and desktop-shortcut options are enabled by default. Startup uses `--wait-for-eq`; the desktop shortcut opens Loremaster directly.
-7. In game, use **`/loadskin spinui_reloaded 1`** if needed and type **`/log on`** once for Loremaster.
+1. Download and extract **`SpinUI-Manual.zip`** from the [latest release](https://github.com/itsspin/spinips/releases/latest).
+2. Fully close EverQuest, then copy the included `spinui_reloaded` folder to `<EverQuest>\uifiles\`.
+3. Keep your existing character UI INI for a skin-only update. If you want a complete layout, select the matching resolution and Combat Focus, Social Focus, or Hybrid profile and back up the existing character UI file before replacing it.
+4. Run the included **`Loremaster.exe`**, use **`/loadskin spinui_reloaded 1`** if needed, and type **`/log on`** once in game.
 
-The installer refreshes the skin at `<EverQuest>\uifiles\spinui_reloaded` and installs Loremaster under `%LOCALAPPDATA%\SpinsLoremaster` without removing its existing settings or records.
+Releases intentionally ship the manual package and standalone Loremaster only; the Windows installer is not built or published as a release option.
 
 Packaged releases require no Python installation. Running Loremaster from source requires Python 3.10+; the application otherwise uses the standard library, with Lore Lens calling Windows-provided OCR integration.
 
-### Manual installation
+### Detailed installation steps
 
 <details>
-<summary><strong>Install without the installer executable</strong></summary>
+<summary><strong>Show the manual installation guide</strong></summary>
 
 Download **`SpinUI-Manual.zip`** from the same release. It contains the UI, Loremaster, layouts, and a standalone [manual guide](installer/INSTALL-MANUAL.md).
 
@@ -205,18 +213,18 @@ Download **`SpinUI-Manual.zip`** from the same release. It contains the UI, Lore
 2. Copy the complete `spinui_reloaded` folder into `<EverQuest>\uifiles\` so the final path contains `uifiles\spinui_reloaded\EQUI.xml`.
 3. Optional full layout: choose `layouts/profiles/<resolution>/<combat-focus|social-focus|hybrid>/UI_Spin_qeynos_LO1.ini`.
 4. With EverQuest fully closed, make a byte-for-byte backup of the character UI file you intend to replace.
-5. A manual profile replaces that entire character UI INI, including its window and chat preferences. Use the installer instead when you want the surgical merge described above.
+5. A manual profile replaces that entire character UI INI, including its window and chat preferences. Apply one only after making the backup in the previous step.
 6. Name the preset `UI_<ExactCharacterName>_<server>_<layout-suffix>.ini`, preserving the character's existing `LO1`, `LO2`, `LO3`, or other suffix. Example: `UI_Spin_qeynos_LO1.ini`.
 7. Copy that optional character UI file beside `eqgame.exe`. Do **not** replace the separate `<Character>_<server>_<layout-suffix>.ini` file or `eqclient.ini`.
 8. Launch EverQuest and use `/loadskin spinui_reloaded 1` if the skin is not already selected. Run the packaged `Loremaster.exe` if desired and type `/log on` in game.
 
-**Rollback:** restore your character UI backup and select `/loadskin default_modern 1`. Installer backups use `.spinui-backup-YYYYMMDD-HHMMSS`.
+**Rollback:** restore your character UI backup and select `/loadskin default_modern 1`.
 
 </details>
 
 ### Windows security note
 
-SpinUI's unsigned PyInstaller executables may trigger SmartScreen or heuristic antivirus warnings. Release executables are built publicly by GitHub Actions from this repository. Verify downloads against the release's **`SHA256SUMS.txt`** with `Get-FileHash -Algorithm SHA256 <file>`. Use the Manual package if you prefer not to run the installer executable.
+SpinUI's unsigned `Loremaster.exe` may trigger SmartScreen or heuristic antivirus warnings. Release executables are built publicly by GitHub Actions from this repository. Verify downloads against the release's **`SHA256SUMS.txt`** with `Get-FileHash -Algorithm SHA256 <file>`.
 
 ## Trust by design
 
@@ -225,7 +233,7 @@ SpinUI's unsigned PyInstaller executables may trigger SmartScreen or heuristic a
 - **Hover Scan is explicit:** one bounded cursor region is captured only when the Lore Lens shortcut is pressed. OCR and wiki work then run outside the game's process.
 - **Network behavior is visible:** EQL Wiki lookup can be disabled; cached results still work, and LIVE/CACHED/STALE states remain labeled.
 - **Local state stays local:** packaged Loremaster settings, cache, and selected records live under `%LOCALAPPDATA%\SpinsLoremaster`; source runs keep them beside `loremaster.py`.
-- **Installer changes are reviewable and recoverable:** Keep Existing is the default, target filenames are previewed, merges are scoped, and changed existing character-layout INIs receive backups.
+- **Manual layout changes are recoverable:** the release guide makes skin-only installation the default and requires a backup before an optional character-layout INI is replaced.
 - **Alerts are opt-in:** the banner master switch ships off.
 
 This architecture supports a transparent non-injecting workflow. As with any community tool, review the current game policies before use.
@@ -234,13 +242,14 @@ This architecture supports a transparent non-injecting workflow. As with any com
 
 ### Running and controlling the overlay
 
-1. Use the installer, take `Loremaster.exe` from `SpinUI-Manual.zip`, or run it from source.
+1. Take `Loremaster.exe` from `SpinUI-Manual.zip`, download the standalone release executable, or run it from source.
 2. Type `/log on` in game. Loremaster follows the newest standard EQ log it can find; **CHANGE / LOCATE LOG** can point it to an EverQuest root or `Logs` directory.
-3. Use **DETAILS** and **HUD** to switch between the full ledger and adaptive compact strip. Full and compact positions are remembered separately.
-4. Pin or unpin ledger sections with ✦. Four cells are pinned by default; the compact strip grows or shrinks to fit the sections you choose and their measured content.
-5. Use **TOP / SHOW TOP** in Details to reclaim vertical space without changing the saved window size.
-6. **LOCK** freezes movement. Detailed mode's **CLICK-THRU** enables only when Loremaster owns the `Ctrl+Alt+L` recovery shortcut; click-through always starts off after relaunch.
-7. The notification-area icon can restore, hide, or exit Loremaster. Hiding keeps lightweight log tracking and the Lore Lens shortcut active.
+3. Click the **Rune Seed** to unfold the full ledger; use **SEED** in the masthead to collapse it again. The 240 ms transition is sampled from monotonic time at display cadence, so a busy parser skips ahead instead of accumulating jitter; reduced motion switches instantly. Full and compact positions are remembered separately.
+4. Pin or unpin ledger sections with ✦. Up to four starred sections form the Rune Seed carousel; use the mouse wheel over the seed to rotate the one visible metric.
+5. Active mez timers appear beside either HUD state. The settings screen controls visibility, the optional one-shot sound, and its 3–30 second warning threshold.
+6. Use **TOP / SHOW TOP** in Details to reclaim vertical space without changing the saved window size.
+7. **LOCK** freezes movement. Detailed mode's **CLICK-THRU** enables only when Loremaster owns the `Ctrl+Alt+L` recovery shortcut; click-through always starts off after relaunch.
+8. The notification-area icon can restore, hide, or exit Loremaster. Hiding keeps lightweight log tracking and the Lore Lens shortcut active.
 
 ### What the ledger tracks
 
@@ -259,7 +268,7 @@ Motes are session acquisitions, not a bag scan. Loremaster recognizes all ten po
 
 ### Alerts and custom rules
 
-Built-in triggers include tells, summons, death, proven charm break, configurable big hits, name calls, and fight completion. Settings control the master switch, sound, each trigger, duration, threshold, placement reset, and a test alert.
+Built-in triggers include tells, summons, death, proven charm break, configurable big hits, name calls, and fight completion. The expanded HUD keeps the master switch plus **CHARM**, **TELL**, and **BIG HIT** toggles in a persistent alert rail; its gear opens settings for sound, every trigger, duration, threshold, an edge-safe **AUTO / RIGHT / LEFT / ABOVE / BELOW** Rune Seed placement selector, and a test alert that previews the unsaved choice.
 
 Advanced users can add regular-expression rules to `%LOCALAPPDATA%\SpinsLoremaster\loremaster_config.json` in packaged builds, or `loremaster/loremaster_config.json` when running from source:
 
@@ -274,7 +283,7 @@ Invalid patterns are reported once when the config loads and are ignored safely 
 
 ### Accessibility
 
-Settings include a high-contrast palette, text scaling from **85–140%**, and reduced motion. Reduced motion removes alert fades immediately; high-contrast and text-scale changes marked in Settings take effect on the next launch.
+Settings include a high-contrast palette, text scaling from **85–140%**, and reduced motion. Reduced motion makes the Rune Seed transition instant and removes seed, timer, and alert animation; high-contrast and text-scale changes marked in Settings take effect on the next launch.
 
 ### Run Loremaster from source
 
@@ -322,7 +331,7 @@ python3 tools/release_quality_gate.py
 | SmartScreen or antivirus warns about an executable | Verify it against release `SHA256SUMS.txt` and the public Actions build. Use the Manual package if preferred. |
 | Skin does not load | Confirm `uifiles\spinui_reloaded\EQUI.xml`, then use `/loadskin spinui_reloaded 1`. |
 | Layout did not apply | Close EverQuest completely, restore/reapply the intended character UI file, and relaunch. |
-| Layout does not fit | Re-run the installer and select the exact or nearest validated screen profile. |
+| Layout does not fit | Restore your character UI backup, then select the exact or nearest validated screen profile from the manual package. |
 | Raid chat is in Main | Route Raid Say/Raid Chat to Social through the chat window's Filters menu. |
 | Chat font is too large or small | Right-click the chat window → **Font**. |
 
@@ -346,7 +355,7 @@ spinips/
 ├── spinui_reloaded/          themed SIDL XML, textures, and skin defaults
 ├── layouts/profiles/         seven resolutions × three play styles
 ├── loremaster/               encounter tracker, Lore Lens, alerts, and tests
-├── installer/                guided installer and manual-install guide
+├── installer/                legacy installer source and manual-install guide
 ├── tools/                    generators, restylers, audits, and release gates
 ├── docs/                     live screenshots and deterministic previews
 └── .github/workflows/        public Windows build and packaging automation

@@ -51,7 +51,7 @@ jobs:
       - name: Run release quality gate
         run: python tools/release_quality_gate.py
 
-      - name: Build windowed executables
+      - name: Build Loremaster executable
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path build/spec | Out-Null
@@ -59,57 +59,45 @@ jobs:
           # absolute paths.
           pyinstaller --clean --noconfirm --onefile --windowed `
             --name Loremaster --distpath dist --workpath build/loremaster `
+            --add-data "$((Resolve-Path 'loremaster/assets').Path);assets" `
             --version-file (Join-Path $PWD 'loremaster/versioninfo-loremaster.txt') `
             --specpath build/spec loremaster/loremaster.py
-          pyinstaller --clean --noconfirm --onefile --windowed --uac-admin `
-            --name SpinUIInstaller --distpath dist --workpath build/installer `
-            --version-file (Join-Path $PWD 'installer/versioninfo-installer.txt') `
-            --specpath build/spec installer/spinui_installer.py
 
-      - name: Smoke-test packaged executables
+      - name: Smoke-test packaged executable
         shell: pwsh
         run: |
           $lore = Start-Process -FilePath dist/Loremaster.exe -ArgumentList '--selftest' -PassThru -Wait
           if ($lore.ExitCode -ne 0) { throw "Loremaster selftest exit code $($lore.ExitCode)" }
-          $installer = Start-Process -FilePath dist/SpinUIInstaller.exe -ArgumentList '--selftest' -PassThru -Wait
-          if ($installer.ExitCode -ne 0) { throw "Installer selftest exit code $($installer.ExitCode)" }
 
-      - name: Assemble staged installer and manual releases
+      - name: Assemble staged manual release
         shell: pwsh
         run: |
-          $installerPackage = Join-Path $PWD 'package/SpinUI-Installer'
           $manualPackage = Join-Path $PWD 'package/SpinUI-Manual'
-          New-Item -ItemType Directory -Force -Path $installerPackage, $manualPackage | Out-Null
-          foreach ($package in @($installerPackage, $manualPackage)) {
-            Copy-Item -Recurse -Force spinui_reloaded (Join-Path $package 'spinui_reloaded')
-            # Public aliases plus every validated resolution profile ship;
-            # layouts/original and layouts/spin-live stay internal.
-            $packageLayouts = Join-Path $package 'layouts'
-            New-Item -ItemType Directory -Force -Path $packageLayouts | Out-Null
-            foreach ($preset in @('combat-focus', 'social-focus', 'hybrid')) {
-              Copy-Item -Recurse -Force (Join-Path 'layouts' $preset) (Join-Path $packageLayouts $preset)
-            }
-            Copy-Item -Recurse -Force layouts/profiles (Join-Path $packageLayouts 'profiles')
-            Copy-Item -Recurse -Force docs (Join-Path $package 'docs')
-            Copy-Item -Force UI_Spin_qeynos_LO1.ini $package
-            Copy-Item -Force README.md $package
-            Copy-Item -Force installer/INSTALL-MANUAL.md (Join-Path $package 'INSTALL.md')
-            Copy-Item -Force dist/Loremaster.exe $package
+          New-Item -ItemType Directory -Force -Path $manualPackage | Out-Null
+          Copy-Item -Recurse -Force spinui_reloaded (Join-Path $manualPackage 'spinui_reloaded')
+          # Public aliases plus every validated resolution profile ship;
+          # layouts/original and layouts/spin-live stay internal.
+          $packageLayouts = Join-Path $manualPackage 'layouts'
+          New-Item -ItemType Directory -Force -Path $packageLayouts | Out-Null
+          foreach ($preset in @('combat-focus', 'social-focus', 'hybrid')) {
+            Copy-Item -Recurse -Force (Join-Path 'layouts' $preset) (Join-Path $packageLayouts $preset)
           }
-          Copy-Item -Force dist/SpinUIInstaller.exe $installerPackage
+          Copy-Item -Recurse -Force layouts/profiles (Join-Path $packageLayouts 'profiles')
+          Copy-Item -Recurse -Force docs (Join-Path $manualPackage 'docs')
+          Copy-Item -Force UI_Spin_qeynos_LO1.ini $manualPackage
+          Copy-Item -Force README.md $manualPackage
+          Copy-Item -Force installer/INSTALL-MANUAL.md (Join-Path $manualPackage 'INSTALL.md')
+          Copy-Item -Force dist/Loremaster.exe $manualPackage
 
       - name: Verify staged release packages
         run: >
           python tools/release_quality_gate.py --packages-only
-          --package installer=package/SpinUI-Installer
           --package manual=package/SpinUI-Manual
 
       - name: Compress verified release packages
         shell: pwsh
         run: |
-          $installerPackage = Join-Path $PWD 'package/SpinUI-Installer'
           $manualPackage = Join-Path $PWD 'package/SpinUI-Manual'
-          Compress-Archive -Path "$installerPackage/*" -DestinationPath package/SpinUI-Installer.zip -CompressionLevel Optimal
           Compress-Archive -Path "$manualPackage/*" -DestinationPath package/SpinUI-Manual.zip -CompressionLevel Optimal
 
       - name: Publish SHA-256 checksums
@@ -118,23 +106,14 @@ jobs:
           # A published checksum list lets users confirm a download is the
           # exact CI-built file when an antivirus heuristic questions it.
           $lines = foreach ($file in @(
-              'package/SpinUI-Installer.zip',
               'package/SpinUI-Manual.zip',
-              'dist/Loremaster.exe',
-              'dist/SpinUIInstaller.exe')) {
+              'dist/Loremaster.exe')) {
             $hash = (Get-FileHash -Algorithm SHA256 $file).Hash.ToLower()
             "$hash  $(Split-Path -Leaf $file)"
           }
           Set-Content -Path package/SHA256SUMS.txt -Value ($lines -join "`n") -NoNewline
           Add-Content -Path package/SHA256SUMS.txt -Value "`n"
           Get-Content package/SHA256SUMS.txt
-
-      - name: Upload installer package
-        uses: actions/upload-artifact@v4
-        with:
-          name: SpinUI-Installer
-          path: package/SpinUI-Installer.zip
-          if-no-files-found: error
 
       - name: Upload manual package
         uses: actions/upload-artifact@v4
@@ -143,13 +122,12 @@ jobs:
           path: package/SpinUI-Manual.zip
           if-no-files-found: error
 
-      - name: Upload standalone executables and checksums
+      - name: Upload standalone executable and checksums
         uses: actions/upload-artifact@v4
         with:
           name: SpinUI-Windows-tools
           path: |
             dist/Loremaster.exe
-            dist/SpinUIInstaller.exe
             package/SHA256SUMS.txt
           if-no-files-found: error
 
@@ -162,11 +140,9 @@ jobs:
           $tag = '${{ inputs.release_tag }}'.Trim()
           if (-not $tag) { throw 'release_tag cannot be empty' }
           $assets = @(
-            'package/SpinUI-Installer.zip',
             'package/SpinUI-Manual.zip',
             'package/SHA256SUMS.txt',
-            'dist/Loremaster.exe',
-            'dist/SpinUIInstaller.exe'
+            'dist/Loremaster.exe'
           )
           gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -eq 0) {
@@ -175,7 +151,7 @@ jobs:
             gh release create $tag @assets --repo $env:GITHUB_REPOSITORY `
               --target $env:GITHUB_SHA `
               --title "SpinUI $tag — Vellum & Ember" `
-              --notes "Complete SpinUI Windows release. Use SpinUI-Installer.zip for guided setup or SpinUI-Manual.zip for an installer-free setup. Verify any download against SHA256SUMS.txt; the unsigned executables can trip antivirus machine-learning heuristics (see the README's Troubleshooting section)."
+              --notes "Complete SpinUI Windows release. Extract SpinUI-Manual.zip for the UI, layout profiles, manual guide, and Loremaster. Verify downloads against SHA256SUMS.txt; the unsigned Loremaster executable can trip antivirus machine-learning heuristics (see the README's Troubleshooting section)."
           }
 
       - name: Attach package to release
@@ -184,7 +160,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: >
           gh release upload "${{ github.event.release.tag_name }}"
-          package/SpinUI-Installer.zip package/SpinUI-Manual.zip
+          package/SpinUI-Manual.zip
           package/SHA256SUMS.txt
-          dist/Loremaster.exe dist/SpinUIInstaller.exe
+          dist/Loremaster.exe
           --clobber

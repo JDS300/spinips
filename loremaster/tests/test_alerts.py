@@ -124,11 +124,21 @@ class AlertConfigDefaultTests(unittest.TestCase):
         self.assertEqual(cfg["big_hit_threshold"], 800)
         self.assertEqual(cfg["alert_seconds"], 4)
         self.assertIsNone(cfg["alert_position"])
+        self.assertEqual(cfg["mini_alert_anchor"], "auto")
 
     def test_saved_trigger_choices_survive_reload(self):
-        cfg = self.load_payload({"alert_tells": False, "alert_seconds": 9})
+        cfg = self.load_payload({
+            "alert_tells": False,
+            "alert_seconds": 9,
+            "mini_alert_anchor": "LEFT",
+        })
         self.assertIs(cfg["alert_tells"], False)
         self.assertEqual(cfg["alert_seconds"], 9)
+        self.assertEqual(cfg["mini_alert_anchor"], "left")
+
+    def test_invalid_compact_anchor_falls_back_to_auto(self):
+        cfg = self.load_payload({"mini_alert_anchor": "diagonal-ish"})
+        self.assertEqual(cfg["mini_alert_anchor"], "auto")
 
     def test_invalid_custom_alert_patterns_warn_once_on_load(self):
         payload = {"custom_alerts": [
@@ -185,6 +195,85 @@ class AlertPositionClampTests(unittest.TestCase):
             with self.subTest(pos=pos):
                 self.assertEqual(LOREMASTER.clamp_alert_position(
                     pos, 300, 50, self.BOUNDS, 120, 64), (120, 64))
+
+    def test_compact_banner_ignores_saved_position_and_follows_seed(self):
+        position = LOREMASTER.alert_banner_position(
+            (500, 900, 82, 50), (300, 56), (0, 0, 1920, 1080),
+            mini_mode=True, saved_position=(40, 40))
+        self.assertEqual(position, (592, 897))
+
+    def test_compact_banner_flips_left_at_the_right_edge(self):
+        position = LOREMASTER.alert_banner_position(
+            (1800, 900, 82, 50), (300, 56), (0, 0, 1920, 1080),
+            mini_mode=True, saved_position=None)
+        self.assertEqual(position, (1490, 897))
+
+    def test_each_compact_anchor_uses_the_requested_side(self):
+        expected = {
+            "auto": (592, 497),
+            "right": (592, 497),
+            "left": (190, 497),
+            "above": (391, 434),
+            "below": (391, 560),
+        }
+        for anchor, coordinates in expected.items():
+            with self.subTest(anchor=anchor):
+                self.assertEqual(LOREMASTER.alert_banner_position(
+                    (500, 500, 82, 50), (300, 56),
+                    (0, 0, 1920, 1080), mini_mode=True,
+                    anchor=anchor), coordinates)
+
+    def test_explicit_anchor_flips_before_it_can_cover_the_seed(self):
+        self.assertEqual(LOREMASTER.alert_banner_position(
+            (0, 500, 82, 50), (300, 56), (0, 0, 1920, 1080),
+            mini_mode=True, anchor="left"), (92, 497))
+        self.assertEqual(LOREMASTER.alert_banner_position(
+            (500, 0, 82, 50), (300, 56), (0, 0, 1920, 1080),
+            mini_mode=True, anchor="above"), (391, 60))
+
+    def test_invalid_anchor_is_auto(self):
+        self.assertEqual(LOREMASTER.normalize_alert_anchor("SIDEWAYS"), "auto")
+        self.assertEqual(LOREMASTER.normalize_alert_anchor(None), "auto")
+
+    def test_compact_banner_stack_moves_up_when_bottom_is_full(self):
+        position = LOREMASTER.alert_banner_position(
+            (500, 1030, 82, 50), (300, 56), (0, 0, 1920, 1080),
+            mini_mode=True, stack_index=1)
+        self.assertEqual(position, (391, 902))
+
+    def test_expanded_banner_preserves_valid_saved_position(self):
+        position = LOREMASTER.alert_banner_position(
+            (-1000, 100, 550, 820), (300, 56), self.BOUNDS,
+            mini_mode=False, saved_position=(-1500, 200))
+        self.assertEqual(position, (-1500, 200))
+
+    def test_signed_geometry_is_valid_on_left_and_upper_monitors(self):
+        self.assertEqual(
+            LOREMASTER.signed_window_position(-1500, -200), "-1500-200")
+        self.assertEqual(
+            LOREMASTER.signed_window_position(120, 64), "+120+64")
+
+    def test_initial_native_show_applies_the_full_nonzero_rectangle(self):
+        x, y, width, height, flags = LOREMASTER.native_window_position_plan(
+            (592, 897, 300, 56), show=True)
+        self.assertEqual((x, y, width, height), (592, 897, 300, 56))
+        self.assertTrue(flags & 0x0010)   # SWP_NOACTIVATE
+        self.assertTrue(flags & 0x0040)   # SWP_SHOWWINDOW
+        self.assertFalse(flags & 0x0002)  # no SWP_NOMOVE on first show
+        self.assertFalse(flags & 0x0001)  # no SWP_NOSIZE on first show
+
+    def test_native_z_order_sync_never_moves_or_resizes(self):
+        x, y, width, height, flags = LOREMASTER.native_window_position_plan()
+        self.assertEqual((x, y, width, height), (0, 0, 0, 0))
+        self.assertTrue(flags & 0x0002)   # SWP_NOMOVE
+        self.assertTrue(flags & 0x0001)   # SWP_NOSIZE
+        self.assertFalse(flags & 0x0040)  # not a mapping operation
+
+    def test_initial_native_show_fails_closed_without_a_rectangle(self):
+        with self.assertRaises(ValueError):
+            LOREMASTER.native_window_position_plan(show=True)
+        with self.assertRaises(ValueError):
+            LOREMASTER.native_window_position_plan("invalid", show=True)
 
 
 class CaptureAnchorRescaleTests(unittest.TestCase):

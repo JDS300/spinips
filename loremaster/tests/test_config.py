@@ -39,7 +39,20 @@ class ConfigRecoveryTests(unittest.TestCase):
         config = self.load_payload({"opacity": 0.94, "wiki_hotkey": "Alt+E"})
         self.assertEqual(config["opacity"], 1.0)
         self.assertEqual(config["wiki_hotkey"], "Ctrl+Shift+E")
-        self.assertEqual(config["ui_rendering_version"], 2)
+        self.assertEqual(config["ui_rendering_version"], 3)
+        self.assertEqual(config["panel_size"], list(LOREMASTER.FULL_DEFAULT_SIZE))
+        self.assertTrue(config["mez_timers_enabled"])
+        self.assertFalse(config["mez_timer_sound"])
+        self.assertEqual(config["mez_warning_seconds"], 10)
+        self.assertEqual(config["mini_alert_anchor"], "auto")
+
+    def test_rune_seed_migration_preserves_a_custom_panel_size(self):
+        config = self.load_payload({
+            "ui_rendering_version": 2,
+            "panel_size": [612, 744],
+        })
+        self.assertEqual(config["ui_rendering_version"], 3)
+        self.assertEqual(config["panel_size"], [612, 744])
 
     def test_explicit_custom_hotkey_and_opacity_are_preserved(self):
         config = self.load_payload({
