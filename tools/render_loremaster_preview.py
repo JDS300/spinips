@@ -77,7 +77,7 @@ def paste_cog(draw, cx, cy):
 
 
 def rune_seed(draw, x, y, value="1.28k", label="DPS", state="live",
-              width=92, height=48):
+              width=92, height=48, metric_count=1, metric_index=0):
     """Draw the canvas-rendered Rune Seed vocabulary used by the Tk overlay."""
     states = {
         "idle": (GOLD, LINE, LINE, "\u2014"),
@@ -115,11 +115,13 @@ def rune_seed(draw, x, y, value="1.28k", label="DPS", state="live",
                   fill=EMBER if state == "alert" else GOLD_BRIGHT,
                   anchor="mm")
     if width >= 70:
-        for index in range(4):
+        count = max(1, min(4, int(metric_count)))
+        selected = int(metric_index) % count
+        for index in range(count):
             px = text_x - 7.5 * scale + index * 5 * scale
             draw.ellipse([px - scale, y + 40.5 * scale,
                           px + scale, y + 42.5 * scale],
-                         fill=GOLD_BRIGHT if index == 0 else LINE)
+                         fill=GOLD_BRIGHT if index == selected else LINE)
 
 
 def section(draw, width, y, name, value, pinned, expanded=False):
@@ -213,7 +215,7 @@ def render_seed_showcase():
               fill=GOLD)
     draw.text((width - 24, 25), "EXPANDED · 550 × 820",
               font=F(8, serif=True), fill=DIM, anchor="ra")
-    draw.text((24, 49), "scroll starred metrics · click to unfold · drag when unlocked",
+    draw.text((24, 49), "DPS only by default · star more in ledger · click to unfold",
               font=F(8), fill=DIM)
     for index, (state, caption) in enumerate((
             ("idle", "IDLE"), ("live", "LIVE"),

@@ -45,6 +45,8 @@ class ConfigRecoveryTests(unittest.TestCase):
         self.assertFalse(config["mez_timer_sound"])
         self.assertEqual(config["mez_warning_seconds"], 10)
         self.assertEqual(config["mini_alert_anchor"], "auto")
+        self.assertEqual(config["starred_cards"], ["combat"])
+        self.assertEqual(config["mini_stat_index"], 0)
 
     def test_rune_seed_migration_preserves_a_custom_panel_size(self):
         config = self.load_payload({

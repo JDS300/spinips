@@ -273,7 +273,7 @@ def fmt_mote_tiers(counts) -> str:
 
 
 # Rune Seed dimensions are the inner canvas size at 100% font scaling.  The
-# one-pixel Vellum frame makes the actual toplevel 82x50.  The extra width turns
+# one-pixel Vellum frame makes the actual toplevel 94x50.  The extra width turns
 # the old gem-like square into a readable capsule while remaining a tiny HUD.
 RUNE_SEED_WIDTH = 92
 RUNE_SEED_HEIGHT = 48
@@ -284,6 +284,12 @@ MINI_MIN_WIDTH = MINI_BASE_WIDTH
 # Starred cards now form a scrollable carousel.  Keeping the existing four-card
 # budget preserves user configuration while rendering only one metric at once.
 MINI_MAX_CELLS = 4
+# Fresh installs seed only the live/session DPS face. Players can still star
+# up to four ledger cards to build a carousel, but secondary metrics never
+# appear until they are deliberately chosen.
+DEFAULT_RUNE_SEED_CARDS = ("combat",)
+LEGACY_DEFAULT_RUNE_SEED_CARDS = ("combat", "kills", "money", "motes")
+RUNE_SEED_CONFIG_VERSION = 3
 # Windows names the diagonal resize cursor "size_nw_se"; X11 uses
 # "bottom_right_corner".
 RESIZE_CURSOR = "size_nw_se" if os.name == "nt" else "bottom_right_corner"
@@ -2081,10 +2087,10 @@ def load_config() -> dict:
         # window size, turning the reclaimed height into ledger viewport.
         "summary_collapsed": False,
         "starred": ["session_dps", "xp_hr", "hours_to_level", "kills"],
-        # Index zero is the first-run Rune Seed face, so combat/DPS must lead.
-        # Loaded profiles still preserve their saved order and selection.
-        "starred_cards": ["combat", "kills", "money", "motes"],
-        "hud_cards_version": 2,
+        # DPS is the only first-run Rune Seed face. Additional metrics appear
+        # only after the player stars them in the expanded ledger.
+        "starred_cards": list(DEFAULT_RUNE_SEED_CARDS),
+        "hud_cards_version": RUNE_SEED_CONFIG_VERSION,
         # Banners are opt-in: quiet by default, one switch in Settings.
         "alerts_enabled": False,
         "alert_sound": True,
@@ -2174,25 +2180,31 @@ def load_config() -> dict:
         if old_size == [400, 480]:
             cfg["panel_size"] = list(FULL_DEFAULT_SIZE)
     cfg["ui_rendering_version"] = 3
-    # Two one-time strip migrations, each applied exactly once so a deliberate
-    # later change is never undone: version 1 added the mote tracker, and
-    # version 2 moved PROGRESSION off the strip because its three-part value
-    # made the row overflow. Re-star either from DETAILS at any time.
+    # One-time seed migrations are applied exactly once so a deliberate later
+    # choice is never undone: v1 added motes, v2 removed the overflowing
+    # PROGRESSION default, and v3 makes DPS the sole seeded metric. The v3
+    # migration changes only the exact untouched v2 wheel; custom orders and
+    # selections remain intact.
     try:
         hud_cards_version = int(loaded.get("hud_cards_version", 0) or 0)
     except (TypeError, ValueError):
         hud_cards_version = 0
+    loaded_starred = loaded.get("starred_cards")
     starred = cfg.get("starred_cards")
-    if isinstance(starred, list):
+    if isinstance(starred, list) and isinstance(loaded_starred, list):
         if hud_cards_version < 1 and "motes" not in starred:
             starred.append("motes")
         if hud_cards_version < 2 and "progress" in starred:
             starred.remove("progress")
+        if (hud_cards_version < RUNE_SEED_CONFIG_VERSION
+                and starred == list(LEGACY_DEFAULT_RUNE_SEED_CARDS)):
+            starred = list(DEFAULT_RUNE_SEED_CARDS)
+            cfg["mini_stat_index"] = 0
     # The legacy strip could leave more than four flags in the config even
     # though only four were visible. Rune Seed has one honest four-item wheel,
     # so normalize old/hand-edited lists instead of hiding unreachable stars.
     cfg["starred_cards"] = rune_seed_keys(starred)
-    cfg["hud_cards_version"] = 2
+    cfg["hud_cards_version"] = RUNE_SEED_CONFIG_VERSION
     cfg["mini_alert_anchor"] = normalize_alert_anchor(
         cfg.get("mini_alert_anchor", "auto"))
     # Broken custom alert regexes are skipped silently per log line; warn
@@ -7396,6 +7408,8 @@ def selftest() -> int:
     # SETTINGS belongs to the expanded footer and the seed's right click.
     assert "MOTES" in MINI_CARD_LABELS.values()
     assert MINI_MAX_CELLS == 4
+    assert DEFAULT_RUNE_SEED_CARDS == ("combat",)
+    assert RUNE_SEED_CONFIG_VERSION == 3
     # PROGRESSION remains available in the expanded ledger and can be starred
     # into the one-metric Rune Seed carousel.
     assert "progress" in MINI_CARD_LABELS and "motes" in MINI_CARD_LABELS
