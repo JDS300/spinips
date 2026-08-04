@@ -377,12 +377,16 @@ class StarredCardMigrationTests(unittest.TestCase):
             finally:
                 LOREMASTER.CONFIG_PATH = original
 
-    def test_existing_config_gains_the_tracker_and_drops_progression(self):
-        config = self.load_payload(
-            {"starred_cards": ["combat", "kills", "money", "progress"]})
+    def test_untouched_legacy_default_migrates_to_dps_only(self):
+        config = self.load_payload({
+            "starred_cards": ["combat", "kills", "money", "progress"],
+            "mini_stat_index": 2,
+        })
+        self.assertEqual(config["starred_cards"], ["combat"])
+        self.assertEqual(config["mini_stat_index"], 0)
         self.assertEqual(
-            config["starred_cards"], ["combat", "kills", "money", "motes"])
-        self.assertEqual(config["hud_cards_version"], 2)
+            config["hud_cards_version"],
+            LOREMASTER.RUNE_SEED_CONFIG_VERSION)
 
     def test_a_config_that_already_saw_v1_still_drops_progression(self):
         config = self.load_payload({
@@ -390,7 +394,9 @@ class StarredCardMigrationTests(unittest.TestCase):
             "hud_cards_version": 1,
         })
         self.assertEqual(config["starred_cards"], ["combat", "motes"])
-        self.assertEqual(config["hud_cards_version"], 2)
+        self.assertEqual(
+            config["hud_cards_version"],
+            LOREMASTER.RUNE_SEED_CONFIG_VERSION)
 
     def test_a_deliberate_choice_is_not_undone_on_the_next_launch(self):
         config = self.load_payload({
@@ -399,16 +405,38 @@ class StarredCardMigrationTests(unittest.TestCase):
         })
         self.assertEqual(
             config["starred_cards"], ["combat", "kills", "progress"])
+        self.assertEqual(
+            config["hud_cards_version"],
+            LOREMASTER.RUNE_SEED_CONFIG_VERSION)
 
-    def test_default_seed_carousel_ships_the_tracker_and_fits_its_budget(self):
+    def test_default_seed_is_dps_only(self):
         config = self.load_payload({})
+        self.assertEqual(config["starred_cards"], ["combat"])
+        self.assertEqual(config["mini_stat_index"], 0)
+        self.assertEqual(
+            config["hud_cards_version"],
+            LOREMASTER.RUNE_SEED_CONFIG_VERSION)
+        keys = LOREMASTER.rune_seed_keys(config["starred_cards"])
+        self.assertEqual(keys, ["combat"])
+
+    def test_exact_v2_default_resets_selection_to_dps(self):
+        config = self.load_payload({
+            "starred_cards": ["combat", "kills", "money", "motes"],
+            "mini_stat_index": 3,
+            "hud_cards_version": 2,
+        })
+        self.assertEqual(config["starred_cards"], ["combat"])
+        self.assertEqual(config["mini_stat_index"], 0)
+
+    def test_v3_user_can_deliberately_rebuild_the_old_four_item_wheel(self):
+        config = self.load_payload({
+            "starred_cards": ["combat", "kills", "money", "motes"],
+            "mini_stat_index": 3,
+            "hud_cards_version": LOREMASTER.RUNE_SEED_CONFIG_VERSION,
+        })
         self.assertEqual(
             config["starred_cards"], ["combat", "kills", "money", "motes"])
-        keys = LOREMASTER.rune_seed_keys(config["starred_cards"])
-        self.assertEqual(
-            keys[config["mini_stat_index"] % len(keys)], "combat")
-        self.assertLessEqual(
-            len(config["starred_cards"]), LOREMASTER.MINI_MAX_CELLS)
+        self.assertEqual(config["mini_stat_index"], 3)
 
     def test_loaded_wheel_order_and_selection_are_not_reset(self):
         config = self.load_payload({
@@ -420,11 +448,16 @@ class StarredCardMigrationTests(unittest.TestCase):
             config["starred_cards"], ["kills", "combat", "motes"])
         self.assertEqual(config["mini_stat_index"], 2)
         self.assertEqual(
+            config["hud_cards_version"],
+            LOREMASTER.RUNE_SEED_CONFIG_VERSION)
+        self.assertEqual(
             config["starred_cards"][config["mini_stat_index"]], "motes")
 
     def test_malformed_starred_cards_do_not_break_the_migration(self):
         config = self.load_payload({"starred_cards": "combat"})
-        self.assertEqual(config["hud_cards_version"], 2)
+        self.assertEqual(
+            config["hud_cards_version"],
+            LOREMASTER.RUNE_SEED_CONFIG_VERSION)
         self.assertEqual(config["starred_cards"], ["combat"])
 
     def test_legacy_hidden_stars_are_normalized_to_the_wheel_budget(self):
