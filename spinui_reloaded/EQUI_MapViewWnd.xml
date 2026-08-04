@@ -1336,8 +1336,8 @@
 		<Style_Sizable>true</Style_Sizable>
 		<Style_Transparent>true</Style_Transparent>
 		<Text>Map</Text>
-		<MinHSize>600</MinHSize>
-		<MinVSize>556</MinVSize>
+		<MinHSize>400</MinHSize>
+		<MinVSize>400</MinVSize>
 		<KeepOnScreen>true</KeepOnScreen>
 		<KeepOnScreenOffset>
 			<X>-3</X>
