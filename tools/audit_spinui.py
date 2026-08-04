@@ -630,6 +630,77 @@ def audit_inventory_progression() -> None:
                 )
 
 
+def audit_map_resizing() -> None:
+    """Keep map resize bounds compatible with every shipped layout."""
+    default_minimum = (400, 400)
+    default_variants = {
+        "EQUI_MapViewWnd.xml",
+        "EQUI_MapViewWnd1.xml",
+        "EQUI_MapViewWnd2.xml",
+    }
+    expected_variants = {"EQUI_MapViewWnd.xml"} | {
+        f"EQUI_MapViewWnd{i}.xml" for i in range(1, 9)
+    }
+
+    map_paths = sorted(SKIN.glob("EQUI_MapViewWnd*.xml"))
+    if {path.name for path in map_paths} != expected_variants:
+        fail("map layout variants changed unexpectedly")
+
+    for path in map_paths:
+        root = ET.parse(path).getroot()
+        window = item(root, "Screen", "MapViewWnd")
+        if (window.findtext("Style_Sizable") or "").strip().casefold() != "true":
+            fail(f"{path.name} must remain user-resizable")
+        minimum = (
+            child_int(window, "MinHSize"),
+            child_int(window, "MinVSize"),
+        )
+        authored = (
+            child_int(window, "Size/CX"),
+            child_int(window, "Size/CY"),
+        )
+        if path.name in default_variants and minimum != default_minimum:
+            fail(f"{path.name} default-map minimum changed: {minimum}")
+        if authored[0] < minimum[0] or authored[1] < minimum[1]:
+            fail(
+                f"{path.name} authored size {authored} is below its "
+                f"resize minimum {minimum}"
+            )
+
+    profile_paths = {
+        REPO / "UI_Spin_qeynos_LO1.ini",
+        *SKIN.glob("default*.ini"),
+        *(REPO / "layouts").rglob("*.ini"),
+    }
+    for profile_path in sorted(profile_paths):
+        parser = configparser.ConfigParser(interpolation=None, strict=False)
+        parser.read_string(profile_path.read_text(encoding="utf-8-sig"))
+        if not parser.has_section("MapViewWnd"):
+            continue
+        has_width = parser.has_option("MapViewWnd", "Width")
+        has_height = parser.has_option("MapViewWnd", "Height")
+        if not has_width and not has_height:
+            # Legacy position-only presets inherit geometry from the active
+            # character/default profile and therefore cannot violate it here.
+            continue
+        if not has_width or not has_height:
+            fail(
+                f"{profile_path.relative_to(REPO)} [MapViewWnd] must define "
+                "Width and Height together"
+            )
+        profile_size = (
+            parser.getint("MapViewWnd", "Width"),
+            parser.getint("MapViewWnd", "Height"),
+        )
+        if (profile_size[0] < default_minimum[0]
+                or profile_size[1] < default_minimum[1]):
+            fail(
+                f"{profile_path.relative_to(REPO)} [MapViewWnd] "
+                f"{profile_size} is below the active XML minimum "
+                f"{default_minimum}"
+            )
+
+
 def audit_inventory_geometry() -> None:
     root = ET.parse(SKIN / "EQUI_InventoryWindow.xml").getroot()
     equipment = item(root, "Screen", "IW_Equipment")
@@ -1133,6 +1204,7 @@ def main() -> int:
     xml_files, texture_refs, template_count, template_reference_files = audit_xml()
     tga_count, dds_count, cur_count = audit_binary_assets()
     audit_pet_geometry()
+    audit_map_resizing()
     audit_inventory_progression()
     audit_inventory_geometry()
     print("SpinUI asset audit: ALL PASS")

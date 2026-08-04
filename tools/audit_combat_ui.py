@@ -14,7 +14,8 @@ from pathlib import Path
 from restyle_combat import (EFFECT_CHIP, EFFECT_ICON, EFFECT_NAME_WIDTH,
                            EFFECT_NAME_X, EFFECT_PLATE_BLEED,
                            EFFECT_ROW_WIDTH, EFFECT_TIMER_FONT,
-                           EFFECT_TIMER_HALF_WIDTH)
+                           EFFECT_TIMER_HALF_WIDTH, PLAYER_MIN_SIZE,
+                           TARGET_MIN_SIZE)
 
 
 REPO = Path(__file__).resolve().parent.parent
@@ -181,6 +182,14 @@ def audit_player_and_target() -> None:
     if (child_text(player_window, "Style_ClientMovable") != "true" or
             child_text(player_window, "ClickThroughEmptyBuffs") != "true"):
         fail("PlayerWindow interaction or empty-buff click-through changed")
+    if child_text(player_window, "Style_Sizable") != "true":
+        fail("PlayerWindow must remain user-resizable")
+    player_min_size = (
+        child_int(player_window, "MinHSize"),
+        child_int(player_window, "MinVSize"),
+    )
+    if player_min_size != PLAYER_MIN_SIZE:
+        fail(f"PlayerWindow resize bounds changed: {player_min_size}")
     for label, expected, alignment in (
         (stance, (96, 112, 6, 132), "false"),
         (invocation, (96, 112, 232, 6), "true"),
@@ -224,6 +233,14 @@ def audit_player_and_target() -> None:
     if (child_text(target_window, "Style_ClientMovable") != "true" or
             child_text(target_window, "ClickThroughEmptyBuffs") != "true"):
         fail("TargetWindow interaction or empty-buff click-through changed")
+    if child_text(target_window, "Style_Sizable") != "true":
+        fail("TargetWindow must remain user-resizable")
+    target_min_size = (
+        child_int(target_window, "MinHSize"),
+        child_int(target_window, "MinVSize"),
+    )
+    if target_min_size != TARGET_MIN_SIZE:
+        fail(f"TargetWindow resize bounds changed: {target_min_size}")
     for name, expected in (("Target_HP", HP), ("Target_HP_NameOnly", HP),
                            ("TTargetOfTarget_HP", HP),
                            ("Target_Mana", MANA),
