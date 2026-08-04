@@ -669,6 +669,55 @@ def build_fg_pieces_black(img):
         fill(img, box, (5, 6, 9, 255))
 
 
+def build_spell_ledger_texture() -> Image.Image:
+    """Return the dedicated SpinUI plate, holder, and hover row states.
+
+    The spell icon remains native client art.  This atlas supplies only the
+    oiled-leather row surface and Vellum & Ember interaction rails used by the
+    named-and-numbered Alternate3 spell deck.
+    """
+    atlas = Image.new("RGBA", (256, 96), (0, 0, 0, 0))
+
+    plate = Image.new("RGBA", (155, 30), (0, 0, 0, 0))
+    vgrad(plate, (0, 0, 155, 30), BG2, BG0)
+    plate_mask = Image.new("L", plate.size, 0)
+    ImageDraw.Draw(plate_mask).rounded_rectangle(
+        [0, 0, 154, 29], radius=3, fill=255
+    )
+    clipped = Image.new("RGBA", plate.size, (0, 0, 0, 0))
+    clipped.paste(plate, (0, 0), plate_mask)
+    d = ImageDraw.Draw(clipped)
+    d.rounded_rectangle([0, 0, 154, 29], radius=3, outline=LINE + (255,))
+    d.line([(3, 1), (151, 1)], fill=GOLD_BRIGHT + (38,))
+    d.line([(30, 3), (30, 26)], fill=GOLD_DEEP + (150,))
+    d.line([(31, 3), (31, 26)], fill=(255, 225, 170, 18))
+    d.line([(138, 4), (138, 25)], fill=LINE_SOFT + (210,))
+    d.line([(3, 28), (151, 28)], fill=(4, 3, 2, 210))
+    atlas.paste(clipped, (0, 0), clipped)
+
+    holder = Image.new("RGBA", (155, 30), (0, 0, 0, 0))
+    d = ImageDraw.Draw(holder)
+    d.rounded_rectangle([0, 0, 154, 29], radius=3, outline=GOLD_DEEP + (220,))
+    # Short brass corner marks give the row SpinUI identity without tinting or
+    # covering the spell-category information that the client applies.
+    for x0, y0, dx, dy in (
+        (2, 2, 1, 1), (152, 2, -1, 1),
+        (2, 27, 1, -1), (152, 27, -1, -1),
+    ):
+        d.line([(x0, y0), (x0 + 5 * dx, y0)], fill=GOLD + (235,))
+        d.line([(x0, y0), (x0, y0 + 4 * dy)], fill=GOLD + (235,))
+    atlas.paste(holder, (0, 32), holder)
+
+    hover = Image.new("RGBA", (155, 30), (0, 0, 0, 0))
+    d = ImageDraw.Draw(hover)
+    d.rounded_rectangle([0, 0, 154, 29], radius=3, outline=CYAN + (255,))
+    d.rounded_rectangle([1, 1, 153, 28], radius=2, outline=CYAN_DEEP + (175,))
+    d.line([(5, 28), (149, 28)], fill=EMBER_BRIGHT + (245,))
+    d.line([(1, 6), (1, 23)], fill=CYAN + (210,))
+    atlas.paste(hover, (0, 64), hover)
+    return atlas
+
+
 def generate(*, source_skin: Path = SKIN, output_skin: Path = SKIN,
              palette: dict[str, tuple[int, int, int]] | None = None,
              preview_dir: Path | None = REPO / "docs" / "previews",
@@ -713,6 +762,15 @@ def generate(*, source_skin: Path = SKIN, output_skin: Path = SKIN,
             painted.append(name)
             if not quiet:
                 print("painted", name)
+
+        ledger_name = "spin_spell_ledger.tga"
+        ledger = build_spell_ledger_texture()
+        save_tga(ledger, output_skin / ledger_name)
+        if preview_dir is not None:
+            ledger.save(preview_dir / "spin_spell_ledger_after.png")
+        painted.append(ledger_name)
+        if not quiet:
+            print("painted", ledger_name)
 
         # Full-tile backgrounds stay dark oiled leather while the interaction
         # accents are customized. This preserves text contrast across hues.

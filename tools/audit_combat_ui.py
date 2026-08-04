@@ -14,7 +14,11 @@ from pathlib import Path
 from restyle_combat import (EFFECT_CHIP, EFFECT_ICON, EFFECT_NAME_WIDTH,
                            EFFECT_NAME_X, EFFECT_PLATE_BLEED,
                            EFFECT_ROW_WIDTH, EFFECT_TIMER_FONT,
-                           EFFECT_TIMER_HALF_WIDTH)
+                           EFFECT_TIMER_HALF_WIDTH, SPELL_LEDGER_EQTYPES,
+                           SPELL_LEDGER_ICON_SIZE, SPELL_LEDGER_MENU_NAME,
+                           SPELL_LEDGER_ROW_SIZE, SPELL_LEDGER_VARIANT,
+                           SPELL_LEDGER_WINDOW_BOUNDS,
+                           SPELL_LEDGER_WINDOW_SIZE)
 
 
 REPO = Path(__file__).resolve().parent.parent
@@ -56,7 +60,7 @@ CANONICAL_VARIANTS = {
         f"EQUI_ShortDurationBuffWindow{i}.xml" for i in range(1, 18)
     ),
     "EQUI_CastingWindow.xml": ("EQUI_CastingWindow1.xml",),
-    "EQUI_CastSpellWnd.xml": tuple(f"EQUI_CastSpellWnd{i}.xml" for i in range(1, 4)),
+    "EQUI_CastSpellWnd.xml": tuple(f"EQUI_CastSpellWnd{i}.xml" for i in range(1, 3)),
 }
 
 
@@ -408,8 +412,11 @@ def audit_effects_casting_and_bars() -> None:
         if (child_int(gem, "SpellIconSizeX"),
                 child_int(gem, "SpellIconSizeY")) != (36, 36):
             fail(f"CSPW_Spell{index} icon no longer fills its socket")
-    if dimensions(item(spells, "Screen", "CastSpellWnd")) != (52, 623):
+    spell_window = item(spells, "Screen", "CastSpellWnd")
+    if dimensions(spell_window) != (52, 623):
         fail("CastSpellWnd must expose all 14 Legends gems at 52x623")
+    if child_text(spell_window, "MenuName") != "Legends Spell Deck":
+        fail("the icon-only Legends Spell Deck must remain the default display")
 
     hotbars = root_for("EQUI_HotButtonWnd.xml")
     for index in range(1, 13):
@@ -555,10 +562,167 @@ def audit_default_visibility() -> None:
         "StanceWnd": "1",
         "CastingWindow": "1",
         "GroupWindow": "1",
+        "CastSpellWnd": "1",
+        "CastSpellWnd_1": "0",
+        "CastSpellWnd_2": "0",
+        "CastSpellWnd_3": "0",
     }
     for section, show in expected.items():
         if parser.get(section, "Show", fallback=None) != show:
             fail(f"default1440.ini {section} Show must be {show}")
+
+    # Every shipped starting layout must continue selecting the canonical
+    # icon-only deck.  The richer ledger is opt-in through Display Types.
+    preset_paths = [REPO / "UI_Spin_qeynos_LO1.ini"]
+    preset_paths.extend(sorted(SKIN.glob("default*.ini")))
+    preset_paths.extend(sorted((REPO / "layouts").rglob("*.ini")))
+    expected_spell_visibility = {
+        "CastSpellWnd": "1",
+        "CastSpellWnd_1": "0",
+        "CastSpellWnd_2": "0",
+        "CastSpellWnd_3": "0",
+    }
+    for path in preset_paths:
+        preset = configparser.ConfigParser(strict=False)
+        preset.optionxform = str
+        preset.read(path, encoding="utf-8")
+        for section, show in expected_spell_visibility.items():
+            if preset.get(section, "Show", fallback=None) != show:
+                rel = path.relative_to(REPO).as_posix()
+                fail(f"{rel} {section} Show must be {show}")
+
+
+def audit_spell_ledger_variant() -> None:
+    """Prove Alternate3 is readable, resizable, and binding-complete."""
+    root = root_for(SPELL_LEDGER_VARIANT)
+    texture = item(root, "TextureInfo", "spin_spell_ledger.tga")
+    if dimensions(texture) != (256, 96):
+        fail("spell ledger texture declaration must remain 256x96")
+    texture_path = SKIN / "spin_spell_ledger.tga"
+    header = texture_path.read_bytes()[:18]
+    if len(header) != 18:
+        fail("spin_spell_ledger.tga has a truncated header")
+    actual_texture_size = (
+        int.from_bytes(header[12:14], "little"),
+        int.from_bytes(header[14:16], "little"),
+    )
+    if actual_texture_size != (256, 96):
+        fail(f"spin_spell_ledger.tga geometry drift: {actual_texture_size}")
+
+    animation_rows = {
+        "A_SpinSpellLedgerBackground": 0,
+        "A_SpinSpellLedgerHolder": 32,
+        "A_SpinSpellLedgerHighlight": 64,
+    }
+    for animation_name, expected_y in animation_rows.items():
+        animation = item(root, "Ui2DAnimation", animation_name)
+        if child_text(animation, "Frames/Texture") != "spin_spell_ledger.tga":
+            fail(f"{animation_name} lost its dedicated themed texture")
+        if dimensions_at(animation, "Frames/Size") != SPELL_LEDGER_ROW_SIZE:
+            fail(f"{animation_name} no longer matches the spell row")
+        if (child_int(animation, "Frames/Location/X"),
+                child_int(animation, "Frames/Location/Y")) != (0, expected_y):
+            fail(f"{animation_name} atlas position changed")
+
+    expected_layout_members = []
+    for index, eq_type in enumerate(SPELL_LEDGER_EQTYPES):
+        gem = require_binding(
+            root, "SpellGem", f"CSPW_Spell{index}", f"CSPW_Spell{index}"
+        )
+        if dimensions(gem) != SPELL_LEDGER_ROW_SIZE:
+            fail(f"spell ledger gem {index + 1} row geometry drifted")
+        if (child_int(gem, "SpellIconOffsetX"),
+                child_int(gem, "SpellIconOffsetY")) != (2, 2):
+            fail(f"spell ledger gem {index + 1} icon left its socket")
+        if (child_int(gem, "SpellIconSizeX"),
+                child_int(gem, "SpellIconSizeY")) != SPELL_LEDGER_ICON_SIZE:
+            fail(f"spell ledger gem {index + 1} icon size changed")
+        template = {
+            "Holder": "A_SpinSpellLedgerHolder",
+            "Background": "A_SpinSpellLedgerBackground",
+            "Highlight": "A_SpinSpellLedgerHighlight",
+        }
+        for field, expected in template.items():
+            if child_text(gem, f"SpellGemDrawTemplate/{field}") != expected:
+                fail(f"spell ledger gem {index + 1} lost its {field.lower()}")
+
+        name = require_binding(
+            root, "Label", f"CSPW_Spell_{index}_Label",
+            f"CSPW_Spell_{index}_Label", eq_type,
+        )
+        if dimensions(name) != (104, 30):
+            fail(f"spell ledger name {index + 1} geometry drifted")
+        if (child_int(name, "Location/X"),
+                child_int(name, "Location/Y")) != (33, 0):
+            fail(f"spell ledger name {index + 1} left its text rail")
+        if (child_int(name, "Font") < 2
+                or child_text(name, "NoWrap") != "true"
+                or child_text(name, "AlignVCenter") != "true"):
+            fail(f"spell ledger name {index + 1} lost readable alignment")
+        if color(name, "TextColor") != TEXT:
+            fail(f"spell ledger name {index + 1} lost parchment color")
+
+        number = require_binding(
+            root, "Label", f"CSPW_Spell_{index}_Number",
+            f"CSPW_Spell_{index}_Number",
+        )
+        if child_text(number, "Text") != str(index + 1):
+            fail(f"spell ledger slot {index + 1} has the wrong number")
+        if dimensions(number) != (12, 30):
+            fail(f"spell ledger number {index + 1} geometry drifted")
+        if (child_int(number, "Location/X"),
+                child_int(number, "Location/Y")) != (139, 0):
+            fail(f"spell ledger number {index + 1} left its slot rail")
+        if (child_text(number, "AlignRight") != "true"
+                or child_text(number, "AlignVCenter") != "true"):
+            fail(f"spell ledger number {index + 1} lost right alignment")
+        if color(number, "TextColor") != GOLD_BRIGHT:
+            fail(f"spell ledger number {index + 1} lost brass color")
+
+        row_name = f"CSPW_Spell_{index}"
+        row = require_binding(root, "LayoutBox", row_name, row_name)
+        if dimensions(row) != SPELL_LEDGER_ROW_SIZE:
+            fail(f"spell ledger row {index + 1} geometry drifted")
+        row_members = [node.text for node in row.findall("Pieces")]
+        if row_members != [
+            f"SpellGem:CSPW_Spell{index}",
+            f"CSPW_Spell_{index}_Label",
+            f"CSPW_Spell_{index}_Number",
+        ]:
+            fail(f"spell ledger row {index + 1} membership changed")
+        expected_layout_members.append(f"LayoutBox:{row_name}")
+
+    layout = item(root, "TileLayoutBox", "CSPW_SpellGemLayout")
+    actual_layout_members = [node.text for node in layout.findall("Pieces")]
+    if actual_layout_members != expected_layout_members:
+        fail("spell ledger tile order no longer matches slots 1 through 14")
+    if (child_int(layout, "Spacing"),
+            child_int(layout, "SecondarySpacing")) != (2, 2):
+        fail("spell ledger lost its compact row breathing room")
+    if (child_text(layout, "HorizontalFirst") != "true"
+            or child_text(layout, "SnapToChildren") != "true"):
+        fail("spell ledger responsive reflow changed")
+
+    layout_rules = item(root, "LayoutVertical", "CSPW_LayoutV")
+    if (child_text(layout_rules, "ResizeVertical") != "true"
+            or child_text(layout_rules, "ResizeHorizontal") != "true"):
+        fail("spell ledger layout is no longer resizable on both axes")
+    window = item(root, "Screen", "CastSpellWnd")
+    if child_text(window, "MenuName") != SPELL_LEDGER_MENU_NAME:
+        fail("spell ledger is not named in the display-type picker")
+    if dimensions(window) != SPELL_LEDGER_WINDOW_SIZE:
+        fail("spell ledger initial one-column size changed")
+    actual_bounds = tuple(child_int(window, field) for field in (
+        "MinHSize", "MinVSize", "MaxHSize", "MaxVSize",
+    ))
+    if actual_bounds != SPELL_LEDGER_WINDOW_BOUNDS:
+        fail(f"spell ledger resize bounds changed: {actual_bounds}")
+    if (child_text(window, "Style_Sizable") != "true"
+            or child_text(window, "Style_ClientMovable") != "true"):
+        fail("spell ledger can no longer be resized or repositioned")
+    if (child_text(window, "DrawTemplate") != "WDT_RoundedNoTitle"
+            or child_text(window, "Style_Titlebar") != "false"):
+        fail("spell ledger lost its compact SpinUI frame")
 
 
 def audit_variant_safety() -> None:
@@ -619,6 +783,8 @@ def audit_variant_safety() -> None:
             if child_int(item(root, "Label", label_name), "Font") < 3:
                 fail(f"stance variant text too small: {variant_name} {label_name}")
         checked += 1
+    audit_spell_ledger_variant()
+    checked += 1
     if checked != 53:
         fail(f"variant audit coverage changed unexpectedly: {checked}")
 
@@ -635,7 +801,7 @@ def main() -> int:
     print("Combat Command Center audit: ALL PASS")
     print("  Player/Target/ToT | Group 1..11 | XTarget 0..22 | Raid groups 1..12")
     print("  buffs 30 | songs 15 | spell gems 14 | hotbars 11 x 12 | stance + invocation")
-    print("  53 compatibility variants retain current Legends bindings")
+    print("  52 compatibility aliases + named spell-ledger alternate retain bindings")
     print("  contrast AAA/AA | July stock parity " + ("PASS" if stock_checked else "not available"))
     return 0
 

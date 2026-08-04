@@ -63,8 +63,19 @@ EFFECT_NAME_WIDTH = EFFECT_ROW_WIDTH - EFFECT_NAME_X - EFFECT_NAME_TAIL
 # those files predate the July Legends schema and can lose live controls when a
 # saved layout still selects them.  Keep the filenames as compatibility aliases
 # (so existing INIs continue to load), but make every alias use the canonical,
-# current-schema command frame.  MenuName is removed from aliases so the picker
-# presents one deliberate signature design instead of dozens of identical rows.
+# current-schema command frame.  CastSpellWnd3 is the deliberate exception: it
+# is a current-schema, named-and-numbered spell ledger while the canonical deck
+# remains the untouched icon-only default.
+SPELL_LEDGER_VARIANT = "EQUI_CastSpellWnd3.xml"
+SPELL_LEDGER_MENU_NAME = "SpinUI Spell Ledger"
+SPELL_LEDGER_EQTYPES = (
+    60, 61, 62, 63, 64, 65, 66, 67, 133, 138, 149, 150, 414, 415,
+)
+SPELL_LEDGER_ROW_SIZE = (155, 30)
+SPELL_LEDGER_ICON_SIZE = (26, 26)
+SPELL_LEDGER_WINDOW_SIZE = (165, 477)
+SPELL_LEDGER_WINDOW_BOUNDS = (165, 96, 640, 477)
+
 CANONICAL_VARIANTS = {
     "EQUI_PlayerWindow.xml": tuple(f"EQUI_PlayerWindow{i}.xml" for i in range(1, 7)),
     "EQUI_TargetWindow.xml": tuple(f"EQUI_TargetWindow{i}.xml" for i in range(1, 7)),
@@ -74,7 +85,7 @@ CANONICAL_VARIANTS = {
         f"EQUI_ShortDurationBuffWindow{i}.xml" for i in range(1, 18)
     ),
     "EQUI_CastingWindow.xml": ("EQUI_CastingWindow1.xml",),
-    "EQUI_CastSpellWnd.xml": tuple(f"EQUI_CastSpellWnd{i}.xml" for i in range(1, 4)),
+    "EQUI_CastSpellWnd.xml": tuple(f"EQUI_CastSpellWnd{i}.xml" for i in range(1, 3)),
 }
 
 
@@ -589,6 +600,223 @@ def style_spell_gems() -> None:
     write_ascii(path, text)
 
 
+SPELL_LEDGER_ASSETS = r'''
+
+	<!-- SPIN-SPELL-LEDGER: Vellum & Ember row plate states. -->
+	<TextureInfo item="spin_spell_ledger.tga">
+		<Size>
+			<CX>256</CX>
+			<CY>96</CY>
+		</Size>
+	</TextureInfo>
+	<Ui2DAnimation item="A_SpinSpellLedgerBackground">
+		<Cycle>false</Cycle>
+		<Frames>
+			<Texture>spin_spell_ledger.tga</Texture>
+			<Location>
+				<X>0</X>
+				<Y>0</Y>
+			</Location>
+			<Size>
+				<CX>155</CX>
+				<CY>30</CY>
+			</Size>
+		</Frames>
+	</Ui2DAnimation>
+	<Ui2DAnimation item="A_SpinSpellLedgerHolder">
+		<Cycle>false</Cycle>
+		<Frames>
+			<Texture>spin_spell_ledger.tga</Texture>
+			<Location>
+				<X>0</X>
+				<Y>32</Y>
+			</Location>
+			<Size>
+				<CX>155</CX>
+				<CY>30</CY>
+			</Size>
+		</Frames>
+	</Ui2DAnimation>
+	<Ui2DAnimation item="A_SpinSpellLedgerHighlight">
+		<Cycle>false</Cycle>
+		<Frames>
+			<Texture>spin_spell_ledger.tga</Texture>
+			<Location>
+				<X>0</X>
+				<Y>64</Y>
+			</Location>
+			<Size>
+				<CX>155</CX>
+				<CY>30</CY>
+			</Size>
+		</Frames>
+	</Ui2DAnimation>'''
+
+
+def spell_ledger_row(index: int) -> str:
+    """Return the dynamic name, static slot number, and responsive row."""
+    eq_type = SPELL_LEDGER_EQTYPES[index]
+    slot = index + 1
+    return f'''
+	<Label item="CSPW_Spell_{index}_Label">
+		<ScreenID>CSPW_Spell_{index}_Label</ScreenID>
+		<Font>2</Font>
+		<RelativePosition>true</RelativePosition>
+		<Location>
+			<X>33</X>
+			<Y>0</Y>
+		</Location>
+		<Size>
+			<CX>104</CX>
+			<CY>30</CY>
+		</Size>
+		<EQType>{eq_type}</EQType>
+		<TextColor>
+			<R>{TEXT[0]}</R>
+			<G>{TEXT[1]}</G>
+			<B>{TEXT[2]}</B>
+		</TextColor>
+		<FontShadow>true</FontShadow>
+		<NoWrap>true</NoWrap>
+		<AlignLeft>true</AlignLeft>
+		<AlignVCenter>true</AlignVCenter>
+		<Style_Tooltip>false</Style_Tooltip>
+	</Label>
+	<Label item="CSPW_Spell_{index}_Number">
+		<ScreenID>CSPW_Spell_{index}_Number</ScreenID>
+		<Font>2</Font>
+		<RelativePosition>true</RelativePosition>
+		<Location>
+			<X>139</X>
+			<Y>0</Y>
+		</Location>
+		<Size>
+			<CX>12</CX>
+			<CY>30</CY>
+		</Size>
+		<Text>{slot}</Text>
+		<TextColor>
+			<R>{GOLD_BRIGHT[0]}</R>
+			<G>{GOLD_BRIGHT[1]}</G>
+			<B>{GOLD_BRIGHT[2]}</B>
+		</TextColor>
+		<FontShadow>true</FontShadow>
+		<NoWrap>true</NoWrap>
+		<AlignRight>true</AlignRight>
+		<AlignVCenter>true</AlignVCenter>
+		<Style_Tooltip>false</Style_Tooltip>
+	</Label>
+	<LayoutBox item="CSPW_Spell_{index}">
+		<ScreenID>CSPW_Spell_{index}</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<AutoStretch>false</AutoStretch>
+		<Size>
+			<CX>{SPELL_LEDGER_ROW_SIZE[0]}</CX>
+			<CY>{SPELL_LEDGER_ROW_SIZE[1]}</CY>
+		</Size>
+		<Style_Transparent>true</Style_Transparent>
+		<Style_Tooltip>true</Style_Tooltip>
+		<Style_Titlebar>false</Style_Titlebar>
+		<Style_Closebox>false</Style_Closebox>
+		<Style_Minimizebox>false</Style_Minimizebox>
+		<Style_Border>false</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+		<AnchorToTop>true</AnchorToTop>
+		<AnchorToLeft>true</AnchorToLeft>
+		<Pieces>SpellGem:CSPW_Spell{index}</Pieces>
+		<Pieces>CSPW_Spell_{index}_Label</Pieces>
+		<Pieces>CSPW_Spell_{index}_Number</Pieces>
+	</LayoutBox>'''
+
+
+def style_spell_ledger_variant() -> None:
+    """Build Alternate3 as a resizable icon + name + slot spell ledger.
+
+    The canonical file is always the source so every live Legends binding and
+    any future schema addition survives.  Only row presentation is changed.
+    """
+    source_path = SKIN / "EQUI_CastSpellWnd.xml"
+    text = source_path.read_text(encoding="ascii")
+    text, count = re.subn(
+        r"(<Schema\b[^>]*/>)",
+        lambda match: match.group(1) + SPELL_LEDGER_ASSETS,
+        text,
+        count=1,
+    )
+    if count != 1:
+        fail("missing Schema declaration in EQUI_CastSpellWnd.xml")
+
+    for index in range(14):
+        def gem_style(block: str, row_index: int = index) -> str:
+            block = set_container(
+                block, "Size",
+                CX=SPELL_LEDGER_ROW_SIZE[0], CY=SPELL_LEDGER_ROW_SIZE[1],
+            )
+            block = set_value(block, "Holder", "A_SpinSpellLedgerHolder")
+            block = set_value(
+                block, "Background", "A_SpinSpellLedgerBackground"
+            )
+            block = set_value(
+                block, "Highlight", "A_SpinSpellLedgerHighlight"
+            )
+            block = set_value(block, "SpellIconOffsetX", 2)
+            block = set_value(block, "SpellIconOffsetY", 2)
+            block = set_value(
+                block, "SpellIconSizeX", SPELL_LEDGER_ICON_SIZE[0]
+            )
+            block = set_value(
+                block, "SpellIconSizeY", SPELL_LEDGER_ICON_SIZE[1]
+            )
+            return block + spell_ledger_row(row_index)
+
+        text = change_item(text, "SpellGem", f"CSPW_Spell{index}", gem_style)
+
+    def layout_style(block: str) -> str:
+        block = set_value(block, "Spacing", 2)
+        block = set_value(block, "SecondarySpacing", 2)
+        block = set_value(block, "HorizontalFirst", "true")
+        block = set_value(block, "SnapToChildren", "true")
+        for index in range(14):
+            old = f"<Pieces>SpellGem:CSPW_Spell{index}</Pieces>"
+            new = f"<Pieces>LayoutBox:CSPW_Spell_{index}</Pieces>"
+            if old not in block:
+                fail(f"missing spell ledger layout member {index}")
+            block = block.replace(old, new, 1)
+        return block
+
+    text = change_item(
+        text, "TileLayoutBox", "CSPW_SpellGemLayout", layout_style
+    )
+
+    def root_style(block: str) -> str:
+        block = set_container(
+            block, "Size",
+            CX=SPELL_LEDGER_WINDOW_SIZE[0], CY=SPELL_LEDGER_WINDOW_SIZE[1],
+        )
+        block = set_value(block, "Text", "SPELL LEDGER // ICON + NAME + SLOT")
+        block = set_or_add_value(
+            block, "MenuName", SPELL_LEDGER_MENU_NAME, after="Text"
+        )
+        block = set_value(
+            block, "TooltipReference",
+            "Resizable SpinUI spell list with icons, names, and slot numbers",
+        )
+        block = set_value(block, "DrawTemplate", "WDT_RoundedNoTitle")
+        block = set_value(block, "Style_Titlebar", "false")
+        block = set_value(block, "Style_Closebox", "false")
+        block = set_value(block, "Style_Border", "true")
+        block = set_value(block, "Style_Sizable", "true")
+        block = set_value(block, "Style_ClientMovable", "true")
+        min_h, min_v, max_h, max_v = SPELL_LEDGER_WINDOW_BOUNDS
+        block = set_or_add_value(block, "MinHSize", min_h, after="Style_Sizable")
+        block = set_or_add_value(block, "MinVSize", min_v, after="MinHSize")
+        block = set_or_add_value(block, "MaxHSize", max_h, after="MinVSize")
+        return set_or_add_value(block, "MaxVSize", max_v, after="MaxHSize")
+
+    text = change_item(text, "Screen", "CastSpellWnd", root_style)
+    write_ascii(SKIN / SPELL_LEDGER_VARIANT, text)
+
+
 def style_hotbuttons() -> None:
     path = SKIN / "EQUI_HotButtonWnd.xml"
     text = path.read_text(encoding="ascii")
@@ -843,6 +1071,7 @@ def main() -> int:
     style_experience_gauges()
     style_raid()
     sync_canonical_variants()
+    style_spell_ledger_variant()
     print("Combat Command Center restyle: complete")
     return 0
 
