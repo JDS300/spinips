@@ -676,8 +676,9 @@ def build_spell_ledger_texture() -> Image.Image:
     oiled-leather row surface and Vellum & Ember interaction rails used by the
     named-and-numbered Alternate3 spell deck.  Every state deliberately leaves
     a transparent outer gutter: the client category-tints spell-gem surfaces,
-    and a bright edge at the atlas boundary becomes a stack of red/green boxes
-    in game.  Inset rails keep that information without the harsh seams.
+    and even a restrained edge becomes a stack of blue/red/green seams in game.
+    The normal state is therefore a single quiet leather surface, while hover
+    attention stays on the left/top/bottom edges and never boxes in the row.
     """
     atlas = Image.new("RGBA", (256, 96), (0, 0, 0, 0))
 
@@ -686,38 +687,29 @@ def build_spell_ledger_texture() -> Image.Image:
     vgrad(surface, (0, 0, 155, 30), BG2, BG0)
     plate_mask = Image.new("L", plate.size, 0)
     ImageDraw.Draw(plate_mask).rounded_rectangle(
-        [2, 1, 152, 28], radius=5, fill=255
+        [1, 1, 153, 28], radius=4, fill=255
     )
     plate.paste(surface, (0, 0), plate_mask)
     d = ImageDraw.Draw(plate)
-    # Broken, low-alpha rails read as one crafted surface instead of a box.
-    d.line([(8, 2), (146, 2)], fill=GOLD_BRIGHT + (24,))
-    d.line([(8, 27), (146, 27)], fill=(4, 3, 2, 110))
-    d.line([(2, 7), (2, 22)], fill=GOLD_DEEP + (74,))
-    d.line([(152, 7), (152, 22)], fill=LINE_SOFT + (56,))
-    d.line([(30, 5), (30, 24)], fill=GOLD_DEEP + (88,))
+    # A near-silent bevel gives the plate depth without visible row borders.
+    d.line([(8, 2), (147, 2)], fill=GOLD_BRIGHT + (14,))
+    d.line([(8, 27), (147, 27)], fill=(4, 3, 2, 88))
+    d.line([(1, 8), (1, 21)], fill=GOLD_DEEP + (38,))
+    d.line([(30, 6), (30, 23)], fill=GOLD_DEEP + (48,))
     d.line([(31, 6), (31, 23)], fill=(255, 225, 170, 12))
-    d.line([(138, 6), (138, 23)], fill=LINE_SOFT + (112,))
     atlas.paste(plate, (0, 0), plate)
 
+    # Holder pixels are category-tinted by EQ.  A transparent holder prevents
+    # every row from regaining the colored perimeter seams seen in-game; the
+    # native spell icon already carries a much clearer category signal.
     holder = Image.new("RGBA", (155, 30), (0, 0, 0, 0))
-    d = ImageDraw.Draw(holder)
-    # The holder is category-tinted by EQ.  Concentrate that color into a
-    # quiet inset signal rail instead of tinting all four row edges.
-    d.line([(3, 8), (3, 21)], fill=GOLD + (172,))
-    d.line([(4, 6), (9, 3)], fill=GOLD + (84,))
-    d.line([(4, 23), (9, 26)], fill=GOLD + (84,))
-    d.line([(10, 2), (145, 2)], fill=GOLD_BRIGHT + (32,))
-    d.line([(145, 27), (10, 27)], fill=GOLD_DEEP + (44,))
     atlas.paste(holder, (0, 32), holder)
 
     hover = Image.new("RGBA", (155, 30), (0, 0, 0, 0))
     d = ImageDraw.Draw(hover)
-    d.rounded_rectangle([2, 1, 152, 28], radius=5, outline=CYAN + (205,))
-    d.rounded_rectangle([3, 2, 151, 27], radius=4,
-                        outline=CYAN_DEEP + (72,))
-    d.line([(9, 27), (145, 27)], fill=EMBER_BRIGHT + (178,))
-    d.line([(3, 7), (3, 22)], fill=CYAN + (235,))
+    d.line([(8, 2), (147, 2)], fill=GOLD_BRIGHT + (112,))
+    d.line([(9, 27), (146, 27)], fill=EMBER_BRIGHT + (178,))
+    d.line([(2, 7), (2, 22)], fill=GOLD + (220,))
     atlas.paste(hover, (0, 64), hover)
     return atlas
 

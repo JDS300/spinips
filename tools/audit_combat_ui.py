@@ -16,6 +16,7 @@ from restyle_combat import (EFFECT_CHIP, EFFECT_ICON, EFFECT_NAME_WIDTH,
                            EFFECT_ROW_WIDTH, EFFECT_TIMER_FONT,
                            EFFECT_TIMER_HALF_WIDTH, EXTENDED_TARGET_COUNT,
                            EXTENDED_TARGET_GUTTER,
+                           EXTENDED_TARGET_LAYOUT,
                            EXTENDED_TARGET_MIN_SIZE,
                            EXTENDED_TARGET_ROW_SIZE,
                            EXTENDED_TARGET_TILE,
@@ -291,15 +292,15 @@ def audit_group_and_extended_targets() -> None:
     if tuple(child_int(extended_window, field) for field in (
             "MinHSize", "MinVSize")) != EXTENDED_TARGET_MIN_SIZE:
         fail("ExtendedTargetWnd no longer preserves one complete compact row")
-    if extended_window.find("Layout") is not None:
-        fail("ExtendedTargetWnd must not snap its height to all target rows")
+    if child_text(extended_window, "Layout") != EXTENDED_TARGET_LAYOUT:
+        fail("ExtendedTargetWnd lost the parent layout that instantiates its rows")
     if [node.text for node in extended_window.findall("Pieces")] != [
             f"TileLayoutBox:{EXTENDED_TARGET_TILE}"]:
         fail("ExtendedTargetWnd must mount only its responsive target tile")
     for field, expected in (
         ("Style_Sizable", "true"),
-        ("Style_VScroll", "false"),
-        ("Style_AutoVScroll", "false"),
+        ("Style_VScroll", "true"),
+        ("Style_AutoVScroll", "true"),
         ("Style_Titlebar", "true"),
         ("Style_Minimizebox", "true"),
         ("KeepOnScreen", "true"),
@@ -308,6 +309,11 @@ def audit_group_and_extended_targets() -> None:
             fail(f"ExtendedTargetWnd {field} changed")
     if child_text(extended_window, "DrawTemplate") != "WDT_Rounded":
         fail("ExtendedTargetWnd lost its SpinUI frame")
+
+    layout_rules = item(extended, "LayoutVertical", EXTENDED_TARGET_LAYOUT)
+    if (child_text(layout_rules, "ResizeVertical") != "true"
+            or child_text(layout_rules, "ResizeHorizontal") != "true"):
+        fail("ExtendedTargetWnd can no longer resize on both axes")
 
     expected_tile_members = [
         f"Screen:ETW_Ext{index}" for index in range(EXTENDED_TARGET_COUNT)
@@ -320,11 +326,14 @@ def audit_group_and_extended_targets() -> None:
         fail("extended-target row or column spacing changed")
     for field in (
             "HorizontalFirst", "FirstPieceTemplate", "AnchorToTop",
-            "AnchorToLeft", "Style_VScroll", "Style_AutoVScroll"):
+            "AnchorToLeft"):
         if child_text(tile, field) != "true":
             fail(f"extended-target tile {field} must remain true")
     if tile.find("SnapToChildren") is not None:
         fail("extended-target tile must remain a shrinkable scroll viewport")
+    for field in ("Style_VScroll", "Style_AutoVScroll"):
+        if tile.find(field) is not None:
+            fail(f"extended-target tile must leave {field} to its parent window")
 
     local_geometry = {
         "ETW_AggroPct": (20, 32),
@@ -759,7 +768,7 @@ def audit_spell_ledger_variant() -> None:
         return red, green, blue, alpha
 
     # EQ category-tints SpellGem surfaces.  Keeping every atlas state's outer
-    # pixel ring transparent prevents the former red/green stacked-box seams.
+    # pixel ring transparent prevents stacked blue/red/green row boxes.
     for state_y in (0, 32, 64):
         perimeter = (
             [ledger_pixel(x, state_y) for x in range(155)]
@@ -771,10 +780,21 @@ def audit_spell_ledger_variant() -> None:
             fail("spell ledger state art reached its outer edge")
     if ledger_pixel(77, 15)[3] == 0:
         fail("spell ledger base plate lost its inset leather surface")
-    if ledger_pixel(3, 47)[3] == 0 or ledger_pixel(150, 47)[3] != 0:
-        fail("spell ledger category color is no longer confined to its left rail")
-    if ledger_pixel(3, 79)[3] == 0:
-        fail("spell ledger hover state lost its inset focus rail")
+    if ledger_pixel(153, 15)[3] == 0 or ledger_pixel(154, 15)[3] != 0:
+        fail("spell ledger leather plate regained excess right-side gutter")
+    holder_pixels = [
+        ledger_pixel(x, y) for y in range(32, 62) for x in range(155)
+    ]
+    if any(pixel[3] != 0 for pixel in holder_pixels):
+        fail("spell ledger holder can regain category-tinted row seams")
+    if ledger_pixel(2, 79)[3] == 0 or ledger_pixel(153, 79)[3] != 0:
+        fail("spell ledger hover focus must stay on its left edge")
+    visible_pixels = [
+        ledger_pixel(x, y) for y in range(96) for x in range(155)
+        if ledger_pixel(x, y)[3] != 0
+    ]
+    if any(blue > red for red, _green, blue, _alpha in visible_pixels):
+        fail("spell ledger atlas reintroduced a cool blue seam accent")
 
     animation_rows = {
         "A_SpinSpellLedgerBackground": 0,
@@ -899,7 +919,7 @@ def audit_spell_ledger_variant() -> None:
         fail("spell ledger is not named in the display-type picker")
     if dimensions(window) != SPELL_LEDGER_WINDOW_SIZE:
         fail("spell ledger initial one-column size changed")
-    if SPELL_LEDGER_WINDOW_SIZE[0] - SPELL_LEDGER_ROW_SIZE[0] != 5:
+    if SPELL_LEDGER_WINDOW_SIZE[0] - SPELL_LEDGER_ROW_SIZE[0] != 2:
         fail("spell ledger frame regained excess right-side padding")
     actual_bounds = tuple(child_int(window, field) for field in (
         "MinHSize", "MinVSize", "MaxHSize", "MaxVSize",

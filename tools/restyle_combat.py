@@ -73,8 +73,8 @@ SPELL_LEDGER_EQTYPES = (
 )
 SPELL_LEDGER_ROW_SIZE = (155, 30)
 SPELL_LEDGER_ICON_SIZE = (26, 26)
-SPELL_LEDGER_WINDOW_SIZE = (160, 477)
-SPELL_LEDGER_WINDOW_BOUNDS = (160, 96, 640, 477)
+SPELL_LEDGER_WINDOW_SIZE = (157, 477)
+SPELL_LEDGER_WINDOW_BOUNDS = (157, 96, 640, 477)
 
 # Extended targets remain a familiar single column at the current default
 # width, but each complete 34px target row is now a tile.  Horizontal-first
@@ -86,6 +86,7 @@ EXTENDED_TARGET_ROW_SIZE = (146, 34)
 EXTENDED_TARGET_WINDOW_SIZE = (178, 300)
 EXTENDED_TARGET_MIN_SIZE = (170, 58)
 EXTENDED_TARGET_GUTTER = 4
+EXTENDED_TARGET_LAYOUT = "ETW_ResponsiveLayout"
 EXTENDED_TARGET_TILE = "ETW_Targets"
 EXTENDED_TARGET_BLOCK_BEGIN = "SPIN-XTAR-RESPONSIVE:BEGIN"
 EXTENDED_TARGET_BLOCK_END = "SPIN-XTAR-RESPONSIVE:END"
@@ -610,13 +611,17 @@ def style_extended_targets() -> None:
         for index in range(EXTENDED_TARGET_COUNT)
     )
     responsive_block = f'''\t<!-- {EXTENDED_TARGET_BLOCK_BEGIN} -->
+\t<LayoutVertical item="{EXTENDED_TARGET_LAYOUT}">
+\t\t<Padding>0</Padding>
+\t\t<ResizeVertical>true</ResizeVertical>
+\t\t<ResizeHorizontal>true</ResizeHorizontal>
+\t</LayoutVertical>
+
 {chr(10).join(rows)}
 
 \t<TileLayoutBox item="{EXTENDED_TARGET_TILE}">
 \t\t<ScreenID>{EXTENDED_TARGET_TILE}</ScreenID>
 \t\t<RelativePosition>true</RelativePosition>
-\t\t<Style_AutoVScroll>true</Style_AutoVScroll>
-\t\t<Style_VScroll>true</Style_VScroll>
 \t\t<AutoStretch>true</AutoStretch>
 \t\t<TopAnchorOffset>1</TopAnchorOffset>
 \t\t<BottomAnchorOffset>1</BottomAnchorOffset>
@@ -653,17 +658,20 @@ def style_extended_targets() -> None:
             CX=EXTENDED_TARGET_WINDOW_SIZE[0],
             CY=EXTENDED_TARGET_WINDOW_SIZE[1],
         )
-        # The scrollable tile is the viewport.  A root LayoutVertical with
-        # SnapToChildren made the outer window adopt all 23 rows as its minimum
-        # height, preventing players from returning to a compact six-row view.
-        block = re.sub(
-            r"\n[ \t]*<Layout>.*?</Layout>", "", block, count=1,
+        # EQ only instantiates the responsive tile through the parent layout;
+        # moving scroll ownership onto TileLayoutBox leaves a framed but empty
+        # XTAR window in-game.  Keep the proven parent layout and root scroll,
+        # but omit TileLayoutBox/SnapToChildren so the content cannot force the
+        # outer window back to the full 23-row height after the user shrinks it.
+        block = set_or_add_value(
+            block, "Layout", EXTENDED_TARGET_LAYOUT,
+            after="RelativePosition",
         )
         block = set_value(block, "Text", "EXTENDED TARGETS")
         block = set_value(block, "MinHSize", EXTENDED_TARGET_MIN_SIZE[0])
         block = set_value(block, "MinVSize", EXTENDED_TARGET_MIN_SIZE[1])
-        block = set_value(block, "Style_VScroll", "false")
-        block = set_value(block, "Style_AutoVScroll", "false")
+        block = set_value(block, "Style_VScroll", "true")
+        block = set_value(block, "Style_AutoVScroll", "true")
         # Replace the legacy 184-control flat list as one operation.  This also
         # corrects its slot-20 typo (CastGauge21 appeared twice while
         # CastGauge20 was omitted) and makes every target move as a complete

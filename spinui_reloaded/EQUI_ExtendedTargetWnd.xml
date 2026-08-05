@@ -3660,6 +3660,12 @@
 	</Button>
 
 	<!-- SPIN-XTAR-RESPONSIVE:BEGIN -->
+	<LayoutVertical item="ETW_ResponsiveLayout">
+		<Padding>0</Padding>
+		<ResizeVertical>true</ResizeVertical>
+		<ResizeHorizontal>true</ResizeHorizontal>
+	</LayoutVertical>
+
 	<Screen item="ETW_Ext0">
 		<ScreenID>ETW_Ext0</ScreenID>
 		<RelativePosition>true</RelativePosition>
@@ -4124,8 +4130,6 @@
 	<TileLayoutBox item="ETW_Targets">
 		<ScreenID>ETW_Targets</ScreenID>
 		<RelativePosition>true</RelativePosition>
-		<Style_AutoVScroll>true</Style_AutoVScroll>
-		<Style_VScroll>true</Style_VScroll>
 		<AutoStretch>true</AutoStretch>
 		<TopAnchorOffset>1</TopAnchorOffset>
 		<BottomAnchorOffset>1</BottomAnchorOffset>
@@ -4171,6 +4175,7 @@
 
 	<Screen item="ExtendedTargetWnd">
 		<RelativePosition>false</RelativePosition>
+		<Layout>ETW_ResponsiveLayout</Layout>
 		<Location>
 			<X>134</X>
 			<Y>134</Y>
@@ -4180,8 +4185,8 @@
 			<CY>300</CY>
 		</Size>
 		<Text>EXTENDED TARGETS</Text>
-		<Style_VScroll>false</Style_VScroll>
-		<Style_AutoVScroll>false</Style_AutoVScroll>
+		<Style_VScroll>true</Style_VScroll>
+		<Style_AutoVScroll>true</Style_AutoVScroll>
 		<Style_Transparent>false</Style_Transparent>
 		<TooltipReference>This is the extended target window.</TooltipReference>
 		<Style_Titlebar>true</Style_Titlebar>
