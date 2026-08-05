@@ -7,12 +7,13 @@
 <p align="center"><strong>See more of Norrath. Read every fight.</strong></p>
 
 <p align="center">
-  A complete Vellum &amp; Ember interface for EverQuest Legends—built around a clear combat cockpit and paired with a log-driven encounter lab, adventure ledger, item companion, and alert system.
+  Two complete native interfaces for EverQuest Legends—classic Vellum &amp; Ember and optional Midnight Frost Glass—built around a clear combat cockpit and paired with a log-driven encounter lab, adventure ledger, item companion, and alert system.
 </p>
 
 <p align="center">
   <a href="https://github.com/itsspin/spinips/releases/latest"><strong>Download the latest release</strong></a>
   · <a href="#quick-start">Quick start</a>
+  · <a href="#spinui-glass--midnight-frost">Explore Glass</a>
   · <a href="#spins-loremaster">Explore Loremaster</a>
   · <a href="#layout-profiles">Choose a layout</a>
 </p>
@@ -35,6 +36,33 @@
 | Shared chrome gives native windows one leather, brass, ember, and spirit-blue visual language. | Seven resolutions and three play styles, generated and checked in all 21 combinations. | Live combat, progression, loot, travel, Lore Lens, and alerts from ordinary EQ logs plus one-shot, user-triggered screen OCR. |
 
 SpinUI is more than a recolor. It re-composes EverQuest's native XML, textures, and layout data into a single cockpit: the world stays open, the combat loop stays on one eye-line, and information appears where it earns the space.
+
+## SpinUI Glass — Midnight Frost
+
+[![SpinUI Glass full HUD preview showing translucent midnight windows, icy one-pixel frames, mint interaction cues, violet selections, player and target bars, stance, spells, chat, bags, map, effects, and extended targets](docs/previews/spinui_glass_1720.png)](docs/previews/spinui_glass_3440.png)
+
+<p align="center"><em>Midnight Frost in the complete 3440×1440 combat layout. This preview is rendered directly from the release XML geometry and TGA atlases.</em></p>
+
+**`spinui_glass` is a complete optional skin, not an overlay or a handful of recolored windows.** Every native window receives the same visual system: translucent midnight panes, disciplined one-pixel ice edges, subtle inner depth, frosted typography, toxic-mint interaction light, and violet arcane selection energy. The result borrows the information discipline of modern MMO interfaces while remaining unmistakably EverQuest.
+
+- **Glass that remains readable.** Surface alpha is controlled rather than simply lowered. Nested panes gain depth through quiet tonal steps, while text and semantic HP, mana, endurance, XP, and AA colors keep their gameplay meaning.
+- **Pixel-built control states.** Buttons, checkboxes, sliders, radio buttons, recessed fields, spell holders, tabs, titlebars, scrollbars, chat filigree, and item wells share one generated atlas language with clear normal, hover, pressed, active, and disabled states.
+- **A whole-interface transformation.** Inventory, bags, bank, merchant, pet, group, player, target, Extended Targets, stance and invocation bars, spell deck, chat, map, options, tradeskills, loot, journal, and the spellbook all inherit the Glass system.
+- **Modern without client tricks.** Glass uses ordinary EQ SIDL XML and TGA textures—no injection, shaders, game-memory reads, or background process. The look stays crisp because it is painted into native assets rather than blurred over the game.
+- **Binding-safe by construction.** `spinui_glass` is generated from `spinui_reloaded`; an automated semantic-tree audit proves all 257 XML documents and more than 13,000 item, ScreenID, and EQType bindings remain aligned.
+
+<p align="center">
+  <a href="docs/previews/spinui_glass_equipment.png">
+    <img src="docs/previews/spinui_glass_equipment.png" alt="SpinUI Glass inventory and character sheet with frosted text, cyan wells, violet progression, and mint active states" width="46%">
+  </a>
+  <a href="docs/previews/spinui_glass_spellbook.png">
+    <img src="docs/previews/spinui_glass_spellbook.png" alt="SpinUI Glass Codex with etched midnight pages, violet binding, icy spell wells, and mint memorized-state cues" width="46%">
+  </a>
+</p>
+
+<p align="center"><em>The Glass character sheet and purpose-built Glass Codex use the same surface hierarchy as the combat HUD.</em></p>
+
+Both skins ship together. Use `/loadskin spinui_glass 1` for Midnight Frost or `/loadskin spinui_reloaded 1` for Vellum & Ember; the `1` preserves the current window positions.
 
 ## The HUD, rebuilt around the fight
 
@@ -130,7 +158,7 @@ Hover an item and press **Ctrl+Shift+E** by default. Lore Lens freezes one bound
 
 | Principle | In practice |
 |---|---|
-| **One visual language** | Oiled leather, aged brass, ember seams, parchment text, and restrained spirit blue carry from bags and inventory to the map and Loremaster. |
+| **One visual language per skin** | Vellum & Ember carries leather, brass, parchment, and spirit blue everywhere; Midnight Frost carries translucent navy, ice, mint, violet, and frost across the same complete window set. |
 | **Native at the core** | SpinUI is SIDL XML, TGA textures, and INI layout data. It does not replace the client or trade away native behavior for a screenshot. |
 | **A cockpit, not a collage** | Combat information shares one lower eye-line while the middle of the screen remains available for positioning and awareness. |
 | **Resolution-aware** | Native controls stay crisp because each profile is recomputed instead of globally scaled. |
@@ -149,6 +177,19 @@ Hover an item and press **Ctrl+Shift+E** by default. Lore Lens freezes one bound
 | Parchment | `#F1E7D4` / `#AC9A7E` | primary and secondary text |
 
 Every shared chrome texture is generated from the same palette. Dedicated core-window XML then adds readable gauges, effect rows, stat groupings, and control geometry without turning the rest of the interface into a different product.
+
+### Midnight Frost Glass
+
+| Role | Palette | Applied to |
+|---|---|---|
+| Midnight glass | `#03080E → #123042` with controlled alpha | primary windows, inset panels, chat, and content wells |
+| Ice edge | `#69E1F2` / `#CFF7FF` | one-pixel frames, title seams, focus, and precision highlights |
+| Toxic mint | `#55F2BE` / `#A4FFE0` | hover, committed interaction, active tabs, and positive state cues |
+| Arcane violet | `#AB80FF` | selection, AA, magical focus, and the Glass Codex binding |
+| Frost | `#E8F8FC` / `#8BB4BE` | primary and secondary typography |
+| Semantic resources | native HP, mana, endurance, XP, and AA colors | gameplay meaning remains immediately recognizable |
+
+The Glass builder starts from the complete Reloaded payload, regenerates the shared atlases, retargets only presentation controls, and then audits the parsed XML trees for structural parity. This makes the variant maintainable rather than a second hand-edited fork.
 
 ## Layout profiles
 
@@ -196,9 +237,9 @@ EverQuest draws a countdown and a beneficial/detrimental plate on the same buff 
 ### Release package
 
 1. Download and extract **`SpinUI-Manual.zip`** from the [latest release](https://github.com/itsspin/spinips/releases/latest).
-2. Fully close EverQuest, then copy the included `spinui_reloaded` folder to `<EverQuest>\uifiles\`.
+2. Fully close EverQuest, then copy `spinui_reloaded`, `spinui_glass`, or both included folders to `<EverQuest>\uifiles\`.
 3. Keep your existing character UI INI for a skin-only update. If you want a complete layout, select the matching resolution and Combat Focus, Social Focus, or Hybrid profile and back up the existing character UI file before replacing it.
-4. Run the included **`Loremaster.exe`**, use **`/loadskin spinui_reloaded 1`** if needed, and type **`/log on`** once in game.
+4. Run the included **`Loremaster.exe`**, select **`/loadskin spinui_glass 1`** or **`/loadskin spinui_reloaded 1`**, and type **`/log on`** once in game.
 
 Releases intentionally ship the manual package and standalone Loremaster only; the Windows installer is not built or published as a release option.
 
@@ -209,16 +250,16 @@ Packaged releases require no Python installation. Running Loremaster from source
 <details>
 <summary><strong>Show the manual installation guide</strong></summary>
 
-Download **`SpinUI-Manual.zip`** from the same release. It contains the UI, Loremaster, layouts, and a standalone [manual guide](installer/INSTALL-MANUAL.md).
+Download **`SpinUI-Manual.zip`** from the same release. It contains both UI skins, Loremaster, layouts, and a standalone [manual guide](installer/INSTALL-MANUAL.md).
 
-1. If `uifiles\spinui_reloaded` already exists, rename or move that folder out of the way; do not merge a new release into a retired file tree.
-2. Copy the complete `spinui_reloaded` folder into `<EverQuest>\uifiles\` so the final path contains `uifiles\spinui_reloaded\EQUI.xml`.
+1. If the skin folder you are updating already exists, rename or move it out of the way; do not merge a new release into a retired file tree.
+2. Copy `spinui_glass`, `spinui_reloaded`, or both into `<EverQuest>\uifiles\` so each installed folder contains its own `EQUI.xml`.
 3. Optional full layout: choose `layouts/profiles/<resolution>/<combat-focus|social-focus|hybrid>/UI_Spin_qeynos_LO1.ini`.
 4. With EverQuest fully closed, make a byte-for-byte backup of the character UI file you intend to replace.
 5. A manual profile replaces that entire character UI INI, including its window and chat preferences. Apply one only after making the backup in the previous step.
 6. Name the preset `UI_<ExactCharacterName>_<server>_<layout-suffix>.ini`, preserving the character's existing `LO1`, `LO2`, `LO3`, or other suffix. Example: `UI_Spin_qeynos_LO1.ini`.
 7. Copy that optional character UI file beside `eqgame.exe`. Do **not** replace the separate `<Character>_<server>_<layout-suffix>.ini` file or `eqclient.ini`.
-8. Launch EverQuest and use `/loadskin spinui_reloaded 1` if the skin is not already selected. Run the packaged `Loremaster.exe` if desired and type `/log on` in game.
+8. Launch EverQuest and use `/loadskin spinui_glass 1` for Midnight Frost or `/loadskin spinui_reloaded 1` for Vellum & Ember. Run the packaged `Loremaster.exe` if desired and type `/log on` in game.
 
 **Rollback:** restore your character UI backup and select `/loadskin default_modern 1`.
 
@@ -311,8 +352,13 @@ python3 tools/restyle_combat.py
 python3 tools/restyle_pet.py
 python3 tools/restyle_inventory.py
 python3 tools/restyle_persona.py
+python3 tools/build_spinui_glass.py
 python3 tools/render_preview.py
+python3 tools/render_glass_preview.py
+python3 tools/render_glass_equipment_preview.py
+python3 tools/render_glass_spellbook_preview.py
 python3 tools/audit_spinui.py
+python3 tools/audit_spinui_glass.py
 python3 tools/release_quality_gate.py
 ```
 
@@ -320,6 +366,7 @@ python3 tools/release_quality_gate.py
 - Move windows through `PLACEMENTS` in `generate_spinui_layout.py`; generation converts coordinates and re-validates the managed layout.
 - Add a chat preset or resolution through `CHAT_PRESETS` or `RESOLUTION_PROFILES`.
 - Retune effect geometry through the shared `EFFECT_*` / pet buff-cell constants used by both generators and audits.
+- Retune Midnight Frost in `spinui_glass_theme.py`, then rebuild the entire deterministic variant with `build_spinui_glass.py`.
 - Generators start from pristine stock sources. Marker-guarded restyle migrations are safe no-ops after they have already applied.
 
 </details>
@@ -331,7 +378,7 @@ python3 tools/release_quality_gate.py
 | Symptom | Fix |
 |---|---|
 | SmartScreen or antivirus warns about an executable | Verify it against release `SHA256SUMS.txt` and the public Actions build. Use the Manual package if preferred. |
-| Skin does not load | Confirm `uifiles\spinui_reloaded\EQUI.xml`, then use `/loadskin spinui_reloaded 1`. |
+| Skin does not load | Confirm `uifiles\spinui_glass\EQUI.xml` or `uifiles\spinui_reloaded\EQUI.xml`, then use the matching `/loadskin <folder> 1` command. |
 | Layout did not apply | Close EverQuest completely, restore/reapply the intended character UI file, and relaunch. |
 | Layout does not fit | Restore your character UI backup, then select the exact or nearest validated screen profile from the manual package. |
 | Raid chat is in Main | Route Raid Say/Raid Chat to Social through the chat window's Filters menu. |
@@ -355,6 +402,7 @@ python3 tools/release_quality_gate.py
 ```text
 spinips/
 ├── spinui_reloaded/          themed SIDL XML, textures, and skin defaults
+├── spinui_glass/             generated Midnight Frost alternate skin
 ├── layouts/profiles/         seven resolutions × three play styles
 ├── loremaster/               encounter tracker, Lore Lens, alerts, and tests
 ├── installer/                legacy installer source and manual-install guide
@@ -365,4 +413,4 @@ spinips/
 
 ---
 
-<p align="center"><em>Spin's UI Reloaded—bound in leather, sealed in ember. See you in Norrath.</em></p>
+<p align="center"><em>Bound in leather or cut from midnight glass. See you in Norrath.</em></p>

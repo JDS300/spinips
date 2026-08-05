@@ -34,6 +34,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 TOOLS = REPO / "tools"
 SKIN = REPO / "spinui_reloaded"
+GLASS_SKIN = REPO / "spinui_glass"
 
 # The generator deliberately uses this stock file as its immutable layout
 # input.  CI checks out full history so drift is never compared against an
@@ -53,6 +54,9 @@ SOURCE_REQUIRED = (
     "spinui_reloaded/default1080.ini",
     "spinui_reloaded/default1440.ini",
     "spinui_reloaded/default4k.ini",
+    "spinui_glass/EQUI.xml",
+    "spinui_glass/GLASS_THEME.md",
+    "spinui_glass/spin_glass_controls.tga",
     "layouts/profiles/1920x1080/combat-focus/UI_Spin_qeynos_LO1.ini",
     "layouts/profiles/3440x1440/combat-focus/UI_Spin_qeynos_LO1.ini",
     "layouts/profiles/3840x2160/combat-focus/UI_Spin_qeynos_LO1.ini",
@@ -66,6 +70,10 @@ SOURCE_REQUIRED = (
     "docs/previews/loremaster_panel.png",
     "docs/previews/persona_page.png",
     "docs/previews/spinui_reloaded_3440.png",
+    "docs/previews/spinui_glass_1720.png",
+    "docs/previews/spinui_glass_3440.png",
+    "docs/previews/spinui_glass_equipment.png",
+    "docs/previews/spinui_glass_spellbook.png",
     "docs/screenshots/inventory-live.png",
     "docs/screenshots/loremaster-encounter-live.png",
     "docs/screenshots/loremaster-live-tour.gif",
@@ -98,12 +106,18 @@ SOURCE_REQUIRED = (
     "installer/versioninfo-installer.txt",
     "loremaster/versioninfo-loremaster.txt",
     "tools/audit_combat_ui.py",
+    "tools/audit_spinui_glass.py",
     "tools/audit_spinui.py",
+    "tools/build_spinui_glass.py",
     "tools/build_showcase_media.py",
     "tools/generate_spinui_layout.py",
     "tools/generate_spinui_textures.py",
     "tools/render_loremaster_preview.py",
+    "tools/render_glass_equipment_preview.py",
+    "tools/render_glass_preview.py",
+    "tools/render_glass_spellbook_preview.py",
     "tools/render_preview.py",
+    "tools/spinui_glass_theme.py",
     "tools/spinui_theme.py",
     ".github/workflows/build-loremaster.yml",
 )
@@ -123,12 +137,19 @@ README_MEDIA = {
         "PNG", {(1271, 586)}, 400_000),
     "docs/screenshots/loremaster-charm-break-alert-detail.jpg": (
         "JPEG", {(1200, 720)}, 500_000),
+    "docs/previews/spinui_glass_1720.png": (
+        "PNG", {(1720, 720)}, 800_000),
+    "docs/previews/spinui_glass_equipment.png": (
+        "PNG", {(1400, 1416)}, 550_000),
+    "docs/previews/spinui_glass_spellbook.png": (
+        "PNG", {(1240, 880)}, 250_000),
 }
 
 PUBLIC_LAYOUT_PRESETS = ("combat-focus", "social-focus", "hybrid")
 
 COMMON_PACKAGE_TOP_LEVEL = {
     "docs",
+    "spinui_glass",
     "spinui_reloaded",
     "layouts",
     "UI_Spin_qeynos_LO1.ini",
@@ -202,27 +223,34 @@ def check_source_manifest() -> None:
     if empty_required:
         fail("empty required source files: " + ", ".join(empty_required))
 
-    xml_count = len(list(SKIN.glob("*.xml")))
-    texture_count = sum(
-        len(list(SKIN.glob(pattern))) for pattern in ("*.tga", "*.dds", "*.cur")
-    )
-    if xml_count < 200:
-        fail(f"skin payload looks incomplete: only {xml_count} XML files")
-    if texture_count < 500:
-        fail(f"skin payload looks incomplete: only {texture_count} binary assets")
-
-    zero_length = [
-        path.relative_to(REPO).as_posix()
-        for pattern in ("*.xml", "*.ini", "*.tga", "*.dds", "*.cur")
-        for path in SKIN.glob(pattern)
-        if path.stat().st_size == 0
-    ]
-    if zero_length:
-        fail("zero-length skin assets: " + ", ".join(zero_length[:10]))
-    print(
-        f"[PASS] required files present | XML {xml_count} | binary assets {texture_count}",
-        flush=True,
-    )
+    summaries = []
+    for skin in (SKIN, GLASS_SKIN):
+        xml_count = len(list(skin.glob("*.xml")))
+        texture_count = sum(
+            len(list(skin.glob(pattern)))
+            for pattern in ("*.tga", "*.dds", "*.cur")
+        )
+        if xml_count < 200:
+            fail(
+                f"{skin.name} payload looks incomplete: only {xml_count} XML files"
+            )
+        if texture_count < 500:
+            fail(
+                f"{skin.name} payload looks incomplete: only "
+                f"{texture_count} binary assets"
+            )
+        zero_length = [
+            path.relative_to(REPO).as_posix()
+            for pattern in ("*.xml", "*.ini", "*.tga", "*.dds", "*.cur")
+            for path in skin.glob(pattern)
+            if path.stat().st_size == 0
+        ]
+        if zero_length:
+            fail("zero-length skin assets: " + ", ".join(zero_length[:10]))
+        summaries.append(
+            f"{skin.name}: XML {xml_count}, binary assets {texture_count}"
+        )
+    print("[PASS] required files present | " + " | ".join(summaries), flush=True)
 
 
 def _jpeg_dimensions(payload: bytes) -> tuple[int, int]:
@@ -775,6 +803,9 @@ def check_staged_package(kind: str, package_root: Path) -> None:
     skin_files = _compare_packaged_tree(
         SKIN, package_root / "spinui_reloaded", f"{kind}/spinui_reloaded"
     )
+    glass_skin_files = _compare_packaged_tree(
+        GLASS_SKIN, package_root / "spinui_glass", f"{kind}/spinui_glass"
+    )
     # Public 3440 compatibility aliases and the complete resolution-profile
     # tree ship; layouts/original and layouts/spin-live remain internal bases.
     package_layouts = package_root / "layouts"
@@ -817,7 +848,8 @@ def check_staged_package(kind: str, package_root: Path) -> None:
     if kind == "installer":
         _check_windows_executable(package_root / "SpinUIInstaller.exe")
     print(
-        f"[PASS] {kind} package | skin files {skin_files} | "
+        f"[PASS] {kind} package | Reloaded files {skin_files} | "
+        f"Glass files {glass_skin_files} | "
         f"layout files {layout_files} | docs files {docs_files} | exact source payload",
         flush=True,
     )

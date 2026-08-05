@@ -21,6 +21,7 @@ from spinui_theme import (BG1, BG2, CYAN, EMBER, GOLD, GOLD_BRIGHT, LINE, LINE_S
 
 SKIN = REPO / "spinui_reloaded"
 OUT = REPO / "docs" / "previews"
+OUTPUT_FILENAME = "equipment_page.png"
 
 DIM = TEXT_DIM
 
@@ -213,8 +214,8 @@ def main():
     img2 = img.resize((W * 2, H * 2), Image.LANCZOS)
     canvas = Image.new("RGB", (W * 2 + 80, H * 2 + 80), (26, 24, 30))
     canvas.paste(img2, (40, 40), img2)
-    canvas.save(OUT / "equipment_page.png")
-    print("wrote docs/previews/equipment_page.png")
+    canvas.save(OUT / OUTPUT_FILENAME)
+    print("wrote", OUT / OUTPUT_FILENAME)
 
 
 if __name__ == "__main__":
