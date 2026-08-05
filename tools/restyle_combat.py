@@ -59,6 +59,12 @@ EFFECT_NAME_X = 36
 EFFECT_NAME_TAIL = 10
 EFFECT_NAME_WIDTH = EFFECT_ROW_WIDTH - EFFECT_NAME_X - EFFECT_NAME_TAIL
 
+# The authored 360x193 command frames remain unchanged on first load. Their
+# anchored subwindows can safely contract to these Legends-compatible bounds,
+# so users may resize them without clipping the command rows.
+PLAYER_MIN_SIZE = (280, 174)
+TARGET_MIN_SIZE = (260, 174)
+
 # Older SpinUI releases exposed a large collection of visual variants.  Most of
 # those files predate the July Legends schema and can lose live controls when a
 # saved layout still selects them.  Keep the filenames as compatibility aliases
@@ -428,11 +434,18 @@ def style_player() -> None:
 
     def root_style(block: str) -> str:
         block = set_container(block, "Size", CX=360, CY=193)
+        block = set_or_add_value(
+            block, "MinHSize", PLAYER_MIN_SIZE[0], after="Size"
+        )
+        block = set_or_add_value(
+            block, "MinVSize", PLAYER_MIN_SIZE[1], after="MinHSize"
+        )
         block = set_value(block, "MenuName", "Legends Command Frame - Buffs on Top")
         # The root exists mostly to host the interaction/buff canvas.  Painting
         # its full 360x193 border creates the large faint perimeter seen in the
         # live client; the compact PlayerSubWindow remains the visible frame.
         block = set_value(block, "Style_Border", "false")
+        block = set_value(block, "Style_Sizable", "true")
         return block
 
     text = change_item(text, "Screen", "PlayerWindow", root_style)
@@ -463,10 +476,17 @@ def style_target() -> None:
 
     def root_style(block: str) -> str:
         block = set_container(block, "Size", CX=360, CY=193)
+        block = set_or_add_value(
+            block, "MinHSize", TARGET_MIN_SIZE[0], after="Size"
+        )
+        block = set_or_add_value(
+            block, "MinVSize", TARGET_MIN_SIZE[1], after="MinHSize"
+        )
         block = set_value(block, "MenuName", "Legends Command Frame - Buffs on Top")
         # Keep the root transparent and interactive while letting the compact
         # TargetSubWindow provide the only visible perimeter.
         block = set_value(block, "Style_Border", "false")
+        block = set_value(block, "Style_Sizable", "true")
         return block
 
     text = change_item(text, "Screen", "TargetWindow", root_style)
