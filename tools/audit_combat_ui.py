@@ -21,12 +21,11 @@ from restyle_combat import (EFFECT_CHIP, EFFECT_ICON, EFFECT_NAME_WIDTH,
                            EXTENDED_TARGET_ROW_SIZE,
                            EXTENDED_TARGET_TILE,
                            EXTENDED_TARGET_WINDOW_SIZE,
+                           PLAYER_MIN_SIZE, TARGET_MIN_SIZE,
                            SPELL_LEDGER_EQTYPES, SPELL_LEDGER_ICON_SIZE,
                            SPELL_LEDGER_MENU_NAME, SPELL_LEDGER_ROW_SIZE,
                            SPELL_LEDGER_VARIANT, SPELL_LEDGER_WINDOW_BOUNDS,
                            SPELL_LEDGER_WINDOW_SIZE)
-                           EFFECT_TIMER_HALF_WIDTH, PLAYER_MIN_SIZE,
-                           TARGET_MIN_SIZE)
 
 
 REPO = Path(__file__).resolve().parent.parent
@@ -692,6 +691,19 @@ def audit_optional_stock_parity() -> bool:
     if not STOCK.is_dir():
         return False
     allowed_stock_only = {("EQUI_GroupWindow.xml", "Label", "Test1")}
+    # SpinUI deliberately supplies bindings that the installed stock files
+    # leave blank or misname.  Pin the exact replacements so parity remains
+    # strict everywhere else and these functional fixes cannot silently drift.
+    allowed_binding_overrides = {
+        ("EQUI_PlayerWindow.xml", "Label", "PW_AggroPctPlayerLabel"):
+            ("PW_AggroPctPlayerLabel", "306"),
+        ("EQUI_PlayerWindow.xml", "Label", "PW_AggroNameSecondaryLabel"):
+            ("PW_AggroNameSecondaryLabel", "304"),
+        ("EQUI_PlayerWindow.xml", "Label", "PW_AggroPctSecondaryLabel"):
+            ("PW_AggroPctSecondaryLabel", "308"),
+        ("EQUI_ShortDurationBuffWindow.xml", "Label", "SDBW_Buff1"):
+            ("SDBuff1Label", "601"),
+    }
     for name in FILES:
         stock_path = STOCK / name
         if not stock_path.exists():
@@ -703,7 +715,9 @@ def audit_optional_stock_parity() -> bool:
                 continue
             if key not in custom:
                 fail(f"July stock item missing from {name}: {key[0]} {key[1]}")
-            if custom[key] != expected:
+            override_key = (name, key[0], key[1])
+            if (custom[key] != expected
+                    and custom[key] != allowed_binding_overrides.get(override_key)):
                 fail(f"July binding drift in {name}: {key[0]} {key[1]}")
     return True
 
