@@ -39,9 +39,9 @@ SpinUI is more than a recolor. It re-composes EverQuest's native XML, textures, 
 
 ## SpinUI Glass — Midnight Frost
 
-[![SpinUI Glass full HUD preview showing translucent midnight windows, icy one-pixel frames, mint interaction cues, violet selections, player and target bars, stance, spells, chat, bags, map, effects, and extended targets](docs/previews/spinui_glass_1720.png)](docs/previews/spinui_glass_3440.png)
+[![SpinUI Glass running in EverQuest Legends with the Equipment character sheet, companion commands, player bars, stance and invocation rows, spells, hotbuttons, chat, loot, group, Extended Targets, and Loremaster DPS Rune](docs/screenshots/spinui-glass-live.png)](docs/screenshots/spinui-glass-live.png)
 
-<p align="center"><em>Midnight Frost in the complete 3440×1440 combat layout. This preview is rendered directly from the release XML geometry and TGA atlases.</em></p>
+<p align="center"><em>Midnight Frost live in EverQuest Legends at 3440×1440: the complete Glass character sheet and combat cockpit in game.</em></p>
 
 **`spinui_glass` is a complete optional skin, not an overlay or a handful of recolored windows.** Every native window receives the same visual system: translucent midnight panes, disciplined one-pixel ice edges, subtle inner depth, frosted typography, toxic-mint interaction light, and violet arcane selection energy. The result borrows the information discipline of modern MMO interfaces while remaining unmistakably EverQuest.
 

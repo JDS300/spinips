@@ -75,6 +75,7 @@ SOURCE_REQUIRED = (
     "docs/previews/spinui_glass_equipment.png",
     "docs/previews/spinui_glass_spellbook.png",
     "docs/screenshots/inventory-live.png",
+    "docs/screenshots/spinui-glass-live.png",
     "docs/screenshots/loremaster-encounter-live.png",
     "docs/screenshots/loremaster-live-tour.gif",
     "docs/screenshots/loremaster-session-live.png",
@@ -137,8 +138,8 @@ README_MEDIA = {
         "PNG", {(1271, 586)}, 400_000),
     "docs/screenshots/loremaster-charm-break-alert-detail.jpg": (
         "JPEG", {(1200, 720)}, 500_000),
-    "docs/previews/spinui_glass_1720.png": (
-        "PNG", {(1720, 720)}, 800_000),
+    "docs/screenshots/spinui-glass-live.png": (
+        "PNG", {(3440, 1440)}, 4_000_000),
     "docs/previews/spinui_glass_equipment.png": (
         "PNG", {(1400, 1416)}, 550_000),
     "docs/previews/spinui_glass_spellbook.png": (
