@@ -32,6 +32,7 @@ SOURCE = REPO / "spinui_reloaded"
 OUTPUT = REPO / "spinui_glass"
 ANIMATIONS = SOURCE / "EQUI_Animations.xml"
 CONTROL_ATLAS = "spin_glass_controls.tga"
+TEXT_SUFFIXES = {".xml", ".ini", ".md", ".txt"}
 
 GLASS_README = """# SpinUI Glass
 
@@ -56,6 +57,19 @@ COLOR_PATTERN = re.compile(
 
 def sha256(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
+
+
+def comparable_payload(name: str, payload: bytes) -> bytes:
+    """Normalize checkout-controlled newlines while keeping assets exact.
+
+    GitHub's Windows runners can materialize tracked text with CRLF even when
+    the repository blob uses LF.  Generated XML is semantically identical in
+    either form; TGA, DDS, cursor, and other binary payloads must remain
+    byte-for-byte deterministic.
+    """
+    if Path(name).suffix.casefold() in TEXT_SUFFIXES:
+        return payload.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return payload
 
 
 def remap_visual_colors(text: str) -> str:
@@ -167,7 +181,7 @@ def retarget_control_animations(text: str) -> str:
 
 
 def transform_xml(name: str, payload: bytes) -> bytes:
-    text = payload.decode("ascii")
+    text = comparable_payload(name, payload).decode("ascii")
     text = remap_visual_colors(text)
     if name.casefold() == "equi_animations.xml":
         text = retarget_control_animations(text)
@@ -458,7 +472,9 @@ def build(output: Path, *, check: bool = False) -> int:
         problems.extend(f"unexpected {name}" for name in extra[:20])
         for name in sorted(set(expected) & set(actual)):
             payload = actual[name].read_bytes()
-            if sha256(payload) != sha256(expected[name]):
+            if sha256(comparable_payload(name, payload)) != sha256(
+                comparable_payload(name, expected[name])
+            ):
                 problems.append(f"stale {name}")
                 if len(problems) >= 40:
                     break
@@ -473,7 +489,9 @@ def build(output: Path, *, check: bool = False) -> int:
     written = 0
     for name, payload in expected.items():
         destination = output / name
-        if destination.is_file() and sha256(destination.read_bytes()) == sha256(payload):
+        if destination.is_file() and sha256(
+            comparable_payload(name, destination.read_bytes())
+        ) == sha256(comparable_payload(name, payload)):
             continue
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(payload)
