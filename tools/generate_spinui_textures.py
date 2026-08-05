@@ -674,46 +674,50 @@ def build_spell_ledger_texture() -> Image.Image:
 
     The spell icon remains native client art.  This atlas supplies only the
     oiled-leather row surface and Vellum & Ember interaction rails used by the
-    named-and-numbered Alternate3 spell deck.
+    named-and-numbered Alternate3 spell deck.  Every state deliberately leaves
+    a transparent outer gutter: the client category-tints spell-gem surfaces,
+    and a bright edge at the atlas boundary becomes a stack of red/green boxes
+    in game.  Inset rails keep that information without the harsh seams.
     """
     atlas = Image.new("RGBA", (256, 96), (0, 0, 0, 0))
 
     plate = Image.new("RGBA", (155, 30), (0, 0, 0, 0))
-    vgrad(plate, (0, 0, 155, 30), BG2, BG0)
+    surface = Image.new("RGBA", plate.size, (0, 0, 0, 0))
+    vgrad(surface, (0, 0, 155, 30), BG2, BG0)
     plate_mask = Image.new("L", plate.size, 0)
     ImageDraw.Draw(plate_mask).rounded_rectangle(
-        [0, 0, 154, 29], radius=3, fill=255
+        [2, 1, 152, 28], radius=5, fill=255
     )
-    clipped = Image.new("RGBA", plate.size, (0, 0, 0, 0))
-    clipped.paste(plate, (0, 0), plate_mask)
-    d = ImageDraw.Draw(clipped)
-    d.rounded_rectangle([0, 0, 154, 29], radius=3, outline=LINE + (255,))
-    d.line([(3, 1), (151, 1)], fill=GOLD_BRIGHT + (38,))
-    d.line([(30, 3), (30, 26)], fill=GOLD_DEEP + (150,))
-    d.line([(31, 3), (31, 26)], fill=(255, 225, 170, 18))
-    d.line([(138, 4), (138, 25)], fill=LINE_SOFT + (210,))
-    d.line([(3, 28), (151, 28)], fill=(4, 3, 2, 210))
-    atlas.paste(clipped, (0, 0), clipped)
+    plate.paste(surface, (0, 0), plate_mask)
+    d = ImageDraw.Draw(plate)
+    # Broken, low-alpha rails read as one crafted surface instead of a box.
+    d.line([(8, 2), (146, 2)], fill=GOLD_BRIGHT + (24,))
+    d.line([(8, 27), (146, 27)], fill=(4, 3, 2, 110))
+    d.line([(2, 7), (2, 22)], fill=GOLD_DEEP + (74,))
+    d.line([(152, 7), (152, 22)], fill=LINE_SOFT + (56,))
+    d.line([(30, 5), (30, 24)], fill=GOLD_DEEP + (88,))
+    d.line([(31, 6), (31, 23)], fill=(255, 225, 170, 12))
+    d.line([(138, 6), (138, 23)], fill=LINE_SOFT + (112,))
+    atlas.paste(plate, (0, 0), plate)
 
     holder = Image.new("RGBA", (155, 30), (0, 0, 0, 0))
     d = ImageDraw.Draw(holder)
-    d.rounded_rectangle([0, 0, 154, 29], radius=3, outline=GOLD_DEEP + (220,))
-    # Short brass corner marks give the row SpinUI identity without tinting or
-    # covering the spell-category information that the client applies.
-    for x0, y0, dx, dy in (
-        (2, 2, 1, 1), (152, 2, -1, 1),
-        (2, 27, 1, -1), (152, 27, -1, -1),
-    ):
-        d.line([(x0, y0), (x0 + 5 * dx, y0)], fill=GOLD + (235,))
-        d.line([(x0, y0), (x0, y0 + 4 * dy)], fill=GOLD + (235,))
+    # The holder is category-tinted by EQ.  Concentrate that color into a
+    # quiet inset signal rail instead of tinting all four row edges.
+    d.line([(3, 8), (3, 21)], fill=GOLD + (172,))
+    d.line([(4, 6), (9, 3)], fill=GOLD + (84,))
+    d.line([(4, 23), (9, 26)], fill=GOLD + (84,))
+    d.line([(10, 2), (145, 2)], fill=GOLD_BRIGHT + (32,))
+    d.line([(145, 27), (10, 27)], fill=GOLD_DEEP + (44,))
     atlas.paste(holder, (0, 32), holder)
 
     hover = Image.new("RGBA", (155, 30), (0, 0, 0, 0))
     d = ImageDraw.Draw(hover)
-    d.rounded_rectangle([0, 0, 154, 29], radius=3, outline=CYAN + (255,))
-    d.rounded_rectangle([1, 1, 153, 28], radius=2, outline=CYAN_DEEP + (175,))
-    d.line([(5, 28), (149, 28)], fill=EMBER_BRIGHT + (245,))
-    d.line([(1, 6), (1, 23)], fill=CYAN + (210,))
+    d.rounded_rectangle([2, 1, 152, 28], radius=5, outline=CYAN + (205,))
+    d.rounded_rectangle([3, 2, 151, 27], radius=4,
+                        outline=CYAN_DEEP + (72,))
+    d.line([(9, 27), (145, 27)], fill=EMBER_BRIGHT + (178,))
+    d.line([(3, 7), (3, 22)], fill=CYAN + (235,))
     atlas.paste(hover, (0, 64), hover)
     return atlas
 
