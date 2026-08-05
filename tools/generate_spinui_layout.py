@@ -169,9 +169,9 @@ PLACEMENTS: dict[str, dict] = {
     # bottom baseline: 8px before PlayerWindow and 7px above the hotbar row.
     # The fixed default spends ultrawide width on a full-capacity effect rail
     # instead of stacking a dark tray overhead.
-    "PetInfoWindow": P(851, 527, 356, 236, show=0),
-    "PetInfoWindow_1": P(1008, 527, 356, 236, show=0),
-    "PetInfoWindow_2": P(1008, 527, 356, 236, show=0),
+    "PetInfoWindow": P(851, 553, 356, 210, show=0),
+    "PetInfoWindow_1": P(1008, 553, 356, 210, show=0),
+    "PetInfoWindow_2": P(1008, 553, 356, 210, show=0),
     "PetInfoWindow_3": P(923, 586, 441, 181, show=0),
     "StanceWnd":     P(1489, 1027, 440, 66, show=1),
     "CastingWindow": P(1557, 966, 310, 46, show=1),
@@ -313,7 +313,7 @@ def adaptive_placements(profile: ResolutionProfile, preset: str) -> dict[str, di
     # inventory: inventory | bank window | bank bags.
     bank_x = max(inventory_x + 668, center - 720)
     pet_x = min(sw - 412, inventory_x + 676)
-    pet_y = max(8, player_y - 244)
+    pet_y = max(8, player_y - 218)
     bank_y = max(80, min(round(sh * 0.23), chat_top - 406))
 
     placements = {
@@ -325,11 +325,11 @@ def adaptive_placements(profile: ResolutionProfile, preset: str) -> dict[str, di
         "HotButtonWnd11": q(64, max(8, chat_top - 273), 98, 271, show=0),
         "PlayerWindow": q(player_x, player_y, 360, 193, show=1),
         "TargetWindow": q(target_x, player_y, 360, 193, show=1),
-        "PetInfoWindow": q(pet_x, pet_y, 356, 236, show=0),
+        "PetInfoWindow": q(pet_x, pet_y, 356, 210, show=0),
         "PetInfoWindow_1": q(pet_x + 157, pet_y - 24,
-                             356, 236, show=0),
+                             356, 210, show=0),
         "PetInfoWindow_2": q(pet_x + 157, pet_y - 24,
-                             356, 236, show=0),
+                             356, 210, show=0),
         "PetInfoWindow_3": q(pet_x + 72, pet_y + 4,
                              441, 181, show=0),
         "StanceWnd": q(center - 231, chat_top - 119, 440, 66, show=1),
@@ -571,8 +571,8 @@ XML_SIZES = {
     # Player/Target keep their full transparent interaction and buff hosts for
     # placement math even though only the compact lower subframes are painted.
     "PlayerWindow": (360, 193), "TargetWindow": (360, 193),
-    "PetInfoWindow": (356, 236), "BuffWindow": (216, 640),
-    "PetInfoWindow_1": (356, 236), "PetInfoWindow_2": (356, 236),
+    "PetInfoWindow": (356, 210), "BuffWindow": (216, 640),
+    "PetInfoWindow_1": (356, 210), "PetInfoWindow_2": (356, 210),
     "PetInfoWindow_3": (441, 181),
     "BuffWindow_13": (216, 640), "ShortDurationBuffWindow": (216, 324),
     "ShortDurationBuffWindow_13": (216, 324), "BigBankWnd": (287, 390),
