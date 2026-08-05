@@ -2,6 +2,61 @@
 <XML ID="EQInterfaceDefinitionLanguage">
 	<Schema xmlns="EverQuestData" xmlns:dt="EverQuestDataTypes" />
 
+
+	<!-- SPIN-SPELL-LEDGER-ASSETS:BEGIN -->
+	<!-- Vellum & Ember row plate states.  These live in the central animation
+	     registry because dynamically selected display-type XML cannot publish
+	     new Ui2DAnimation symbols reliably in the EverQuest client. -->
+	<TextureInfo item="spin_spell_ledger.tga">
+		<Size>
+			<CX>256</CX>
+			<CY>96</CY>
+		</Size>
+	</TextureInfo>
+	<Ui2DAnimation item="A_SpinSpellLedgerBackground">
+		<Cycle>false</Cycle>
+		<Frames>
+			<Texture>spin_spell_ledger.tga</Texture>
+			<Location>
+				<X>0</X>
+				<Y>0</Y>
+			</Location>
+			<Size>
+				<CX>155</CX>
+				<CY>30</CY>
+			</Size>
+		</Frames>
+	</Ui2DAnimation>
+	<Ui2DAnimation item="A_SpinSpellLedgerHolder">
+		<Cycle>false</Cycle>
+		<Frames>
+			<Texture>spin_spell_ledger.tga</Texture>
+			<Location>
+				<X>0</X>
+				<Y>32</Y>
+			</Location>
+			<Size>
+				<CX>155</CX>
+				<CY>30</CY>
+			</Size>
+		</Frames>
+	</Ui2DAnimation>
+	<Ui2DAnimation item="A_SpinSpellLedgerHighlight">
+		<Cycle>false</Cycle>
+		<Frames>
+			<Texture>spin_spell_ledger.tga</Texture>
+			<Location>
+				<X>0</X>
+				<Y>64</Y>
+			</Location>
+			<Size>
+				<CX>155</CX>
+				<CY>30</CY>
+			</Size>
+		</Frames>
+	</Ui2DAnimation>
+	<!-- SPIN-SPELL-LEDGER-ASSETS:END -->
+
 <!-- Textures -->
 	<TextureInfo item="Achievement_Titlebar.tga">
 		<Size>
@@ -146,13 +201,13 @@
 			<CX>256</CX>
 			<CY>256</CY>
 		</Size>
-	</TextureInfo>	
+	</TextureInfo>
 	<TextureInfo item="wnd_bg_light_rock_inner.tga">
 		<Size>
 			<CX>256</CX>
 			<CY>256</CY>
 		</Size>
-	</TextureInfo>	
+	</TextureInfo>
 	<TextureInfo item="char_select_background.tga">
 		<Size>
 			<CX>256</CX>
@@ -296,13 +351,13 @@
 			<CX>256</CX>
 			<CY>256</CY>
 		</Size>
-	</TextureInfo>			
+	</TextureInfo>
 	<TextureInfo item="window_br_pieces01a.tga">
 		<Size>
 			<CX>256</CX>
 			<CY>256</CY>
 		</Size>
-	</TextureInfo>	
+	</TextureInfo>
 	<TextureInfo item="window_pieces02.tga">
 		<Size>
 			<CX>256</CX>
@@ -326,7 +381,7 @@
 			<CX>128</CX>
 			<CY>128</CY>
 		</Size>
-	</TextureInfo>	
+	</TextureInfo>
 	<TextureInfo item="window_pieces05.tga">
 		<Size>
 			<CX>256</CX>
@@ -380,19 +435,19 @@
 			<CX>256</CX>
 			<CY>256</CY>
 		</Size>
-	</TextureInfo>		
+	</TextureInfo>
 	<TextureInfo item="window_pieces11b.dds">
 		<Size>
 			<CX>256</CX>
 			<CY>256</CY>
 		</Size>
-	</TextureInfo>		
+	</TextureInfo>
 	<TextureInfo item="window_pieces11c.dds">
 		<Size>
 			<CX>256</CX>
 			<CY>256</CY>
 		</Size>
-	</TextureInfo>		
+	</TextureInfo>
 	<TextureInfo item="scrollbar_gutter.tga">
 		<Size>
 			<CX>16</CX>
@@ -758,7 +813,7 @@
 			<CX>128</CX>
 			<CY>128</CY>
 		</Size>
-	</TextureInfo>	
+	</TextureInfo>
 	<TextureInfo item="window_fg_cart_light_solid.tga">
 		<Size>
 			<CX>128</CX>
@@ -770,14 +825,14 @@
 			<CX>128</CX>
 			<CY>128</CY>
 		</Size>
-	</TextureInfo>	
+	</TextureInfo>
 	<TextureInfo item="window_fg_cart_dark_solid.tga">
 		<Size>
 			<CX>128</CX>
 			<CY>128</CY>
 		</Size>
 	</TextureInfo>
-	
+
 	<!-- Achievement Overlays -->
 	<Ui2DAnimation item="A_LockBtn">
 		<Cycle>true</Cycle>
@@ -5223,7 +5278,7 @@
 			</Hotspot>
 		</Frames>
 	</Ui2DAnimation>
-	
+
 	<Ui2DAnimation item="A_EQInventoryBtnNormal">
 		<Frames>
 			<Texture>window_pieces04a.dds</Texture>
@@ -5274,8 +5329,8 @@
 				<Y>0</Y>
 			</Hotspot>
 		</Frames>
-	</Ui2DAnimation>	
-	
+	</Ui2DAnimation>
+
 	<Ui2DAnimation item="A_InventoryBtnPressedFlyby">
 		<Frames>
 			<Texture>window_pieces02.tga</Texture>
@@ -5344,7 +5399,7 @@
 			</Hotspot>
 		</Frames>
 	</Ui2DAnimation>
-	
+
 	<Ui2DAnimation item="A_AchievBtnNormal">
 		<Frames>
 			<Texture>window_pieces04a.dds</Texture>
@@ -5395,8 +5450,8 @@
 				<Y>0</Y>
 			</Hotspot>
 		</Frames>
-	</Ui2DAnimation>	
-	
+	</Ui2DAnimation>
+
 	<Ui2DAnimation item="A_PetInfoBtnPressedFlyby">
 		<Frames>
 			<Texture>window_pieces02.tga</Texture>
@@ -6048,7 +6103,7 @@
 			</Hotspot>
 		</Frames>
 	</Ui2DAnimation>
-	
+
 	<Ui2DAnimation item="A_AABtnNormal">
 		<Frames>
 			<Texture>window_pieces04a.dds</Texture>
@@ -6099,8 +6154,8 @@
 				<Y>0</Y>
 			</Hotspot>
 		</Frames>
-	</Ui2DAnimation>	
-	
+	</Ui2DAnimation>
+
 	<Ui2DAnimation item="A_CombatSkillBtnPressedFlyby">
 		<Frames>
 			<Texture>window_pieces04.tga</Texture>
@@ -6238,7 +6293,7 @@
 			</Hotspot>
 		</Frames>
 	</Ui2DAnimation>
-	
+
 	<Ui2DAnimation item="A_ActionsBtnPressedFlyby">
 		<Frames>
 			<Texture>window_pieces02.tga</Texture>
@@ -6460,7 +6515,7 @@
 			</Hotspot>
 		</Frames>
 	</Ui2DAnimation>
-	
+
 	<Ui2DAnimation item="A_EQHelpBtnNormal">
 		<Frames>
 			<Texture>window_pieces04a.dds</Texture>
@@ -6511,8 +6566,8 @@
 				<Y>0</Y>
 			</Hotspot>
 		</Frames>
-	</Ui2DAnimation>	
-	
+	</Ui2DAnimation>
+
 	<Ui2DAnimation item="A_HelpBtnPressedFlyby">
 		<Frames>
 			<Texture>window_pieces02.tga</Texture>
@@ -9088,7 +9143,7 @@
 			</Hotspot>
 			<Duration>1000</Duration>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 	<Ui2DAnimation item="A_SquareBtnFlyby">
 		<Cycle>true</Cycle>
 		<Frames>
@@ -9146,7 +9201,7 @@
 			<Duration>1000</Duration>
 		</Frames>
 	</Ui2DAnimation>
-	
+
 	<Ui2DAnimation item="A_SquareBtnNormalSmall">
 		<Cycle>true</Cycle>
 		<Frames>
@@ -9241,8 +9296,8 @@
 			</Hotspot>
 			<Duration>1000</Duration>
 		</Frames>
-	</Ui2DAnimation>	
-	
+	</Ui2DAnimation>
+
 	<Ui2DAnimation item="A_BookBtnNormal">
 		<Cycle>true</Cycle>
 		<Frames>
@@ -10005,7 +10060,7 @@
 			<Duration>1000</Duration>
 		</Frames>
 	</Ui2DAnimation>
-	<!-- Border for pieces inside windows  -->	
+	<!-- Border for pieces inside windows  -->
 	<Ui2DAnimation item="A_InnerFrameTopLeft">
 		<Cycle>true</Cycle>
 		<Frames>
@@ -10157,7 +10212,7 @@
 			</Hotspot>
 			<Duration>1000</Duration>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 
 	<!-- Border for highlighted windows -->
 	<Ui2DAnimation item="A_HighlightTopLeft">
@@ -10732,7 +10787,7 @@
 			<Duration>1000</Duration>
 		</Frames>
 	</Ui2DAnimation>
-	
+
 	<!-- Border for pieces rounded windows (no title) tooltips -->
 	<Ui2DAnimation item="A_RoundedFrameTopLeftTooltip">
 		<Cycle>true</Cycle>
@@ -10962,7 +11017,7 @@
 			<Duration>1000</Duration>
 		</Frames>
 	</Ui2DAnimation>
-	
+
 	<!-- Border for pieces rounded windows (no title) - transparent -->
 	<Ui2DAnimation item="A_RoundedFrameTopLeftTrans">
 		<Cycle>true</Cycle>
@@ -11077,7 +11132,7 @@
 			</Hotspot>
 			<Duration>1000</Duration>
 		</Frames>
-	</Ui2DAnimation>		
+	</Ui2DAnimation>
 	<Ui2DAnimation item="A_RoundedFrameRightBottomTransWithArrow">
 		<Cycle>true</Cycle>
 		<Frames>
@@ -11115,7 +11170,7 @@
 			</Hotspot>
 			<Duration>1000</Duration>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 	<Ui2DAnimation item="A_RoundedTabRightBottomTrans">
 		<Cycle>true</Cycle>
 		<Frames>
@@ -11229,7 +11284,7 @@
 			</Hotspot>
 			<Duration>1000</Duration>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 	<Ui2DAnimation item="A_RoundedTabLeftBottomTrans">
 		<Cycle>true</Cycle>
 		<Frames>
@@ -11286,7 +11341,7 @@
 			</Hotspot>
 			<Duration>1000</Duration>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 	<!-- Title for rounded window border -->
 	<Ui2DAnimation item="A_RoundedFrameWithTitleTopLeft">
 		<Cycle>true</Cycle>
@@ -11593,7 +11648,7 @@
 			</Hotspot>
 			<Duration>1000</Duration>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 	<Ui2DAnimation item="A_RoundedFrameWithTitleRightTopTransWithArrow">
 		<Cycle>true</Cycle>
 		<Frames>
@@ -11612,7 +11667,7 @@
 			</Hotspot>
 			<Duration>1000</Duration>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 	<!-- End Rounded Frame -->
 
 	<!-- Filigree Frame pieces -->
@@ -13756,7 +13811,7 @@
 			</Hotspot>
 			<Duration>1000</Duration>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 	<Ui2DAnimation item="A_RecessedBox_Medium">
 		<Cycle>true</Cycle>
 		<Frames>
@@ -13775,7 +13830,7 @@
 			</Hotspot>
 			<Duration>1000</Duration>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 	<Ui2DAnimation item="A_RecessedBox_merge">
 		<Cycle>true</Cycle>
 		<Frames>
@@ -13813,7 +13868,7 @@
 			</Hotspot>
 			<Duration>1000</Duration>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 	<!-- Spell Buff Icons and backgrounds -->
 	<Ui2DAnimation item="BuffIcons">
 		<Cycle>false</Cycle>
@@ -14026,7 +14081,7 @@
 <!-- 				<CX>4</CX>
 				<CY>10</CY> -->
 				<CX>0</CX>
-				<CY>0</CY>				
+				<CY>0</CY>
 			</Size>
 			<Hotspot>
 				<X>0</X>
@@ -14047,7 +14102,7 @@
 <!-- 				<CX>4</CX>
 				<CY>10</CY> -->
 				<CX>0</CX>
-				<CY>0</CY>				
+				<CY>0</CY>
 			</Size>
 			<Hotspot>
 				<X>0</X>
@@ -14128,7 +14183,7 @@
 				<Y>0</Y>
 			</Hotspot>
 		</Frames>
-	</Ui2DAnimation>		
+	</Ui2DAnimation>
 	<!-- Slider parts -->
 	<Ui2DAnimation item="A_SliderBackground">
 		<Cycle>true</Cycle>
@@ -14205,7 +14260,7 @@
 			</Hotspot>
 			<Duration>1000</Duration>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 	<Ui2DAnimation item="A_SliderThumbNormal">
 		<Cycle>true</Cycle>
 		<Frames>
@@ -14243,7 +14298,7 @@
 			</Hotspot>
 			<Duration>1000</Duration>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 	<Ui2DAnimation item="A_SliderThumbPressed">
 		<Cycle>true</Cycle>
 		<Frames>
@@ -14281,7 +14336,7 @@
 			</Hotspot>
 			<Duration>1000</Duration>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 	<Ui2DAnimation item="A_SliderThumbFlyby">
 		<Cycle>true</Cycle>
 		<Frames>
@@ -14319,7 +14374,7 @@
 			</Hotspot>
 			<Duration>1000</Duration>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 	<Ui2DAnimation item="A_SliderThumbDisabled">
 		<Cycle>true</Cycle>
 		<Frames>
@@ -14357,7 +14412,7 @@
 			</Hotspot>
 			<Duration>1000</Duration>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 	<Ui2DAnimation item="A_SliderThumbPressedFlyby">
 		<Cycle>true</Cycle>
 		<Frames>
@@ -14376,7 +14431,7 @@
 			</Hotspot>
 			<Duration>1000</Duration>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 	<Ui2DAnimation item="A_SliderThumbPressedFlybyLarge">
 		<Cycle>true</Cycle>
 		<Frames>
@@ -14395,8 +14450,8 @@
 			</Hotspot>
 			<Duration>1000</Duration>
 		</Frames>
-	</Ui2DAnimation>	
-	
+	</Ui2DAnimation>
+
 	<!-- starting city art for character create -->
 	<Ui2DAnimation item="A_StartingCityMap01">
 		<Cycle>true</Cycle>
@@ -16157,7 +16212,7 @@
 			</Hotspot>
 		</Frames>
 	</Ui2DAnimation>
-	
+
 	<Ui2DAnimation item="A_EQOptionsBtnNormal">
 		<Frames>
 			<Texture>window_pieces04a.dds</Texture>
@@ -16208,8 +16263,8 @@
 				<Y>0</Y>
 			</Hotspot>
 		</Frames>
-	</Ui2DAnimation>	
-	
+	</Ui2DAnimation>
+
 	<Ui2DAnimation item="A_OptionsBtnPressedFlyby">
 		<Frames>
 			<Texture>window_pieces02.tga</Texture>
@@ -16502,7 +16557,7 @@
 			</Hotspot>
 		</Frames>
 	</Ui2DAnimation>
-	
+
 	<Ui2DAnimation item="A_CheckBoxNormal_Double">
 		<Frames>
 			<Texture>window_pieces11a.dds</Texture>
@@ -16571,7 +16626,7 @@
 			</Hotspot>
 		</Frames>
 	</Ui2DAnimation>
-	
+
 	<Ui2DAnimation item="A_TransparentCheckBoxNormal">
 		<Frames>
 			<Texture>EQ_expansion_logos.tga</Texture>
@@ -21333,7 +21388,7 @@
 				<CY>30</CY>
 			</Size>
 		</Frames>
-	</Ui2DAnimation>		
+	</Ui2DAnimation>
 	<Ui2DAnimation item="A_SpellGemHighlight">
 		<Frames>
 			<Texture>window_pieces02.tga</Texture>
@@ -21354,7 +21409,7 @@
 				<X>208</X>
 				<Y>176</Y>
 			</Location>
-			<Size>	
+			<Size>
 				<CX>40</CX>
 				<CY>40</CY>
 			</Size>
@@ -21367,7 +21422,7 @@
 				<X>50</X>
 				<Y>75</Y>
 			</Location>
-			<Size>	
+			<Size>
 				<CX>30</CX>
 				<CY>30</CY>
 			</Size>
@@ -21380,7 +21435,7 @@
 				<X>0</X>
 				<Y>0</Y>
 			</Location>
-			<Size>	
+			<Size>
 				<CX>155</CX>
 				<CY>30</CY>
 			</Size>
@@ -21393,12 +21448,12 @@
 				<X>0</X>
 				<Y>90</Y>
 			</Location>
-			<Size>	
+			<Size>
 				<CX>155</CX>
 				<CY>30</CY>
 			</Size>
 		</Frames>
-	</Ui2DAnimation>		
+	</Ui2DAnimation>
 	<!-- Seperator -->
 	<Ui2DAnimation item="A_DividerLeft">
 		<Frames>
@@ -24916,7 +24971,7 @@
 			</Hotspot>
 		</Frames>
 	</Ui2DAnimation>
-<!-- Loot checkmark	 -->	
+<!-- Loot checkmark	 -->
 	<Ui2DAnimation item="A_Loot_CheckNormal">
 		<Frames>
 			<Texture>window_pieces11c.dds</Texture>
@@ -24984,7 +25039,7 @@
 				<Y>0</Y>
 			</Hotspot>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 	<Ui2DAnimation item="A_LootCheckAuto">
 		<Frames>
 			<Texture>window_pieces11c.dds</Texture>
@@ -25001,7 +25056,7 @@
 				<Y>0</Y>
 			</Hotspot>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 <!-- Merge icon	 -->
 	<Ui2DAnimation item="A_MergeNormal">
 		<Frames>
@@ -25070,7 +25125,7 @@
 				<Y>0</Y>
 			</Hotspot>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 	<Ui2DAnimation item="A_MergeAuto">
 		<Frames>
 			<Texture>window_pieces11c.dds</Texture>
@@ -25087,7 +25142,7 @@
 				<Y>0</Y>
 			</Hotspot>
 		</Frames>
-	</Ui2DAnimation>		
+	</Ui2DAnimation>
 <!-- Store icon	 -->
 	<Ui2DAnimation item="A_StoreNormal">
 		<Frames>
@@ -25156,7 +25211,7 @@
 				<Y>0</Y>
 			</Hotspot>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 	<Ui2DAnimation item="A_StoreAuto">
 		<Frames>
 			<Texture>window_pieces11c.dds</Texture>
@@ -25173,7 +25228,7 @@
 				<Y>0</Y>
 			</Hotspot>
 		</Frames>
-	</Ui2DAnimation>		
+	</Ui2DAnimation>
 <!-- Sell icon	 -->
 	<Ui2DAnimation item="A_SellNormal">
 		<Frames>
@@ -25242,7 +25297,7 @@
 				<Y>0</Y>
 			</Hotspot>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 	<Ui2DAnimation item="A_SellAuto">
 		<Frames>
 			<Texture>window_pieces11c.dds</Texture>
@@ -25259,8 +25314,8 @@
 				<Y>0</Y>
 			</Hotspot>
 		</Frames>
-	</Ui2DAnimation>		
-		
+	</Ui2DAnimation>
+
 	<Ui2DAnimation item="A_AutoColumn">
 		<Frames>
 			<Texture>window_pieces11a.dds</Texture>
@@ -25278,8 +25333,8 @@
 			</Hotspot>
 		</Frames>
 	</Ui2DAnimation>
-	
-  	<Ui2DAnimation item="RCW_RaceIcon">
+
+	<Ui2DAnimation item="RCW_RaceIcon">
 		<Cycle>false</Cycle>
 		<Grid>false</Grid>
 		<Frames>
@@ -25294,7 +25349,7 @@
 			</Size>
 		</Frames>
 	</Ui2DAnimation>
-  	<Ui2DAnimation item="RCW_SelectIcon">
+	<Ui2DAnimation item="RCW_SelectIcon">
 		<Frames>
 			<Texture>Class.tga</Texture>
 			<Location>
@@ -25319,7 +25374,7 @@
 				<CY>48</CY>
 			</Size>
 		</Frames>
-	</Ui2DAnimation>	
+	</Ui2DAnimation>
 
 	<Ui2DAnimation item="RCW_BarbarianFemaleIcon">
 		<Cycle>false</Cycle>
@@ -25561,7 +25616,7 @@
 			</Size>
 		</Frames>
 	</Ui2DAnimation>
-	
+
 	<Ui2DAnimation item="BarbarianIcon">
     <Cycle>false</Cycle>
     <Grid>false</Grid>
@@ -26622,7 +26677,7 @@
         <CY>26</CY>
       </Size>
     </Frames>
-  </Ui2DAnimation>  
+  </Ui2DAnimation>
 	<!-- Loadout Status Indicators -->
 	<Ui2DAnimation item="A_IWAllowLoadoutSwap">
 		<Cycle>true</Cycle>

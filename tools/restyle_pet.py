@@ -8,12 +8,14 @@ native commands below the clickable panel. Legends places these command
 buttons directly; SpinUI now does the same while retaining every native
 ScreenID and allowing Legends to inject each label/action.
 
-The compact geometry keeps the proven 356x181 command panel intact. Beneath it
+The compact geometry keeps the proven 356px-wide command panel intact while
+compressing its vertical rhythm to 155px. Beneath it
 the fixed default seats a two-row rail of 24px effect cells - 28 positions,
 more than a pet carries - with each countdown drawn on its own icon, so the
 window stays low-profile. Resizable top/bottom variants open at the same rail
 and grow the buff region, not the command panel, when more rows are wanted;
-the right-rail variant grows in both directions from its own 441x181.
+the right-rail variant grows in both directions from its own 441x181 because
+its unchanged vertical effect rail determines that variant's minimum height.
 """
 
 from __future__ import annotations
@@ -28,7 +30,7 @@ SKIN = REPO / "spinui_reloaded"
 VARIANTS = tuple(SKIN / f"EQUI_PetInfoWindow{suffix}.xml"
                  for suffix in ("", "1", "2", "3"))
 
-BUTTON_SIZE = (78, 23)
+BUTTON_SIZE = (78, 20)
 
 # --- Companion effect rail -------------------------------------------------
 # A pet effect cell carries two client-drawn overlays that the skin cannot
@@ -55,37 +57,37 @@ BUFF_TIMER_FONT = 3
 BUFF_BORDER_INSET = 8
 COMMAND_POSITIONS = {
     **{
-        index: (10 + (index % 4) * 84, 74 + (index // 4) * 25)
+        index: (10 + (index % 4) * 84, 64 + (index // 4) * 21)
         for index in range(12)
     },
-    12: (94, 149),
-    13: (178, 149),
+    12: (94, 127),
+    13: (178, 127),
 }
 COMMAND_ITEMS = tuple(f"PIW_Pet{i}_Button" for i in range(14))
 # Ember gold, matching the Spell/Song Effects countdowns, so a timer never
 # reads as part of the effect art it sits beside.
 TIMER_COLOR = (248, 214, 140)
-PET_PANEL_SIZE = (356, 181)
+PET_PANEL_SIZE = (356, 155)
 # Two 24px rows seat 28 effect positions - comfortably more than a pet carries
 # - in 58px of rail, so the fixed default stays a low-profile command center
 # instead of a tall panel.
 WINDOW_SIZES = {
-    "EQUI_PetInfoWindow.xml": (356, 236),
-    "EQUI_PetInfoWindow1.xml": (356, 236),
-    "EQUI_PetInfoWindow2.xml": (356, 236),
+    "EQUI_PetInfoWindow.xml": (356, 210),
+    "EQUI_PetInfoWindow1.xml": (356, 210),
+    "EQUI_PetInfoWindow2.xml": (356, 210),
     "EQUI_PetInfoWindow3.xml": (441, 181),
 }
 BUFF_RECTS = {
-    "EQUI_PetInfoWindow.xml": (4, 178, 352, 234),
-    "EQUI_PetInfoWindow1.xml": (4, 178, 352, 234),
+    "EQUI_PetInfoWindow.xml": (4, 152, 352, 208),
+    "EQUI_PetInfoWindow1.xml": (4, 152, 352, 208),
     "EQUI_PetInfoWindow2.xml": (4, 2, 352, 58),
     "EQUI_PetInfoWindow3.xml": (353, 2, 437, 179),
 }
 SUBWINDOW_RECTS = {
-    "EQUI_PetInfoWindow.xml": (0, 0, 356, 181),
-    "EQUI_PetInfoWindow1.xml": (0, 0, 356, 181),
-    "EQUI_PetInfoWindow2.xml": (0, 55, 356, 236),
-    "EQUI_PetInfoWindow3.xml": (0, 0, 356, 181),
+    "EQUI_PetInfoWindow.xml": (0, 0, 356, 155),
+    "EQUI_PetInfoWindow1.xml": (0, 0, 356, 155),
+    "EQUI_PetInfoWindow2.xml": (0, 55, 356, 210),
+    "EQUI_PetInfoWindow3.xml": (0, 0, 356, 155),
 }
 BUFF_CAPACITY = {
     "EQUI_PetInfoWindow.xml": 28,
@@ -264,6 +266,32 @@ def _frame_outer_window(text: str) -> str:
     return _replace_item(text, "Screen", "PetInfoWindow", body)
 
 
+def _compact_status_rows(text: str) -> str:
+    """Tighten the two gauges without sacrificing their labels or indicator."""
+    for item_name in ("PIW_PetHPGauge", "PIW_PetHPGauge_NameOnly"):
+        text = _set_item_fields(text, "Gauge", item_name, {
+            "TopAnchorOffset": 20,
+            "BottomAnchorOffset": 39,
+        })
+    text = _set_item_fields(text, "Label", "PIW_PetHPGaugeLabel", {
+        "TopAnchorOffset": 20,
+        "BottomAnchorOffset": 39,
+    })
+    for item_name in ("PIW_PetTargetHPGauge", "PIW_PetTargetHPGauge_NameOnly"):
+        text = _set_item_fields(text, "Gauge", item_name, {
+            "TopAnchorOffset": 41,
+            "BottomAnchorOffset": 60,
+        })
+    text = _set_item_fields(text, "Label", "PIW_PetTargetHPGaugeLabel", {
+        "TopAnchorOffset": 41,
+        "BottomAnchorOffset": 60,
+    })
+    text = _set_item_fields(text, "StaticAnimation", "PetTarget_Indicator", {
+        "Y": 39,
+    })
+    return text
+
+
 def _compact_geometry(text: str, filename: str) -> str:
     """Apply the minimum polished geometry for one Legends menu variant."""
     width, height = WINDOW_SIZES[filename]
@@ -271,15 +299,15 @@ def _compact_geometry(text: str, filename: str) -> str:
         text, "Screen", "PetInfoWindow", {"CX": width, "CY": height})
 
     if filename == "EQUI_PetInfoWindow.xml":
-        # Fixed default: the 356px command panel with a slim one-row effect
-        # strip beneath it — no side rail, no large dark well beside the
-        # commands. The resizable variants remain the home for more rows.
+        # Fixed default: a 356px command panel with the unchanged two-row
+        # effect strip beneath it—no side rail or wasted vertical padding.
+        # The resizable variants remain the home for more rows.
         text = _set_item_fields(text, "Screen", "PetInfoWindow", {
             "MenuName": "Fixed Size - Buffs on Bottom",
         })
         text = _set_item_fields(text, "Screen", "PetInfoSubWindow", {
             "TopAnchorOffset": 0,
-            "BottomAnchorOffset": 181,
+            "BottomAnchorOffset": 155,
             "RightAnchorOffset": 356,
             "TopAnchorToTop": True,
             "BottomAnchorToTop": True,
@@ -287,7 +315,7 @@ def _compact_geometry(text: str, filename: str) -> str:
         })
         text = _set_item_fields(text, "Screen", "PIW_BuffWindow", {
             "LeftAnchorOffset": 4,
-            "TopAnchorOffset": 178,
+            "TopAnchorOffset": 152,
             "RightAnchorOffset": 4,
             "BottomAnchorOffset": 2,
             "LeftAnchorToLeft": True,
@@ -303,19 +331,19 @@ def _compact_geometry(text: str, filename: str) -> str:
             "RightAnchorToLeft": True,
         })
     elif filename == "EQUI_PetInfoWindow1.xml":
-        # Bottom: pin the command panel at 181px; extra height adds buff rows.
+        # Bottom: pin the command panel at 155px; extra height adds buff rows.
         text = _set_item_fields(text, "Screen", "PetInfoWindow", {
             "MinVSize": height,
             "MaxHSize": width,
         })
         text = _set_item_fields(text, "Screen", "PetInfoSubWindow", {
             "TopAnchorOffset": 0,
-            "BottomAnchorOffset": 181,
+            "BottomAnchorOffset": 155,
             "TopAnchorToTop": True,
             "BottomAnchorToTop": True,
         })
         text = _set_item_fields(text, "Screen", "PIW_BuffWindow", {
-            "TopAnchorOffset": 178,
+            "TopAnchorOffset": 152,
             "BottomAnchorOffset": 2,
             "TopAnchorToTop": True,
             "BottomAnchorToTop": False,
@@ -327,32 +355,33 @@ def _compact_geometry(text: str, filename: str) -> str:
             "MaxHSize": width,
         })
         text = _set_item_fields(text, "Screen", "PetInfoSubWindow", {
-            "TopAnchorOffset": 181,
+            "TopAnchorOffset": 155,
             "BottomAnchorOffset": 0,
             "TopAnchorToTop": False,
             "BottomAnchorToTop": False,
         })
         text = _set_item_fields(text, "Screen", "PIW_BuffWindow", {
             "TopAnchorOffset": 2,
-            "BottomAnchorOffset": 178,
+            "BottomAnchorOffset": 152,
             "TopAnchorToTop": True,
             "BottomAnchorToTop": False,
         })
         text = _set_item_fields(text, "DragBox", "PIWDragBox1", {
-            "TopAnchorOffset": 181,
-            "BottomAnchorOffset": 163,
+            "TopAnchorOffset": 155,
+            "BottomAnchorOffset": 137,
             "TopAnchorToTop": False,
             "BottomAnchorToTop": False,
         })
     elif filename == "EQUI_PetInfoWindow3.xml":
-        # Right: fixed 356x181 command panel; the buff rail owns extra size.
+        # Right: the compact command panel sits beside the unchanged vertical
+        # buff rail; that rail owns the variant's taller minimum size.
         text = _set_item_fields(text, "Screen", "PetInfoWindow", {
             "MinHSize": 441,
             "MinVSize": 181,
         })
         text = _set_item_fields(text, "Screen", "PetInfoSubWindow", {
             "TopAnchorOffset": 0,
-            "BottomAnchorOffset": 181,
+            "BottomAnchorOffset": 155,
             "RightAnchorOffset": 356,
             "TopAnchorToTop": True,
             "BottomAnchorToTop": True,
@@ -401,6 +430,7 @@ def restyle(path: Path) -> bool:
     revised = _style_buff_chip(revised, path.name)
     revised = _clean_subwindow_chrome(revised)
     revised = _frame_outer_window(revised)
+    revised = _compact_status_rows(revised)
     revised = _compact_geometry(revised, path.name)
     ET.fromstring(revised)
     if revised == text:

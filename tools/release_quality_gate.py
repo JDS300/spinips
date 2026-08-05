@@ -49,6 +49,7 @@ SOURCE_REQUIRED = (
     "README.md",
     "UI_Spin_qeynos_LO1.ini",
     "spinui_reloaded/EQUI.xml",
+    "spinui_reloaded/spin_spell_ledger.tga",
     "spinui_reloaded/default1080.ini",
     "spinui_reloaded/default1440.ini",
     "spinui_reloaded/default4k.ini",

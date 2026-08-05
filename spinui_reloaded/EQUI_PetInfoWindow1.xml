@@ -97,7 +97,7 @@
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
 		<TopAnchorOffset>20</TopAnchorOffset>
-		<BottomAnchorOffset>43</BottomAnchorOffset>
+		<BottomAnchorOffset>39</BottomAnchorOffset>
 		<LeftAnchorOffset>5</LeftAnchorOffset>
 		<RightAnchorOffset>5</RightAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
@@ -131,7 +131,7 @@
 		<DrawLinesFill>false</DrawLinesFill>		
 		<AutoStretch>true</AutoStretch>
 		<TopAnchorOffset>20</TopAnchorOffset>
-		<BottomAnchorOffset>43</BottomAnchorOffset>
+		<BottomAnchorOffset>39</BottomAnchorOffset>
 		<LeftAnchorOffset>8</LeftAnchorOffset>
 		<RightAnchorOffset>45</RightAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
@@ -151,8 +151,8 @@
 		<NoWrap>true</NoWrap>
 		<AlignRight>true</AlignRight>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>22</TopAnchorOffset>
-		<BottomAnchorOffset>43</BottomAnchorOffset>
+		<TopAnchorOffset>20</TopAnchorOffset>
+		<BottomAnchorOffset>39</BottomAnchorOffset>
 		<LeftAnchorOffset>30</LeftAnchorOffset>
 		<RightAnchorOffset>8</RightAnchorOffset>
 		<LeftAnchorToLeft>false</LeftAnchorToLeft>
@@ -188,8 +188,8 @@
 			<Fill>A_GaugeFill</Fill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>48</TopAnchorOffset>
-		<BottomAnchorOffset>69</BottomAnchorOffset>
+		<TopAnchorOffset>41</TopAnchorOffset>
+		<BottomAnchorOffset>60</BottomAnchorOffset>
 		<LeftAnchorOffset>33</LeftAnchorOffset>
 		<RightAnchorOffset>5</RightAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
@@ -222,8 +222,8 @@
 		</GaugeDrawTemplate>
 		<DrawLinesFill>false</DrawLinesFill>		
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>48</TopAnchorOffset>
-		<BottomAnchorOffset>69</BottomAnchorOffset>
+		<TopAnchorOffset>41</TopAnchorOffset>
+		<BottomAnchorOffset>60</BottomAnchorOffset>
 		<LeftAnchorOffset>36</LeftAnchorOffset>
 		<RightAnchorOffset>45</RightAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
@@ -243,8 +243,8 @@
 		<NoWrap>true</NoWrap>
 		<AlignRight>true</AlignRight>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>49</TopAnchorOffset>
-		<BottomAnchorOffset>69</BottomAnchorOffset>
+		<TopAnchorOffset>41</TopAnchorOffset>
+		<BottomAnchorOffset>60</BottomAnchorOffset>
 		<LeftAnchorOffset>30</LeftAnchorOffset>
 		<RightAnchorOffset>8</RightAnchorOffset>
 		<LeftAnchorToLeft>false</LeftAnchorToLeft>
@@ -277,7 +277,7 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 		  <X>5</X>
-		  <Y>46</Y>
+		  <Y>39</Y>
 		</Location>
 		<Size>
 		  <CX>25</CX>
@@ -291,11 +291,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>10</X>
-			<Y>74</Y>
+			<Y>64</Y>
 		</Location>
 		<Size>
 			<CX>78</CX>
-			<CY>23</CY>
+			<CY>20</CY>
 		</Size>
 		<Style_Checkbox>true</Style_Checkbox>
 		<Text>none</Text>
@@ -309,11 +309,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>94</X>
-			<Y>74</Y>
+			<Y>64</Y>
 		</Location>
 		<Size>
 			<CX>78</CX>
-			<CY>23</CY>
+			<CY>20</CY>
 		</Size>
 		<Style_Checkbox>true</Style_Checkbox>
 		<Text>none</Text>
@@ -327,11 +327,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>178</X>
-			<Y>74</Y>
+			<Y>64</Y>
 		</Location>
 		<Size>
 			<CX>78</CX>
-			<CY>23</CY>
+			<CY>20</CY>
 		</Size>
 		<Style_Checkbox>true</Style_Checkbox>
 		<Text>none</Text>
@@ -345,11 +345,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>262</X>
-			<Y>74</Y>
+			<Y>64</Y>
 		</Location>
 		<Size>
 			<CX>78</CX>
-			<CY>23</CY>
+			<CY>20</CY>
 		</Size>
 		<Style_Checkbox>true</Style_Checkbox>
 		<Text>none</Text>
@@ -363,11 +363,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>10</X>
-			<Y>99</Y>
+			<Y>85</Y>
 		</Location>
 		<Size>
 			<CX>78</CX>
-			<CY>23</CY>
+			<CY>20</CY>
 		</Size>
 		<Style_Checkbox>true</Style_Checkbox>
 		<Text>none</Text>
@@ -381,11 +381,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>94</X>
-			<Y>99</Y>
+			<Y>85</Y>
 		</Location>
 		<Size>
 			<CX>78</CX>
-			<CY>23</CY>
+			<CY>20</CY>
 		</Size>
 		<Style_Checkbox>true</Style_Checkbox>
 		<Text>none</Text>
@@ -399,11 +399,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>178</X>
-			<Y>99</Y>
+			<Y>85</Y>
 		</Location>
 		<Size>
 			<CX>78</CX>
-			<CY>23</CY>
+			<CY>20</CY>
 		</Size>
 		<Style_Checkbox>true</Style_Checkbox>
 		<Text>none</Text>
@@ -417,11 +417,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>262</X>
-			<Y>99</Y>
+			<Y>85</Y>
 		</Location>
 		<Size>
 			<CX>78</CX>
-			<CY>23</CY>
+			<CY>20</CY>
 		</Size>
 		<Style_Checkbox>true</Style_Checkbox>
 		<Text>none</Text>
@@ -435,11 +435,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>10</X>
-			<Y>124</Y>
+			<Y>106</Y>
 		</Location>
 		<Size>
 			<CX>78</CX>
-			<CY>23</CY>
+			<CY>20</CY>
 		</Size>
 		<Style_Checkbox>true</Style_Checkbox>
 		<Text>none</Text>
@@ -453,11 +453,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>94</X>
-			<Y>124</Y>
+			<Y>106</Y>
 		</Location>
 		<Size>
 			<CX>78</CX>
-			<CY>23</CY>
+			<CY>20</CY>
 		</Size>
 		<Style_Checkbox>true</Style_Checkbox>
 		<Text>none</Text>
@@ -471,11 +471,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>178</X>
-			<Y>124</Y>
+			<Y>106</Y>
 		</Location>
 		<Size>
 			<CX>78</CX>
-			<CY>23</CY>
+			<CY>20</CY>
 		</Size>
 		<Style_Checkbox>true</Style_Checkbox>
 		<Text>none</Text>
@@ -489,11 +489,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>262</X>
-			<Y>124</Y>
+			<Y>106</Y>
 		</Location>
 		<Size>
 			<CX>78</CX>
-			<CY>23</CY>
+			<CY>20</CY>
 		</Size>
 		<Style_Checkbox>true</Style_Checkbox>
 		<Text>none</Text>
@@ -507,11 +507,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>94</X>
-			<Y>149</Y>
+			<Y>127</Y>
 		</Location>
 		<Size>
 			<CX>78</CX>
-			<CY>23</CY>
+			<CY>20</CY>
 		</Size>
 		<Style_Checkbox>true</Style_Checkbox>
 		<Text>none</Text>
@@ -525,11 +525,11 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>178</X>
-			<Y>149</Y>
+			<Y>127</Y>
 		</Location>
 		<Size>
 			<CX>78</CX>
-			<CY>23</CY>
+			<CY>20</CY>
 		</Size>
 		<Style_Checkbox>true</Style_Checkbox>
 		<Text>none</Text>
@@ -583,7 +583,7 @@
 		<RelativePosition>true</RelativePosition>
 		<AutoStretch>true</AutoStretch>
 		<LeftAnchorOffset>4</LeftAnchorOffset>
-		<TopAnchorOffset>178</TopAnchorOffset>
+		<TopAnchorOffset>152</TopAnchorOffset>
 		<RightAnchorOffset>4</RightAnchorOffset>
 		<BottomAnchorOffset>2</BottomAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
@@ -632,7 +632,7 @@
 		<TopAnchorOffset>0</TopAnchorOffset>
 		<LeftAnchorOffset>0</LeftAnchorOffset>
 		<RightAnchorOffset>0</RightAnchorOffset>
-		<BottomAnchorOffset>181</BottomAnchorOffset>
+		<BottomAnchorOffset>155</BottomAnchorOffset>
 		<Style_VScroll>false</Style_VScroll>
 		<Style_HScroll>false</Style_HScroll>
 		<Style_Transparent>true</Style_Transparent>
@@ -677,7 +677,7 @@
 		</Location>
 		<Size>
 			<CX>356</CX>
-			<CY>236</CY>
+			<CY>210</CY>
 		</Size>
 		<Style_VScroll>false</Style_VScroll>
 		<Style_HScroll>false</Style_HScroll>
@@ -698,7 +698,7 @@
 		</KeepOnScreenOffset>		
 		<Escapable>false</Escapable>
 		<MinHSize>356</MinHSize>
-		<MinVSize>236</MinVSize>
+		<MinVSize>210</MinVSize>
 		<MaxHSize>356</MaxHSize>
 		<MaxVSize>480</MaxVSize>
 		<Pieces>Screen:PetInfoSubWindow</Pieces>

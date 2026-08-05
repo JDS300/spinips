@@ -315,7 +315,10 @@ def audit_pet_geometry() -> None:
         sub_width = sub_right - sub_left
         sub_height = sub_bottom - sub_top
         if (sub_left, sub_top, sub_right, sub_bottom) != SUBWINDOW_RECTS[filename]:
-            fail(f"{filename} command panel left its compact 356x181 frame")
+            fail(
+                f"{filename} command panel left its compact "
+                f"{PET_PANEL_SIZE[0]}x{PET_PANEL_SIZE[1]} frame"
+            )
         if (sub_width, sub_height) != PET_PANEL_SIZE:
             fail(f"{filename} command panel must remain {PET_PANEL_SIZE}")
         # A panel nested at the outer frame's own corner must not paint a
@@ -479,9 +482,14 @@ def audit_pet_geometry() -> None:
         if window_pieces.count("DragBox:PIWDragBox1") != 1:
             fail(f"{filename} must mount the pet drag region exactly once")
 
-        expected_drag = ((0, window_height - 181, 356, window_height - 163)
+        expected_drag = ((
+            0,
+            window_height - PET_PANEL_SIZE[1],
+            PET_PANEL_SIZE[0],
+            window_height - (PET_PANEL_SIZE[1] - 18),
+        )
                          if filename == "EQUI_PetInfoWindow2.xml"
-                         else (0, 0, 356, 24))
+                         else (0, 0, PET_PANEL_SIZE[0], 24))
         drag_rect = _stretched_rect(
             item(root, "DragBox", "PIWDragBox1"),
             window_width, window_height,

@@ -669,6 +669,51 @@ def build_fg_pieces_black(img):
         fill(img, box, (5, 6, 9, 255))
 
 
+def build_spell_ledger_texture() -> Image.Image:
+    """Return the dedicated SpinUI plate, holder, and hover row states.
+
+    The spell icon remains native client art.  This atlas supplies only the
+    oiled-leather row surface and Vellum & Ember interaction rails used by the
+    named-and-numbered Alternate3 spell deck.  Every state deliberately leaves
+    a transparent outer gutter: the client category-tints spell-gem surfaces,
+    and even a restrained edge becomes a stack of blue/red/green seams in game.
+    The normal state is therefore a single quiet leather surface, while hover
+    attention stays on the left/top/bottom edges and never boxes in the row.
+    """
+    atlas = Image.new("RGBA", (256, 96), (0, 0, 0, 0))
+
+    plate = Image.new("RGBA", (155, 30), (0, 0, 0, 0))
+    surface = Image.new("RGBA", plate.size, (0, 0, 0, 0))
+    vgrad(surface, (0, 0, 155, 30), BG2, BG0)
+    plate_mask = Image.new("L", plate.size, 0)
+    ImageDraw.Draw(plate_mask).rounded_rectangle(
+        [1, 1, 153, 28], radius=4, fill=255
+    )
+    plate.paste(surface, (0, 0), plate_mask)
+    d = ImageDraw.Draw(plate)
+    # A near-silent bevel gives the plate depth without visible row borders.
+    d.line([(8, 2), (147, 2)], fill=GOLD_BRIGHT + (14,))
+    d.line([(8, 27), (147, 27)], fill=(4, 3, 2, 88))
+    d.line([(1, 8), (1, 21)], fill=GOLD_DEEP + (38,))
+    d.line([(30, 6), (30, 23)], fill=GOLD_DEEP + (48,))
+    d.line([(31, 6), (31, 23)], fill=(255, 225, 170, 12))
+    atlas.paste(plate, (0, 0), plate)
+
+    # Holder pixels are category-tinted by EQ.  A transparent holder prevents
+    # every row from regaining the colored perimeter seams seen in-game; the
+    # native spell icon already carries a much clearer category signal.
+    holder = Image.new("RGBA", (155, 30), (0, 0, 0, 0))
+    atlas.paste(holder, (0, 32), holder)
+
+    hover = Image.new("RGBA", (155, 30), (0, 0, 0, 0))
+    d = ImageDraw.Draw(hover)
+    d.line([(8, 2), (147, 2)], fill=GOLD_BRIGHT + (112,))
+    d.line([(9, 27), (146, 27)], fill=EMBER_BRIGHT + (178,))
+    d.line([(2, 7), (2, 22)], fill=GOLD + (220,))
+    atlas.paste(hover, (0, 64), hover)
+    return atlas
+
+
 def generate(*, source_skin: Path = SKIN, output_skin: Path = SKIN,
              palette: dict[str, tuple[int, int, int]] | None = None,
              preview_dir: Path | None = REPO / "docs" / "previews",
@@ -713,6 +758,15 @@ def generate(*, source_skin: Path = SKIN, output_skin: Path = SKIN,
             painted.append(name)
             if not quiet:
                 print("painted", name)
+
+        ledger_name = "spin_spell_ledger.tga"
+        ledger = build_spell_ledger_texture()
+        save_tga(ledger, output_skin / ledger_name)
+        if preview_dir is not None:
+            ledger.save(preview_dir / "spin_spell_ledger_after.png")
+        painted.append(ledger_name)
+        if not quiet:
+            print("painted", ledger_name)
 
         # Full-tile backgrounds stay dark oiled leather while the interaction
         # accents are customized. This preserves text contrast across hues.

@@ -45,6 +45,8 @@ SpinUI is more than a recolor. It re-composes EverQuest's native XML, textures, 
 - **One centered eye-line.** Player, target, casting, stance, spell gems, and actions share a bottom-anchored combat band instead of competing with the center of the world.
 - **Information has a color grammar.** HP is red, mana is blue, endurance and XP are brass gold, and AA is spirit blue. XP and AA keep persistent tick marks while their fills remain correctly scaled to the displayed percentage.
 - **Native controls stay native.** Hotbuttons, spell gems, pet commands, drag/drop, tooltips, loadouts, and client-driven usable/unusable states retain their original bindings.
+- **The spell deck adapts to the player.** Its default remains the compact icon-only deck; choose **Display Types -> SpinUI Spell Ledger** for a resizable alternate with every icon, live spell name, and memorized slot number.
+- **Extended targets use the space you give them.** XTAR keeps its familiar single-column default, then flows all 23 Legends targets into additional complete columns as the window is widened—without losing role, aggro, cast, HP, mana, or endurance data.
 - **Effects read through the artwork.** Spell, song, and pet-effect durations sit directly on their icons in shadowed ember gold instead of growing into opaque timer slabs.
 - **Key HUD, chat, and map windows get lighter when they are not the focus.** Translucency and soft fade behavior reduce visual weight without hiding the information you deliberately placed.
 - **The shape is deliberate at every resolution.** SpinUI recalculates docks and spacing instead of blanket-scaling text and click targets into blur.
@@ -174,7 +176,7 @@ Choose the exact profile for your display when possible, or the nearest validate
 |---|---|
 | **Glass map** | A top-right translucent navigation surface with readable coordinates, inactive fade, and clearance from effects and the combat cluster. |
 | **Three-window chat** | Main, Social, and Combat are real windows—not tabs—with preset-specific proportions and predictable routing. |
-| **Pet command center** | A `356×236` four-column command panel retaining all 14 native commands plus 28 effect positions across two rows. |
+| **Pet command center** | A compact `356×210` four-column command panel retaining all 14 native commands plus the same 28 effect positions across two rows. |
 | **Effect rails** | Buff, song, and pet durations render directly on icon art in shadowed ember gold; sparse client-assigned slots remain sparse instead of being falsified. |
 | **Bags and bank** | Eight inventory bags park in one lower-right row; sixteen bank bags tile in an `8×2` grid beside the bank. |
 | **Progression** | The player plate and inventory show distinct XP and AA gauges; the AA window carries the same segmented AA treatment, with correctly scaled fills throughout. |
