@@ -5,6 +5,7 @@ on:
     branches: ["main", "agent/**", "claude/**", "codex/**"]
     paths:
       - "spinui_reloaded/**"
+      - "spinui_glass/**"
       - "layouts/**"
       - "loremaster/**"
       - "installer/**"
@@ -75,6 +76,7 @@ jobs:
           $manualPackage = Join-Path $PWD 'package/SpinUI-Manual'
           New-Item -ItemType Directory -Force -Path $manualPackage | Out-Null
           Copy-Item -Recurse -Force spinui_reloaded (Join-Path $manualPackage 'spinui_reloaded')
+          Copy-Item -Recurse -Force spinui_glass (Join-Path $manualPackage 'spinui_glass')
           # Public aliases plus every validated resolution profile ship;
           # layouts/original and layouts/spin-live stay internal.
           $packageLayouts = Join-Path $manualPackage 'layouts'
@@ -150,8 +152,8 @@ jobs:
           } else {
             gh release create $tag @assets --repo $env:GITHUB_REPOSITORY `
               --target $env:GITHUB_SHA `
-              --title "SpinUI $tag — Vellum & Ember" `
-              --notes "Complete SpinUI Windows release. Extract SpinUI-Manual.zip for the UI, layout profiles, manual guide, and Loremaster. Verify downloads against SHA256SUMS.txt; the unsigned Loremaster executable can trip antivirus machine-learning heuristics (see the README's Troubleshooting section)."
+              --title "SpinUI $tag — Vellum & Ember + Glass" `
+              --notes "Complete SpinUI Windows release. Extract SpinUI-Manual.zip for both the classic spinui_reloaded skin and optional spinui_glass skin, layout profiles, manual guide, and Loremaster. Verify downloads against SHA256SUMS.txt; the unsigned Loremaster executable can trip antivirus machine-learning heuristics (see the README's Troubleshooting section)."
           }
 
       - name: Attach package to release

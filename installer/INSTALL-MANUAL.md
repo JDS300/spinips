@@ -1,13 +1,14 @@
 # SpinUI manual installation
 
-This package does not require the installer. It contains the complete
-`spinui_reloaded` skin, Spin's Loremaster, the optional
+This package does not require the installer. It contains both complete skins:
+the classic **Vellum & Ember** `spinui_reloaded` skin and the optional
+**Midnight Frost** `spinui_glass` skin, plus Spin's Loremaster, the optional
 character-layout profiles, and alternate chat presets. Seven validated screen
 profiles cover 1920×1080, 2048×1080, 2560×1080, 2560×1440, 3440×1440,
 3840×1600, and 3840×2160.
 
-> **Safest layout option:** install only the `spinui_reloaded` skin and keep
-> your current character UI INI. Combat Focus, Social Focus, and Hybrid are
+> **Safest layout option:** install either skin and keep your current
+> character UI INI. Combat Focus, Social Focus, and Hybrid are
 > optional full-file profiles: they replace the selected character UI file,
 > including its window and chat preferences. Make a byte-exact backup before
 > applying one so the original arrangement is easy to restore.
@@ -26,13 +27,16 @@ INI while the game is running.
 
 ## 2. Install the skin
 
-For a clean update, rename or remove an older `spinui_reloaded` folder first,
-then copy the complete new folder into the game's `uifiles` folder. This keeps
-renamed or retired files from an earlier release from lingering in the skin.
-The final path should look like:
+Choose **Vellum & Ember** (`spinui_reloaded`) or **Midnight Frost Glass**
+(`spinui_glass`). You may install both and switch between them in game. For a
+clean update, rename or remove the older folder with that same name first,
+then copy the complete new folder into the game's `uifiles` folder. Do not
+merge a release into an older skin tree; retired files can otherwise linger.
+The final path should look like either or both of these:
 
 ```text
 <EverQuest folder>\uifiles\spinui_reloaded\EQUI.xml
+<EverQuest folder>\uifiles\spinui_glass\EQUI.xml
 ```
 
 Common EverQuest folders include:
@@ -43,13 +47,16 @@ C:\Users\Public\Daybreak Game Company\Installed Games\EverQuest Legends
 C:\Program Files (x86)\Steam\steamapps\common\EverQuest
 ```
 
-In game, select it with:
+In game, select the look you want with one of:
 
 ```text
 /loadskin spinui_reloaded 1
+/loadskin spinui_glass 1
 ```
 
-The `1` preserves your current window positions.
+The `1` preserves your current window positions. Both variants retain the
+same ScreenIDs, EQTypes, resizable windows, Spell Ledger, and Extended Target
+behavior, so changing skins does not require a different layout profile.
 
 ## 3. Optional: install a resolution profile
 

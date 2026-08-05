@@ -29,6 +29,50 @@ from spinui_theme import (BG0, BG1, BG2, BG3, CYAN, CYAN_DEEP, EMBER,
                           GOLD_DEEP, LINE, LINE_BRIGHT, LINE_SOFT, RED, TEXT,
                           TEXT_DIM, VOID, palette_from_hex)
 
+# Surface tokens stay separate from the public accent palette so an optional
+# skin can replace the complete material language without perturbing the
+# canonical Vellum & Ember output.  ``build_spinui_glass.py`` supplies the
+# alternate values; the defaults below reproduce the existing atlases.
+FRAME_OUTER = (7, 5, 3)
+FRAME_VOID = (5, 6, 9)
+CONTROL_OUTER = (1, 3, 5)
+GAUGE_OUTER = (0, 0, 0)
+SLOT_SHADOW = (0, 0, 0)
+BEVEL_LIGHT = (255, 226, 178)
+CONTROL_NORMAL_BOTTOM = (13, 9, 6)
+CONTROL_FLYBY_TOP = (56, 34, 16)
+CONTROL_FLYBY_BOTTOM = (24, 15, 8)
+CONTROL_PRESSED_TOP = (62, 45, 18)
+CONTROL_PRESSED_BOTTOM = (23, 17, 9)
+CONTROL_ACTIVE_TOP = (70, 47, 22)
+CONTROL_ACTIVE_BOTTOM = (27, 19, 10)
+CONTROL_DISABLED_TOP = (15, 11, 8)
+CONTROL_DISABLED_BOTTOM = (10, 8, 6)
+TITLE_TOP = (38, 28, 17)
+TITLE_BOTTOM = (13, 9, 6)
+INNER_FRAME = (30, 35, 46)
+TILE_LIGHT = (24, 18, 11, 255)
+TILE_DARK = (14, 10, 6, 255)
+TILE_INNER = (19, 14, 9, 255)
+TILE_VOID = (11, 8, 5, 255)
+
+FULL_THEME_KEYS = {
+    "BG0", "BG1", "BG2", "BG3", "VOID",
+    "LINE_SOFT", "LINE", "LINE_BRIGHT",
+    "GOLD_DEEP", "GOLD", "GOLD_BRIGHT",
+    "EMBER", "EMBER_DEEP", "EMBER_BRIGHT",
+    "CYAN_DEEP", "CYAN", "TEXT", "TEXT_DIM",
+    "FRAME_OUTER", "FRAME_VOID", "BEVEL_LIGHT",
+    "CONTROL_OUTER", "GAUGE_OUTER", "SLOT_SHADOW",
+    "CONTROL_NORMAL_BOTTOM", "CONTROL_FLYBY_TOP",
+    "CONTROL_FLYBY_BOTTOM", "CONTROL_PRESSED_TOP",
+    "CONTROL_PRESSED_BOTTOM", "CONTROL_ACTIVE_TOP",
+    "CONTROL_ACTIVE_BOTTOM", "CONTROL_DISABLED_TOP",
+    "CONTROL_DISABLED_BOTTOM", "TITLE_TOP", "TITLE_BOTTOM",
+    "INNER_FRAME", "TILE_LIGHT", "TILE_DARK", "TILE_INNER",
+    "TILE_VOID",
+}
+
 REPO = Path(__file__).resolve().parent.parent
 SKIN = REPO / "spinui_reloaded"
 PRISTINE_REF = "250214c"  # initial commit; fall back to worktree bytes if absent
@@ -118,11 +162,11 @@ def glass_slab(img, box, state="normal", radius=3):
     cell = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(cell)
     grads = {
-        "normal": (BG2, (13, 9, 6)),
-        "flyby": ((56, 34, 16), (24, 15, 8)),
-        "pressed": ((62, 45, 18), (23, 17, 9)),
-        "pressedflyby": ((70, 47, 22), (27, 19, 10)),
-        "disabled": ((15, 11, 8), (10, 8, 6)),
+        "normal": (BG2, CONTROL_NORMAL_BOTTOM),
+        "flyby": (CONTROL_FLYBY_TOP, CONTROL_FLYBY_BOTTOM),
+        "pressed": (CONTROL_PRESSED_TOP, CONTROL_PRESSED_BOTTOM),
+        "pressedflyby": (CONTROL_ACTIVE_TOP, CONTROL_ACTIVE_BOTTOM),
+        "disabled": (CONTROL_DISABLED_TOP, CONTROL_DISABLED_BOTTOM),
     }
     lines = {
         "normal": LINE,
@@ -136,13 +180,14 @@ def glass_slab(img, box, state="normal", radius=3):
         c = lerp(top, bot, yy / max(1, h - 1))
         d.line([(0, yy), (w - 1, yy)], fill=c + (255,))
     # Black outer silhouette + crisp state outline reads on every backdrop.
-    d.rounded_rectangle([0, 0, w - 1, h - 1], radius=radius, outline=(1, 3, 5, 255))
+    d.rounded_rectangle([0, 0, w - 1, h - 1], radius=radius,
+                        outline=CONTROL_OUTER + (255,))
     if w > 3 and h > 3:
         d.rounded_rectangle([1, 1, w - 2, h - 2], radius=max(1, radius - 1),
                             outline=lines[state] + (255,))
     # Tight top bevel; interaction is signaled by a luminous ember rail.
     if state in ("normal", "flyby"):
-        d.line([(radius, 1), (w - 1 - radius, 1)], fill=(255, 226, 178, 32))
+        d.line([(radius, 1), (w - 1 - radius, 1)], fill=BEVEL_LIGHT + (32,))
     if state == "flyby":
         d.line([(radius, h - 2), (w - 1 - radius, h - 2)], fill=EMBER + (240,))
         if h > 8 and w > 16:
@@ -254,7 +299,7 @@ def gauge_fill_strip(img, box, ticks=False):
 def gauge_bg_strip(img, box):
     x0, y0, x1, y1 = box
     fill(img, box, VOID + (242,))
-    hline(img, x0, x1, y0, (0, 0, 0), 255)
+    hline(img, x0, x1, y0, GAUGE_OUTER, 255)
     hline(img, x0, x1, y1 - 1, LINE_SOFT, 255)
     d = ImageDraw.Draw(img)
     d.rectangle([x0, y0, x1 - 1, y1 - 1], outline=LINE_SOFT + (255,))
@@ -271,9 +316,11 @@ def recessed_slot(img, box, radius=3):
     radius = min(radius, 2)
     d.rounded_rectangle([0, 0, w - 1, h - 1], radius=radius, fill=VOID + (255,))
     for i, a in ((1, 120), (2, 60)):
-        d.line([(1 + radius // 2, i), (w - 2 - radius // 2, i)], fill=(0, 0, 0, a))
+        d.line([(1 + radius // 2, i), (w - 2 - radius // 2, i)],
+               fill=SLOT_SHADOW + (a,))
     d.rounded_rectangle([0, 0, w - 1, h - 1], radius=radius, outline=LINE + (255,))
-    d.line([(radius, h - 2), (w - 1 - radius, h - 2)], fill=(255, 226, 178, 14))
+    d.line([(radius, h - 2), (w - 1 - radius, h - 2)],
+           fill=BEVEL_LIGHT + (14,))
     d.line([(w - 5, h - 2), (w - 2, h - 2), (w - 2, h - 5)], fill=LINE_BRIGHT + (150,))
     img.paste(cell, (x0, y0))
 
@@ -286,13 +333,13 @@ def soft_border_h(img, box, edge="top"):
         fill(img, box, LINE + (255,))
         return
     if edge == "top":
-        hline(img, x0, x1, y0, (7, 5, 3), 255)
+        hline(img, x0, x1, y0, FRAME_OUTER, 255)
         for y in range(y0 + 1, y1):
             hline(img, x0, x1, y, LINE, 255)
     else:
         for y in range(y0, y1 - 1):
             hline(img, x0, x1, y, LINE, 255)
-        hline(img, x0, x1, y1 - 1, (7, 5, 3), 255)
+        hline(img, x0, x1, y1 - 1, FRAME_OUTER, 255)
 
 
 def soft_border_v(img, box, edge="left"):
@@ -303,19 +350,19 @@ def soft_border_v(img, box, edge="left"):
         fill(img, box, LINE + (255,))
         return
     if edge == "left":
-        d.line([(x0, y0), (x0, y1 - 1)], fill=(5, 6, 9, 255))
+        d.line([(x0, y0), (x0, y1 - 1)], fill=FRAME_VOID + (255,))
         for x in range(x0 + 1, x1):
             d.line([(x, y0), (x, y1 - 1)], fill=LINE + (255,))
     else:
         for x in range(x0, x1 - 1):
             d.line([(x, y0), (x, y1 - 1)], fill=LINE + (255,))
-        d.line([(x1 - 1, y0), (x1 - 1, y1 - 1)], fill=(5, 6, 9, 255))
+        d.line([(x1 - 1, y0), (x1 - 1, y1 - 1)], fill=FRAME_VOID + (255,))
 
 
 def titlebar_piece(img, box, cap=None, gold_edge=True):
     """16px leather titlebar with the signature ember seam and brass base."""
     x0, y0, x1, y1 = box
-    vgrad(img, box, (38, 28, 17), (13, 9, 6))
+    vgrad(img, box, TITLE_TOP, TITLE_BOTTOM)
     hline(img, x0, x1, y0, EMBER, 235)                 # glowing ember seam
     hline(img, x0, x1, y0 + 1, EMBER_BRIGHT, 90)       # heat bloom under it
     hline(img, x0, x1, y0 + 2, EMBER_DEEP, 46)
@@ -323,7 +370,7 @@ def titlebar_piece(img, box, cap=None, gold_edge=True):
         hline(img, x0, x1, y1 - 2, GOLD, 200)
         hline(img, x0, x1, y1 - 1, GOLD_DEEP, 160)
     else:
-        hline(img, x0, x1, y1 - 1, (7, 5, 3), 255)
+        hline(img, x0, x1, y1 - 1, FRAME_OUTER, 255)
     if cap == "left":
         soft_border_v(img, (x0, y0, x0 + 2, y1), "left")
         ImageDraw.Draw(img).line([(x0 + 1, y0 + 2), (x0 + 1, y1 - 3)], fill=EMBER + (230,))
@@ -397,7 +444,7 @@ def seamless_bg(size, base, amp=3, weave=True, vign=0):
             r = max(0, min(255, base[0] + n + warm + pore + 1))
             g = max(0, min(255, base[1] + n + warm + pore))
             b = max(0, min(255, base[2] + n + int(warm * 0.5) + pore))
-            px[x, y] = (r, g, b, 255)
+            px[x, y] = (r, g, b, base[3] if len(base) > 3 else 255)
     return img
 
 
@@ -576,7 +623,7 @@ def build_pieces03(img):
         hline(img, box[0], box[2], 160, EMBER, 190)
         hline(img, box[0], box[2], 213, GOLD, 190)
         hline(img, box[0], box[2], 214, GOLD_DEEP, 150)
-        hline(img, box[0], box[2], 215, (7, 5, 3))
+        hline(img, box[0], box[2], 215, FRAME_OUTER)
     for x, state in ((0, "normal"), (20, "flyby"), (40, "pressed"), (60, "pressedflyby"), (80, "disabled")):
         glass_slab(img, (x, 160, x + 20, 180), state, radius=3)
     # Arrow buttons 30x32
@@ -614,7 +661,7 @@ def build_fg_pieces(img):
         if part == "top":
             hline(img, x0, x1, y0, LINE_BRIGHT)
         if part == "bottom":
-            hline(img, x0, x1, y1 - 1, (7, 5, 3))
+            hline(img, x0, x1, y1 - 1, FRAME_OUTER)
     # HSB arrows 22x12
     for y, state in ((140, "normal"), (152, "flyby"), (164, "pressed"), (176, "disabled")):
         scroll_arrow_btn(img, (10, y, 32, y + 12), "left", state)
@@ -623,7 +670,7 @@ def build_fg_pieces(img):
     for box in ((60, 140, 64, 152), (70, 140, 74, 152), (80, 140, 82, 152)):
         fill(img, box, BG3 + (255,))
         hline(img, box[0], box[2], 140, LINE_BRIGHT)
-        hline(img, box[0], box[2], 151, (7, 5, 3))
+        hline(img, box[0], box[2], 151, FRAME_OUTER)
     # Tab frame pieces (tops rounded 4px)
     rounded_corner(img, (140, 110, 150, 114), "tl", radius=4, body=BG2)   # TabFrameTopLeft 10x4 (+TabBottomLeft)
     rounded_edge(img, (151, 110, 153, 114), "top", body=BG2)              # TabFrameTop 2x4
@@ -643,7 +690,7 @@ def build_fg_pieces(img):
     for box in ((60, 170, 62, 172), (63, 170, 71, 172), (72, 170, 74, 172),
                 (60, 173, 62, 181), (72, 173, 74, 181),
                 (60, 182, 62, 184), (63, 182, 71, 184), (72, 182, 74, 184)):
-        fill(img, box, (30, 35, 46, 255))
+        fill(img, box, INNER_FRAME + (255,))
 
 
 def build_pieces02(img):
@@ -654,7 +701,8 @@ def build_pieces02(img):
         clear(img, box)
         d = ImageDraw.Draw(img)
         d.rounded_rectangle([208, y0, 247, y0 + 39], radius=4, outline=LINE + (255,))
-        d.rounded_rectangle([209, y0 + 1, 246, y0 + 38], radius=3, outline=(5, 6, 9, 200))
+        d.rounded_rectangle([209, y0 + 1, 246, y0 + 38], radius=3,
+                            outline=FRAME_VOID + (200,))
         if accent:  # gold corner ticks on the active holder
             for cx, cy, dx, dy in ((210, y0 + 2, 1, 1), (245, y0 + 2, -1, 1),
                                    (210, y0 + 37, 1, -1), (245, y0 + 37, -1, -1)):
@@ -696,7 +744,7 @@ def build_spell_ledger_texture() -> Image.Image:
     d.line([(8, 27), (147, 27)], fill=(4, 3, 2, 88))
     d.line([(1, 8), (1, 21)], fill=GOLD_DEEP + (38,))
     d.line([(30, 6), (30, 23)], fill=GOLD_DEEP + (48,))
-    d.line([(31, 6), (31, 23)], fill=(255, 225, 170, 12))
+    d.line([(31, 6), (31, 23)], fill=BEVEL_LIGHT + (12,))
     atlas.paste(plate, (0, 0), plate)
 
     # Holder pixels are category-tinted by EQ.  A transparent holder prevents
@@ -715,7 +763,7 @@ def build_spell_ledger_texture() -> Image.Image:
 
 
 def generate(*, source_skin: Path = SKIN, output_skin: Path = SKIN,
-             palette: dict[str, tuple[int, int, int]] | None = None,
+             palette: dict[str, tuple[int, ...]] | None = None,
              preview_dir: Path | None = REPO / "docs" / "previews",
              quiet: bool = False) -> tuple[str, ...]:
     """Build client-ready theme atlases into ``output_skin``.
@@ -727,14 +775,14 @@ def generate(*, source_skin: Path = SKIN, output_skin: Path = SKIN,
     if preview_dir is not None:
         preview_dir.mkdir(parents=True, exist_ok=True)
     palette = palette or {}
-    unknown = set(palette) - {
-        "CYAN_DEEP", "CYAN", "GOLD_DEEP", "GOLD", "GOLD_BRIGHT", "EMBER",
-    }
+    unknown = set(palette) - FULL_THEME_KEYS
     if unknown:
         raise ValueError(f"unknown texture palette keys: {sorted(unknown)}")
     previous = {name: globals()[name] for name in palette}
     for name, color in palette.items():
-        if len(color) != 3 or any(not 0 <= channel <= 255 for channel in color):
+        if len(color) not in (3, 4) or any(
+                not isinstance(channel, int) or not 0 <= channel <= 255
+                for channel in color):
             raise ValueError(f"invalid texture palette color {name}: {color!r}")
         globals()[name] = tuple(color)
 
@@ -768,14 +816,14 @@ def generate(*, source_skin: Path = SKIN, output_skin: Path = SKIN,
         if not quiet:
             print("painted", ledger_name)
 
-        # Full-tile backgrounds stay dark oiled leather while the interaction
-        # accents are customized. This preserves text contrast across hues.
+        # Full-tile backgrounds use a shared dark material while interaction
+        # accents are customized. This preserves text contrast across themes.
         bgs = {
-            "wnd_bg_light_rock.tga": ((24, 18, 11), 2),
-            "wnd_bg_dark_rock.tga": ((14, 10, 6), 2),
-            "wnd_bg_light_rock_inner.tga": ((19, 14, 9), 2),
-            "wnd_dark_rock.tga": ((11, 8, 5), 1),
-            "wnd_fg_dark_rock.tga": ((11, 8, 5), 1),
+            "wnd_bg_light_rock.tga": (TILE_LIGHT, 2),
+            "wnd_bg_dark_rock.tga": (TILE_DARK, 2),
+            "wnd_bg_light_rock_inner.tga": (TILE_INNER, 2),
+            "wnd_dark_rock.tga": (TILE_VOID, 1),
+            "wnd_fg_dark_rock.tga": (TILE_VOID, 1),
         }
         for name, (base, amp) in bgs.items():
             src = load_pristine(name, source_skin)

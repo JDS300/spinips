@@ -28,6 +28,8 @@ from spinui_theme import (BG1, BG2, BG3, CYAN, EMBER, ENDUR, GOLD, GOLD_BRIGHT,
 
 SKIN = REPO / "spinui_reloaded"
 OUT = REPO / "docs" / "previews"
+OUTPUT_BASENAME = "spinui_reloaded"
+PREVIEW_SUBTITLE = "Spin's UI Reloaded - layout preview"
 W, H = 3440, 1440
 
 DIM = TEXT_DIM
@@ -196,7 +198,8 @@ def world_bg():
         glow = glow.filter(ImageFilter.GaussianBlur(80))
         img.alpha_composite(glow, (cx - r, cy - r))
     d.text((W // 2, 640), "EVERQUEST LEGENDS", font=F(44, True), fill=(255, 255, 255, 26), anchor="mm")
-    d.text((W // 2, 690), "Spin's UI Reloaded — layout preview", font=F(20), fill=(255, 255, 255, 22), anchor="mm")
+    d.text((W // 2, 690), PREVIEW_SUBTITLE, font=F(20),
+           fill=(255, 255, 255, 22), anchor="mm")
     return img
 
 
@@ -672,9 +675,10 @@ def main():
                             "Large Ba", "Bag of S", "Large Ba", "Light Bu")):
         draw_bag(canvas, 2500 + i * 100, 1160, nm)
 
-    out_full = OUT / "spinui_reloaded_3440.png"
+    out_full = OUT / f"{OUTPUT_BASENAME}_3440.png"
     canvas.convert("RGB").save(out_full)
-    canvas.resize((W // 2, H // 2), Image.LANCZOS).convert("RGB").save(OUT / "spinui_reloaded_1720.png")
+    canvas.resize((W // 2, H // 2), Image.LANCZOS).convert("RGB").save(
+        OUT / f"{OUTPUT_BASENAME}_1720.png")
     print("wrote", out_full)
 
 
