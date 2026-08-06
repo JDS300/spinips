@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/screenshots/spinui-logo.jpg" alt="SPINUI logo: a brass compass-and-HUD crest on black leather with ember edging" width="1000">
+  <img src="docs/screenshots/spinui-logo-dual.jpg" alt="SPINUI logo divided between warm Vellum and Ember brass on the left and Midnight Frost Glass on the right" width="1000">
 </p>
 
 <h1 align="center">SpinUI + Spin's Loremaster</h1>
@@ -113,11 +113,14 @@ Loremaster turns the text log EverQuest already writes into a live **Adventurer'
 | **Encounter Lab** | Encounter, Session, and Records views with multi-enemy pulls plus actor, ability, healing, target, and a timeline grouped into two-second buckets. |
 | **Adventure ledger** | XP/hour, time to level, kills, loot, all ten mote grades, coin and plat/hour, factions, skills, zones, and a bounded death recap. |
 | **Pets and charms** | Credits summoned pets and conservatively claimed charmed creatures; same-name charm totals are included but clearly labeled as estimates when the text log cannot distinguish actor IDs. |
+| **Optional DPS attribution** | Keeps total personal DPS unchanged while optionally exposing separate Self, Charmed pet, and Summoned pet damage/DPS rows for both the current encounter and session. |
 | **Mez control** | Starts a sleek target countdown only after your own recognized mez actually lands. Ranked durations use EQL's whole-tick scaling; identical mob names group honestly, and `LAST TICK` exposes the server-tick uncertainty instead of inventing an exact wake-up second. |
 | **Rune Seed HUD** | A rounded 92×48 combat capsule pairs the generated SpinUI brass cog with a separate, overlap-free DPS lane. DPS is its only seeded metric; players can deliberately star up to four ledger cards to create a scrollable wheel. LIVE, READY, STALE, and ALERT use restrained trim motion; click to morph into the full parser, drag when unlocked, or right-click for settings. |
 | **Lore Lens** | One-shot hovered-item OCR, exact EQL Wiki validation, cached results, and a configurable `Ctrl+Shift+E` shortcut. |
+| **Plane of Sky journey planner** | Optionally recognizes looted turn-ins, privately imports `/outputfile inventory`, shows reward/class use, tracks missing pieces, recommends the remaining islands or bosses, and can place the selected island on EQ map layer 3. |
 | **Alerts** | Opt-in banners and sound for tells, summons, deaths, charm breaks, big hits, name calls, and fight completion. Compact banners stay beside the Rune Seed with edge-safe Auto, Right, Left, Above, and Below placement choices. |
 | **Character continuity** | Follows standard `eqlog_*.txt` activity and supports manual log-folder selection. Packaged builds store selected records and settings under `%LOCALAPPDATA%\SpinsLoremaster`; source runs keep state beside `loremaster.py`. |
+| **Two native themes** | Vellum & Ember and Midnight Frost Glass are selectable in Settings so Loremaster can visually belong to either SpinUI skin. |
 
 ### Charm intelligence that respects the log
 
@@ -153,6 +156,14 @@ Hover an item and press **Ctrl+Shift+E** by default. Lore Lens freezes one bound
 - Results can include item profile data, drops, vendors, quests, crafted status, and recipes. Empty sections remain honest instead of being guessed.
 - Pages are cached for seven days by default. The UI distinguishes **LIVE**, **CACHED**, **STALE CACHE**, offline, and no-exact-match states.
 - Ordinary clipboard text is never transmitted automatically; it only prefills the search field for confirmation.
+
+### Plane of Sky: loot becomes a plan
+
+Turn on **Plane of Sky Journey Intelligence** in Settings to connect ordinary loot lines to their quest rewards automatically. Loremaster's **SPOILS** and **JOURNEY** ledgers then identify each matching turn-in, its usable class, quest NPC, and farm source without OCR. The target planner searches rewards, turn-ins, NPCs, and sources, shows owned versus missing pieces, and keeps one chosen reward visible in Journey.
+
+For existing bags, visit a banker, open Dragon's Hoard, run `/outputfile inventory`, then use **Settings → Import inventory.txt**. Parsing is entirely local and Loremaster persists only the matching Sky turn-in names—not the character or server fields. Wind runes held in the currency tab currently require manual confirmation because the game does not place them in the inventory export. The bundled quest snapshot is attributed to the [EQ Legends Tools Plane of Sky tracker](https://eqlegendstools.com/plane-of-sky-quests/) and requires no runtime network access.
+
+**MARK EQ MAP** writes one clearly named `Loremaster_Target_…` point to `maps/airplane_3.txt`, preserving unrelated user labels and replacing only an earlier Loremaster target. The marker uses the installed Plane of Sky map's island centers; sources without a single known island remain text guidance instead of receiving a guessed coordinate.
 
 ## What makes SpinUI different
 
@@ -286,8 +297,8 @@ This architecture supports a transparent non-injecting workflow. As with any com
 ### Running and controlling the overlay
 
 1. Take `Loremaster.exe` from `SpinUI-Manual.zip`, download the standalone release executable, or run it from source.
-2. Type `/log on` in game. Loremaster follows the newest standard EQ log it can find; **CHANGE / LOCATE LOG** can point it to an EverQuest root or `Logs` directory.
-3. Click the **Rune Seed** to unfold the full ledger; use **SEED** in the masthead to collapse it again. The 240 ms transition is sampled from monotonic time at display cadence, so a busy parser skips ahead instead of accumulating jitter; reduced motion switches instantly. Full and compact positions are remembered separately.
+2. Type `/log on` in game. Loremaster follows the newest standard EQ log it can find; **Settings → Change EverQuest Folder** or **CHANGE / LOCATE LOG** can point it to an EverQuest root or `Logs` directory.
+3. Click the **Rune Seed** to unfold the full ledger; use **SEED** in the masthead to collapse it again. The transition fades the current surface, performs one atomic geometry/layout swap, then reveals the destination—avoiding a frame-by-frame child-widget reflow. Reduced motion switches instantly. Full and compact positions are remembered separately.
 4. DPS is the only default Rune Seed metric. Pin additional ledger sections with ✦ to build an optional four-item carousel, then use the mouse wheel over the seed to rotate it.
 5. Active mez timers appear beside either HUD state. The settings screen controls visibility, the optional one-shot sound, and its 3–30 second warning threshold.
 6. Use **TOP / SHOW TOP** in Details to reclaim vertical space without changing the saved window size.
@@ -298,14 +309,14 @@ This architecture supports a transparent non-injecting workflow. As with any com
 
 | Section | At a glance | Expanded detail |
 |---|---|---|
-| **COMBAT** | live/session DPS | observed actors, abilities, targets, crits, accuracy, incoming damage, healing, overheal, and timeline |
+| **COMBAT** | live/session DPS | observed actors, abilities, targets, optional Self/Charm/Summoned attribution, crits, accuracy, incoming damage, healing, overheal, and timeline |
 | **SLAYING** | personal and observed group kills | per-creature breakdown |
-| **SPOILS** | item count | loot names and quantities |
+| **SPOILS** | item count | loot names, quantities, and optional Plane of Sky quest/reward matches |
 | **COIN** | coin total | denomination breakdown and plat/hour |
 | **PROGRESSION** | XP, levels, AA | XP/hour, estimated time to level, songs, and skills |
 | **MOTES** | compact grade sequence | all ten grades, counts, and earned potential |
 | **STANDING** | faction count | per-faction positive and negative movement |
-| **JOURNEY** | deaths | zone chain and final-20-second death recap |
+| **JOURNEY** | deaths | zone chain, final-20-second death recap, recent Sky discoveries, and the selected Sky farm target |
 
 Motes are session acquisitions, not a bag scan. Loremaster recognizes all ten potential grades and the supported corpse, stack, receive, gain, acquire, and found line formats.
 

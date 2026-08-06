@@ -132,8 +132,25 @@ class CharmedPetAttributionTests(unittest.TestCase):
                    "A goblin has taken 30 damage from Burning by A rock golem.")
 
         self.assertEqual(stats.pet_damage, 80)
+        self.assertEqual(stats.charmed_pet_damage, 80)
+        self.assertEqual(stats.summoned_pet_damage, 0)
         self.assertEqual(stats.fight.damage, 80)
+        self.assertEqual(stats.fight.charmed_pet_damage, 80)
         self.assertEqual(stats.fight.sources["Pet (A rock golem)"]["h"], 2)
+
+    def test_summoned_and_charmed_pet_damage_have_separate_totals(self):
+        stats = SessionStats("Spin")
+        apply_line(stats, 0, "Gann says 'My leader is Spin.'")
+        apply_line(stats, 1, "Gann slashes a goblin for 40 points of damage.")
+        apply_line(stats, 2, "You begin casting Charm.")
+        apply_line(stats, 3, "a rock golem has been charmed.")
+        apply_line(stats, 4, "A rock golem slashes a goblin for 60 points of damage.")
+        snap = stats.snapshot(BASE + timedelta(seconds=5))
+        self.assertEqual(snap["pet_damage"], 100)
+        self.assertEqual(snap["summoned_pet_damage"], 40)
+        self.assertEqual(snap["charmed_pet_damage"], 60)
+        self.assertEqual(stats.fight.summoned_pet_damage, 40)
+        self.assertEqual(stats.fight.charmed_pet_damage, 60)
 
 
 class CharmedPetOwnershipSafetyTests(unittest.TestCase):
