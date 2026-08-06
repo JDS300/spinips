@@ -75,7 +75,6 @@ class MoteTrackerTests(unittest.TestCase):
             }),
             [0] * 10,
         )
-
     def test_malformed_ledger_entries_cannot_crash_the_compact_readout(self):
         for loot in (None, [], "loot", 7):
             with self.subTest(loot=loot):
@@ -114,6 +113,18 @@ class MoteTrackerTests(unittest.TestCase):
         # Exactly one grade carries no grade word: the unqualified fourth.
         self.assertEqual(
             [i for i, g in enumerate(LOREMASTER.MOTE_GRADES) if not g], [3])
+
+
+class SecondaryWindowPlacementTests(unittest.TestCase):
+    def test_tall_settings_surface_stays_inside_owners_monitor(self):
+        position = LOREMASTER.adjacent_window_position(
+            (3334, 1106, 94, 50), (877, 1049), (0, 0, 3440, 1400))
+        self.assertEqual(position, (2441, 343))
+
+    def test_surface_falls_right_when_left_side_is_unavailable(self):
+        position = LOREMASTER.adjacent_window_position(
+            (10, 100, 94, 50), (300, 400), (0, 0, 1920, 1040))
+        self.assertEqual(position, (120, 100))
 
 
 class MoteAcquisitionTests(unittest.TestCase):

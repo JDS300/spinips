@@ -67,6 +67,8 @@ from log_ingest import (
     SwitchRecord,
 )
 from mez_timer import MezTracker, format_mez_remaining
+from sky_intel import (SOURCE_URL as SKY_SOURCE_URL, inventory_names_from_text,
+                       load_bundled_catalog, write_map_marker)
 from windows_hotkeys import (
     HOTKEY_RECOVERY,
     HOTKEY_WIKI,
@@ -143,7 +145,9 @@ DEFAULT_LOG_DIRS = [
 ]
 
 SOURCE_DIR = Path(__file__).resolve().parent
-if getattr(sys, "frozen", False):
+if os.environ.get("LOREMASTER_APP_DATA_DIR"):
+    APP_DATA_DIR = Path(os.environ["LOREMASTER_APP_DATA_DIR"])
+elif getattr(sys, "frozen", False):
     APP_DATA_DIR = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpinsLoremaster"
 else:
     APP_DATA_DIR = SOURCE_DIR
@@ -325,6 +329,39 @@ MINI_COMPACT_LABELS = {
     "faction": "REP",
     "travels": "TRAVEL",
 }
+
+GLASS_THEME = {
+    "bg": "#03080e",
+    "panel": "#07131d",
+    "raised": "#0b1d29",
+    "line": "#2f7285",
+    "line_soft": "#173746",
+    "gold": "#6ec8de",
+    "gold_bright": "#d9f7ff",
+    "cyan": "#73dcff",
+    "text": "#e8f7fb",
+    "dim": "#8fb1bd",
+    "hp": "#f25567",
+    "mana": "#5c8fff",
+    "endur": "#d2aa5e",
+    "green": "#46e0ad",
+    "ember": "#a980ff",
+    "parchment": "#bad7df",
+    "void": "#010407",
+    "meter": "#0b2430",
+    "meter_edge": "#3eaac2",
+}
+
+
+def theme_palette(name="vellum", high_contrast=False) -> dict:
+    """Resolve one coherent palette; theme changes intentionally apply at launch."""
+    theme = GLASS_THEME if str(name).strip().casefold() == "glass" else THEME
+    palette = dict(theme)
+    if high_contrast:
+        palette.update(bg="#000000", panel="#0a0a0a", raised="#171717",
+                       line="#74818a", line_soft="#3e474d", text="#ffffff",
+                       dim="#c6cdd1", gold_bright="#ffe184", cyan="#9cc4ff")
+    return palette
 
 
 def compact_hud_number(value) -> str:
@@ -1114,6 +1151,8 @@ class Fight:
     # identically named NPC, the direction of each line cannot be proven; we
     # still include the damage, but surface this subtotal as an estimate.
     ambiguous_pet_damage: int = 0
+    charmed_pet_damage: int = 0
+    summoned_pet_damage: int = 0
     targets: dict = field(default_factory=lambda: defaultdict(int))
     sources: dict = field(default_factory=lambda: defaultdict(
         lambda: {"t": 0, "h": 0, "max": 0}))
@@ -1220,6 +1259,8 @@ class SessionStats:
         self.charm_spells: set[str] = set()
         self.pending_cast: tuple[str, datetime] | None = None
         self.pet_damage = 0
+        self.charmed_pet_damage = 0
+        self.summoned_pet_damage = 0
         self.ambiguous_pet_damage = 0
         self.max_hit: tuple[int, str, str] | None = None   # (dmg, source, target)
         self.damage_taken_by: dict[str, dict] = defaultdict(lambda: {"t": 0, "h": 0})
@@ -1724,11 +1765,20 @@ class SessionStats:
             dmg = int(g["dmg"])
             if attacker and self.is_pet(attacker):
                 pet = self._pet_display_name(attacker) or normalize_mob(attacker)
+                is_charmed = self.is_charmed_pet(attacker)
                 self.pet_last_seen[pet] = ts
                 self.pet_damage += dmg
                 self._deal(ts, g["target"], dmg, f"Pet ({pet})",
                            actor=f"{pet} (pet)")
-                if (self.is_charmed_pet(attacker)
+                if is_charmed:
+                    self.charmed_pet_damage += dmg
+                    if self.fight:
+                        self.fight.charmed_pet_damage += dmg
+                else:
+                    self.summoned_pet_damage += dmg
+                    if self.fight:
+                        self.fight.summoned_pet_damage += dmg
+                if (is_charmed
                         and pet_identity(attacker) == pet_identity(g["target"])):
                     self.ambiguous_pet_damage += dmg
                     if self.fight:
@@ -1842,6 +1892,8 @@ class SessionStats:
             "session_start": self.session_start,
             "copper": self.copper,
             "pet_damage": self.pet_damage,
+            "charmed_pet_damage": self.charmed_pet_damage,
+            "summoned_pet_damage": self.summoned_pet_damage,
             "ambiguous_pet_damage": self.ambiguous_pet_damage,
             "active_pets": active_pets,
             "pet_names": sorted(self.pet_names),
@@ -2075,6 +2127,7 @@ def fight_toasts_active(cfg: dict) -> bool:
 def load_config() -> dict:
     cfg = {
         "log_dir": None,
+        "ui_theme": "vellum",
         "mini_mode": True,
         "opacity": 1.0,
         "ui_rendering_version": 3,
@@ -2131,6 +2184,13 @@ def load_config() -> dict:
         "wiki_request_timeout_seconds": 6,
         "wiki_position": None,
         "wiki_last_query": "",
+        # Plane of Sky intelligence is local and opt-in. Only matching turn-in
+        # names from an imported inventory output are persisted.
+        "sky_intel_enabled": False,
+        "sky_owned_items": [],
+        "sky_inventory_path": "",
+        "sky_target_reward": [],
+        "split_charmed_pet_dps": False,
         # Accessibility preferences are conservative and backward compatible.
         "font_scale": 1.0,
         "high_contrast": False,
@@ -2207,6 +2267,13 @@ def load_config() -> dict:
     cfg["hud_cards_version"] = RUNE_SEED_CONFIG_VERSION
     cfg["mini_alert_anchor"] = normalize_alert_anchor(
         cfg.get("mini_alert_anchor", "auto"))
+    cfg["ui_theme"] = ("glass" if str(cfg.get("ui_theme", "vellum")).casefold()
+                       == "glass" else "vellum")
+    if not isinstance(cfg.get("sky_owned_items"), list):
+        cfg["sky_owned_items"] = []
+    target_reward = cfg.get("sky_target_reward")
+    if not isinstance(target_reward, list) or len(target_reward) != 3:
+        cfg["sky_target_reward"] = []
     # Broken custom alert regexes are skipped silently per log line; warn
     # exactly once here so the config author can find and fix them.
     bad_patterns = invalid_custom_alert_patterns(cfg.get("custom_alerts", []))
@@ -2557,6 +2624,81 @@ def fit_panel_size_to_bounds(requested_size, scale, bounds, margin=8):
         min(FULL_MAX_HEIGHT, requested_height),
     )
     return min(ideal_width, available_width), min(ideal_height, available_height)
+
+
+def adjacent_window_position(root_rect, window_size, bounds, gap=16):
+    """Place a secondary surface beside its owner inside one monitor."""
+    rx, ry, rw, _rh = (int(value) for value in root_rect)
+    width, height = (max(1, int(value)) for value in window_size)
+    bx, by, bw, bh = (int(value) for value in bounds)
+    x = rx - width - int(gap)
+    if x < bx:
+        x = rx + rw + int(gap)
+    x = max(bx + 8, min(x, bx + bw - width - 8))
+    y = max(by + 8, min(ry, by + bh - height - 8))
+    return x, y
+
+
+def place_native_toplevel_beside(root, win) -> bool:
+    """Place a realized Windows Toplevel without mixing Tk/Win32 DPI units."""
+    if os.name != "nt":
+        return False
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class RECT(ctypes.Structure):
+            _fields_ = [("left", wintypes.LONG), ("top", wintypes.LONG),
+                        ("right", wintypes.LONG), ("bottom", wintypes.LONG)]
+
+        class MONITORINFO(ctypes.Structure):
+            _fields_ = [("cbSize", wintypes.DWORD), ("rcMonitor", RECT),
+                        ("rcWork", RECT), ("dwFlags", wintypes.DWORD)]
+
+        user32 = ctypes.windll.user32
+        user32.GetParent.argtypes = [wintypes.HWND]
+        user32.GetParent.restype = wintypes.HWND
+        user32.GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(RECT)]
+        user32.GetWindowRect.restype = wintypes.BOOL
+        user32.MonitorFromWindow.argtypes = [wintypes.HWND, wintypes.DWORD]
+        user32.MonitorFromWindow.restype = wintypes.HANDLE
+        user32.GetMonitorInfoW.argtypes = [wintypes.HANDLE,
+                                          ctypes.POINTER(MONITORINFO)]
+        user32.GetMonitorInfoW.restype = wintypes.BOOL
+
+        def wrapper(widget):
+            child = wintypes.HWND(int(widget.winfo_id()))
+            return user32.GetParent(child) or child
+
+        root_handle, win_handle = wrapper(root), wrapper(win)
+        root_native, win_native = RECT(), RECT()
+        if not user32.GetWindowRect(root_handle, ctypes.byref(root_native)):
+            return False
+        if not user32.GetWindowRect(win_handle, ctypes.byref(win_native)):
+            return False
+        monitor = user32.MonitorFromWindow(root_handle, 2)
+        info = MONITORINFO()
+        info.cbSize = ctypes.sizeof(info)
+        if not monitor or not user32.GetMonitorInfoW(monitor, ctypes.byref(info)):
+            return False
+        root_rect = (root_native.left, root_native.top,
+                     root_native.right - root_native.left,
+                     root_native.bottom - root_native.top)
+        window_size = (win_native.right - win_native.left,
+                       win_native.bottom - win_native.top)
+        work = info.rcWork
+        bounds = (work.left, work.top, work.right - work.left,
+                  work.bottom - work.top)
+        x, y = adjacent_window_position(root_rect, window_size, bounds)
+        user32.SetWindowPos.argtypes = [wintypes.HWND, wintypes.HWND,
+                                       ctypes.c_int, ctypes.c_int,
+                                       ctypes.c_int, ctypes.c_int, wintypes.UINT]
+        user32.SetWindowPos.restype = wintypes.BOOL
+        return bool(user32.SetWindowPos(
+            win_handle, None, x, y, 0, 0,
+            0x0001 | 0x0010 | 0x0040))  # NOSIZE | NOACTIVATE | SHOWWINDOW
+    except (AttributeError, OSError, TypeError, ValueError):
+        return False
 
 
 def clamp_alert_position(pos, width, height, bounds, default_x, default_y):
@@ -3658,11 +3800,12 @@ def run_gui(args):
         stats.set_composition(configured_composition(cfg, "Spin") or
                               "WAR / BRD / DRU", source="demo")
 
-    T = dict(THEME)
-    if cfg.get("high_contrast", False):
-        T.update(bg="#000000", panel="#0a0a0a", raised="#171717",
-                 line="#74818a", line_soft="#3e474d", text="#ffffff",
-                 dim="#c6cdd1", gold_bright="#ffe184", cyan="#9cc4ff")
+    T = theme_palette(cfg.get("ui_theme", "vellum"),
+                      cfg.get("high_contrast", False))
+    try:
+        sky_catalog = load_bundled_catalog(bundled_resource_path())
+    except (OSError, ValueError, KeyError, json.JSONDecodeError):
+        sky_catalog = None
     root = tk.Tk()
     root.title("Loremaster")
     root.configure(bg=T["bg"])
@@ -4257,6 +4400,20 @@ def run_gui(args):
         if text_widget:
             text_widget.configure(state="disabled")
 
+    def _wiki_render_sky_context(item_name) -> bool:
+        """Append deterministic local quest context even if the wiki misses."""
+        if (not cfg.get("sky_intel_enabled", False) or sky_catalog is None):
+            return False
+        matches = sky_catalog.item_matches(item_name)
+        if not matches:
+            return False
+        _wiki_text("\nPLANE OF SKY JOURNEY\n", tag="heading")
+        for row in matches[:8]:
+            _wiki_text(f"  • {row.reward} ({row.class_name})\n", tag="bullet")
+            _wiki_text(f"    Farm: {row.source}\n", tag="zone")
+            _wiki_text(f"    Turn in to: {row.npc}\n", tag="muted")
+        return True
+
     def _wiki_render_prompt(message=None):
         _wiki_clear()
         _wiki_text("ITEM LORE AT A GLANCE\n", tag="hero")
@@ -4300,6 +4457,7 @@ def run_gui(args):
                 tag = "magic" if any(flag in upper for flag in (
                     "MAGIC ITEM", "LORE ITEM", "NO DROP", "ATTUNABLE")) else "stat"
                 _wiki_text(line + "\n", tag=tag)
+        _wiki_render_sky_context(item.title)
         for section in DISPLAY_SECTIONS:
             _wiki_text("\n" + section.upper() + "\n", tag="heading")
             rows = item.sections.get(section) or []
@@ -4329,15 +4487,18 @@ def run_gui(args):
     def _wiki_render_error(error, query):
         wiki_ui["item"] = None
         _wiki_clear()
+        local_match = False
         if isinstance(error, WikiNotFoundError):
             _wiki_text("NO EXACT MATCH\n", tag="error")
             _wiki_text(f'No exact item page was found for "{query}".\n\n', tag="body")
+            local_match = _wiki_render_sky_context(query)
             if error.suggestions:
                 _wiki_text("POSSIBLE PAGES\n", tag="heading")
                 for suggestion in error.suggestions:
                     _wiki_text("  • " + suggestion + "\n", tag="bullet")
                 _wiki_text("\nType a suggested title above and press Enter.\n", tag="muted")
-            status = "EQL WIKI  •  NO EXACT MATCH"
+            status = ("LOCAL SKY MATCH  •  WIKI MISS" if local_match else
+                      "EQL WIKI  •  NO EXACT MATCH")
         elif isinstance(error, WikiOfflineError):
             _wiki_text("ARCHIVES OFFLINE\n", tag="error")
             _wiki_text(str(error) + "\n\n", tag="body")
@@ -4349,7 +4510,8 @@ def run_gui(args):
             _wiki_text(str(error)[:300] + "\n", tag="body")
             status = "EQL WIKI  •  ERROR"
         _wiki_finish()
-        wiki_ui["status"].configure(text=status, fg=T["hp"])
+        wiki_ui["status"].configure(text=status,
+                                    fg=T["green"] if local_match else T["hp"])
         wiki_ui["open"].configure(state="disabled", fg=T["line"])
 
     def wiki_lookup(query=None, source="search"):
@@ -4612,6 +4774,160 @@ def run_gui(args):
         else:
             _wiki_plaintext_fallback(clipboard)
 
+    def current_sky_owned_items() -> list[str]:
+        owned = [str(name) for name in cfg.get("sky_owned_items", [])]
+        for item_name, count in stats.loot.items():
+            owned.extend([item_name] * max(0, int(count)))
+        return owned
+
+    def open_sky_planner(parent=None, initial_query="", on_enable=None):
+        if sky_catalog is None:
+            return
+        existing = widgets.get("sky_planner_window")
+        if existing:
+            try:
+                existing.deiconify()
+                existing.lift()
+                return
+            except tk.TclError:
+                pass
+        planner = tk.Toplevel(parent or root)
+        widgets["sky_planner_window"] = planner
+        planner.title("Loremaster — Plane of Sky Planner")
+        planner.configure(bg=T["line"])
+        planner.geometry("760x590")
+        planner.minsize(640, 470)
+        shell = tk.Frame(planner, bg=T["bg"], padx=14, pady=12)
+        shell.pack(fill="both", expand=True, padx=1, pady=1)
+        L(shell, "PLANE OF SKY · TARGET FARM", fg=T["gold_bright"],
+          font=FONT_TITLE).pack(anchor="w")
+        L(shell, "Search a reward, turn-in, quest NPC, or drop source. Inventory "
+          "imports and this session's loot stay on this PC.", fg=T["dim"],
+          font=FONT_S, wraplength=700, justify="left").pack(fill="x", pady=(2, 9))
+        query = tk.StringVar(value=initial_query)
+        search = tk.Entry(shell, textvariable=query, bg=T["void"], fg=T["text"],
+                          insertbackground=T["cyan"], relief="flat", font=FONT_B)
+        search.pack(fill="x", ipady=6)
+        body = tk.Frame(shell, bg=T["bg"])
+        body.pack(fill="both", expand=True, pady=(9, 8))
+        results = tk.Listbox(body, bg=T["panel"], fg=T["text"],
+                             selectbackground=T["line"], selectforeground=T["gold_bright"],
+                             relief="flat", exportselection=False, font=FONT, width=36)
+        results.pack(side="left", fill="both", expand=False)
+        detail = tk.Text(body, bg=T["panel"], fg=T["text"], relief="flat",
+                         wrap="word", font=FONT, padx=12, pady=10,
+                         insertbackground=T["cyan"], state="disabled")
+        detail.pack(side="left", fill="both", expand=True, padx=(8, 0))
+        result_keys: list[tuple[str, str, str]] = []
+
+        def render_results(*_args):
+            result_keys[:] = sky_catalog.search_rewards(query.get())[:300]
+            results.delete(0, "end")
+            for class_name, _npc, reward in result_keys:
+                results.insert("end", f"{class_name.upper():<10}  {reward}")
+            if result_keys:
+                results.selection_set(0)
+                show_selected()
+            else:
+                set_detail("No matching Sky reward, turn-in, NPC, or source.")
+
+        def set_detail(value):
+            detail.configure(state="normal")
+            detail.delete("1.0", "end")
+            detail.insert("1.0", value)
+            detail.configure(state="disabled")
+
+        def selected_key():
+            selection = results.curselection()
+            return result_keys[selection[0]] if selection else None
+
+        def show_selected(_event=None):
+            key = selected_key()
+            if key is None:
+                return
+            plan = sky_catalog.plan(key, current_sky_owned_items())
+            lines = [f"{plan.reward}\n{plan.class_name} · turn in to {plan.npc}\n"]
+            for row in plan.required:
+                have = row in plan.owned
+                lines.append(f"{'✓ OWNED' if have else '○ NEED'}  {row.quest_item}\n"
+                             f"         Farm: {row.source}")
+            if any(row.quest_item.casefold().startswith("wind rune")
+                   for row in plan.missing):
+                lines.append("\nWind runes in the currency tab are not present in "
+                             "EQ's inventory output; confirm those manually.")
+            lines.append("\nCOMPLETE" if plan.complete else
+                         f"\n{len(plan.owned)}/{len(plan.required)} turn-ins ready")
+            set_detail("\n\n".join(lines))
+
+        def set_target():
+            key = selected_key()
+            if key is None:
+                return
+            cfg["sky_target_reward"] = list(key)
+            cfg["sky_intel_enabled"] = True
+            if callable(on_enable):
+                on_enable()
+            save_config(cfg)
+            show_selected()
+            refresh(force_detail=True)
+
+        planner_status = L(shell, "", fg=T["dim"], font=FONT_S,
+                           wraplength=700, justify="left")
+
+        def mark_target_on_map():
+            key = selected_key()
+            if key is None:
+                return
+            plan = sky_catalog.plan(key, current_sky_owned_items())
+            source = plan.sources[0] if plan.sources else (
+                plan.required[0].source if plan.required else "")
+            configured_text = str(cfg.get("log_dir") or "").strip()
+            if not configured_text:
+                planner_status.configure(
+                    text="Choose the EverQuest folder in Settings before exporting a map target.",
+                    fg=T["hp"])
+                return
+            configured = Path(configured_text)
+            if configured.name.casefold() == "logs":
+                configured = configured.parent
+            maps_dir = configured / "maps"
+            if not maps_dir.parent.is_dir():
+                planner_status.configure(
+                    text="Choose the EverQuest folder in Settings before exporting a map target.",
+                    fg=T["hp"])
+                return
+            try:
+                path = write_map_marker(maps_dir, plan.reward, source)
+            except (OSError, ValueError) as exc:
+                planner_status.configure(text=f"Map target unavailable: {exc}", fg=T["hp"])
+                return
+            planner_status.configure(
+                text=f"Map target written to {path.name} · Plane of Sky layer 3.",
+                fg=T["green"])
+
+        query.trace_add("write", render_results)
+        results.bind("<<ListboxSelect>>", show_selected)
+        actions = tk.Frame(shell, bg=T["bg"])
+        actions.pack(fill="x")
+        tk.Button(actions, text="SET AS JOURNEY TARGET", command=set_target,
+                  bg=T["raised"], fg=T["gold_bright"], relief="flat",
+                  font=FONT_B, padx=12, pady=5).pack(side="left")
+        tk.Button(actions, text="MARK EQ MAP", command=mark_target_on_map,
+                  bg=T["panel"], fg=T["green"], relief="flat",
+                  font=FONT_S, padx=12, pady=5).pack(side="left", padx=(6, 0))
+        tk.Button(actions, text="SOURCE GUIDE", command=lambda: __import__(
+            "webbrowser").open(SKY_SOURCE_URL), bg=T["panel"], fg=T["cyan"],
+                  relief="flat", font=FONT_S, padx=12, pady=5).pack(side="left", padx=6)
+        tk.Button(actions, text="CLOSE", command=planner.destroy,
+                  bg=T["panel"], fg=T["dim"], relief="flat",
+                  font=FONT_S, padx=12, pady=5).pack(side="right")
+        planner_status.pack(fill="x", pady=(5, 0))
+        planner.protocol("WM_DELETE_WINDOW", lambda: (widgets.__setitem__(
+            "sky_planner_window", None), planner.destroy()))
+        search.bind("<Return>", lambda _event: render_results())
+        render_results()
+        search.focus_set()
+
     def open_settings(_event=None):
         # Settings opens beside the HUD and may occupy the timer's anchor side.
         # Keep the control stack quiet until configuration closes.
@@ -4732,6 +5048,11 @@ def run_gui(args):
             cfg.get("wiki_hover_ocr_enabled", True)))
         contrast_var = tk.BooleanVar(value=bool(cfg.get("high_contrast", False)))
         motion_var = tk.BooleanVar(value=bool(cfg.get("reduced_motion", False)))
+        theme_var = tk.StringVar(value=cfg.get("ui_theme", "vellum"))
+        split_pet_var = tk.BooleanVar(value=bool(
+            cfg.get("split_charmed_pet_dps", False)))
+        sky_enabled_var = tk.BooleanVar(value=bool(
+            cfg.get("sky_intel_enabled", False)))
 
         def check(text_value, variable, parent=None):
             c = tk.Checkbutton(parent or frame, text=text_value, variable=variable,
@@ -4788,6 +5109,89 @@ def run_gui(args):
                                insertbackground=T["cyan"], relief="flat", font=FONT)
         scale_entry.pack(side="right", ipady=3)
         scale_entry.insert(0, str(cfg.get("font_scale", 1.0)))
+
+        # ---- Installation, appearance, and local journey intelligence ---
+        tk.Frame(frame, bg=T["line_soft"], height=1).pack(
+            fill="x", pady=(12, 10))
+        L(frame, "EVERQUEST & APPEARANCE", fg=T["cyan"], font=FONT_B).pack(fill="x")
+        log_path_label = L(
+            frame, cfg.get("log_dir") or "Automatic: newest EverQuest log",
+            fg=T["dim"], font=FONT_S, wraplength=410, justify="left")
+        log_path_label.pack(fill="x", pady=(2, 5))
+
+        def change_eq_from_settings():
+            selected = choose_log_dir()
+            if selected:
+                log_path_label.configure(text=selected, fg=T["green"])
+
+        tk.Button(frame, text="CHANGE EVERQUEST FOLDER", command=change_eq_from_settings,
+                  bg=T["panel"], fg=T["gold_bright"], relief="flat",
+                  font=FONT_RUNE, padx=10, pady=4).pack(anchor="w")
+        L(frame, "LOREMASTER THEME · applies next launch", fg=T["gold"],
+          font=FONT_S).pack(fill="x", pady=(9, 3))
+        theme_row = tk.Frame(frame, bg=T["line_soft"], padx=1, pady=1)
+        theme_row.pack(fill="x")
+        for value, label in (("vellum", "VELLUM & EMBER"),
+                             ("glass", "MIDNIGHT FROST GLASS")):
+            tk.Radiobutton(
+                theme_row, text=label, variable=theme_var, value=value,
+                indicatoron=False, relief="flat", bd=0, bg=T["panel"],
+                fg=T["dim"], selectcolor=T["raised"],
+                activebackground=T["raised"], activeforeground=T["gold_bright"],
+                font=FONT_RUNE, padx=5, pady=4).pack(
+                    side="left", fill="x", expand=True, padx=(0, 1))
+        check("Split self and charmed-pet DPS in combat details", split_pet_var)
+
+        tk.Frame(frame, bg=T["line_soft"], height=1).pack(
+            fill="x", pady=(12, 10))
+        L(frame, "PLANE OF SKY JOURNEY INTELLIGENCE", fg=T["cyan"],
+          font=FONT_B).pack(fill="x")
+        L(frame, "Optional local matching for looted turn-ins, owned inventory "
+          "pieces, reward completion, and the bosses or islands still needed.",
+          fg=T["dim"], font=FONT_S, wraplength=410, justify="left").pack(
+              fill="x", pady=(2, 6))
+        check("Enable automatic Sky quest recognition", sky_enabled_var)
+        sky_status = L(frame, "", fg=T["dim"], font=FONT_S, wraplength=410,
+                       justify="left")
+
+        def import_sky_inventory():
+            if sky_catalog is None:
+                sky_status.configure(text="Sky quest data is unavailable.", fg=T["hp"])
+                return
+            from tkinter import filedialog
+            selected = filedialog.askopenfilename(
+                parent=win, title="Import EverQuest inventory.txt",
+                filetypes=(("EverQuest inventory", "*.txt"), ("Text files", "*.txt")))
+            if not selected:
+                return
+            try:
+                names = inventory_names_from_text(
+                    Path(selected).read_text(encoding="utf-8", errors="replace"))
+                matching = [name for name in names if sky_catalog.item_matches(name)]
+            except OSError as exc:
+                sky_status.configure(text=f"Could not read inventory: {exc}", fg=T["hp"])
+                return
+            cfg["sky_owned_items"] = matching
+            cfg["sky_inventory_path"] = selected
+            cfg["sky_intel_enabled"] = True
+            sky_enabled_var.set(True)
+            save_config(cfg)
+            sky_status.configure(
+                text=f"Imported {len(names)} rows · {len(matching)} Sky turn-ins found.",
+                fg=T["green"])
+            refresh(force_detail=True)
+
+        sky_actions = tk.Frame(frame, bg=T["bg"])
+        sky_actions.pack(fill="x", pady=(5, 0))
+        tk.Button(sky_actions, text="IMPORT INVENTORY.TXT",
+                  command=import_sky_inventory, bg=T["panel"], fg=T["gold_bright"],
+                  relief="flat", font=FONT_RUNE, padx=8, pady=4).pack(side="left")
+        tk.Button(sky_actions, text="OPEN TARGET PLANNER",
+                  command=lambda: open_sky_planner(
+                      win, on_enable=lambda: sky_enabled_var.set(True)),
+                  bg=T["raised"], fg=T["cyan"],
+                  relief="flat", font=FONT_RUNE, padx=8, pady=4).pack(side="left", padx=5)
+        sky_status.pack(fill="x", pady=(4, 0))
 
         # ---- Crowd-control timers -------------------------------------
         tk.Frame(frame, bg=T["line_soft"], height=1).pack(
@@ -4976,6 +5380,9 @@ def run_gui(args):
                        wiki_hotkey=active_after.binding.label,
                        wiki_hotkey_customized=True,
                        high_contrast=bool(contrast_var.get()),
+                       ui_theme=("glass" if theme_var.get() == "glass" else "vellum"),
+                       split_charmed_pet_dps=bool(split_pet_var.get()),
+                       sky_intel_enabled=bool(sky_enabled_var.get()),
                        reduced_motion=bool(motion_var.get()), font_scale=scale_value,
                        alerts_enabled=bool(alerts_enabled_var.get()),
                        alert_sound=bool(sound_var.get()),
@@ -5028,9 +5435,20 @@ def run_gui(args):
         win.bind("<Escape>", close_settings)
         win.bind("<MouseWheel>", scroll_settings)
         win.update_idletasks()
-        work_x, work_y, work_width, work_height = monitor_work_area(
-            root, (root.winfo_x(), root.winfo_y(),
-                   root.winfo_width(), root.winfo_height()))
+        # Use the realized HUD's native window to select the monitor. A logical
+        # Tk rectangle passed to MonitorFromRect can be interpreted as physical
+        # pixels on mixed-DPI desktops and select the adjacent monitor.
+        work_x, work_y, work_width, work_height = monitor_work_area(root)
+        # Tk's primary-screen dimensions are already in the exact coordinate
+        # space used by ``geometry``. Prefer them when the HUD is visibly on
+        # that screen; Win32 monitor bounds may be physical on a DPI-unaware Tk
+        # process and can otherwise permit an off-screen settings window.
+        primary_width = max(1, root.winfo_screenwidth())
+        primary_height = max(1, root.winfo_screenheight())
+        if (0 <= root.winfo_x() < primary_width
+                and 0 <= root.winfo_y() < primary_height):
+            work_x, work_y = 0, 0
+            work_width, work_height = primary_width, primary_height
         header_height = max(1, header.winfo_reqheight())
         actions_height = max(1, actions.winfo_reqheight())
         available_content_height = max(
@@ -5047,9 +5465,19 @@ def run_gui(args):
         win.update_idletasks()
         x = root.winfo_x() - win.winfo_width() - 16
         y = root.winfo_y()
-        x, y = clamped_position([x, y], win.winfo_width(), win.winfo_height(), x, y)
+        # Reuse the work area resolved above. Re-querying with a not-yet-shown
+        # Toplevel can mix Tk logical pixels with Win32 physical pixels on a
+        # scaled ultrawide and leave the lower half off-screen.
+        x = max(work_x + 8, min(x, work_x + work_width - win.winfo_width() - 8))
+        y = max(work_y + 8, min(y, work_y + work_height - win.winfo_height() - 8))
         win.geometry(f"{x:+d}{y:+d}")
         win.deiconify()
+        # Windows may realize a withdrawn override-redirect Toplevel at its
+        # parent's old origin. Repeat the exact rectangle after mapping so the
+        # compositor cannot discard the taskbar-safe placement request.
+        win.geometry(f"{win.winfo_width()}x{win.winfo_height()}{x:+d}{y:+d}")
+        win.update_idletasks()
+        place_native_toplevel_beside(root, win)
         win.lift()
 
     def poll_wiki_results():
@@ -5483,6 +5911,19 @@ def run_gui(args):
             out.append(("line", f"{fmt_num(fight.damage)} personal damage · "
                                 f"{fmt_num(fight.dps)} dps · {fight.crits} crits · "
                                 f"{fight.misses} misses", ""))
+            if cfg.get("split_charmed_pet_dps", False):
+                self_damage = max(0, fight.damage - fight.charmed_pet_damage
+                                  - fight.summoned_pet_damage)
+                out.append(("head", "Attributed personal DPS", "damage · dps"))
+                out.append(("row", "Self",
+                            f"{fmt_num(self_damage)} · {fmt_num(self_damage / fight.seconds)}/s"))
+                out.append(("row", "Charmed pet",
+                            f"{fmt_num(fight.charmed_pet_damage)} · "
+                            f"{fmt_num(fight.charmed_pet_damage / fight.seconds)}/s"))
+                if fight.summoned_pet_damage:
+                    out.append(("row", "Summoned pet",
+                                f"{fmt_num(fight.summoned_pet_damage)} · "
+                                f"{fmt_num(fight.summoned_pet_damage / fight.seconds)}/s"))
             if fight.ambiguous_pet_damage:
                 out.append(("line", "Charm estimate: "
                             f"{fmt_num(fight.ambiguous_pet_damage)} same-name damage "
@@ -5613,6 +6054,19 @@ def run_gui(args):
             out.append(("line", f"Dealt {fmt_num(snap['combat_damage'])} "
                                 f"({fmt_num(snap['melee_dealt'])} melee / {fmt_num(snap['spell_dealt'])} spell)"
                                 f" \u00b7 {snap['crits']} crits{acc}", ""))
+            if cfg.get("split_charmed_pet_dps", False):
+                self_damage = max(0, snap["combat_damage"] - snap["pet_damage"])
+                seconds = max(1.0, snap["combat_seconds"])
+                out.append(("head", "Attributed session DPS", "damage · dps"))
+                out.append(("row", "Self",
+                            f"{fmt_num(self_damage)} · {fmt_num(self_damage / seconds)}/s"))
+                out.append(("row", "Charmed pet",
+                            f"{fmt_num(snap['charmed_pet_damage'])} · "
+                            f"{fmt_num(snap['charmed_pet_damage'] / seconds)}/s"))
+                if snap["summoned_pet_damage"]:
+                    out.append(("row", "Summoned pet",
+                                f"{fmt_num(snap['summoned_pet_damage'])} · "
+                                f"{fmt_num(snap['summoned_pet_damage'] / seconds)}/s"))
             if snap["ambiguous_pet_damage"]:
                 out.append(("line", "Charm estimate: "
                             f"{fmt_num(snap['ambiguous_pet_damage'])} same-name damage "
@@ -5687,6 +6141,18 @@ def run_gui(args):
                 out.append(("row", name, f"\u00d7{n}" if n > 1 else ""))
             if not rows:
                 out.append(("line", "Nothing looted yet", ""))
+            if cfg.get("sky_intel_enabled", False) and sky_catalog is not None:
+                matches = []
+                for name, _count in rows:
+                    for quest_row in sky_catalog.item_matches(name):
+                        matches.append((name, quest_row))
+                if matches:
+                    out.append(("head", "Plane of Sky quest matches", "reward · class"))
+                    for name, quest_row in matches[:8]:
+                        out.append(("row", name,
+                                    f"{quest_row.reward} · {quest_row.class_name}"))
+                        out.append(("line", f"Farm: {quest_row.source} · "
+                                            f"turn in to {quest_row.npc}", ""))
         elif key == "motes":
             counts = snap["motes"]
             for label, exp, count in zip(MOTE_TIER_LABELS, MOTE_TIER_EXP,
@@ -5721,6 +6187,28 @@ def run_gui(args):
                 out.append(("line", "No faction hits yet", ""))
         elif key == "travels":
             out.append(("row", "Deaths", str(snap["deaths"])))
+            if cfg.get("sky_intel_enabled", False) and sky_catalog is not None:
+                discoveries = []
+                for item_name in reversed(list(snap["loot"])):
+                    for quest_row in sky_catalog.item_matches(item_name):
+                        discoveries.append((item_name, quest_row))
+                if discoveries:
+                    out.append(("head", "Recent Sky discoveries", "quest use"))
+                    for item_name, quest_row in discoveries[:5]:
+                        out.append(("row", item_name,
+                                    f"{quest_row.reward} · {quest_row.class_name}"))
+            if (cfg.get("sky_intel_enabled", False) and sky_catalog is not None
+                    and len(cfg.get("sky_target_reward", [])) == 3):
+                plan = sky_catalog.plan(tuple(cfg["sky_target_reward"]),
+                                        current_sky_owned_items())
+                out.append(("head", "Plane of Sky target", plan.class_name))
+                out.append(("row", plan.reward,
+                            "READY" if plan.complete else
+                            f"{len(plan.owned)}/{len(plan.required)} turn-ins"))
+                for source in plan.sources[:6]:
+                    out.append(("row", "Focus", source))
+                for missing in plan.missing[:6]:
+                    out.append(("line", f"Need {missing.quest_item}", ""))
             recap = snap.get("last_death_recap") or []
             death_at = snap.get("last_death_at")
             if recap and death_at:
@@ -6426,21 +6914,78 @@ def run_gui(args):
         target_mini = not state["mini"]
         target = target_geometry_for_mode(target_mini)
 
-        def finish_transition():
-            if state["closing"]:
+        swapped = {"done": False}
+
+        def swap_layout():
+            if swapped["done"] or state["closing"]:
                 return
-            state["morphing"] = False
+            swapped["done"] = True
+            width, height, x, y = target
+            root.geometry(f"{width}x{height}{x:+d}{y:+d}")
             state["mini"] = target_mini
             cfg["mini_mode"] = target_mini
             (build_mini if target_mini else build_full)()
+
+        def finish_transition():
+            if state["closing"]:
+                return
+            state["morph_after"] = None
+            state["morphing"] = False
             # Disk I/O is intentionally off the visual critical path.
             root.after(
                 100, lambda: None if state["closing"] else save_config(cfg))
 
         state["morphing"] = True
-        update_bridge = show_morph_bridge(target_mini)
-        animate_geometry_transition(
-            start, target, finish_transition, on_frame=update_bridge)
+        # Resizing a fully populated Tk tree on every frame causes Windows to
+        # repaint hundreds of child widgets and produces the visible jitter the
+        # old morph occasionally showed. Fade the existing surface, perform one
+        # atomic geometry/layout swap near-transparent, then reveal it. This is
+        # both smoother and substantially cheaper than animated reflow.
+        if cfg.get("reduced_motion", False):
+            swap_layout()
+            finish_transition()
+            return
+        try:
+            normal_alpha = max(0.75, min(1.0, float(cfg.get("opacity", 1.0))))
+        except (TypeError, ValueError):
+            normal_alpha = 1.0
+        fade_steps = (0.82, 0.56, 0.30, 0.10)
+        reveal_steps = (0.22, 0.40, 0.60, 0.78, 0.91, 1.0)
+
+        def reveal(index=0):
+            if state["closing"]:
+                return
+            if index >= len(reveal_steps):
+                try:
+                    root.attributes("-alpha", normal_alpha)
+                except tk.TclError:
+                    pass
+                finish_transition()
+                return
+            try:
+                root.attributes("-alpha", normal_alpha * reveal_steps[index])
+            except tk.TclError:
+                swap_layout()
+                finish_transition()
+                return
+            state["morph_after"] = root.after(16, reveal, index + 1)
+
+        def fade(index=0):
+            if state["closing"]:
+                return
+            if index >= len(fade_steps):
+                swap_layout()
+                state["morph_after"] = root.after(10, reveal)
+                return
+            try:
+                root.attributes("-alpha", normal_alpha * fade_steps[index])
+            except tk.TclError:
+                swap_layout()
+                finish_transition()
+                return
+            state["morph_after"] = root.after(14, fade, index + 1)
+
+        fade()
 
     def do_reset():
         stats.reset()
@@ -6462,7 +7007,7 @@ def run_gui(args):
             mustexist=True,
         )
         if not selected:
-            return
+            return None
         cfg["log_dir"] = str(Path(selected))
         save_config(cfg)
         if ingest_worker is not None:
@@ -6477,6 +7022,7 @@ def run_gui(args):
         if widgets.get("status"):
             widgets["status"].configure(text="searching for the newest eqlog…")
         state["fights_seen"] = 0
+        return cfg["log_dir"]
 
     def hide_to_tray():
         """Hide the HUD without stopping log tracking or Lore Lens hotkeys."""

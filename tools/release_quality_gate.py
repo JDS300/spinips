@@ -80,12 +80,14 @@ SOURCE_REQUIRED = (
     "docs/screenshots/loremaster-live-tour.gif",
     "docs/screenshots/loremaster-session-live.png",
     "docs/screenshots/spinui-live-hero.jpg",
+    "docs/screenshots/spinui-logo-dual.jpg",
     "loremaster/charm_break.py",
     "loremaster/assets/loremaster-cog.png",
     "loremaster/hover_ocr.py",
     "loremaster/loremaster.py",
     "loremaster/log_ingest.py",
     "loremaster/mez_timer.py",
+    "loremaster/sky_intel.py",
     "loremaster/windows_hotkeys.py",
     "loremaster/windows_tray.py",
     "loremaster/wiki_overlay.py",
@@ -97,6 +99,7 @@ SOURCE_REQUIRED = (
     "loremaster/tests/test_log_ingest.py",
     "loremaster/tests/test_mez_integration.py",
     "loremaster/tests/test_mez_timer.py",
+    "loremaster/tests/test_sky_intel.py",
     "loremaster/tests/test_windows_hotkeys.py",
     "loremaster/tests/test_windows_tray.py",
     "loremaster/tests/test_wiki_overlay.py",
@@ -120,6 +123,9 @@ SOURCE_REQUIRED = (
     "tools/render_preview.py",
     "tools/spinui_glass_theme.py",
     "tools/spinui_theme.py",
+    "tools/smoke_loremaster_gui.py",
+    "tools/update_plane_of_sky_data.py",
+    "loremaster/assets/plane_of_sky_quests.json",
     ".github/workflows/build-loremaster.yml",
 )
 
@@ -127,7 +133,7 @@ SOURCE_REQUIRED = (
 README_MEDIA = {
     "docs/previews/loremaster_panel.png": (
         "PNG", {(2004, 1816)}, 650_000),
-    "docs/screenshots/spinui-logo.jpg": ("JPEG", {(1200, 480)}, 500_000),
+    "docs/screenshots/spinui-logo-dual.jpg": ("JPEG", {(1200, 480)}, 500_000),
     "docs/screenshots/spinui-gameplay-overview.jpg": (
         "JPEG", {(1920, 804)}, 700_000),
     "docs/screenshots/spinui-combat-hud-detail.png": (

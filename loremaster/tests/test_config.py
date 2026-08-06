@@ -34,6 +34,9 @@ class ConfigRecoveryTests(unittest.TestCase):
                 self.assertEqual(config["wiki_hotkey"], "Ctrl+Shift+E")
                 self.assertEqual(config["opacity"], 1.0)
                 self.assertFalse(config["summary_collapsed"])
+                self.assertEqual(config["ui_theme"], "vellum")
+                self.assertFalse(config["split_charmed_pet_dps"])
+                self.assertFalse(config["sky_intel_enabled"])
 
     def test_legacy_visual_and_hotkey_defaults_migrate(self):
         config = self.load_payload({"opacity": 0.94, "wiki_hotkey": "Alt+E"})
@@ -79,6 +82,23 @@ class ConfigRecoveryTests(unittest.TestCase):
         for key in ("compare_enabled", "compare_hotkey",
                     "compare_hotkey_customized", "compare_position"):
             self.assertNotIn(key, config)
+
+    def test_theme_and_sky_payload_are_sanitized(self):
+        config = self.load_payload({
+            "ui_theme": "GLASS",
+            "sky_owned_items": "not-a-list",
+            "sky_target_reward": ["too", "short"],
+        })
+        self.assertEqual(config["ui_theme"], "glass")
+        self.assertEqual(config["sky_owned_items"], [])
+        self.assertEqual(config["sky_target_reward"], [])
+
+    def test_glass_palette_is_distinct_but_keeps_semantic_combat_colors(self):
+        vellum = LOREMASTER.theme_palette("vellum")
+        glass = LOREMASTER.theme_palette("glass")
+        self.assertNotEqual(vellum["bg"], glass["bg"])
+        self.assertEqual(glass["hp"], "#f25567")
+        self.assertEqual(glass["mana"], "#5c8fff")
 
 if __name__ == "__main__":
     unittest.main()
