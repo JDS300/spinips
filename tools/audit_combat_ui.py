@@ -550,11 +550,30 @@ def audit_effects_casting_and_bars() -> None:
     require_binding(casting, "Gauge", "Casting_Gauge", "Gauge", 7)
     require_binding(casting, "Label", "Casting_SpellName", None, 134)
     item(casting, "Screen", "Cast_Gauge_Background")
+    drag_box = require_binding(casting, "DragBox", "CWDragBox", "CWDragBox")
+    expected_drag_anchors = {
+        "TopAnchorToTop": "true",
+        "BottomAnchorToTop": "false",
+        "LeftAnchorToLeft": "true",
+        "RightAnchorToLeft": "false",
+    }
+    for tag, expected in expected_drag_anchors.items():
+        if child_text(drag_box, tag) != expected:
+            fail(f"CastingWindow drag surface lost {tag}={expected}")
+    for tag in ("TopAnchorOffset", "BottomAnchorOffset",
+                "LeftAnchorOffset", "RightAnchorOffset"):
+        if child_int(drag_box, tag) != 0:
+            fail(f"CastingWindow drag surface must cover the full client area: {tag}")
     casting_window = item(casting, "Screen", "CastingWindow")
     if dimensions(casting_window) != (380, 36):
         fail("CastingWindow must remain 380x36")
     if child_text(casting_window, "Style_Titlebar") != "false":
         fail("CastingWindow titlebar reintroduced visual jitter")
+    casting_pieces = [
+        node.text for node in casting_window.findall("Pieces") if node.text
+    ]
+    if not casting_pieces or casting_pieces[-1] != "DragBox:CWDragBox":
+        fail("CastingWindow must mount its drag surface above the visual pieces")
     require_fill(casting, "Casting_Gauge", CYAN)
 
     spells = root_for("EQUI_CastSpellWnd.xml")
@@ -595,6 +614,15 @@ def audit_effects_casting_and_bars() -> None:
     stance_window = item(stance, "Screen", "StanceWnd")
     if dimensions(stance_window) != (440, 56):
         fail("StanceWnd must remain 440x56")
+    if (child_int(stance_window, "MinHSize"),
+            child_int(stance_window, "MinVSize")) != (20, 20):
+        fail("StanceWnd must accept stock-sized saved layout frames")
+    for orientation in ("SW_HorizontalOrientationTemplate",
+                        "SW_VerticalOrientationTemplate"):
+        node = item(stance, "Screen", orientation)
+        if (child_int(node, "RightAnchorOffset"),
+                child_int(node, "BottomAnchorOffset")) != (0, 0):
+            fail(f"{orientation} lost the July stance-layout contract")
     pieces = {node.text for node in stance_window.findall("Pieces") if node.text}
     if "Screen:SW_DisplayStanceInvocation" not in pieces:
         fail("active stance bar lost its stance/invocation text rail")
@@ -723,6 +751,16 @@ def audit_optional_stock_parity() -> bool:
 
 
 def audit_default_visibility() -> None:
+    manifests = sorted(SKIN.glob("default*.ini"))
+    if len(manifests) != 4:
+        fail(f"expected four default layout manifests, found {len(manifests)}")
+    for manifest in manifests:
+        selector = configparser.ConfigParser(strict=False)
+        selector.optionxform = str
+        selector.read(manifest, encoding="utf-8")
+        if selector.get("default", "StanceWnd", fallback=None) != "0":
+            fail(f"{manifest.name} must select canonical StanceWnd=0")
+
     parser = configparser.ConfigParser(strict=False)
     parser.optionxform = str
     parser.read(SKIN / "default1440.ini", encoding="utf-8")
@@ -1020,6 +1058,17 @@ def audit_variant_safety() -> None:
         window = item(root, "Screen", "StanceWnd")
         if dimensions(window) != (440, 56):
             fail(f"stance variant geometry drift: {variant_name}")
+        if (child_int(window, "MinHSize"),
+                child_int(window, "MinVSize")) != (20, 20):
+            fail(f"stance variant rejects stock saved geometry: {variant_name}")
+        expected_bottom = 15 if variant_name.endswith("2.xml") else 0
+        for orientation in ("SW_HorizontalOrientationTemplate",
+                            "SW_VerticalOrientationTemplate"):
+            node = item(root, "Screen", orientation)
+            if (child_int(node, "RightAnchorOffset"),
+                    child_int(node, "BottomAnchorOffset")) != (
+                        0, expected_bottom):
+                fail(f"stance variant layout contract drift: {variant_name}")
         for label_name in ("SW_StanceLabel", "SW_InvocationLabel"):
             if child_int(item(root, "Label", label_name), "Font") < 3:
                 fail(f"stance variant text too small: {variant_name} {label_name}")

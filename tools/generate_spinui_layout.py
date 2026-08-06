@@ -743,6 +743,11 @@ def transform(text: str, preset: str, placements: dict | None = None,
             lines[:] = rebuild_chat_manager(lines, chat_font)
         elif name == "Main":
             set_key(lines, "UISkin", skin_name)
+        elif name == "default":
+            # The stock classic manifests select the canonical stance layout,
+            # but default_modern omits the selector.  Without it /loadskin can
+            # recreate StanceWnd without restoring the saved window section.
+            set_key(lines, "StanceWnd", "0")
     out = emit(sections)
     # carry sections the base file lacked over from the placement table is
     # already handled by apply_placements; nothing else to do here.

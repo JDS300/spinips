@@ -23,6 +23,19 @@ CLIENT_PROVIDED = {
     "eq_expansion_logos.tga",
     "eq_expansion_logos2.tga",
     "window_fg_cart.tga",
+    "equi_dynamiczonewnd.xml",
+    "equi_factionwnd.xml",
+    "equi_personalinstancewnd.xml",
+}
+
+# These controls hold server-populated lists and instance actions.  Keeping
+# local copies makes /loadskin rebuild a snapshot of their hierarchy while the
+# client still owns live data bindings.  Always resolve the running client's
+# definitions instead so hot swaps cannot strand stale controls.
+STATEFUL_CLIENT_FALLBACKS = {
+    "equi_dynamiczonewnd.xml",
+    "equi_factionwnd.xml",
+    "equi_personalinstancewnd.xml",
 }
 
 
@@ -134,6 +147,14 @@ def audit_xml() -> tuple[list[Path], set[str], int, int]:
     available = {p.name.casefold() for p in SKIN.iterdir() if p.is_file()}
     equi = roots[SKIN / "EQUI.xml"]
     includes = {n.text.strip() for n in equi.iter("Include") if n.text and n.text.strip()}
+    include_names = {
+        Path(ref.replace("\\", "/")).name.casefold() for ref in includes
+    }
+    for fallback in sorted(STATEFUL_CLIENT_FALLBACKS):
+        if fallback in available:
+            fail(f"stateful client window must not be overridden: {fallback}")
+        if fallback not in include_names:
+            fail(f"stateful client fallback missing from EQUI.xml: {fallback}")
     missing_includes = {
         ref for ref in includes
         if Path(ref.replace("\\", "/")).name.casefold() not in available

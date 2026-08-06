@@ -85,6 +85,22 @@
 		<AlignRight>false</AlignRight>
 		<FontShadow>true</FontShadow>
 	</Label>
+
+	<!-- Preserve the client's full-surface drag contract for this titleless window. -->
+	<DragBox item="CWDragBox">
+		<ScreenID>CWDragBox</ScreenID>
+		<AutoStretch>true</AutoStretch>
+		<TopAnchorToTop>true</TopAnchorToTop>
+		<LeftAnchorToLeft>true</LeftAnchorToLeft>
+		<RightAnchorToLeft>false</RightAnchorToLeft>
+		<BottomAnchorToTop>false</BottomAnchorToTop>
+		<TopAnchorOffset>0</TopAnchorOffset>
+		<LeftAnchorOffset>0</LeftAnchorOffset>
+		<RightAnchorOffset>0</RightAnchorOffset>
+		<BottomAnchorOffset>0</BottomAnchorOffset>
+		<Style_Transparent>true</Style_Transparent>
+	</DragBox>
+
 	<Screen item="CastingWindow">
 		<RelativePosition>false</RelativePosition>
 		<Location>
@@ -114,5 +130,6 @@
 		<Pieces>Screen:Cast_Gauge_Background</Pieces>
 		<Pieces>Casting_Gauge</Pieces>
 		<Pieces>Casting_SpellName</Pieces>
+		<Pieces>DragBox:CWDragBox</Pieces>
 	</Screen>
 </XML>

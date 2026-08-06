@@ -711,9 +711,31 @@ def style_extended_targets() -> None:
     write_ascii(path, text)
 
 
+CAST_DRAG_BLOCK = """\t<!-- Preserve the client's full-surface drag contract for this titleless window. -->
+\t<DragBox item="CWDragBox">
+\t\t<ScreenID>CWDragBox</ScreenID>
+\t\t<AutoStretch>true</AutoStretch>
+\t\t<TopAnchorToTop>true</TopAnchorToTop>
+\t\t<LeftAnchorToLeft>true</LeftAnchorToLeft>
+\t\t<RightAnchorToLeft>false</RightAnchorToLeft>
+\t\t<BottomAnchorToTop>false</BottomAnchorToTop>
+\t\t<TopAnchorOffset>0</TopAnchorOffset>
+\t\t<LeftAnchorOffset>0</LeftAnchorOffset>
+\t\t<RightAnchorOffset>0</RightAnchorOffset>
+\t\t<BottomAnchorOffset>0</BottomAnchorOffset>
+\t\t<Style_Transparent>true</Style_Transparent>
+\t</DragBox>
+"""
+
+
 def style_casting() -> None:
     path = SKIN / "EQUI_CastingWindow.xml"
     text = path.read_text(encoding="ascii")
+    if 'item="CWDragBox"' not in text:
+        anchor = '\t<Screen item="CastingWindow">'
+        if anchor not in text:
+            fail("missing CastingWindow insertion point")
+        text = text.replace(anchor, CAST_DRAG_BLOCK + "\n" + anchor, 1)
 
     def gauge_style(block: str) -> str:
         block = style_gauge(block, CYAN)
@@ -741,6 +763,12 @@ def style_casting() -> None:
         block = set_value(block, "MinVSize", 36)
         block = set_value(block, "MaxHSize", 600)
         block = set_value(block, "MaxVSize", 36)
+        if "<Pieces>DragBox:CWDragBox</Pieces>" not in block:
+            block = block.replace(
+                "\n\t</Screen>",
+                "\n\t\t<Pieces>DragBox:CWDragBox</Pieces>\n\t</Screen>",
+                1,
+            )
         return block
 
     text = change_item(text, "Screen", "CastingWindow", root_style)
@@ -1163,11 +1191,26 @@ def style_stance_file(path: Path, menu_name: str | None = None) -> None:
     text = change_item(text, "Button", "SW_ButtonTemplate",
                        lambda b: set_font(b, 2))
 
+    # Legends' July stance-layout fix removed the trailing right inset from
+    # every orientation and the trailing bottom inset from top-rail variants.
+    # Retain that live client contract so /loadskin can reuse the saved frame.
+    for orientation in (
+            "SW_HorizontalOrientationTemplate",
+            "SW_VerticalOrientationTemplate"):
+        def orientation_style(block: str) -> str:
+            block = set_value(block, "RightAnchorOffset", 0)
+            if path.name != "EQUI_StanceWnd2.xml":
+                block = set_value(block, "BottomAnchorOffset", 0)
+            return block
+
+        text = change_item(text, "Screen", orientation, orientation_style)
+
     def root_style(block: str) -> str:
         block = set_container(block, "Size", CX=440, CY=56)
         if menu_name is not None:
             block = set_value(block, "MenuName", menu_name)
-        block = set_value(block, "MinVSize", 56)
+        block = set_value(block, "MinHSize", 20)
+        block = set_value(block, "MinVSize", 20)
         return block
 
     text = change_item(text, "Screen", "StanceWnd", root_style)
