@@ -43,7 +43,14 @@ BENCHMARK_LINES = 30_000
 MIN_INGEST_LINES_PER_SECOND = 1_000
 MAX_INGEST_PEAK_MIB = 16.0
 BENCHMARK_ABORT_SECONDS = 45.0
-CLIENT_FALLBACK_INCLUDES = {"sidl.xml"}
+CLIENT_FALLBACK_INCLUDES = {
+    "sidl.xml",
+    # Server-populated faction/instance controls intentionally resolve from
+    # the running client so /loadskin cannot retain stale copied hierarchies.
+    "equi_dynamiczonewnd.xml",
+    "equi_factionwnd.xml",
+    "equi_personalinstancewnd.xml",
+}
 
 SOURCE_REQUIRED = (
     "README.md",

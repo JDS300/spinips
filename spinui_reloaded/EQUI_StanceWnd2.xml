@@ -189,7 +189,7 @@
 		<TopAnchorOffset>1</TopAnchorOffset>
 		<BottomAnchorOffset>15</BottomAnchorOffset>
 		<LeftAnchorOffset>1</LeftAnchorOffset>
-		<RightAnchorOffset>1</RightAnchorOffset>
+		<RightAnchorOffset>0</RightAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
 		<BottomAnchorToTop>false</BottomAnchorToTop>
 		<LeftAnchorToLeft>true</LeftAnchorToLeft>
@@ -205,7 +205,7 @@
 		<TopAnchorOffset>1</TopAnchorOffset>
 		<BottomAnchorOffset>15</BottomAnchorOffset>
 		<LeftAnchorOffset>1</LeftAnchorOffset>
-		<RightAnchorOffset>1</RightAnchorOffset>
+		<RightAnchorOffset>0</RightAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
 		<BottomAnchorToTop>false</BottomAnchorToTop>
 		<LeftAnchorToLeft>true</LeftAnchorToLeft>
@@ -280,8 +280,8 @@
 			<X>-3</X>
 			<Y>-3</Y>
 		</KeepOnScreenOffset>
-		<MinHSize>162</MinHSize>
-		<MinVSize>56</MinVSize>
+		<MinHSize>20</MinHSize>
+		<MinVSize>20</MinVSize>
 		<DrawTemplate>WDT_RoundedNoTitle</DrawTemplate>
 		<Style_Qmarkbox>true</Style_Qmarkbox>
 		<Style_Closebox>true</Style_Closebox>
