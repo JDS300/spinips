@@ -20,6 +20,14 @@ class InstanceLockoutOcrTests(unittest.TestCase):
         ]
         self.assertEqual(parse_instance_character(lines), "Spin")
 
+    def test_reads_character_when_windows_ocr_drops_leader_colon(self):
+        lines = [
+            OcrLine("Leader", 20, 10, 50, 14),
+            OcrLine("Spin", 90, 10, 45, 14),
+            OcrLine("Leader Options:", 20, 300, 110, 14),
+        ]
+        self.assertEqual(parse_instance_character(lines), "Spin")
+
     def test_parses_only_tracked_difficulty_lockouts_from_merged_rows(self):
         lines = [
             OcrLine("Lockout Time Instance Name Event Name", 20, 10, 520, 14),
@@ -47,6 +55,42 @@ class InstanceLockoutOcrTests(unittest.TestCase):
         self.assertEqual(rows[0].target, "Lady Vox")
         self.assertEqual(rows[0].difficulty, 2)
         self.assertEqual(rows[0].remaining_seconds, 18 * 3600 + 4 * 60 + 19)
+
+    def test_accepts_hyphenated_timer_separator_from_compact_red_text(self):
+        rows = parse_instance_lockouts([
+            OcrLine("2d:15h-41 m:44s", 29, 306, 89, 10),
+            OcrLine("Nagafen's Lair - Group 0 (Normal)", 130, 306, 185, 12),
+            OcrLine("Lord Nagafen", 392, 306, 74, 12),
+        ])
+        self.assertEqual([(row.target, row.difficulty) for row in rows],
+                         [("Lord Nagafen", 0)])
+        self.assertEqual(rows[0].remaining_seconds,
+                         2 * 86400 + 15 * 3600 + 41 * 60 + 44)
+
+    def test_recovers_one_missing_timer_cell_from_immediately_adjacent_row(self):
+        lines = [
+            OcrLine("2d:15h-41 m:44s", 29, 306, 89, 10),
+            OcrLine("Nagafen's Lair - Group 0 (Normal)", 130, 306, 185, 12),
+            OcrLine("Lord Nagafen", 392, 306, 74, 12),
+            OcrLine("The Permafrost Caverns - Solo 3 (Fused)", 130, 321, 195, 12),
+            OcrLine("Lady Vox", 405, 321, 48, 12),
+        ]
+        rows = parse_instance_lockouts(lines)
+        self.assertEqual(
+            [(row.target, row.difficulty) for row in rows],
+            [("Lady Vox", 3), ("Lord Nagafen", 0)],
+        )
+        self.assertTrue(all(
+            row.remaining_seconds == 2 * 86400 + 15 * 3600 + 41 * 60 + 44
+            for row in rows))
+
+    def test_does_not_recover_timer_across_multiple_table_rows(self):
+        rows = parse_instance_lockouts([
+            OcrLine("2d:15h-41 m:44s", 29, 306, 89, 10),
+            OcrLine("The Permafrost Caverns - Solo 3 (Fused)", 130, 336, 195, 12),
+            OcrLine("Lady Vox", 405, 336, 48, 12),
+        ])
+        self.assertEqual(rows, [])
 
     def test_conservative_name_matching_accepts_minor_event_ocr_error(self):
         rows = parse_instance_lockouts([
