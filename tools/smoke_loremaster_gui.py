@@ -146,8 +146,10 @@ def main() -> int:
                 ctypes.windll.user32.ShowWindow(seed, 5)
                 ctypes.windll.user32.SetForegroundWindow(seed)
                 time.sleep(0.12)
-                click_window(
-                    seed, (right - left) / 2, (bottom - top) / 2, right=True)
+                # Tk binds the menu to the child seed label. A WM_RBUTTONDOWN
+                # sent to the top-level wrapper does not bubble to that child,
+                # so exercise the same screen click a player uses.
+                click((left + right) / 2, (top + bottom) / 2, right=True)
                 time.sleep(0.35)
                 if windows_by_title("Loremaster Settings"):
                     break

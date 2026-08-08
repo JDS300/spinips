@@ -1,0 +1,260 @@
+export const PROTOCOL_VERSION = 1 as const;
+
+export type ControlKind = "mez" | "lull";
+export type ControlState = "active" | "unconfirmed" | "ambiguous" | "failed";
+export type ControlUrgency = "safe" | "warning" | "critical";
+
+export interface CharacterView {
+  name: string;
+  level: number;
+  composition: string;
+  zone: string;
+}
+
+export interface CombatView {
+  active: boolean;
+  encounterName: string;
+  fightDps: number;
+  sessionDps: number;
+  personalDamage: number;
+  charmedPetDamage: number;
+  summonedPetDamage: number;
+  fightSeconds: number;
+  fightDamage: number;
+  fightPersonalDamage: number;
+  fightCharmedPetDamage: number;
+  fightSummonedPetDamage: number;
+  damageTaken: number;
+  healingDone: number;
+  kills: number;
+  crits: number;
+  misses: number;
+}
+
+export interface CombatMetricView {
+  name: string;
+  total: number;
+  hits: number;
+  maximum: number;
+}
+
+export interface CombatBreakdownView {
+  sources: readonly CombatMetricView[];
+  targets: readonly CombatMetricView[];
+  actors: readonly CombatMetricView[];
+}
+
+export interface ControlTimerView {
+  kind: ControlKind;
+  state: ControlState;
+  target: string;
+  count: number;
+  spell: string;
+  rank: number;
+  landedAt: string;
+  safeExpiresAt: string;
+  expiresAt: string;
+  durationSeconds: number;
+  safeRemainingSeconds: number;
+  remainingSeconds: number;
+  lastTick: boolean;
+  urgency: ControlUrgency;
+  confidence: "confirmed" | "exact" | "conservative" | "unconfirmed";
+  ambiguity: string;
+}
+
+export interface EngineSnapshot {
+  protocolVersion: typeof PROTOCOL_VERSION;
+  sequence: number;
+  observedAt: string;
+  character: CharacterView;
+  combat: CombatView;
+  breakdown: CombatBreakdownView;
+  controls: readonly ControlTimerView[];
+  hiddenControlRows: number;
+  controlNoticeCount: number;
+  controlAmbiguityCount: number;
+  weekly?: WeeklyProgressView;
+  alerts?: readonly AlertView[];
+}
+
+export interface AlertView {
+  id: string;
+  kind: string;
+  severity: "danger" | "warn" | "info";
+  title: string;
+  target: string;
+  occurredAt: string;
+  expiresAt: string;
+}
+
+export interface WeeklyBossKillView {
+  target: string;
+  zone: string;
+  character: string;
+  killed_at: string;
+  difficulty: number;
+}
+
+export interface WeeklyRaidRowView {
+  target: string;
+  zone: string;
+  difficulties: readonly boolean[];
+  bestSeconds: readonly (number | null)[];
+}
+
+export interface WeeklyProgressView {
+  weekStart: string;
+  nextReset: string;
+  resetLabel: string;
+  raidCount: number;
+  trackedLockoutCount: number;
+  completedCount: number;
+  kills: readonly WeeklyBossKillView[];
+  raids: readonly WeeklyRaidRowView[];
+  activeDifficulty?: number | null;
+  pendingRaidTarget?: string;
+}
+
+export interface GearGoalView {
+  slot: string;
+  itemId: string;
+  itemName: string;
+  itemUrl: string;
+  source: string;
+  zone: string;
+  targets: readonly string[];
+  ownership: "missing" | "equipped" | "bag" | "bank" | "owned";
+  location: string;
+}
+
+export interface FarmingRouteView {
+  zone: string;
+  goalCount: number;
+  itemNames: readonly string[];
+  targets: readonly string[];
+}
+
+export interface GearPlanView {
+  status: "empty" | "ready" | "error";
+  detail: string;
+  buildName: string;
+  classes: readonly string[];
+  exportedAt: string;
+  buildPath: string;
+  inventoryPath: string;
+  catalogUpdatedAt: string;
+  goals: readonly GearGoalView[];
+  equippedGoalCount: number;
+  bagUpgradeCount: number;
+  ownedGoalCount: number;
+  missingGoalCount: number;
+  routes: readonly FarmingRouteView[];
+}
+
+export function isGearPlanView(value: unknown): value is GearPlanView {
+  if (!value || typeof value !== "object") return false;
+  const plan = value as Partial<GearPlanView>;
+  return ["empty", "ready", "error"].includes(String(plan.status)) &&
+    typeof plan.detail === "string" && Array.isArray(plan.goals) && Array.isArray(plan.routes);
+}
+
+export type EngineHealthState = "starting" | "searching" | "live" | "error" | "stopped";
+
+export interface EngineHealth {
+  state: EngineHealthState;
+  detail: string;
+  configuredPath: string;
+  activeLogPath: string;
+  character: string;
+  server: string;
+}
+
+export type AlertAnchor = "auto" | "above" | "below" | "left" | "right";
+
+export interface AlertSettings {
+  alertsEnabled: boolean;
+  alertSound: boolean;
+  alertSeconds: number;
+  alertAnchor: AlertAnchor;
+  alertCharmBreak: boolean;
+  alertTells: boolean;
+  alertSummon: boolean;
+  alertDeath: boolean;
+  alertBigHit: boolean;
+  alertNameCalled: boolean;
+  bigHitThreshold: number;
+  mezTimersEnabled: boolean;
+  mezTimerSound: boolean;
+  mezWarningSeconds: number;
+  lullTimersEnabled: boolean;
+  lullTimerSound: boolean;
+  lullWarningSeconds: number;
+}
+
+export interface DesktopSettings {
+  logPath: string;
+  raidDifficulty: number | null;
+  bisBuildPath: string;
+  inventoryPath: string;
+  alwaysOnTop: boolean;
+  fontScale: number;
+  splitCharmedPetDps: boolean;
+  seedPosition: { x: number; y: number } | null;
+  alerts: AlertSettings;
+}
+
+export interface EngineSnapshotEvent {
+  protocolVersion: typeof PROTOCOL_VERSION;
+  sequence: number;
+  occurredAt: string;
+  eventType: "engine.snapshot";
+  snapshot: EngineSnapshot;
+}
+
+export interface ReplayFixture {
+  schemaVersion: typeof PROTOCOL_VERSION;
+  title: string;
+  events: readonly EngineSnapshotEvent[];
+}
+
+export function isEngineSnapshotEvent(value: unknown): value is EngineSnapshotEvent {
+  if (!value || typeof value !== "object") return false;
+  const event = value as Partial<EngineSnapshotEvent>;
+  if (event.protocolVersion !== PROTOCOL_VERSION || event.eventType !== "engine.snapshot") return false;
+  const snapshot = event.snapshot as Partial<EngineSnapshot> | undefined;
+  return Boolean(
+    snapshot &&
+    snapshot.protocolVersion === PROTOCOL_VERSION &&
+    typeof snapshot.sequence === "number" &&
+    snapshot.character && typeof snapshot.character.name === "string" &&
+    snapshot.combat && typeof snapshot.combat.fightDps === "number" &&
+    Array.isArray(snapshot.controls),
+  );
+}
+
+export function isEngineHealth(value: unknown): value is EngineHealth {
+  if (!value || typeof value !== "object") return false;
+  const health = value as Partial<EngineHealth>;
+  return ["starting", "searching", "live", "error", "stopped"].includes(String(health.state)) &&
+    typeof health.detail === "string" && typeof health.configuredPath === "string";
+}
+
+export function assertReplayFixture(value: unknown): asserts value is ReplayFixture {
+  if (!value || typeof value !== "object") throw new Error("fixture must be an object");
+  const fixture = value as Partial<ReplayFixture>;
+  if (fixture.schemaVersion !== PROTOCOL_VERSION) {
+    throw new Error(`unsupported fixture protocol: ${String(fixture.schemaVersion)}`);
+  }
+  if (!Array.isArray(fixture.events) || fixture.events.length === 0) {
+    throw new Error("fixture must include at least one snapshot event");
+  }
+  let lastSequence = -1;
+  for (const event of fixture.events) {
+    if (!isEngineSnapshotEvent(event)) {
+      throw new Error("fixture event protocol mismatch");
+    }
+    if (event.sequence <= lastSequence) throw new Error("event sequences must increase");
+    lastSequence = event.sequence;
+  }
+}

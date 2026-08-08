@@ -13,7 +13,8 @@ from PIL import Image
 
 # The effects-row grid is authored once in tools/restyle_combat.py; the audit
 # imports it so a geometry change can never pass by editing only one side.
-from paint_attack_indicator import (ATTACK_BED, ATTACK_EDGE, ATTACK_INNER,
+from paint_attack_indicator import (ATTACK_BED, ATTACK_EDGE, ATTACK_HALO,
+                                    ATTACK_INNER,
                                     SIZE as ATTACK_INDICATOR_SIZE)
 from restyle_combat import (EFFECT_CHIP, EFFECT_ICON, EFFECT_NAME_WIDTH,
                            EFFECT_NAME_X, EFFECT_PLATE_BLEED,
@@ -147,14 +148,44 @@ def audit_player_and_target() -> None:
     attack_samples = {
         "horizontal outer edge": (64, 0, ATTACK_EDGE),
         "horizontal inner glow": (64, 1, ATTACK_INNER),
+        "horizontal soft halo": (64, 2, ATTACK_HALO),
         "vertical outer edge": (0, 16, ATTACK_EDGE),
         "vertical inner glow": (1, 16, ATTACK_INNER),
+        "vertical soft halo": (2, 16, ATTACK_HALO),
         "inactive texture bed": (64, 16, ATTACK_BED),
     }
     for label, (x, y, expected) in attack_samples.items():
         actual = attack_pixels[x, y]
         if actual != expected:
             fail(f"auto-attack {label} changed: {actual} != {expected}")
+
+    for name, expected in (
+            ("A_AttackIndicatorTop", (128, 3)),
+            ("A_AttackIndicatorBottom", (128, 3)),
+            ("A_AttackIndicatorLeft", (3, 32)),
+            ("A_AttackIndicatorRight", (3, 32))):
+        animation = item(player, "Ui2DAnimation", name)
+        if dimensions_at(animation, "Frames/Size") != expected:
+            fail(f"{name} lost its visible three-pixel glow")
+    attack_geometry = {
+        "A_AttackIndicatorAnimTop": (70, 73, 0, 0),
+        "A_AttackIndicatorAnimBottom": (5, 2, 0, 0),
+        "A_AttackIndicatorAnimLeft": (70, 2, 0, 3),
+        "A_AttackIndicatorAnimRight": (70, 2, 3, 0),
+    }
+    for name, expected in attack_geometry.items():
+        node = item(player, "StaticAnimation", name)
+        actual = tuple(child_int(node, tag) for tag in (
+            "TopAnchorOffset", "BottomAnchorOffset",
+            "LeftAnchorOffset", "RightAnchorOffset",
+        ))
+        if actual != expected or child_text(node, "AutoDraw") != "false":
+            fail(f"{name} no longer follows the native auto-attack state: {actual}")
+    attack_fill = item(player, "StaticAnimation", "A_AttackIndicatorAnimFill")
+    if (child_text(attack_fill, "Animation") != "A_AttackIndicatorFill" or
+            child_text(attack_fill, "AutoDraw") != "false" or
+            child_text(attack_fill, "Style_Transparent") != "true"):
+        fail("native auto-attack fill wash is missing or always visible")
 
     require_binding(player, "Gauge", "Player_HP", "PlayerHP", 1)
     require_binding(player, "Gauge", "Player_Mana", "PlayerMana", 2)

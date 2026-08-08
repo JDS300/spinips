@@ -81,12 +81,20 @@ SOURCE_REQUIRED = (
     "docs/screenshots/loremaster-session-live.png",
     "docs/screenshots/spinui-live-hero.jpg",
     "docs/screenshots/spinui-logo-dual.jpg",
+    "docs/LOREMASTER_CODEX_HANDOFF.md",
+    "docs/LOREMASTER_ENGINE_PROTOCOL.md",
+    "docs/LOREMASTER_MILESTONE_1.md",
+    "docs/LOREMASTER_MILESTONE_2.md",
     "loremaster/charm_break.py",
     "loremaster/assets/loremaster-cog.png",
+    "loremaster/assets/loremaster.ico",
     "loremaster/hover_ocr.py",
     "loremaster/loremaster.py",
     "loremaster/log_ingest.py",
     "loremaster/mez_timer.py",
+    "loremaster/lull_timer.py",
+    "loremaster/control_snapshot.py",
+    "loremaster/engine_protocol.py",
     "loremaster/sky_intel.py",
     "loremaster/windows_hotkeys.py",
     "loremaster/windows_tray.py",
@@ -99,12 +107,32 @@ SOURCE_REQUIRED = (
     "loremaster/tests/test_log_ingest.py",
     "loremaster/tests/test_mez_integration.py",
     "loremaster/tests/test_mez_timer.py",
+    "loremaster/tests/test_lull_timer.py",
+    "loremaster/tests/test_lull_integration.py",
+    "loremaster/tests/test_control_fixtures.py",
+    "loremaster/tests/test_engine_protocol.py",
+    "loremaster/tests/test_desktop_worker.py",
+    "loremaster/tests/test_weekly_tracker.py",
     "loremaster/tests/test_sky_intel.py",
     "loremaster/tests/test_windows_hotkeys.py",
     "loremaster/tests/test_windows_tray.py",
     "loremaster/tests/test_wiki_overlay.py",
     "loremaster/tests/fixtures/cloak_of_flames.json",
     "loremaster/tests/fixtures/studded_belt.json",
+    "loremaster/tests/fixtures/control_sequences.json",
+    "loremaster-desktop/package.json",
+    "loremaster-desktop/pnpm-lock.yaml",
+    "loremaster-desktop/pnpm-workspace.yaml",
+    "loremaster-desktop/electron/main.ts",
+    "loremaster-desktop/electron/preload.ts",
+    "loremaster-desktop/electron/gear-plan.ts",
+    "loremaster-desktop/fixtures/control-replay.json",
+    "loremaster-desktop/src/App.tsx",
+    "loremaster-desktop/src/protocol.ts",
+    "loremaster-desktop/src/styles.css",
+    "loremaster-desktop/README.md",
+    "loremaster-desktop/scripts/validate-fixture.mjs",
+    "loremaster-desktop/scripts/test-gear-plan.cjs",
     "installer/spinui_installer.py",
     "installer/INSTALL-MANUAL.md",
     "installer/versioninfo-installer.txt",
@@ -116,6 +144,7 @@ SOURCE_REQUIRED = (
     "tools/build_showcase_media.py",
     "tools/generate_spinui_layout.py",
     "tools/generate_spinui_textures.py",
+    "tools/paint_attack_indicator.py",
     "tools/render_loremaster_preview.py",
     "tools/render_glass_equipment_preview.py",
     "tools/render_glass_preview.py",
@@ -126,6 +155,9 @@ SOURCE_REQUIRED = (
     "tools/smoke_loremaster_gui.py",
     "tools/update_plane_of_sky_data.py",
     "loremaster/assets/plane_of_sky_quests.json",
+    "loremaster/desktop_worker.py",
+    "loremaster/weekly_tracker.py",
+    "tools/smoke_loremaster_engine.py",
     ".github/workflows/build-loremaster.yml",
 )
 
@@ -258,6 +290,38 @@ def check_source_manifest() -> None:
             f"{skin.name}: XML {xml_count}, binary assets {texture_count}"
         )
     print("[PASS] required files present | " + " | ".join(summaries), flush=True)
+
+
+def check_loremaster_release_pipeline() -> None:
+    section("Loremaster Electron release pipeline")
+    workflow = (REPO / ".github" / "workflows" / "build-loremaster.yml").read_text(
+        encoding="utf-8"
+    )
+    required = (
+        "loremaster-desktop/**",
+        "loremaster/desktop_worker.py",
+        "electron-builder --win portable --x64 --publish never",
+        "-c.extraMetadata.version=$version",
+        "dist-electron-release/Loremaster.exe",
+        "Copy-Item -Force dist-electron-release/Loremaster.exe $manualPackage",
+    )
+    missing = [value for value in required if value not in workflow]
+    if missing:
+        fail("Electron release workflow is incomplete: " + ", ".join(missing))
+    retired = (
+        "LoremasterNext.exe",
+        "dist/Loremaster.exe",
+        "--specpath build/spec loremaster/loremaster.py",
+        "LOREMASTER-NEXT-SHA256.txt",
+    )
+    present = [value for value in retired if value in workflow]
+    if present:
+        fail("release workflow still publishes the legacy/preview GUI: " + ", ".join(present))
+    print(
+        "[PASS] UI releases build, smoke-test, package, checksum, and publish "
+        "the portable Electron Loremaster.exe",
+        flush=True,
+    )
 
 
 def _jpeg_dimensions(payload: bytes) -> tuple[int, int]:
@@ -906,6 +970,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if not args.packages_only:
             check_source_manifest()
+            check_loremaster_release_pipeline()
             check_readme_media()
             check_no_retired_content_references()
             run_discovered_audits()

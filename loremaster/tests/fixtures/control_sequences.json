@@ -1,0 +1,185 @@
+{
+  "schemaVersion": 1,
+  "source": "Sanitized EverQuest Legends log grammar captured from real control sessions; names changed.",
+  "sequences": [
+    {
+      "name": "mez cast without landing",
+      "events": [{"at": 0, "line": "You begin casting Mesmerize."}],
+      "observeAt": 5,
+      "expected": {"mezActive": 0, "lullActive": 0, "controlStates": []}
+    },
+    {
+      "name": "mez confirmed landing",
+      "events": [
+        {"at": 0, "line": "You begin casting Mesmerize."},
+        {"at": 2, "line": "a soul carrier has been mesmerized."}
+      ],
+      "observeAt": 3,
+      "expected": {"mezActive": 1, "lullActive": 0, "controlStates": ["mez:active"]}
+    },
+    {
+      "name": "mez fizzle rejects later bystander landing",
+      "events": [
+        {"at": 0, "line": "You begin casting Mesmerize."},
+        {"at": 1, "line": "Your Mesmerize spell fizzles!"},
+        {"at": 2, "line": "a soul carrier has been mesmerized."}
+      ],
+      "observeAt": 2,
+      "expected": {"mezActive": 0, "lullActive": 0, "controlStates": []}
+    },
+    {
+      "name": "mez interrupt rejects later bystander landing",
+      "events": [
+        {"at": 0, "line": "You begin casting Mesmerize."},
+        {"at": 1, "line": "Your Mesmerize spell is interrupted."},
+        {"at": 2, "line": "a soul carrier has been mesmerized."}
+      ],
+      "observeAt": 2,
+      "expected": {"mezActive": 0, "lullActive": 0, "controlStates": []}
+    },
+    {
+      "name": "mez resist rejects later bystander landing",
+      "events": [
+        {"at": 0, "line": "You begin casting Mesmerize."},
+        {"at": 1, "line": "a soul carrier resisted your Mesmerize!"},
+        {"at": 2, "line": "a soul carrier has been mesmerized."}
+      ],
+      "observeAt": 2,
+      "expected": {"mezActive": 0, "lullActive": 0, "controlStates": []}
+    },
+    {
+      "name": "mez overwrite closes ownership",
+      "events": [
+        {"at": 0, "line": "You begin casting Mesmerize."},
+        {"at": 2, "line": "a soul carrier has been mesmerized."},
+        {"at": 3, "line": "Your Mesmerize spell on a soul carrier has been overwritten."}
+      ],
+      "observeAt": 3,
+      "expected": {"mezActive": 0, "lullActive": 0, "controlStates": []}
+    },
+    {
+      "name": "mez fade closes timer",
+      "events": [
+        {"at": 0, "line": "You begin casting Mesmerize."},
+        {"at": 2, "line": "a soul carrier has been mesmerized."},
+        {"at": 3, "line": "Your Mesmerize spell has worn off of a soul carrier."}
+      ],
+      "observeAt": 3,
+      "expected": {"mezActive": 0, "lullActive": 0, "controlStates": []}
+    },
+    {
+      "name": "damage breaks mez immediately",
+      "events": [
+        {"at": 0, "line": "You begin casting Mesmerize."},
+        {"at": 2, "line": "a soul carrier has been mesmerized."},
+        {"at": 3, "line": "You slash a soul carrier for 1 point of damage."}
+      ],
+      "observeAt": 3,
+      "expected": {"mezActive": 0, "lullActive": 0, "controlStates": []}
+    },
+    {
+      "name": "player death clears controls",
+      "events": [
+        {"at": 0, "line": "You begin casting Mesmerize."},
+        {"at": 2, "line": "a soul carrier has been mesmerized."},
+        {"at": 3, "line": "You have been slain by a soul carrier!"}
+      ],
+      "observeAt": 3,
+      "expected": {"mezActive": 0, "lullActive": 0, "controlStates": []}
+    },
+    {
+      "name": "zone clears controls",
+      "events": [
+        {"at": 0, "line": "You begin casting Mesmerize."},
+        {"at": 2, "line": "a soul carrier has been mesmerized."},
+        {"at": 3, "line": "You have entered The Plane of Sky."}
+      ],
+      "observeAt": 3,
+      "expected": {"mezActive": 0, "lullActive": 0, "controlStates": []}
+    },
+    {
+      "name": "character switch clears controls",
+      "events": [
+        {"at": 0, "line": "You begin casting Mesmerize."},
+        {"at": 2, "line": "a soul carrier has been mesmerized."},
+        {"at": 3, "action": "character_switch"}
+      ],
+      "observeAt": 3,
+      "expected": {"mezActive": 0, "lullActive": 0, "controlStates": []}
+    },
+    {
+      "name": "manual reset clears controls",
+      "events": [
+        {"at": 0, "line": "You begin casting Mesmerize."},
+        {"at": 2, "line": "a soul carrier has been mesmerized."},
+        {"at": 3, "action": "reset"}
+      ],
+      "observeAt": 3,
+      "expected": {"mezActive": 0, "lullActive": 0, "controlStates": []}
+    },
+    {
+      "name": "nearby mez overlap remains visible as ambiguity",
+      "events": [
+        {"at": 0, "line": "Hingle begins casting Dazzle."},
+        {"at": 1, "line": "You begin casting Mesmerize."},
+        {"at": 2, "line": "a soul carrier has been mesmerized."}
+      ],
+      "observeAt": 2,
+      "expected": {"mezActive": 0, "lullActive": 0, "controlStates": ["mez:ambiguous"]}
+    },
+    {
+      "name": "same-name ae mez groups earliest expiry",
+      "events": [
+        {"at": 0, "line": "You begin casting Mesmerization."},
+        {"at": 2, "line": "a soul carrier has been mesmerized."},
+        {"at": 2, "line": "a soul carrier has been mesmerized."}
+      ],
+      "observeAt": 3,
+      "expected": {"mezActive": 2, "lullActive": 0, "controlStates": ["mez:active"]}
+    },
+    {
+      "name": "confirmed lull landing",
+      "events": [
+        {"at": 0, "line": "You begin casting Calm."},
+        {"at": 2, "line": "a soul carrier looks less aggressive."}
+      ],
+      "observeAt": 3,
+      "expected": {"mezActive": 0, "lullActive": 1, "controlStates": ["lull:active"]}
+    },
+    {
+      "name": "lull resist is an explicit failure",
+      "events": [
+        {"at": 0, "line": "You begin casting Calm."},
+        {"at": 2, "line": "a soul carrier resisted your Calm!"}
+      ],
+      "observeAt": 2,
+      "expected": {"mezActive": 0, "lullActive": 0, "controlStates": ["lull:failed"]}
+    },
+    {
+      "name": "silent harmony remains honest unknown",
+      "events": [{"at": 0, "line": "You begin casting Harmony."}],
+      "observeAt": 2,
+      "expected": {"mezActive": 0, "lullActive": 0, "controlStates": ["lull:unconfirmed"]}
+    },
+    {
+      "name": "nearby lull overlap remains ambiguous",
+      "events": [
+        {"at": 0, "line": "Hingle begins casting Calm."},
+        {"at": 1, "line": "You begin casting Calm."},
+        {"at": 2, "line": "a soul carrier looks less aggressive."}
+      ],
+      "observeAt": 2,
+      "expected": {"mezActive": 0, "lullActive": 0, "controlStates": ["lull:ambiguous", "lull:ambiguous"]}
+    },
+    {
+      "name": "engaged target retires lull advice",
+      "events": [
+        {"at": 0, "line": "You begin casting Calm."},
+        {"at": 2, "line": "a soul carrier looks less aggressive."},
+        {"at": 3, "line": "a soul carrier tries to slash YOU, but misses!"}
+      ],
+      "observeAt": 3,
+      "expected": {"mezActive": 0, "lullActive": 0, "controlStates": []}
+    }
+  ]
+}

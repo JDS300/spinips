@@ -8,6 +8,7 @@ on:
       - "spinui_glass/**"
       - "layouts/**"
       - "loremaster/**"
+      - "loremaster-desktop/**"
       - "installer/**"
       - "tools/**"
       - "docs/**"
@@ -46,29 +47,60 @@ jobs:
         with:
           python-version: "3.12"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
       - name: Install build tooling
-        run: python -m pip install --disable-pip-version-check pyinstaller pillow
+        run: python -m pip install --disable-pip-version-check pyinstaller==6.21.0 pillow tzdata==2026.3
+
+      - name: Install pinned desktop preview tooling
+        run: npm install --global pnpm@11.16.0
+
+      - name: Verify Loremaster desktop source
+        working-directory: loremaster-desktop
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm test:fixtures
+          pnpm build
+          pnpm test:gear
 
       - name: Run release quality gate
         run: python tools/release_quality_gate.py
 
-      - name: Build Loremaster executable
+      - name: Build headless Loremaster engine
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path build/spec | Out-Null
-          # --version-file is resolved relative to --specpath, so pass
-          # absolute paths.
-          pyinstaller --clean --noconfirm --onefile --windowed `
-            --name Loremaster --distpath dist --workpath build/loremaster `
+          # The engine keeps console-capable pipes for JSONL IPC. Electron
+          # launches it hidden; users only see the React desktop window.
+          pyinstaller --clean --noconfirm --onefile --console `
+            --name LoremasterEngine --distpath dist --workpath build/loremaster-engine `
             --add-data "$((Resolve-Path 'loremaster/assets').Path);assets" `
-            --version-file (Join-Path $PWD 'loremaster/versioninfo-loremaster.txt') `
-            --specpath build/spec loremaster/loremaster.py
+            --collect-data tzdata `
+            --specpath build/spec loremaster/desktop_worker.py
 
-      - name: Smoke-test packaged executable
+      - name: Smoke-test parser engine protocol
+        run: python tools/smoke_loremaster_engine.py dist/LoremasterEngine.exe
+
+      - name: Build portable Electron executable
+        shell: pwsh
+        working-directory: loremaster-desktop
+        run: |
+          $tag = '${{ github.event.release.tag_name || inputs.release_tag }}'.Trim()
+          $version = $tag -replace '^v', ''
+          if ($version -notmatch '^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$') {
+            $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          }
+          pnpm build
+          pnpm exec electron-builder --win portable --x64 --publish never "-c.extraMetadata.version=$version"
+
+      - name: Smoke-test Electron application
         shell: pwsh
         run: |
-          $lore = Start-Process -FilePath dist/Loremaster.exe -ArgumentList '--selftest' -PassThru -Wait
-          if ($lore.ExitCode -ne 0) { throw "Loremaster selftest exit code $($lore.ExitCode)" }
+          $env:LOREMASTER_SMOKE_EXIT_MS = '2500'
+          $lore = Start-Process -FilePath 'dist-electron-release/win-unpacked/Loremaster.exe' -PassThru -Wait -WindowStyle Hidden
+          if ($lore.ExitCode -ne 0) { throw "Loremaster Electron smoke exit code $($lore.ExitCode)" }
 
       - name: Assemble staged manual release
         shell: pwsh
@@ -89,7 +121,7 @@ jobs:
           Copy-Item -Force UI_Spin_qeynos_LO1.ini $manualPackage
           Copy-Item -Force README.md $manualPackage
           Copy-Item -Force installer/INSTALL-MANUAL.md (Join-Path $manualPackage 'INSTALL.md')
-          Copy-Item -Force dist/Loremaster.exe $manualPackage
+          Copy-Item -Force dist-electron-release/Loremaster.exe $manualPackage
 
       - name: Verify staged release packages
         run: >
@@ -109,7 +141,7 @@ jobs:
           # exact CI-built file when an antivirus heuristic questions it.
           $lines = foreach ($file in @(
               'package/SpinUI-Manual.zip',
-              'dist/Loremaster.exe')) {
+              'dist-electron-release/Loremaster.exe')) {
             $hash = (Get-FileHash -Algorithm SHA256 $file).Hash.ToLower()
             "$hash  $(Split-Path -Leaf $file)"
           }
@@ -129,7 +161,7 @@ jobs:
         with:
           name: SpinUI-Windows-tools
           path: |
-            dist/Loremaster.exe
+            dist-electron-release/Loremaster.exe
             package/SHA256SUMS.txt
           if-no-files-found: error
 
@@ -144,7 +176,7 @@ jobs:
           $assets = @(
             'package/SpinUI-Manual.zip',
             'package/SHA256SUMS.txt',
-            'dist/Loremaster.exe'
+            'dist-electron-release/Loremaster.exe'
           )
           gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -eq 0) {
@@ -153,7 +185,7 @@ jobs:
             gh release create $tag @assets --repo $env:GITHUB_REPOSITORY `
               --target $env:GITHUB_SHA `
               --title "SpinUI $tag — Vellum & Ember + Glass" `
-              --notes "Complete SpinUI Windows release. Extract SpinUI-Manual.zip for both the classic spinui_reloaded skin and optional spinui_glass skin, layout profiles, manual guide, and Loremaster. Verify downloads against SHA256SUMS.txt; the unsigned Loremaster executable can trip antivirus machine-learning heuristics (see the README's Troubleshooting section)."
+              --notes "Complete SpinUI Windows release. Extract SpinUI-Manual.zip for both the classic spinui_reloaded skin and optional spinui_glass skin, layout profiles, manual guide, and the portable TypeScript/Electron Loremaster. Verify downloads against SHA256SUMS.txt; the unsigned Loremaster executable can trip antivirus machine-learning heuristics (see the README's Troubleshooting section)."
           }
 
       - name: Attach package to release
@@ -164,5 +196,5 @@ jobs:
           gh release upload "${{ github.event.release.tag_name }}"
           package/SpinUI-Manual.zip
           package/SHA256SUMS.txt
-          dist/Loremaster.exe
+          dist-electron-release/Loremaster.exe
           --clobber

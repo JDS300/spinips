@@ -1,0 +1,47 @@
+import { contextBridge, ipcRenderer } from "electron";
+
+contextBridge.exposeInMainWorld("loremasterDesktop", {
+  getRuntimeMetrics: () => ipcRenderer.invoke("runtime:metrics"),
+  getEngineState: () => ipcRenderer.invoke("engine:get-state"),
+  chooseLogFolder: () => ipcRenderer.invoke("engine:choose-log-folder"),
+  setLogPath: (value: string) => ipcRenderer.invoke("engine:set-log-path", value),
+  setRaidDifficulty: (value: number | null) => ipcRenderer.invoke("engine:set-raid-difficulty", value),
+  setRaidCompletion: (target: string, difficulty: number, completed: boolean) =>
+    ipcRenderer.invoke("engine:set-raid-completion", target, difficulty, completed),
+  updateSettings: (value: unknown) => ipcRenderer.invoke("settings:update", value),
+  chooseBisBuild: () => ipcRenderer.invoke("gear:choose-build"),
+  chooseInventory: () => ipcRenderer.invoke("gear:choose-inventory"),
+  refreshGearData: () => ipcRenderer.invoke("gear:refresh"),
+  openExternal: (value: string) => ipcRenderer.invoke("external:open", value),
+  checkForUpdates: () => ipcRenderer.invoke("updates:check"),
+  resetEngine: () => ipcRenderer.send("engine:reset"),
+  testAlert: () => ipcRenderer.send("alerts:test"),
+  onSnapshot: (callback: (event: unknown) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, value: unknown) => callback(value);
+    ipcRenderer.on("engine:snapshot", listener);
+    return () => ipcRenderer.removeListener("engine:snapshot", listener);
+  },
+  onHealth: (callback: (health: unknown) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, value: unknown) => callback(value);
+    ipcRenderer.on("engine:health", listener);
+    return () => ipcRenderer.removeListener("engine:health", listener);
+  },
+  onGearPlan: (callback: (gearPlan: unknown) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, value: unknown) => callback(value);
+    ipcRenderer.on("gear:state", listener);
+    return () => ipcRenderer.removeListener("gear:state", listener);
+  },
+  onSettings: (callback: (settings: unknown) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, value: unknown) => callback(value);
+    ipcRenderer.on("settings:changed", listener);
+    return () => ipcRenderer.removeListener("settings:changed", listener);
+  },
+  onTestAlert: (callback: (alert: unknown) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, value: unknown) => callback(value);
+    ipcRenderer.on("alerts:test", listener);
+    return () => ipcRenderer.removeListener("alerts:test", listener);
+  },
+  setExpanded: (expanded: boolean) => ipcRenderer.send("window:set-mode", expanded),
+  minimizeWindow: () => ipcRenderer.send("window:minimize"),
+  closeWindow: () => ipcRenderer.send("window:close"),
+});

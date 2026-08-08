@@ -26,6 +26,7 @@ SERVER_TICK_SECONDS = 6
 MIN_CORRELATION_SECONDS = 2.0
 CORRELATION_SLACK_SECONDS = 1.0
 WAKE_SIGNAL_DEDUPE_SECONDS = 1.5
+AMBIGUITY_NOTICE_SECONDS = 8.0
 
 
 @dataclass(frozen=True)
@@ -110,6 +111,9 @@ class MezRow:
     remaining_seconds: float
     last_tick: bool
     urgency: str
+    control_kind: str = "mez"
+    confidence: str = "confirmed"
+    ambiguity: str = ""
 
 
 @dataclass(frozen=True)
@@ -120,6 +124,10 @@ class MezSnapshot:
     hidden_rows: int
     group_count: int
     active_count: int
+    ambiguity_note: str = ""
+    ambiguity_count: int = 0
+    ambiguity_observed_at: datetime | None = None
+    ambiguity_until: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -223,6 +231,12 @@ def _split_rank(spell_name: str) -> tuple[str, int]:
     return text, 0
 
 
+def split_spell_rank(spell_name: str) -> tuple[str, int]:
+    """Return a normalized base spell name and its EQL upgrade rank."""
+
+    return _split_rank(spell_name)
+
+
 _SPELL_BY_KEY: dict[str, MezSpell] = {}
 for _spell in MEZ_SPELLS:
     for _alias in (_spell.name, *_spell.aliases):
@@ -312,6 +326,10 @@ class MezTracker:
         self._next_cast_id = 1
         self._next_timer_id = 1
         self._warned_timer_ids: set[int] = set()
+        self._ambiguity_note = ""
+        self._ambiguity_observed_at: datetime | None = None
+        self._ambiguity_until: datetime | None = None
+        self._ambiguity_count = 0
 
     @property
     def pending(self) -> PendingMezCast | None:
@@ -367,6 +385,10 @@ class MezTracker:
             # correlation; already-confirmed timers remain valid.
             self._pending = None
             self._reset_landing_guard()
+            self._mark_ambiguity(
+                occurred_at,
+                "Nearby same-family mez cast; unowned result ignored",
+            )
         self._nearby_pending = PendingMezCast(
             0, resolved, occurred_at)
         return True
@@ -381,6 +403,13 @@ class MezTracker:
     def _reset_landing_guard(self) -> None:
         self._skip_ambiguous_batch = False
         self._ignored_batch_at = None
+
+    def _mark_ambiguity(self, occurred_at: datetime, note: str) -> None:
+        self._ambiguity_note = note
+        self._ambiguity_observed_at = occurred_at
+        self._ambiguity_until = occurred_at + timedelta(
+            seconds=AMBIGUITY_NOTICE_SECONDS)
+        self._ambiguity_count += 1
 
     def _base_pending_deadline(self, pending: PendingMezCast) -> datetime:
         correlation_seconds = max(
@@ -477,6 +506,10 @@ class MezTracker:
         if self._skip_ambiguous_batch:
             if self._ignored_batch_at is None:
                 self._ignored_batch_at = occurred_at
+                self._mark_ambiguity(
+                    occurred_at,
+                    "Overlapping nearby mez cast; first result batch ignored",
+                )
                 return None
             if occurred_at <= self._ignored_batch_at:
                 return None
@@ -707,6 +740,10 @@ class MezTracker:
         self._known_awake.clear()
         self._recent_wake.clear()
         self._warned_timer_ids.clear()
+        self._ambiguity_note = ""
+        self._ambiguity_observed_at = None
+        self._ambiguity_until = None
+        self._ambiguity_count = 0
         return count
 
     @staticmethod
@@ -734,6 +771,10 @@ class MezTracker:
             urgency=mez_urgency(
                 safe_remaining, warning_seconds=warning_seconds,
                 critical_seconds=critical_seconds),
+            ambiguity=(
+                f"earliest expiry of {len(grouped)} same-name targets"
+                if len(grouped) > 1 else ""
+            ),
         )
 
     def snapshot(self, now: datetime, *, limit: int | None = 3,
@@ -752,9 +793,18 @@ class MezTracker:
         group_count = len(rows)
         visible = rows if limit is None else rows[:limit]
         hidden = 0 if limit is None else max(0, group_count - limit)
+        ambiguity_note = self._ambiguity_note
+        if (self._ambiguity_until is not None
+                and now > self._ambiguity_until):
+            ambiguity_note = ""
         return MezSnapshot(
             rows=tuple(visible), hidden_rows=hidden, group_count=group_count,
             active_count=sum(len(entries) for entries in self._groups.values()),
+            ambiguity_note=ambiguity_note,
+            ambiguity_count=self._ambiguity_count,
+            ambiguity_observed_at=(
+                self._ambiguity_observed_at if ambiguity_note else None),
+            ambiguity_until=(self._ambiguity_until if ambiguity_note else None),
         )
 
     def pop_warning_events(self, now: datetime, *,
@@ -800,4 +850,5 @@ __all__ = [
     "mez_urgency",
     "resolve_mez_spell",
     "scaled_duration_ticks",
+    "split_spell_rank",
 ]

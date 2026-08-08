@@ -1,7 +1,12 @@
 __pycache__/
+node_modules/
+.codex/
 *.pyc
 build/
 dist/
+dist-electron/
+dist-electron-release/
+.pnpm-store/
 *.spec
 loremaster/loremaster_config.json
 loremaster/loremaster_data/
