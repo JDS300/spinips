@@ -16,6 +16,7 @@
   · <a href="#spinui-glass--midnight-frost">Explore Glass</a>
   · <a href="#spins-loremaster">Explore Loremaster</a>
   · <a href="#layout-profiles">Choose a layout</a>
+  · <a href="#4k-readability-with-spinfourkayyy">4K scaling</a>
 </p>
 
 <p align="center">
@@ -223,6 +224,17 @@ That produces **21 generated combinations**. Validation keeps managed windows on
 Choose the exact profile for your display when possible, or the nearest validated profile with the same aspect ratio. Keeping your current character layout and installing only the skin remains the safest default.
 
 > **Raid chat:** the Raid Say filter index is not stable enough to rewrite blindly. In game, right-click the Social title area → **Filters** → **Raid Say** → **Social** (and repeat for Raid Chat if listed). EverQuest saves the choice.
+
+## 4K readability with SpinFOURKAYYY
+
+[**SpinFOURKAYYY**](https://github.com/itsspin/SPINFOURKAYYY) is the companion Windows scaling tool for players who want a larger, more readable EverQuest Legends interface on 4K and high-resolution displays. Native mode preserves the original frame at **100%**; enlarged modes cover every **1% step from 101% to 200%**, with roughly **110% to 125%** offering a quality-first starting range for many high-resolution and ultrawide setups.
+
+- **Your layout remains yours.** Before an enlarged session, SpinFOURKAYYY safely fits each character's own `UI_<character>_<server>...ini` geometry to the selected source resolution. It works with default, custom, and SpinUI layouts without hardcoded character names, then captures in-game layout changes and restores native geometry when EverQuest exits.
+- **One readable fullscreen presentation.** The normal Legends launcher still handles patching and sign-in. The tool launches the client at a verified windowed source size and uses its bundled Magpie engine for borderless fullscreen scaling; the recommended Readable UI path avoids unnecessary stacked sharpening and anti-aliasing passes.
+- **Loremaster stays visible.** **Keep companion overlays visible** is enabled by default. It recognizes small genuine always-on-top surfaces, including Loremaster, and keeps them above the scaled game while leaving their text rendered at native Windows resolution.
+- **Non-intrusive and recoverable.** It does not inject into EverQuest, alter network traffic, replace game assets, install a display driver, or resize an already-running client. Verified profiles and recovery state live under `%LOCALAPPDATA%\SpinFOURKAYYY`.
+
+Download SpinFOURKAYYY separately from its [latest GitHub release](https://github.com/itsspin/SPINFOURKAYYY/releases/latest), extract the complete ZIP into a normal user-writable folder, choose the percentage **before** launching, click **Start EverQuest for me**, and keep the scaler open until the game exits. EverQuest, SpinFOURKAYYY, and companion overlays should run at the same Windows privilege level.
 
 ## A compact tour of the rest
 
