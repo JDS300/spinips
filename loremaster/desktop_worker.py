@@ -206,21 +206,32 @@ class HeadlessEngine:
                     seconds=self.alert_config["alert_seconds"])).isoformat(
                         timespec="milliseconds"),
             })
-        # A third-party death line is merely visible activity unless the
-        # killer is one of our proven pets. Without a guaranteed group roster,
-        # crediting every nearby boss death would corrupt weekly completion.
+        # A raid's killing blow is commonly attributed to a groupmate. Credit
+        # it only when ownership is direct (self/pet) or this encounter
+        # contains proven self/pet damage against the same tracked boss. That
+        # captures real group clears without marking unrelated nearby kills.
+        target = groups.get("target", "")
+        raid_target = self.weekly.match_target(target)
+        engaged_raid_target = bool(
+            kind == "kill_other" and raid_target and self.stats.fight and
+            any(
+                damage > 0 and self.weekly.match_target(fight_target) == raid_target
+                for fight_target, damage in self.stats.fight.targets.items()
+            )
+        )
         weekly_credit = (kind == "kill_you" or (
-            kind == "kill_other" and self.stats.is_pet(groups.get("killer", ""))))
+            kind == "kill_other" and (
+                self.stats.is_pet(groups.get("killer", "")) or
+                engaged_raid_target)))
         if weekly_credit:
-            target = groups.get("target", "")
-            if self.weekly.match_target(target):
+            if raid_target:
                 if self.raid_difficulty is None:
-                    self.pending_raid_target = target
+                    self.pending_raid_target = raid_target.name
                     self.pending_raid_seconds = (
                         self.stats.fight.seconds if self.stats.fight else 0.0)
                 else:
                     self.weekly.observe_kill(
-                        occurred_at, target, zone=self.stats.zone,
+                        occurred_at, raid_target.name, zone=self.stats.zone,
                         character=self.stats.character,
                         difficulty=self.raid_difficulty,
                         duration_seconds=(self.stats.fight.seconds

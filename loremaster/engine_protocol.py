@@ -69,6 +69,43 @@ class CombatBreakdownView:
 
 
 @dataclass(frozen=True)
+class CombatActorView:
+    name: str
+    role: str
+    encounter_damage: int
+    encounter_dps: int
+    encounter_hits: int
+    encounter_maximum: int
+    session_damage: int
+    session_dps: int
+    session_hits: int
+    session_maximum: int
+
+
+@dataclass(frozen=True)
+class EncounterView:
+    encounter_id: str
+    name: str
+    active: bool
+    started_at: str
+    ended_at: str
+    seconds: float
+    damage: int
+    dps: int
+    personal_damage: int
+    charmed_pet_damage: int
+    summoned_pet_damage: int
+    damage_taken: int
+    healing_done: int
+    kills: int
+    crits: int
+    misses: int
+    sources: tuple[CombatMetricView, ...]
+    targets: tuple[CombatMetricView, ...]
+    actors: tuple[CombatActorView, ...]
+
+
+@dataclass(frozen=True)
 class ControlTimerView:
     kind: str
     state: str
@@ -96,6 +133,7 @@ class EngineSnapshot:
     character: CharacterView
     combat: CombatView
     breakdown: CombatBreakdownView
+    encounters: tuple[EncounterView, ...]
     controls: tuple[ControlTimerView, ...]
     hidden_control_rows: int
     control_notice_count: int
@@ -140,6 +178,28 @@ class EngineEvent:
                 "safe_remaining_seconds")
             control["remainingSeconds"] = control.pop("remaining_seconds")
             control["lastTick"] = control.pop("last_tick")
+        for encounter in snapshot["encounters"]:
+            for old, new in (
+                    ("encounter_id", "encounterId"),
+                    ("started_at", "startedAt"),
+                    ("ended_at", "endedAt"),
+                    ("personal_damage", "personalDamage"),
+                    ("charmed_pet_damage", "charmedPetDamage"),
+                    ("summoned_pet_damage", "summonedPetDamage"),
+                    ("damage_taken", "damageTaken"),
+                    ("healing_done", "healingDone")):
+                encounter[new] = encounter.pop(old)
+            for actor in encounter["actors"]:
+                for old, new in (
+                        ("encounter_damage", "encounterDamage"),
+                        ("encounter_dps", "encounterDps"),
+                        ("encounter_hits", "encounterHits"),
+                        ("encounter_maximum", "encounterMaximum"),
+                        ("session_damage", "sessionDamage"),
+                        ("session_dps", "sessionDps"),
+                        ("session_hits", "sessionHits"),
+                        ("session_maximum", "sessionMaximum")):
+                    actor[new] = actor.pop(old)
         combat = snapshot["combat"]
         for old, new in (
                 ("encounter_name", "encounterName"),
@@ -227,6 +287,99 @@ def build_engine_snapshot(*, sequence: int, observed_at: datetime,
             rows.append(CombatMetricView(str(name), total, hits, maximum))
         return tuple(sorted(rows, key=lambda row: (-row.total, row.name.casefold()))[:12])
 
+    def value_from(source, name: str, fallback=None):
+        if isinstance(source, dict):
+            return source.get(name, fallback)
+        return getattr(source, name, fallback)
+
+    def metric_values(values) -> dict[str, dict[str, int]]:
+        normalized: dict[str, dict[str, int]] = {}
+        for name, value in (values or {}).items():
+            if isinstance(value, dict):
+                normalized[str(name)] = {
+                    "t": int(value.get("t") or 0),
+                    "h": int(value.get("h") or 0),
+                    "max": int(value.get("max") or 0),
+                }
+            else:
+                normalized[str(name)] = {"t": int(value or 0), "h": 0, "max": 0}
+        return normalized
+
+    session_seconds = max(1.0, float(stats_snapshot.get("combat_seconds") or 0.0))
+    session_actor_values = metric_values(stats_snapshot.get("actor_damage"))
+    session_actor_roles = {
+        str(name): str(role) for name, role in
+        (stats_snapshot.get("actor_roles") or {}).items()
+    }
+
+    def encounter_view(value, *, active: bool) -> EncounterView:
+        start = value_from(value, "start", observed_at)
+        end = value_from(value, "end", start)
+        if not isinstance(start, datetime):
+            try:
+                start = datetime.fromisoformat(str(start).replace("Z", "+00:00"))
+            except (TypeError, ValueError):
+                start = observed_at
+        if not isinstance(end, datetime):
+            try:
+                end = datetime.fromisoformat(str(end).replace("Z", "+00:00"))
+            except (TypeError, ValueError):
+                end = start
+        seconds = max(1.0, float(value_from(value, "seconds", 0.0) or 0.0))
+        damage = int(value_from(value, "damage", 0) or 0)
+        charmed = int(value_from(value, "charmed_pet_damage", 0) or 0)
+        summoned = int(value_from(value, "summoned_pet_damage", 0) or 0)
+        actor_values = metric_values(value_from(value, "actor_damage", {}))
+        actor_roles = {
+            str(name): str(role) for name, role in
+            (value_from(value, "actor_roles", {}) or {}).items()
+        }
+        actors = []
+        for actor_name, row in actor_values.items():
+            session_row = session_actor_values.get(actor_name, row)
+            role = actor_roles.get(
+                actor_name, session_actor_roles.get(actor_name, "observed"))
+            actors.append(CombatActorView(
+                name=actor_name,
+                role=role if role in {"self", "charmed", "summoned", "observed"} else "observed",
+                encounter_damage=row["t"],
+                encounter_dps=int(round(row["t"] / seconds)),
+                encounter_hits=row["h"],
+                encounter_maximum=row["max"],
+                session_damage=session_row["t"],
+                session_dps=int(round(session_row["t"] / session_seconds)),
+                session_hits=session_row["h"],
+                session_maximum=session_row["max"],
+            ))
+        actors.sort(key=lambda row: (-row.encounter_damage, row.name.casefold()))
+        return EncounterView(
+            encounter_id=_timestamp(start),
+            name=str(value_from(value, "name", "fight") or "fight"),
+            active=active,
+            started_at=_timestamp(start),
+            ended_at=_timestamp(end),
+            seconds=round(seconds, 3),
+            damage=damage,
+            dps=int(round(damage / seconds)),
+            personal_damage=max(0, damage - charmed - summoned),
+            charmed_pet_damage=charmed,
+            summoned_pet_damage=summoned,
+            damage_taken=int(value_from(value, "damage_taken", 0) or 0),
+            healing_done=int(value_from(value, "healing_done", 0) or 0),
+            kills=int(value_from(value, "kills", 0) or 0),
+            crits=int(value_from(value, "crits", 0) or 0),
+            misses=int(value_from(value, "misses", 0) or 0),
+            sources=metric_rows(value_from(value, "sources", {})),
+            targets=metric_rows(value_from(value, "targets", {}), plain_totals=True),
+            actors=tuple(actors[:24]),
+        )
+
+    fight_history = tuple(stats_snapshot.get("fights") or ())[-30:]
+    encounters = tuple(
+        encounter_view(row, active=bool(stats_snapshot.get("in_combat")) and index == len(fight_history) - 1)
+        for index, row in enumerate(fight_history)
+    )
+
     breakdown = CombatBreakdownView(
         sources=metric_rows(stats_snapshot.get("fight_sources")),
         targets=metric_rows(stats_snapshot.get("fight_targets"), plain_totals=True),
@@ -271,6 +424,7 @@ def build_engine_snapshot(*, sequence: int, observed_at: datetime,
             misses=misses,
         ),
         breakdown=breakdown,
+        encounters=encounters,
         controls=controls,
         hidden_control_rows=int(control_snapshot.hidden_rows),
         control_notice_count=int(control_snapshot.notice_count),
@@ -294,6 +448,8 @@ __all__ = [
     "CombatView",
     "CombatMetricView",
     "CombatBreakdownView",
+    "CombatActorView",
+    "EncounterView",
     "ControlTimerView",
     "EngineEvent",
     "EngineSnapshot",

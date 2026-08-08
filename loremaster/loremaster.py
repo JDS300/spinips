@@ -1223,6 +1223,7 @@ class Fight:
         lambda: {"t": 0, "h": 0, "max": 0, "over": 0}))
     actor_damage: dict = field(default_factory=lambda: defaultdict(
         lambda: {"t": 0, "h": 0, "max": 0}))
+    actor_roles: dict = field(default_factory=dict)
     actor_healing: dict = field(default_factory=lambda: defaultdict(
         lambda: {"t": 0, "h": 0, "max": 0}))
     # `targets` is the player's attributed damage. `observed_targets` adds
@@ -1298,6 +1299,7 @@ class SessionStats:
             lambda: {"t": 0, "h": 0, "max": 0, "over": 0})
         self.actor_damage: dict[str, dict] = defaultdict(
             lambda: {"t": 0, "h": 0, "max": 0})
+        self.actor_roles: dict[str, str] = {}
         self.actor_healing: dict[str, dict] = defaultdict(
             lambda: {"t": 0, "h": 0, "max": 0})
         self.melee_hits = self.melee_misses = 0
@@ -1492,11 +1494,18 @@ class SessionStats:
         if "over" in row:
             row["over"] += overheal
 
-    def _record_actor_damage(self, actor: str, dmg: int):
+    def _record_actor_damage(self, actor: str, dmg: int,
+                             role: str = "observed"):
         if self.fight is None:
             return
         self._add_metric(self.fight.actor_damage, actor, dmg)
         self._add_metric(self.actor_damage, actor, dmg)
+        # Preserve ownership with the fight. Charmed aliases are deliberately
+        # removed when charm breaks, so classifying historical rows from the
+        # current pet-name set would silently turn old pet damage into an
+        # unrelated observed actor.
+        self.fight.actor_roles[actor] = role
+        self.actor_roles[actor] = role
 
     def _record_actor_healing(self, actor: str, amount: int):
         if self.fight is not None:
@@ -1515,11 +1524,14 @@ class SessionStats:
         self.combat_feed.append((ts, kind, amount, label))
 
     def _deal(self, ts: datetime, target: str, dmg: int, source: str,
-              crit: bool = False, actor: str | None = None):
+              crit: bool = False, actor: str | None = None,
+              actor_role: str | None = None):
         self._own_combat(ts)
         if self.fight is None:
             self.fight = self._new_fight(ts)
-        self._record_actor_damage(actor or self.character or "You", dmg)
+        self._record_actor_damage(
+            actor or self.character or "You", dmg,
+            actor_role or ("self" if actor is None else "observed"))
         self.fight.damage += dmg
         normalized_target = normalize_mob(target)
         self.fight.targets[normalized_target] += dmg
@@ -1549,7 +1561,7 @@ class SessionStats:
         known_targets = {name.casefold() for name in self.fight.targets}
         if normalize_mob(actor).casefold() in known_targets:
             return
-        self._record_actor_damage(actor, dmg)
+        self._record_actor_damage(actor, dmg, "observed")
         self.fight.observed_targets[normalize_mob(target)] += dmg
         self.fight.add_timeline(ts, "out", dmg)
 
@@ -1832,7 +1844,8 @@ class SessionStats:
                 self.pet_last_seen[pet] = ts
                 self.pet_damage += dmg
                 self._deal(ts, g["target"], dmg, f"Pet ({pet})",
-                           actor=f"{pet} (pet)")
+                           actor=f"{pet} (pet)",
+                           actor_role="charmed" if is_charmed else "summoned")
                 if is_charmed:
                     self.charmed_pet_damage += dmg
                     if self.fight:
@@ -1944,6 +1957,8 @@ class SessionStats:
             "fight_actor_damage": (
                 {k: dict(v) for k, v in shown_fight.actor_damage.items()}
                 if shown_fight else {}),
+            "fight_actor_roles": (
+                dict(shown_fight.actor_roles) if shown_fight else {}),
             "fight_actor_healing": (
                 {k: dict(v) for k, v in shown_fight.actor_healing.items()}
                 if shown_fight else {}),
@@ -1951,6 +1966,7 @@ class SessionStats:
             "damage_by_source": {k: dict(v) for k, v in self.damage_by_source.items()},
             "healing_by_source": {k: dict(v) for k, v in self.healing_by_source.items()},
             "actor_damage": {k: dict(v) for k, v in self.actor_damage.items()},
+            "actor_roles": dict(self.actor_roles),
             "actor_healing": {k: dict(v) for k, v in self.actor_healing.items()},
             "damage_taken_by": {k: dict(v) for k, v in self.damage_taken_by.items()},
             "group_kills": dict(self.group_kills),
@@ -1969,6 +1985,9 @@ class SessionStats:
             "ambiguous_pet_damage": self.ambiguous_pet_damage,
             "active_pets": active_pets,
             "pet_names": sorted(self.pet_names),
+            "charmed_pet_names": sorted(self.charmed_pet_names),
+            "summoned_pet_names": sorted(
+                pet for pet in self.pet_names if not self.is_charmed_pet(pet)),
             "kills": sum(self.kills.values()),
             "kill_breakdown": dict(self.kills),
             "deaths": self.deaths,

@@ -44,7 +44,21 @@ class EngineProtocolTests(unittest.TestCase):
             "personal_damage": 1000,
             "charmed_pet_damage": 700,
             "summoned_pet_damage": 0,
+            "combat_damage": 1700,
+            "combat_seconds": 6,
+            "actor_damage": {
+                "Spin": {"t": 1000, "h": 5, "max": 240},
+                "an abhorrent (pet)": {"t": 700, "h": 4, "max": 190},
+            },
+            "actor_roles": {"Spin": "self", "an abhorrent (pet)": "charmed"},
         }
+        runtime["fights"] = [{
+            **runtime["fight"], "start": NOW, "end": NOW,
+            "sources": runtime["fight_sources"],
+            "targets": runtime["fight_targets"],
+            "actor_damage": runtime["actor_damage"],
+            "actor_roles": runtime["actor_roles"],
+        }]
         snapshot = build_engine_snapshot(
             sequence=7, observed_at=NOW,
             stats_snapshot=runtime, control_snapshot=controls)
@@ -64,6 +78,12 @@ class EngineProtocolTests(unittest.TestCase):
                          1000)
         self.assertEqual(decoded["snapshot"]["breakdown"]["sources"][0]["name"],
                          "Melee")
+        encounter = decoded["snapshot"]["encounters"][0]
+        self.assertEqual(encounter["personalDamage"], 1000)
+        pet = next(row for row in encounter["actors"]
+                   if row["role"] == "charmed")
+        self.assertEqual(pet["encounterDps"], 117)
+        self.assertEqual(pet["sessionDamage"], 700)
 
     def test_snapshot_copies_mutable_runtime_state(self):
         runtime = {"character": "Spin", "fight": {"dps": 50}}

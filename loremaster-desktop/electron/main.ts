@@ -31,7 +31,7 @@ let topmostHeartbeatTimer: NodeJS.Timeout | null = null;
 
 const SEED_SIZE = { width: 128, height: 74 } as const;
 const EXPANDED_SIZE = { width: 470, height: 580 } as const;
-const ALERT_SIZE = { width: 352, height: 82 } as const;
+const ALERT_SIZE = { width: 420, height: 112 } as const;
 const CONTROL_SURFACE_WIDTH = 304;
 const CONTROL_SURFACE_HEADER_HEIGHT = 31;
 const CONTROL_SURFACE_ROW_HEIGHT = 48;
@@ -82,6 +82,7 @@ interface DesktopSettings {
   alwaysOnTop: boolean;
   fontScale: number;
   splitCharmedPetDps: boolean;
+  stanceAdvisorEnabled: boolean;
   seedPosition: { x: number; y: number } | null;
   alerts: AlertSettings;
 }
@@ -132,6 +133,7 @@ const defaultSettings: DesktopSettings = {
   alwaysOnTop: true,
   fontScale: 1.1,
   splitCharmedPetDps: false,
+  stanceAdvisorEnabled: false,
   seedPosition: null,
   alerts: defaultAlertSettings,
 };
@@ -168,6 +170,7 @@ function readSettings(): DesktopSettings {
       alwaysOnTop: boolean(value.alwaysOnTop, true),
       fontScale: clampInteger(value.fontScale === undefined ? 110 : Number(value.fontScale) * 100, 110, 90, 140) / 100,
       splitCharmedPetDps: boolean(value.splitCharmedPetDps, false),
+      stanceAdvisorEnabled: boolean(value.stanceAdvisorEnabled, false),
       seedPosition,
       alerts: {
         alertsEnabled: boolean(alertValue.alertsEnabled, defaultAlertSettings.alertsEnabled),
@@ -429,7 +432,7 @@ class EngineSupervisor {
     this.send({ type: "engine.set-raid-difficulty", raidDifficulty });
   }
 
-  updateDesktopSettings(patch: Partial<Pick<DesktopSettings, "alwaysOnTop" | "fontScale" | "splitCharmedPetDps">> & {
+  updateDesktopSettings(patch: Partial<Pick<DesktopSettings, "alwaysOnTop" | "fontScale" | "splitCharmedPetDps" | "stanceAdvisorEnabled">> & {
     alerts?: Partial<AlertSettings>;
   }): DesktopSettings {
     const nextAlerts = patch.alerts ? { ...this.settings.alerts, ...patch.alerts } : this.settings.alerts;
@@ -438,6 +441,7 @@ class EngineSupervisor {
       ...(typeof patch.alwaysOnTop === "boolean" ? { alwaysOnTop: patch.alwaysOnTop } : {}),
       ...(typeof patch.fontScale === "number" ? { fontScale: clamp(patch.fontScale, 0.9, 1.4) } : {}),
       ...(typeof patch.splitCharmedPetDps === "boolean" ? { splitCharmedPetDps: patch.splitCharmedPetDps } : {}),
+      ...(typeof patch.stanceAdvisorEnabled === "boolean" ? { stanceAdvisorEnabled: patch.stanceAdvisorEnabled } : {}),
       alerts: nextAlerts,
     };
     saveSettings(this.settings);
@@ -830,7 +834,8 @@ function createAlertWindow(): void {
     scheduleTopmostReassertion();
     if (process.env.LOREMASTER_SCREENSHOT_VIEW === "alert" && process.env.LOREMASTER_SCREENSHOT_PATH) {
       alertWindow?.webContents.send("alerts:test", {
-        id: "visual-test", severity: "danger", title: "CHARM BROKE", target: "an abhorrent",
+        id: "visual-test", severity: "info", title: "TELL · AROMEK",
+        target: "Sometimes it feels like maybe I should wait for the next pull before changing stance.",
       });
       setTimeout(() => {
         void alertWindow?.webContents.capturePage().then((image) => {
@@ -987,6 +992,12 @@ function createWindow(): void {
         .then(() => screenshotView === "settings"
           ? mainWindow?.webContents.executeJavaScript(
             "document.querySelector('.masthead-actions button')?.click()")
+          : screenshotView === "breakdown"
+            ? mainWindow?.webContents.executeJavaScript(`
+              document.querySelector('.encounter-nav button:not(:disabled)')?.click();
+              const details = document.querySelector('.breakdown-card');
+              if (details) { details.open = true; details.scrollIntoView({ block: 'start' }); }
+            `)
           : undefined)
         .then(() => new Promise((resolve) => setTimeout(resolve, 250)))
         .then(() => mainWindow?.webContents.capturePage())
@@ -1076,6 +1087,7 @@ ipcMain.handle("settings:update", (_event, value: unknown) => {
   if (typeof raw.alwaysOnTop === "boolean") patch.alwaysOnTop = raw.alwaysOnTop;
   if (Number.isFinite(Number(raw.fontScale))) patch.fontScale = clamp(Number(raw.fontScale), 0.9, 1.4);
   if (typeof raw.splitCharmedPetDps === "boolean") patch.splitCharmedPetDps = raw.splitCharmedPetDps;
+  if (typeof raw.stanceAdvisorEnabled === "boolean") patch.stanceAdvisorEnabled = raw.stanceAdvisorEnabled;
   if (raw.alerts && typeof raw.alerts === "object") {
     const candidate = raw.alerts as Record<string, unknown>;
     const alerts: Partial<AlertSettings> = {};

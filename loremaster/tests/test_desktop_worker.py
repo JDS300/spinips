@@ -98,6 +98,21 @@ class DesktopWorkerTests(unittest.TestCase):
                 engine.close()
             self.assertEqual(event["snapshot"]["weekly"]["completedCount"], 0)
 
+    def test_group_killing_blow_prompts_when_self_engaged_the_raid_boss(self):
+        with tempfile.TemporaryDirectory() as root:
+            engine = HeadlessEngine(data_dir=root)
+            try:
+                engine.process_line(
+                    "[Fri Aug 07 20:00:00 2026] You slash Cazic-Thule for 100 points of damage.")
+                engine.process_line(
+                    "[Fri Aug 07 20:00:01 2026] Cazic-Thule has been slain by AromeK!")
+                event = engine.snapshot_event(datetime(2026, 8, 7, 20, 0, 2))
+            finally:
+                engine.close()
+            weekly = event["snapshot"]["weekly"]
+            self.assertEqual(weekly["pendingRaidTarget"], "Cazic-Thule")
+            self.assertEqual(weekly["completedCount"], 0)
+
     def test_boss_kill_waits_for_explicit_difficulty(self):
         with tempfile.TemporaryDirectory() as root:
             engine = HeadlessEngine(data_dir=root)

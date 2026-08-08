@@ -44,6 +44,43 @@ export interface CombatBreakdownView {
   actors: readonly CombatMetricView[];
 }
 
+export type CombatActorRole = "self" | "charmed" | "summoned" | "observed";
+
+export interface CombatActorView {
+  name: string;
+  role: CombatActorRole;
+  encounterDamage: number;
+  encounterDps: number;
+  encounterHits: number;
+  encounterMaximum: number;
+  sessionDamage: number;
+  sessionDps: number;
+  sessionHits: number;
+  sessionMaximum: number;
+}
+
+export interface EncounterView {
+  encounterId: string;
+  name: string;
+  active: boolean;
+  startedAt: string;
+  endedAt: string;
+  seconds: number;
+  damage: number;
+  dps: number;
+  personalDamage: number;
+  charmedPetDamage: number;
+  summonedPetDamage: number;
+  damageTaken: number;
+  healingDone: number;
+  kills: number;
+  crits: number;
+  misses: number;
+  sources: readonly CombatMetricView[];
+  targets: readonly CombatMetricView[];
+  actors: readonly CombatActorView[];
+}
+
 export interface ControlTimerView {
   kind: ControlKind;
   state: ControlState;
@@ -70,6 +107,7 @@ export interface EngineSnapshot {
   character: CharacterView;
   combat: CombatView;
   breakdown: CombatBreakdownView;
+  encounters?: readonly EncounterView[];
   controls: readonly ControlTimerView[];
   hiddenControlRows: number;
   controlNoticeCount: number;
@@ -200,6 +238,7 @@ export interface DesktopSettings {
   alwaysOnTop: boolean;
   fontScale: number;
   splitCharmedPetDps: boolean;
+  stanceAdvisorEnabled: boolean;
   seedPosition: { x: number; y: number } | null;
   alerts: AlertSettings;
 }
