@@ -13,6 +13,7 @@ import {
   type EngineSnapshotEvent,
   type GearPlanView,
 } from "./protocol";
+import { CombatArchive } from "./CombatArchive";
 
 const roman = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 const raidDifficulties = [0, 1, 2, 3, 4] as const;
@@ -515,6 +516,7 @@ function currentEncounter(event: EngineSnapshotEvent): EncounterView {
     summonedPetDamage: combat.fightSummonedPetDamage,
     damageTaken: combat.damageTaken,
     healingDone: combat.healingDone,
+    healsReceived: 0,
     kills: combat.kills,
     crits: combat.crits,
     misses: combat.misses,
@@ -527,6 +529,8 @@ function currentEncounter(event: EngineSnapshotEvent): EncounterView {
       sessionDamage: actor.total, sessionDps: 0,
       sessionHits: actor.hits, sessionMaximum: actor.maximum,
     })),
+    healingSources: [],
+    timeline: [],
   };
 }
 
@@ -592,6 +596,7 @@ function MainApp() {
   const [event, setEvent] = useState<EngineSnapshotEvent>(emptyEvent);
   const [health, setHealth] = useState<EngineHealth>(initialHealth);
   const [expanded, setExpanded] = useState(false);
+  const [analysisOpen, setAnalysisOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [raidDifficulty, setRaidDifficulty] = useState<number | null>(null);
   const [settings, setSettings] = useState<DesktopSettings>(defaultDesktopSettings);
@@ -631,8 +636,22 @@ function MainApp() {
 
   const setMode = (next: boolean) => {
     setExpanded(next);
+    setAnalysisOpen(false);
     if (!next) setSettingsOpen(false);
     window.loremasterDesktop?.setExpanded(next);
+  };
+
+  const showAnalysis = () => {
+    setExpanded(true);
+    setSettingsOpen(false);
+    setAnalysisOpen(true);
+    window.loremasterDesktop?.setAnalysis(true);
+  };
+
+  const showHud = () => {
+    setExpanded(true);
+    setAnalysisOpen(false);
+    window.loremasterDesktop?.setAnalysis(false);
   };
 
   const changeRaidDifficulty = (value: number | null) => {
@@ -659,6 +678,10 @@ function MainApp() {
 
   const { snapshot } = event;
   const weekly = snapshot.weekly;
+  if (analysisOpen) return <CombatArchive event={event} health={health} weekly={weekly}
+    onHud={showHud} onSeed={() => setMode(false)}
+    onMinimize={() => window.loremasterDesktop?.minimizeWindow()}
+    onClose={() => window.loremasterDesktop?.closeWindow()} />;
   const encounters = snapshot.encounters?.length ? snapshot.encounters : [currentEncounter(event)];
   const requestedEncounterIndex = selectedEncounterId
     ? encounters.findIndex((encounter) => encounter.encounterId === selectedEncounterId)
@@ -681,6 +704,7 @@ function MainApp() {
         <CogMark />
         <div><p>LOREMASTER</p><small><b className={health.state} /> {health.state.toUpperCase()} · PROTOCOL {event.protocolVersion}</small></div>
         <div className="masthead-actions">
+          <button type="button" onClick={showAnalysis} aria-label="Open full combat breakdown">ANALYZE</button>
           <button type="button" onClick={() => setSettingsOpen((value) => !value)} aria-label="Open settings">SET</button>
           <button type="button" onClick={() => setMode(false)} aria-label="Collapse to Rune Seed">SEED</button>
           <button type="button" onClick={() => window.loremasterDesktop?.minimizeWindow()} aria-label="Minimize Loremaster">—</button>

@@ -24,6 +24,7 @@ let alertWindow: BrowserWindow | null = null;
 let controlWindow: BrowserWindow | null = null;
 let engine: EngineSupervisor | null = null;
 let windowExpanded = false;
+let windowAnalysis = false;
 let expansionDirection: "up" | "down" = "down";
 let movingWindowProgrammatically = false;
 let topmostReassertTimers: NodeJS.Timeout[] = [];
@@ -31,6 +32,7 @@ let topmostHeartbeatTimer: NodeJS.Timeout | null = null;
 
 const SEED_SIZE = { width: 128, height: 74 } as const;
 const EXPANDED_SIZE = { width: 470, height: 580 } as const;
+const ANALYSIS_SIZE = { width: 1180, height: 760 } as const;
 const ALERT_SIZE = { width: 420, height: 112 } as const;
 const CONTROL_SURFACE_WIDTH = 304;
 const CONTROL_SURFACE_HEADER_HEIGHT = 31;
@@ -628,7 +630,10 @@ function applyDisplayScale(scale: number): void {
   mainWindow?.webContents.setZoomFactor(factor);
   alertWindow?.webContents.setZoomFactor(factor);
   controlWindow?.webContents.setZoomFactor(factor);
-  if (mainWindow) setWindowMode(windowExpanded, true);
+  if (mainWindow) {
+    if (windowAnalysis) setAnalysisMode(true, true);
+    else setWindowMode(windowExpanded, true);
+  }
   syncControlWindow();
 }
 
@@ -766,6 +771,7 @@ function setWindowMode(expanded: boolean, preserveAnchor = false): void {
   const expandedSize = scaledSize(EXPANDED_SIZE, settings.fontScale);
   movingWindowProgrammatically = true;
   windowExpanded = expanded;
+  windowAnalysis = false;
   if (expanded) {
     const spaceBelow = workArea.y + workArea.height - (current.y + current.height);
     const spaceAbove = current.y - workArea.y;
@@ -797,6 +803,51 @@ function setWindowMode(expanded: boolean, preserveAnchor = false): void {
     mainWindow.setBounds(target, false);
     engine?.saveSeedPosition({ x: target.x, y: target.y });
   }
+  positionAlertWindow();
+  syncControlWindow();
+  applyAlwaysOnTop(settings.alwaysOnTop);
+  setImmediate(() => { movingWindowProgrammatically = false; });
+}
+
+function setAnalysisMode(active: boolean, preserveAnchor = false): void {
+  if (!active) {
+    setWindowMode(true, preserveAnchor);
+    return;
+  }
+  if (!mainWindow) return;
+  const current = mainWindow.getBounds();
+  const workArea = screen.getDisplayMatching(current).workArea;
+  const settings = engine?.getState().settings ?? defaultSettings;
+  const requested = scaledSize(ANALYSIS_SIZE, Math.min(settings.fontScale, 1.2));
+  const availableWidth = Math.max(480, workArea.width - 16);
+  const availableHeight = Math.max(440, workArea.height - 16);
+  const targetSize = {
+    width: Math.min(Math.max(780, requested.width), availableWidth),
+    height: Math.min(Math.max(620, requested.height), availableHeight),
+  };
+  const spaceBelow = workArea.y + workArea.height - (current.y + current.height);
+  const spaceAbove = current.y - workArea.y;
+  if (!preserveAnchor) {
+    expansionDirection = spaceBelow < targetSize.height - current.height && spaceAbove > spaceBelow
+      ? "up"
+      : "down";
+  }
+  const y = expansionDirection === "up"
+    ? current.y + current.height - targetSize.height
+    : current.y;
+  const target = {
+    x: clamp(current.x, workArea.x, workArea.x + workArea.width - targetSize.width),
+    y: clamp(y, workArea.y, workArea.y + workArea.height - targetSize.height),
+    ...targetSize,
+  };
+  movingWindowProgrammatically = true;
+  windowExpanded = true;
+  windowAnalysis = true;
+  mainWindow.setMinimumSize(
+    Math.min(Math.round(760 * settings.fontScale), target.width),
+    Math.min(Math.round(560 * settings.fontScale), target.height),
+  );
+  mainWindow.setBounds(target, false);
   positionAlertWindow();
   syncControlWindow();
   applyAlwaysOnTop(settings.alwaysOnTop);
@@ -928,8 +979,8 @@ function createWindow(): void {
     ...(settings.seedPosition ?? {}),
     minWidth: 118,
     minHeight: 64,
-    maxWidth: 720,
-    maxHeight: 980,
+    maxWidth: 1800,
+    maxHeight: 1300,
     resizable: true,
     frame: false,
     thickFrame: false,
@@ -1000,6 +1051,9 @@ function createWindow(): void {
         .then(() => screenshotView === "settings"
           ? mainWindow?.webContents.executeJavaScript(
             "document.querySelector('.masthead-actions button')?.click()")
+          : screenshotView === "analysis"
+            ? mainWindow?.webContents.executeJavaScript(
+              "document.querySelector('button[aria-label=\"Open full combat breakdown\"]')?.click()")
           : screenshotView === "breakdown"
             ? mainWindow?.webContents.executeJavaScript(`
               document.querySelector('.encounter-nav button:not(:disabled)')?.click();
@@ -1193,6 +1247,9 @@ ipcMain.handle("updates:check", async () => {
 
 ipcMain.on("window:set-mode", (_event, expanded: boolean) => {
   setWindowMode(Boolean(expanded));
+});
+ipcMain.on("window:set-analysis", (_event, active: boolean) => {
+  setAnalysisMode(Boolean(active));
 });
 
 ipcMain.on("window:minimize", () => mainWindow?.minimize());

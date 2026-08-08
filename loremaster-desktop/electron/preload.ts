@@ -42,6 +42,7 @@ contextBridge.exposeInMainWorld("loremasterDesktop", {
     return () => ipcRenderer.removeListener("alerts:test", listener);
   },
   setExpanded: (expanded: boolean) => ipcRenderer.send("window:set-mode", expanded),
+  setAnalysis: (active: boolean) => ipcRenderer.send("window:set-analysis", active),
   minimizeWindow: () => ipcRenderer.send("window:minimize"),
   closeWindow: () => ipcRenderer.send("window:close"),
 });

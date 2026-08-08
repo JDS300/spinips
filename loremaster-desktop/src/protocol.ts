@@ -39,6 +39,18 @@ export interface CombatMetricView {
   maximum: number;
 }
 
+export interface CombatHealingMetricView extends CombatMetricView {
+  overheal: number;
+}
+
+export interface EncounterTimelinePointView {
+  second: number;
+  outgoing: number;
+  incoming: number;
+  healing: number;
+  kills: number;
+}
+
 export interface CombatBreakdownView {
   sources: readonly CombatMetricView[];
   targets: readonly CombatMetricView[];
@@ -74,12 +86,15 @@ export interface EncounterView {
   summonedPetDamage: number;
   damageTaken: number;
   healingDone: number;
+  healsReceived: number;
   kills: number;
   crits: number;
   misses: number;
   sources: readonly CombatMetricView[];
   targets: readonly CombatMetricView[];
   actors: readonly CombatActorView[];
+  healingSources: readonly CombatHealingMetricView[];
+  timeline: readonly EncounterTimelinePointView[];
 }
 
 export interface ControlTimerView {

@@ -186,6 +186,7 @@ MAX_READ_BYTES = 256 * 1024
 INITIAL_BACKFILL_BYTES = 2 * 1024 * 1024
 INITIAL_BACKFILL_MINUTES = 30
 MAX_FIGHT_HISTORY = 500
+DESKTOP_FIGHT_HISTORY = 60
 TIMELINE_BUCKET_SECONDS = 2
 CHARM_SPELL_FAMILIES = frozenset({
     # Enchanter
@@ -1909,7 +1910,7 @@ class SessionStats:
             elif (self.fight.damage > 0 or self.fight.healing_done > 0
                   or self.fight.actor_damage):
                 pending = [self.fight]  # idle long enough: treat as closed
-        history = self.fights[-30:] + pending
+        history = self.fights[-DESKTOP_FIGHT_HISTORY:] + pending
         closed_damage = self.closed_damage + sum(f.damage for f in pending)
         closed_seconds = self.closed_seconds + sum(f.seconds for f in pending)
         if live:
@@ -1970,7 +1971,8 @@ class SessionStats:
             "fight_actor_healing": (
                 {k: dict(v) for k, v in shown_fight.actor_healing.items()}
                 if shown_fight else {}),
-            "fights": (history + ([live] if live else []))[-30:],
+            "fights": (history + ([live] if live else []))[-DESKTOP_FIGHT_HISTORY:],
+            "timeline_bucket_seconds": TIMELINE_BUCKET_SECONDS,
             "damage_by_source": {k: dict(v) for k, v in self.damage_by_source.items()},
             "healing_by_source": {k: dict(v) for k, v in self.healing_by_source.items()},
             "actor_damage": {k: dict(v) for k, v in self.actor_damage.items()},

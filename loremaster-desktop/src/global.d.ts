@@ -41,6 +41,7 @@ declare global {
       onSettings: (callback: (settings: unknown) => void) => () => void;
       onTestAlert: (callback: (alert: unknown) => void) => () => void;
       setExpanded: (expanded: boolean) => void;
+      setAnalysis: (active: boolean) => void;
       minimizeWindow: () => void;
       closeWindow: () => void;
     };
