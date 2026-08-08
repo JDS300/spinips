@@ -9,8 +9,12 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from PIL import Image
+
 # The effects-row grid is authored once in tools/restyle_combat.py; the audit
 # imports it so a geometry change can never pass by editing only one side.
+from paint_attack_indicator import (ATTACK_BED, ATTACK_EDGE, ATTACK_INNER,
+                                    SIZE as ATTACK_INDICATOR_SIZE)
 from restyle_combat import (EFFECT_CHIP, EFFECT_ICON, EFFECT_NAME_WIDTH,
                            EFFECT_NAME_X, EFFECT_PLATE_BLEED,
                            EFFECT_ROW_WIDTH, EFFECT_TIMER_FONT,
@@ -133,6 +137,25 @@ def require_fill(root: ET.Element, name: str,
 
 def audit_player_and_target() -> None:
     player = root_for("EQUI_PlayerWindow.xml")
+    attack_texture = Image.open(SKIN / "AttackIndicator.tga").convert("RGBA")
+    if attack_texture.size != ATTACK_INDICATOR_SIZE:
+        fail(
+            "AttackIndicator.tga size changed: "
+            f"{attack_texture.size} != {ATTACK_INDICATOR_SIZE}"
+        )
+    attack_pixels = attack_texture.load()
+    attack_samples = {
+        "horizontal outer edge": (64, 0, ATTACK_EDGE),
+        "horizontal inner glow": (64, 1, ATTACK_INNER),
+        "vertical outer edge": (0, 16, ATTACK_EDGE),
+        "vertical inner glow": (1, 16, ATTACK_INNER),
+        "inactive texture bed": (64, 16, ATTACK_BED),
+    }
+    for label, (x, y, expected) in attack_samples.items():
+        actual = attack_pixels[x, y]
+        if actual != expected:
+            fail(f"auto-attack {label} changed: {actual} != {expected}")
+
     require_binding(player, "Gauge", "Player_HP", "PlayerHP", 1)
     require_binding(player, "Gauge", "Player_Mana", "PlayerMana", 2)
     require_binding(player, "Gauge", "Player_Fatigue", "PlayerFatigue", 3)
