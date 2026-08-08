@@ -458,13 +458,15 @@ function AlertSurface() {
     (control.kind === "mez" ? settings.alerts.mezTimersEnabled : settings.alerts.lullTimersEnabled));
   const signal = testAlert ? {
     id: testAlert.id, severity: testAlert.severity, eyebrow: "ALERT PREVIEW",
-    title: testAlert.title, detail: testAlert.target, shouldSound: settings.alerts.alertSound,
+    title: testAlert.title, detail: testAlert.target, kind: "test",
+    shouldSound: settings.alerts.alertSound,
   } : explicit ? {
     id: explicit.id,
     severity: explicit.severity || "danger" as const,
     eyebrow: explicit.severity === "info" ? "INFORMATION" : "DANGER SIGNAL",
     title: explicit.title,
     detail: explicit.target,
+    kind: explicit.kind,
     shouldSound: settings.alerts.alertSound,
   } : pendingRaid ? {
     id: `raid-${pendingRaid}`,
@@ -472,6 +474,7 @@ function AlertSurface() {
     eyebrow: "RAID COMPLETION",
     title: pendingRaid,
     detail: "Open Loremaster and confirm D0–D4 to record this lockout.",
+    kind: "raid",
     shouldSound: settings.alerts.alertSound,
   } : urgentControl ? {
     id: `${urgentControl.kind}-${urgentControl.landedAt}-${urgentControl.urgency}`,
@@ -479,6 +482,7 @@ function AlertSurface() {
     eyebrow: `${urgentControl.kind.toUpperCase()} ${phaseLabel(urgentControl)}`,
     title: urgentControl.target,
     detail: `${Math.ceil(urgentControl.safeRemainingSeconds)}s safe · ${spellLabel(urgentControl)}`,
+    kind: urgentControl.kind,
     shouldSound: urgentControl.kind === "mez" ? settings.alerts.mezTimerSound : settings.alerts.lullTimerSound,
   } : null;
 
@@ -489,7 +493,7 @@ function AlertSurface() {
   }, [signal]);
 
   if (!signal) return <div className="alert-surface empty" />;
-  return <div className={`alert-surface ${signal.severity}`} role="alert">
+  return <div className={`alert-surface ${signal.severity} ${signal.kind.startsWith("tell") ? "tell-alert" : ""}`} role="alert">
     <span className="alert-glyph">!</span><div><small>{signal.eyebrow}</small><strong>{signal.title}</strong><p>{signal.detail}</p></div>
     <i className="alert-sweep" />
   </div>;
