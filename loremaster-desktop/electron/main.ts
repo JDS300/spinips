@@ -26,6 +26,8 @@ let engine: EngineSupervisor | null = null;
 let windowExpanded = false;
 let expansionDirection: "up" | "down" = "down";
 let movingWindowProgrammatically = false;
+let topmostReassertTimers: NodeJS.Timeout[] = [];
+let topmostHeartbeatTimer: NodeJS.Timeout | null = null;
 
 const SEED_SIZE = { width: 128, height: 74 } as const;
 const EXPANDED_SIZE = { width: 470, height: 580 } as const;
@@ -440,8 +442,8 @@ class EngineSupervisor {
     };
     saveSettings(this.settings);
     this.send({ type: "engine.set-alert-config", alertConfig: this.settings.alerts });
-    applyAlwaysOnTop(this.settings.alwaysOnTop);
     applyDisplayScale(this.settings.fontScale);
+    applyAlwaysOnTop(this.settings.alwaysOnTop);
     positionAlertWindow();
     mainWindow?.webContents.send("settings:changed", this.settings);
     alertWindow?.webContents.send("settings:changed", this.settings);
@@ -622,11 +624,56 @@ function applyDisplayScale(scale: number): void {
   syncControlWindow();
 }
 
-function applyAlwaysOnTop(enabled: boolean): void {
+function overlayWindows(): BrowserWindow[] {
+  return [mainWindow, alertWindow, controlWindow].filter(
+    (window): window is BrowserWindow => Boolean(window && !window.isDestroyed()),
+  );
+}
+
+function reinforceOverlayZOrder(enabled: boolean): void {
   const level = process.platform === "win32" ? "screen-saver" : "floating";
-  mainWindow?.setAlwaysOnTop(enabled, level);
-  alertWindow?.setAlwaysOnTop(enabled, level);
-  controlWindow?.setAlwaysOnTop(enabled, level);
+  for (const window of overlayWindows()) {
+    try {
+      window.setAlwaysOnTop(enabled, level, enabled ? 1 : 0);
+      if (enabled && window.isVisible()) window.moveTop();
+    } catch (error) {
+      console.warn("Could not reinforce Loremaster overlay z-order", error);
+    }
+  }
+}
+
+function clearTopmostReassertions(): void {
+  for (const timer of topmostReassertTimers) clearTimeout(timer);
+  topmostReassertTimers = [];
+}
+
+function scheduleTopmostReassertion(): void {
+  clearTopmostReassertions();
+  if (!(engine?.getState().settings.alwaysOnTop ?? defaultSettings.alwaysOnTop)) return;
+  for (const delay of [60, 240]) {
+    const timer = setTimeout(() => {
+      topmostReassertTimers = topmostReassertTimers.filter((candidate) => candidate !== timer);
+      reinforceOverlayZOrder(true);
+    }, delay);
+    timer.unref();
+    topmostReassertTimers.push(timer);
+  }
+}
+
+function applyAlwaysOnTop(enabled: boolean): void {
+  clearTopmostReassertions();
+  reinforceOverlayZOrder(enabled);
+  if (enabled) scheduleTopmostReassertion();
+}
+
+function startTopmostHeartbeat(): void {
+  if (topmostHeartbeatTimer) return;
+  topmostHeartbeatTimer = setInterval(() => {
+    if (engine?.getState().settings.alwaysOnTop ?? defaultSettings.alwaysOnTop) {
+      reinforceOverlayZOrder(true);
+    }
+  }, 2_000);
+  topmostHeartbeatTimer.unref();
 }
 
 function syncControlWindow(): void {
@@ -744,6 +791,7 @@ function setWindowMode(expanded: boolean, preserveAnchor = false): void {
   }
   positionAlertWindow();
   syncControlWindow();
+  applyAlwaysOnTop(settings.alwaysOnTop);
   setImmediate(() => { movingWindowProgrammatically = false; });
 }
 
@@ -779,6 +827,7 @@ function createAlertWindow(): void {
     alertWindow?.webContents.setZoomFactor(settings.fontScale);
     positionAlertWindow();
     alertWindow?.showInactive();
+    scheduleTopmostReassertion();
     if (process.env.LOREMASTER_SCREENSHOT_VIEW === "alert" && process.env.LOREMASTER_SCREENSHOT_PATH) {
       alertWindow?.webContents.send("alerts:test", {
         id: "visual-test", severity: "danger", title: "CHARM BROKE", target: "an abhorrent",
@@ -827,6 +876,7 @@ function createControlWindow(): void {
   void rendererReady.then(() => {
     controlWindow?.webContents.setZoomFactor(settings.fontScale);
     syncControlWindow();
+    scheduleTopmostReassertion();
     if (process.env.LOREMASTER_SCREENSHOT_VIEW === "controls" && process.env.LOREMASTER_SCREENSHOT_PATH) {
       const fixtureEvent = {
         protocolVersion: 1,
@@ -905,6 +955,27 @@ function createWindow(): void {
     mainWindow?.showInactive();
     createAlertWindow();
     createControlWindow();
+    applyAlwaysOnTop(settings.alwaysOnTop);
+    const topmostProbePath = process.env.LOREMASTER_TOPMOST_PROBE_PATH;
+    if (topmostProbePath) {
+      const rawProbeScale = Number(process.env.LOREMASTER_TOPMOST_PROBE_SCALE || 1.15);
+      const requestedScale = clamp(Number.isFinite(rawProbeScale) ? rawProbeScale : 1.15, 0.9, 1.4);
+      engine?.updateDesktopSettings({ alwaysOnTop: true, fontScale: requestedScale });
+      setTimeout(() => {
+        const report = {
+          requestedScale,
+          configuredScale: engine?.getState().settings.fontScale,
+          windows: {
+            main: Boolean(mainWindow?.isAlwaysOnTop()),
+            alert: Boolean(alertWindow?.isAlwaysOnTop()),
+            controls: Boolean(controlWindow?.isAlwaysOnTop()),
+          },
+          mainBounds: mainWindow?.getBounds(),
+        };
+        writeFileSync(topmostProbePath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+        app.quit();
+      }, 500);
+    }
     const screenshotPath = process.env.LOREMASTER_SCREENSHOT_PATH;
     if (screenshotPath && mainWindow && !["alert", "controls"].includes(process.env.LOREMASTER_SCREENSHOT_VIEW ?? "")) {
       const screenshotView = process.env.LOREMASTER_SCREENSHOT_VIEW;
@@ -936,6 +1007,11 @@ function createWindow(): void {
     controlWindow?.close();
     mainWindow = null;
   });
+  mainWindow.on("show", scheduleTopmostReassertion);
+  mainWindow.on("restore", scheduleTopmostReassertion);
+  mainWindow.on("focus", scheduleTopmostReassertion);
+  mainWindow.on("blur", scheduleTopmostReassertion);
+  mainWindow.on("resize", scheduleTopmostReassertion);
   mainWindow.on("move", () => {
     positionAlertWindow();
     syncControlWindow();
@@ -1106,12 +1182,19 @@ app.whenReady().then(() => {
   engine = new EngineSupervisor();
   engine.start();
   createWindow();
+  startTopmostHeartbeat();
+  screen.on("display-metrics-changed", scheduleTopmostReassertion);
   const smokeExitMs = Number(process.env.LOREMASTER_SMOKE_EXIT_MS || 0);
   if (Number.isFinite(smokeExitMs) && smokeExitMs >= 250) {
     setTimeout(() => app.quit(), smokeExitMs);
   }
 });
-app.on("before-quit", () => engine?.stop());
+app.on("before-quit", () => {
+  clearTopmostReassertions();
+  if (topmostHeartbeatTimer) clearInterval(topmostHeartbeatTimer);
+  topmostHeartbeatTimer = null;
+  engine?.stop();
+});
 app.on("window-all-closed", () => app.quit());
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
