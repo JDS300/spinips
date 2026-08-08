@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, screen, shell } from "electron";
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, screen, shell } from "electron";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -24,6 +24,7 @@ let alertWindow: BrowserWindow | null = null;
 let controlWindow: BrowserWindow | null = null;
 let engine: EngineSupervisor | null = null;
 let windowExpanded = false;
+let windowAnalysis = false;
 let expansionDirection: "up" | "down" = "down";
 let movingWindowProgrammatically = false;
 let topmostReassertTimers: NodeJS.Timeout[] = [];
@@ -31,7 +32,8 @@ let topmostHeartbeatTimer: NodeJS.Timeout | null = null;
 
 const SEED_SIZE = { width: 128, height: 74 } as const;
 const EXPANDED_SIZE = { width: 470, height: 580 } as const;
-const ALERT_SIZE = { width: 352, height: 82 } as const;
+const ANALYSIS_SIZE = { width: 1180, height: 760 } as const;
+const ALERT_SIZE = { width: 420, height: 112 } as const;
 const CONTROL_SURFACE_WIDTH = 304;
 const CONTROL_SURFACE_HEADER_HEIGHT = 31;
 const CONTROL_SURFACE_ROW_HEIGHT = 48;
@@ -82,6 +84,7 @@ interface DesktopSettings {
   alwaysOnTop: boolean;
   fontScale: number;
   splitCharmedPetDps: boolean;
+  stanceAdvisorEnabled: boolean;
   seedPosition: { x: number; y: number } | null;
   alerts: AlertSettings;
 }
@@ -132,6 +135,7 @@ const defaultSettings: DesktopSettings = {
   alwaysOnTop: true,
   fontScale: 1.1,
   splitCharmedPetDps: false,
+  stanceAdvisorEnabled: false,
   seedPosition: null,
   alerts: defaultAlertSettings,
 };
@@ -168,6 +172,7 @@ function readSettings(): DesktopSettings {
       alwaysOnTop: boolean(value.alwaysOnTop, true),
       fontScale: clampInteger(value.fontScale === undefined ? 110 : Number(value.fontScale) * 100, 110, 90, 140) / 100,
       splitCharmedPetDps: boolean(value.splitCharmedPetDps, false),
+      stanceAdvisorEnabled: boolean(value.stanceAdvisorEnabled, false),
       seedPosition,
       alerts: {
         alertsEnabled: boolean(alertValue.alertsEnabled, defaultAlertSettings.alertsEnabled),
@@ -429,7 +434,7 @@ class EngineSupervisor {
     this.send({ type: "engine.set-raid-difficulty", raidDifficulty });
   }
 
-  updateDesktopSettings(patch: Partial<Pick<DesktopSettings, "alwaysOnTop" | "fontScale" | "splitCharmedPetDps">> & {
+  updateDesktopSettings(patch: Partial<Pick<DesktopSettings, "alwaysOnTop" | "fontScale" | "splitCharmedPetDps" | "stanceAdvisorEnabled">> & {
     alerts?: Partial<AlertSettings>;
   }): DesktopSettings {
     const nextAlerts = patch.alerts ? { ...this.settings.alerts, ...patch.alerts } : this.settings.alerts;
@@ -438,6 +443,7 @@ class EngineSupervisor {
       ...(typeof patch.alwaysOnTop === "boolean" ? { alwaysOnTop: patch.alwaysOnTop } : {}),
       ...(typeof patch.fontScale === "number" ? { fontScale: clamp(patch.fontScale, 0.9, 1.4) } : {}),
       ...(typeof patch.splitCharmedPetDps === "boolean" ? { splitCharmedPetDps: patch.splitCharmedPetDps } : {}),
+      ...(typeof patch.stanceAdvisorEnabled === "boolean" ? { stanceAdvisorEnabled: patch.stanceAdvisorEnabled } : {}),
       alerts: nextAlerts,
     };
     saveSettings(this.settings);
@@ -459,6 +465,10 @@ class EngineSupervisor {
 
   setRaidCompletion(target: string, difficulty: number, completed: boolean): void {
     this.send({ type: "engine.set-raid-completion", target, difficulty, completed });
+  }
+
+  scanAltZLockouts(): void {
+    this.send({ type: "engine.scan-alt-z-lockouts" });
   }
 
   private catalogCachePath(): string {
@@ -620,7 +630,10 @@ function applyDisplayScale(scale: number): void {
   mainWindow?.webContents.setZoomFactor(factor);
   alertWindow?.webContents.setZoomFactor(factor);
   controlWindow?.webContents.setZoomFactor(factor);
-  if (mainWindow) setWindowMode(windowExpanded, true);
+  if (mainWindow) {
+    if (windowAnalysis) setAnalysisMode(true, true);
+    else setWindowMode(windowExpanded, true);
+  }
   syncControlWindow();
 }
 
@@ -758,6 +771,7 @@ function setWindowMode(expanded: boolean, preserveAnchor = false): void {
   const expandedSize = scaledSize(EXPANDED_SIZE, settings.fontScale);
   movingWindowProgrammatically = true;
   windowExpanded = expanded;
+  windowAnalysis = false;
   if (expanded) {
     const spaceBelow = workArea.y + workArea.height - (current.y + current.height);
     const spaceAbove = current.y - workArea.y;
@@ -789,6 +803,51 @@ function setWindowMode(expanded: boolean, preserveAnchor = false): void {
     mainWindow.setBounds(target, false);
     engine?.saveSeedPosition({ x: target.x, y: target.y });
   }
+  positionAlertWindow();
+  syncControlWindow();
+  applyAlwaysOnTop(settings.alwaysOnTop);
+  setImmediate(() => { movingWindowProgrammatically = false; });
+}
+
+function setAnalysisMode(active: boolean, preserveAnchor = false): void {
+  if (!active) {
+    setWindowMode(true, preserveAnchor);
+    return;
+  }
+  if (!mainWindow) return;
+  const current = mainWindow.getBounds();
+  const workArea = screen.getDisplayMatching(current).workArea;
+  const settings = engine?.getState().settings ?? defaultSettings;
+  const requested = scaledSize(ANALYSIS_SIZE, Math.min(settings.fontScale, 1.2));
+  const availableWidth = Math.max(480, workArea.width - 16);
+  const availableHeight = Math.max(440, workArea.height - 16);
+  const targetSize = {
+    width: Math.min(Math.max(780, requested.width), availableWidth),
+    height: Math.min(Math.max(620, requested.height), availableHeight),
+  };
+  const spaceBelow = workArea.y + workArea.height - (current.y + current.height);
+  const spaceAbove = current.y - workArea.y;
+  if (!preserveAnchor) {
+    expansionDirection = spaceBelow < targetSize.height - current.height && spaceAbove > spaceBelow
+      ? "up"
+      : "down";
+  }
+  const y = expansionDirection === "up"
+    ? current.y + current.height - targetSize.height
+    : current.y;
+  const target = {
+    x: clamp(current.x, workArea.x, workArea.x + workArea.width - targetSize.width),
+    y: clamp(y, workArea.y, workArea.y + workArea.height - targetSize.height),
+    ...targetSize,
+  };
+  movingWindowProgrammatically = true;
+  windowExpanded = true;
+  windowAnalysis = true;
+  mainWindow.setMinimumSize(
+    Math.min(Math.round(760 * settings.fontScale), target.width),
+    Math.min(Math.round(560 * settings.fontScale), target.height),
+  );
+  mainWindow.setBounds(target, false);
   positionAlertWindow();
   syncControlWindow();
   applyAlwaysOnTop(settings.alwaysOnTop);
@@ -830,7 +889,8 @@ function createAlertWindow(): void {
     scheduleTopmostReassertion();
     if (process.env.LOREMASTER_SCREENSHOT_VIEW === "alert" && process.env.LOREMASTER_SCREENSHOT_PATH) {
       alertWindow?.webContents.send("alerts:test", {
-        id: "visual-test", severity: "danger", title: "CHARM BROKE", target: "an abhorrent",
+        id: "visual-test", severity: "info", title: "TELL · AROMEK",
+        target: "Sometimes it feels like maybe I should wait for the next pull before changing stance.",
       });
       setTimeout(() => {
         void alertWindow?.webContents.capturePage().then((image) => {
@@ -919,8 +979,8 @@ function createWindow(): void {
     ...(settings.seedPosition ?? {}),
     minWidth: 118,
     minHeight: 64,
-    maxWidth: 720,
-    maxHeight: 980,
+    maxWidth: 1800,
+    maxHeight: 1300,
     resizable: true,
     frame: false,
     thickFrame: false,
@@ -979,14 +1039,27 @@ function createWindow(): void {
     const screenshotPath = process.env.LOREMASTER_SCREENSHOT_PATH;
     if (screenshotPath && mainWindow && !["alert", "controls"].includes(process.env.LOREMASTER_SCREENSHOT_VIEW ?? "")) {
       const screenshotView = process.env.LOREMASTER_SCREENSHOT_VIEW;
-      void (screenshotView === "seed"
+      void (screenshotView?.startsWith("seed")
         ? Promise.resolve()
         : mainWindow.webContents.executeJavaScript(
           "document.querySelector('.seed-action')?.click()",
-        )).then(() => new Promise((resolve) => setTimeout(resolve, screenshotView === "seed" ? 250 : 500)))
+        )).then(() => new Promise((resolve) => setTimeout(resolve, screenshotView?.startsWith("seed") ? 250 : 500)))
+        .then(() => screenshotView === "seed-attack"
+          ? mainWindow?.webContents.executeJavaScript(
+            "document.querySelector('.rune-seed')?.classList.add('attacking')")
+          : undefined)
         .then(() => screenshotView === "settings"
           ? mainWindow?.webContents.executeJavaScript(
             "document.querySelector('.masthead-actions button')?.click()")
+          : screenshotView === "analysis"
+            ? mainWindow?.webContents.executeJavaScript(
+              "document.querySelector('button[aria-label=\"Open full combat breakdown\"]')?.click()")
+          : screenshotView === "breakdown"
+            ? mainWindow?.webContents.executeJavaScript(`
+              document.querySelector('.encounter-nav button:not(:disabled)')?.click();
+              const details = document.querySelector('.breakdown-card');
+              if (details) { details.open = true; details.scrollIntoView({ block: 'start' }); }
+            `)
           : undefined)
         .then(() => new Promise((resolve) => setTimeout(resolve, 250)))
         .then(() => mainWindow?.webContents.capturePage())
@@ -1076,6 +1149,7 @@ ipcMain.handle("settings:update", (_event, value: unknown) => {
   if (typeof raw.alwaysOnTop === "boolean") patch.alwaysOnTop = raw.alwaysOnTop;
   if (Number.isFinite(Number(raw.fontScale))) patch.fontScale = clamp(Number(raw.fontScale), 0.9, 1.4);
   if (typeof raw.splitCharmedPetDps === "boolean") patch.splitCharmedPetDps = raw.splitCharmedPetDps;
+  if (typeof raw.stanceAdvisorEnabled === "boolean") patch.stanceAdvisorEnabled = raw.stanceAdvisorEnabled;
   if (raw.alerts && typeof raw.alerts === "object") {
     const candidate = raw.alerts as Record<string, unknown>;
     const alerts: Partial<AlertSettings> = {};
@@ -1174,6 +1248,9 @@ ipcMain.handle("updates:check", async () => {
 ipcMain.on("window:set-mode", (_event, expanded: boolean) => {
   setWindowMode(Boolean(expanded));
 });
+ipcMain.on("window:set-analysis", (_event, active: boolean) => {
+  setAnalysisMode(Boolean(active));
+});
 
 ipcMain.on("window:minimize", () => mainWindow?.minimize());
 ipcMain.on("window:close", () => mainWindow?.close());
@@ -1182,6 +1259,9 @@ app.whenReady().then(() => {
   engine = new EngineSupervisor();
   engine.start();
   createWindow();
+  if (!globalShortcut.register("CommandOrControl+Shift+Z", () => engine?.scanAltZLockouts())) {
+    console.error("Could not register the Ctrl+Shift+Z Alt+Z lockout scan hotkey");
+  }
   startTopmostHeartbeat();
   screen.on("display-metrics-changed", scheduleTopmostReassertion);
   const smokeExitMs = Number(process.env.LOREMASTER_SMOKE_EXIT_MS || 0);
@@ -1190,6 +1270,7 @@ app.whenReady().then(() => {
   }
 });
 app.on("before-quit", () => {
+  globalShortcut.unregisterAll();
   clearTopmostReassertions();
   if (topmostHeartbeatTimer) clearInterval(topmostHeartbeatTimer);
   topmostHeartbeatTimer = null;

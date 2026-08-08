@@ -9,9 +9,60 @@ LOREMASTER_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(LOREMASTER_DIR))
 
 from desktop_worker import HeadlessEngine  # noqa: E402
+from instance_lockout_ocr import ParsedRaidLockout  # noqa: E402
 
 
 class DesktopWorkerTests(unittest.TestCase):
+    def test_alt_z_lockouts_credit_weekly_ledger_and_survive_restart(self):
+        scanned_at = datetime(2026, 8, 7, 20, 0, 0)
+        with tempfile.TemporaryDirectory() as root:
+            engine = HeadlessEngine(data_dir=root)
+            try:
+                engine.stats.character = "Spin"
+                count = engine.import_instance_lockouts([
+                    ParsedRaidLockout(
+                        target="Lord Nagafen", difficulty=3,
+                        remaining_seconds=2 * 86400,
+                        instance_name="Nagafen's Lair - Group 3 (Fused)",
+                        event_name="Lord Nagafen", raw_text="fixture"),
+                ], scanned_at=scanned_at)
+                event = engine.snapshot_event(datetime(2026, 8, 7, 21, 0, 0))
+            finally:
+                engine.close()
+            self.assertEqual(count, 1)
+            weekly = event["snapshot"]["weekly"]
+            nagafen = next(row for row in weekly["raids"]
+                           if row["target"] == "Lord Nagafen")
+            self.assertTrue(nagafen["difficulties"][3])
+            self.assertEqual(weekly["altZLockouts"][0]["remainingSeconds"], 47 * 3600)
+
+            restored = HeadlessEngine(data_dir=root)
+            try:
+                restored.stats.character = "Spin"
+                snapshot = restored.snapshot_event(datetime(2026, 8, 7, 22, 0, 0))
+            finally:
+                restored.close()
+            self.assertEqual(
+                snapshot["snapshot"]["weekly"]["altZLockouts"][0]["target"],
+                "Lord Nagafen")
+
+    def test_auto_attack_state_crosses_desktop_boundary_exactly(self):
+        with tempfile.TemporaryDirectory() as root:
+            engine = HeadlessEngine(data_dir=root)
+            try:
+                self.assertTrue(engine.process_line(
+                    "[Fri Aug 07 19:59:58 2026] Auto attack is on."))
+                enabled = engine.snapshot_event(
+                    datetime(2026, 8, 7, 19, 59, 59))
+                self.assertTrue(engine.process_line(
+                    "[Fri Aug 07 20:00:00 2026] Auto attack is off."))
+                disabled = engine.snapshot_event(
+                    datetime(2026, 8, 7, 20, 0, 1))
+            finally:
+                engine.close()
+            self.assertTrue(enabled["snapshot"]["combat"]["autoAttack"])
+            self.assertFalse(disabled["snapshot"]["combat"]["autoAttack"])
+
     def test_live_snapshot_preserves_damage_and_control_parity(self):
         with tempfile.TemporaryDirectory() as root:
             engine = HeadlessEngine(data_dir=root)
@@ -97,6 +148,21 @@ class DesktopWorkerTests(unittest.TestCase):
             finally:
                 engine.close()
             self.assertEqual(event["snapshot"]["weekly"]["completedCount"], 0)
+
+    def test_group_killing_blow_prompts_when_self_engaged_the_raid_boss(self):
+        with tempfile.TemporaryDirectory() as root:
+            engine = HeadlessEngine(data_dir=root)
+            try:
+                engine.process_line(
+                    "[Fri Aug 07 20:00:00 2026] You slash Cazic-Thule for 100 points of damage.")
+                engine.process_line(
+                    "[Fri Aug 07 20:00:01 2026] Cazic-Thule has been slain by AromeK!")
+                event = engine.snapshot_event(datetime(2026, 8, 7, 20, 0, 2))
+            finally:
+                engine.close()
+            weekly = event["snapshot"]["weekly"]
+            self.assertEqual(weekly["pendingRaidTarget"], "Cazic-Thule")
+            self.assertEqual(weekly["completedCount"], 0)
 
     def test_boss_kill_waits_for_explicit_difficulty(self):
         with tempfile.TemporaryDirectory() as root:

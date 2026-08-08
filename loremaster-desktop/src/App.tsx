@@ -5,11 +5,15 @@ import {
   isEngineSnapshotEvent,
   isGearPlanView,
   type ControlTimerView,
+  type CombatActorRole,
+  type CombatActorView,
   type DesktopSettings,
+  type EncounterView,
   type EngineHealth,
   type EngineSnapshotEvent,
   type GearPlanView,
 } from "./protocol";
+import { CombatArchive } from "./CombatArchive";
 
 const roman = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 const raidDifficulties = [0, 1, 2, 3, 4] as const;
@@ -19,7 +23,8 @@ const eqToolsCharSheetUrl = "https://eqlegendstools.com/char-sheet/";
 
 const defaultDesktopSettings: DesktopSettings = {
   logPath: "", raidDifficulty: null, bisBuildPath: "", inventoryPath: "",
-  alwaysOnTop: true, fontScale: 1.1, splitCharmedPetDps: false, seedPosition: null,
+  alwaysOnTop: true, fontScale: 1.1, splitCharmedPetDps: false,
+  stanceAdvisorEnabled: false, seedPosition: null,
   alerts: {
     alertsEnabled: true, alertSound: true, alertSeconds: 5, alertAnchor: "auto",
     alertCharmBreak: true, alertTells: true, alertSummon: true, alertDeath: true,
@@ -47,13 +52,14 @@ const emptyEvent: EngineSnapshotEvent = {
     observedAt: new Date(0).toISOString(),
     character: { name: "?", level: 0, composition: "", zone: "" },
     combat: {
-      active: false, encounterName: "", fightDps: 0, sessionDps: 0,
+      active: false, autoAttack: false, encounterName: "", fightDps: 0, sessionDps: 0,
       personalDamage: 0, charmedPetDamage: 0, summonedPetDamage: 0,
       fightSeconds: 0, fightDamage: 0, fightPersonalDamage: 0,
       fightCharmedPetDamage: 0, fightSummonedPetDamage: 0,
       damageTaken: 0, healingDone: 0, kills: 0, crits: 0, misses: 0,
     },
     breakdown: { sources: [], targets: [], actors: [] },
+    encounters: [],
     controls: [], hiddenControlRows: 0, controlNoticeCount: 0,
     controlAmbiguityCount: 0,
   },
@@ -77,6 +83,16 @@ function formatDuration(value: number): string {
   const minutes = Math.floor(seconds / 60);
   const remainder = String(seconds % 60).padStart(2, "0");
   return minutes > 0 ? `${minutes}:${remainder}` : `${seconds}s`;
+}
+
+function formatLockout(value: number): string {
+  const seconds = Math.max(0, Math.floor(value));
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m ${seconds % 60}s`;
 }
 
 function spellLabel(control: ControlTimerView): string {
@@ -134,13 +150,14 @@ function RuneSeed({ event, health, onExpand }: {
   onExpand: () => void;
 }) {
   const { combat } = event.snapshot;
-  const urgent = health.state === "error" || Boolean(event.snapshot.alerts?.length) || event.snapshot.controls.some((control) =>
+  const urgent = health.state === "error" || Boolean(event.snapshot.alerts?.length) ||
+    Boolean(event.snapshot.weekly?.pendingRaidTarget) || event.snapshot.controls.some((control) =>
     control.state !== "active" || control.urgency !== "safe");
   return (
-    <div className={`rune-seed ${urgent ? "urgent" : ""}`}>
+    <div className={`rune-seed ${urgent ? "urgent" : ""} ${combat.autoAttack ? "attacking" : ""}`}>
       <span className="seed-drag" aria-hidden="true" />
       <button className="seed-action" onClick={onExpand} type="button"
-        aria-label={`${formatDps(combat.fightDps)} DPS${urgent ? ", urgent signal" : ""}`}>
+        aria-label={`${formatDps(combat.fightDps)} DPS${combat.autoAttack ? ", auto attack on" : ""}${urgent ? ", urgent signal" : ""}`}>
         <CogMark compact />
         <span className="seed-metric"><strong>{formatDps(combat.fightDps)}</strong><small>DPS</small></span>
       </button>
@@ -253,6 +270,7 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
       alwaysOnTop: draft.alwaysOnTop,
       fontScale: draft.fontScale,
       splitCharmedPetDps: draft.splitCharmedPetDps,
+      stanceAdvisorEnabled: draft.stanceAdvisorEnabled,
       alerts: draft.alerts,
     });
     if (saved) onSettings(saved);
@@ -289,6 +307,9 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
         <SettingsToggle checked={draft.splitCharmedPetDps} label="Split self and charmed-pet DPS"
           detail="Shows separate live fight rates while preserving the accurate combined total."
           onChange={(splitCharmedPetDps) => patchDraft({ splitCharmedPetDps })} />
+        <SettingsToggle checked={draft.stanceAdvisorEnabled} label="Enable encounter stance advisor"
+          detail="Adds an evidence-based offense or defense lean. Disabled by default; logs cannot see your active stance."
+          onChange={(stanceAdvisorEnabled) => patchDraft({ stanceAdvisorEnabled })} />
         <div className="font-scale-setting">
           <span><b>HUD TEXT SIZE</b><small>Applies immediately to the Seed, expanded HUD, settings, and alerts.</small></span>
           <div><button type="button" aria-label="Decrease HUD text size" onClick={() => void changeFontScale(-0.05)}>A−</button>
@@ -432,18 +453,29 @@ function AlertSurface() {
   }, []);
 
   const explicit = settings.alerts.alertsEnabled ? event.snapshot.alerts?.[0] : undefined;
+  const pendingRaid = event.snapshot.weekly?.pendingRaidTarget;
   const urgentControl = event.snapshot.controls.find((control) =>
     control.state === "active" && control.urgency !== "safe" &&
     (control.kind === "mez" ? settings.alerts.mezTimersEnabled : settings.alerts.lullTimersEnabled));
   const signal = testAlert ? {
     id: testAlert.id, severity: testAlert.severity, eyebrow: "ALERT PREVIEW",
-    title: testAlert.title, detail: testAlert.target, shouldSound: settings.alerts.alertSound,
+    title: testAlert.title, detail: testAlert.target, kind: "test",
+    shouldSound: settings.alerts.alertSound,
   } : explicit ? {
     id: explicit.id,
     severity: explicit.severity || "danger" as const,
     eyebrow: explicit.severity === "info" ? "INFORMATION" : "DANGER SIGNAL",
     title: explicit.title,
     detail: explicit.target,
+    kind: explicit.kind,
+    shouldSound: settings.alerts.alertSound,
+  } : pendingRaid ? {
+    id: `raid-${pendingRaid}`,
+    severity: "info" as const,
+    eyebrow: "RAID COMPLETION",
+    title: pendingRaid,
+    detail: "Open Loremaster and confirm D0–D4 to record this lockout.",
+    kind: "raid",
     shouldSound: settings.alerts.alertSound,
   } : urgentControl ? {
     id: `${urgentControl.kind}-${urgentControl.landedAt}-${urgentControl.urgency}`,
@@ -451,6 +483,7 @@ function AlertSurface() {
     eyebrow: `${urgentControl.kind.toUpperCase()} ${phaseLabel(urgentControl)}`,
     title: urgentControl.target,
     detail: `${Math.ceil(urgentControl.safeRemainingSeconds)}s safe · ${spellLabel(urgentControl)}`,
+    kind: urgentControl.kind,
     shouldSound: urgentControl.kind === "mez" ? settings.alerts.mezTimerSound : settings.alerts.lullTimerSound,
   } : null;
 
@@ -461,21 +494,116 @@ function AlertSurface() {
   }, [signal]);
 
   if (!signal) return <div className="alert-surface empty" />;
-  return <div className={`alert-surface ${signal.severity}`} role="alert">
+  return <div className={`alert-surface ${signal.severity} ${signal.kind.startsWith("tell") ? "tell-alert" : ""}`} role="alert">
     <span className="alert-glyph">!</span><div><small>{signal.eyebrow}</small><strong>{signal.title}</strong><p>{signal.detail}</p></div>
     <i className="alert-sweep" />
   </div>;
+}
+
+function currentEncounter(event: EngineSnapshotEvent): EncounterView {
+  const { combat, breakdown } = event.snapshot;
+  return {
+    encounterId: `current-${event.sequence}`,
+    name: combat.encounterName || "Waiting for combat",
+    active: combat.active,
+    startedAt: event.occurredAt,
+    endedAt: event.occurredAt,
+    seconds: combat.fightSeconds,
+    damage: combat.fightDamage,
+    dps: combat.fightDps,
+    personalDamage: combat.fightPersonalDamage,
+    charmedPetDamage: combat.fightCharmedPetDamage,
+    summonedPetDamage: combat.fightSummonedPetDamage,
+    damageTaken: combat.damageTaken,
+    healingDone: combat.healingDone,
+    healsReceived: 0,
+    kills: combat.kills,
+    crits: combat.crits,
+    misses: combat.misses,
+    sources: breakdown.sources,
+    targets: breakdown.targets,
+    actors: breakdown.actors.map((actor) => ({
+      name: actor.name, role: "observed", encounterDamage: actor.total,
+      encounterDps: combat.fightSeconds > 0 ? Math.round(actor.total / combat.fightSeconds) : 0,
+      encounterHits: actor.hits, encounterMaximum: actor.maximum,
+      sessionDamage: actor.total, sessionDps: 0,
+      sessionHits: actor.hits, sessionMaximum: actor.maximum,
+    })),
+    healingSources: [],
+    timeline: [],
+  };
+}
+
+const actorRoleLabels: Record<CombatActorRole, string> = {
+  self: "SELF", charmed: "CHARMED PET", summoned: "SUMMONED PET", observed: "OBSERVED",
+};
+
+function stanceAdvice(encounter: EncounterView): { lean: string; detail: string; tone: "offense" | "defense" } {
+  const outgoing = encounter.damage / Math.max(1, encounter.seconds);
+  const incoming = encounter.damageTaken / Math.max(1, encounter.seconds);
+  const pressure = encounter.damageTaken / Math.max(1, encounter.damage);
+  if (encounter.damageTaken >= 1000 && (pressure >= 0.5 || incoming >= outgoing * 0.65)) {
+    return {
+      lean: "DEFENSE LEAN",
+      detail: `${Math.round(incoming).toLocaleString()}/s incoming pressure is high relative to ${Math.round(outgoing).toLocaleString()}/s outgoing. Favor mitigation until pressure settles.`,
+      tone: "defense",
+    };
+  }
+  return {
+    lean: "OFFENSE LEAN",
+    detail: `${Math.round(outgoing).toLocaleString()}/s outgoing is ahead of ${Math.round(incoming).toLocaleString()}/s incoming. Favor pressure while the encounter remains stable.`,
+    tone: "offense",
+  };
+}
+
+function ActorDrilldown({ role, encounter, combat }: {
+  role: CombatActorRole;
+  encounter: EncounterView;
+  combat: EngineSnapshotEvent["snapshot"]["combat"];
+}) {
+  const rows = encounter.actors.filter((actor) => actor.role === role);
+  const sessionTotal = combat.personalDamage + combat.charmedPetDamage + combat.summonedPetDamage;
+  const sessionSeconds = combat.sessionDps > 0 ? sessionTotal / combat.sessionDps : 0;
+  const encounterDamage = role === "self" ? encounter.personalDamage
+    : role === "charmed" ? encounter.charmedPetDamage
+      : role === "summoned" ? encounter.summonedPetDamage
+        : rows.reduce((total, actor) => total + actor.encounterDamage, 0);
+  const sessionDamage = role === "self" ? combat.personalDamage
+    : role === "charmed" ? combat.charmedPetDamage
+      : role === "summoned" ? combat.summonedPetDamage
+        : rows.reduce((total, actor) => total + actor.sessionDamage, 0);
+  const encounterDps = encounter.seconds > 0 ? encounterDamage / encounter.seconds : 0;
+  const sessionDps = sessionSeconds > 0 ? sessionDamage / sessionSeconds : 0;
+  const encounterShare = encounter.damage > 0 ? Math.round(encounterDamage / encounter.damage * 100) : 0;
+  return <section className={`actor-drilldown ${role}`}>
+    <header><div><small>SELECTED CONTRIBUTOR</small><h3>{actorRoleLabels[role]}</h3></div><span>{encounterShare}% FIGHT SHARE</span></header>
+    <div className="actor-facts">
+      <span><small>ENCOUNTER DPS</small><b>{formatDps(encounterDps)}</b></span>
+      <span><small>ENCOUNTER DAMAGE</small><b>{encounterDamage.toLocaleString()}</b></span>
+      <span><small>SESSION DPS</small><b>{formatDps(sessionDps)}</b></span>
+      <span><small>SESSION DAMAGE</small><b>{sessionDamage.toLocaleString()}</b></span>
+    </div>
+    {rows.length > 0 && <div className="actor-identities">{rows.map((actor: CombatActorView) => <article key={actor.name}>
+      <span><b>{actor.name}</b><small>{actor.encounterHits} hits · max {actor.encounterMaximum.toLocaleString()}</small></span>
+      <strong>{actor.encounterDamage.toLocaleString()} <small>· {formatDps(actor.encounterDps)}/s</small></strong>
+    </article>)}</div>}
+    {rows.length === 0 && encounterDamage > 0 && <p className="actor-estimate">The total is proven, but this older log segment does not preserve a unique pet name.</p>}
+    {role === "observed" && <p className="actor-estimate">Observed actors are visible in your log and never inflate your personal DPS.</p>}
+  </section>;
 }
 
 function MainApp() {
   const [event, setEvent] = useState<EngineSnapshotEvent>(emptyEvent);
   const [health, setHealth] = useState<EngineHealth>(initialHealth);
   const [expanded, setExpanded] = useState(false);
+  const [analysisOpen, setAnalysisOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [raidDifficulty, setRaidDifficulty] = useState<number | null>(null);
   const [settings, setSettings] = useState<DesktopSettings>(defaultDesktopSettings);
   const [runtime, setRuntime] = useState({ coldStartMs: 0, residentMemoryMb: 0 });
   const [gearPlan, setGearPlan] = useState<GearPlanView>(emptyGearPlan);
+  const [selectedEncounterId, setSelectedEncounterId] = useState<string | null>(null);
+  const [selectedActorRole, setSelectedActorRole] = useState<CombatActorRole>("self");
 
   useEffect(() => {
     const desktop = window.loremasterDesktop;
@@ -508,8 +636,22 @@ function MainApp() {
 
   const setMode = (next: boolean) => {
     setExpanded(next);
+    setAnalysisOpen(false);
     if (!next) setSettingsOpen(false);
     window.loremasterDesktop?.setExpanded(next);
+  };
+
+  const showAnalysis = () => {
+    setExpanded(true);
+    setSettingsOpen(false);
+    setAnalysisOpen(true);
+    window.loremasterDesktop?.setAnalysis(true);
+  };
+
+  const showHud = () => {
+    setExpanded(true);
+    setAnalysisOpen(false);
+    window.loremasterDesktop?.setAnalysis(false);
   };
 
   const changeRaidDifficulty = (value: number | null) => {
@@ -522,6 +664,11 @@ function MainApp() {
     if (saved) setSettings(saved);
   };
 
+  const enableStanceAdvisor = async () => {
+    const saved = await window.loremasterDesktop?.updateSettings({ stanceAdvisorEnabled: true });
+    if (saved) setSettings(saved);
+  };
+
   const damageShare = useMemo(() => {
     const total = event.snapshot.combat.personalDamage + event.snapshot.combat.charmedPetDamage;
     return total > 0 ? Math.round(event.snapshot.combat.charmedPetDamage / total * 100) : 0;
@@ -531,12 +678,33 @@ function MainApp() {
 
   const { snapshot } = event;
   const weekly = snapshot.weekly;
+  if (analysisOpen) return <CombatArchive event={event} health={health} weekly={weekly}
+    onHud={showHud} onSeed={() => setMode(false)}
+    onMinimize={() => window.loremasterDesktop?.minimizeWindow()}
+    onClose={() => window.loremasterDesktop?.closeWindow()} />;
+  const encounters = snapshot.encounters?.length ? snapshot.encounters : [currentEncounter(event)];
+  const requestedEncounterIndex = selectedEncounterId
+    ? encounters.findIndex((encounter) => encounter.encounterId === selectedEncounterId)
+    : encounters.length - 1;
+  const encounterIndex = requestedEncounterIndex >= 0 ? requestedEncounterIndex : encounters.length - 1;
+  const encounter = encounters[encounterIndex];
+  const roleDamage: Record<CombatActorRole, number> = {
+    self: encounter.personalDamage,
+    charmed: encounter.charmedPetDamage,
+    summoned: encounter.summonedPetDamage,
+    observed: encounter.actors.filter((actor) => actor.role === "observed")
+      .reduce((total, actor) => total + actor.encounterDamage, 0),
+  };
+  const visibleActorRoles = (Object.keys(actorRoleLabels) as CombatActorRole[])
+    .filter((role) => role === "self" || roleDamage[role] > 0);
+  const advice = stanceAdvice(encounter);
   return (
     <main className="loremaster-shell">
       <header className="masthead">
         <CogMark />
         <div><p>LOREMASTER</p><small><b className={health.state} /> {health.state.toUpperCase()} · PROTOCOL {event.protocolVersion}</small></div>
         <div className="masthead-actions">
+          <button type="button" onClick={showAnalysis} aria-label="Open full combat breakdown">ANALYZE</button>
           <button type="button" onClick={() => setSettingsOpen((value) => !value)} aria-label="Open settings">SET</button>
           <button type="button" onClick={() => setMode(false)} aria-label="Collapse to Rune Seed">SEED</button>
           <button type="button" onClick={() => window.loremasterDesktop?.minimizeWindow()} aria-label="Minimize Loremaster">—</button>
@@ -556,17 +724,33 @@ function MainApp() {
 
         {snapshot.alerts?.map((alert) => <section className={`danger-toast ${alert.severity}`} key={alert.id} role="alert"><span>!</span><div><small>{alert.severity === "info" ? "INFORMATION" : alert.severity === "warn" ? "WARNING" : "DANGER SIGNAL"}</small><strong>{alert.title}{alert.target ? ` · ${alert.target}` : ""}</strong></div></section>)}
 
+        {weekly?.pendingRaidTarget && <section className="raid-confirmation" role="alertdialog" aria-label="Confirm raid difficulty">
+          <span className="raid-confirmation-glyph">✓</span>
+          <div><small>RAID BOSS DEFEATED</small><strong>{weekly.pendingRaidTarget}</strong><p>Confirm the completed tier to mark this week’s lockout and preserve the clear time.</p></div>
+          <div className="raid-confirmation-tiers">{raidDifficulties.map((difficulty) => <button key={difficulty} type="button"
+            onClick={() => changeRaidDifficulty(difficulty)}>D{difficulty}</button>)}</div>
+        </section>}
+
+        <nav className="encounter-nav" aria-label="Encounter history">
+          <button type="button" disabled={encounterIndex <= 0}
+            onClick={() => setSelectedEncounterId(encounters[Math.max(0, encounterIndex - 1)].encounterId)}>‹ PREV</button>
+          <span><small>{encounter.active ? "LIVE ENCOUNTER" : "ENCOUNTER HISTORY"}</small><b>{encounterIndex + 1} / {encounters.length}</b></span>
+          <button type="button" disabled={encounterIndex >= encounters.length - 1}
+            onClick={() => setSelectedEncounterId(encounters[Math.min(encounters.length - 1, encounterIndex + 1)].encounterId)}>NEXT ›</button>
+          {selectedEncounterId && <button className="encounter-current" type="button" onClick={() => setSelectedEncounterId(null)}>CURRENT</button>}
+        </nav>
+
         <section className="hero-card">
-          <p>{snapshot.combat.encounterName || "Waiting for combat"}</p>
+          <p>{encounter.name || "Waiting for combat"}</p>
           <div className="hero-metric">
-            <strong>{formatDps(snapshot.combat.fightDps)}</strong><span>DPS</span>
-            <aside><b>{formatDps(snapshot.combat.sessionDps)}</b><small>SESSION · {formatDuration(snapshot.combat.fightSeconds)} FIGHT</small></aside>
+            <strong>{formatDps(encounter.dps)}</strong><span>DPS</span>
+            <aside><b>{formatDps(snapshot.combat.sessionDps)}</b><small>SESSION · {formatDuration(encounter.seconds)} FIGHT</small></aside>
           </div>
-          <span className="hero-rule"><i style={{ width: `${Math.min(100, snapshot.combat.fightDps / 5)}%` }} /></span>
+          <span className="hero-rule"><i style={{ width: `${Math.min(100, encounter.dps / 5)}%` }} /></span>
           {settings.splitCharmedPetDps && <div className="dps-split" aria-label="Self and pet fight DPS">
-            <span><small>SELF</small><b>{formatDps(snapshot.combat.fightSeconds > 0 ? snapshot.combat.fightPersonalDamage / snapshot.combat.fightSeconds : 0)}</b></span>
-            <span><small>CHARMED</small><b>{formatDps(snapshot.combat.fightSeconds > 0 ? snapshot.combat.fightCharmedPetDamage / snapshot.combat.fightSeconds : 0)}</b></span>
-            {snapshot.combat.fightSummonedPetDamage > 0 && <span><small>SUMMONED</small><b>{formatDps(snapshot.combat.fightSummonedPetDamage / Math.max(1, snapshot.combat.fightSeconds))}</b></span>}
+            <span><small>SELF</small><b>{formatDps(encounter.seconds > 0 ? encounter.personalDamage / encounter.seconds : 0)}</b></span>
+            <span><small>CHARMED</small><b>{formatDps(encounter.seconds > 0 ? encounter.charmedPetDamage / encounter.seconds : 0)}</b></span>
+            {encounter.summonedPetDamage > 0 && <span><small>SUMMONED</small><b>{formatDps(encounter.summonedPetDamage / Math.max(1, encounter.seconds))}</b></span>}
           </div>}
         </section>
 
@@ -590,22 +774,37 @@ function MainApp() {
         </section>
 
         <details className="breakdown-card">
-          <summary><div><small>ENCOUNTER DETAIL</small><h2>FIGHT BREAKDOWN</h2></div><span>{snapshot.breakdown.sources.length} SOURCES</span></summary>
+          <summary><div><small>ENCOUNTER DETAIL</small><h2>FIGHT BREAKDOWN</h2></div><span>{encounter.sources.length} SOURCES</span></summary>
           <div className="fight-facts">
-            <span><small>DAMAGE</small><b>{snapshot.combat.fightDamage.toLocaleString()}</b></span>
-            <span><small>TAKEN</small><b>{snapshot.combat.damageTaken.toLocaleString()}</b></span>
-            <span><small>HEALING</small><b>{snapshot.combat.healingDone.toLocaleString()}</b></span>
-            <span><small>CRIT / MISS</small><b>{snapshot.combat.crits} / {snapshot.combat.misses}</b></span>
+            <span><small>DAMAGE</small><b>{encounter.damage.toLocaleString()}</b></span>
+            <span><small>TAKEN</small><b>{encounter.damageTaken.toLocaleString()}</b></span>
+            <span><small>HEALING</small><b>{encounter.healingDone.toLocaleString()}</b></span>
+            <span><small>CRIT / MISS</small><b>{encounter.crits} / {encounter.misses}</b></span>
           </div>
+          <div className="actor-tabs" role="tablist" aria-label="DPS contributor">
+            {visibleActorRoles.map((role) => <button className={selectedActorRole === role ? "selected" : ""}
+              key={role} type="button" role="tab" aria-selected={selectedActorRole === role}
+              onClick={() => setSelectedActorRole(role)}>
+              <small>{actorRoleLabels[role]}</small><b>{formatDps(encounter.seconds > 0 ? roleDamage[role] / encounter.seconds : 0)}</b><span>DPS</span>
+            </button>)}
+          </div>
+          <ActorDrilldown role={visibleActorRoles.includes(selectedActorRole) ? selectedActorRole : "self"}
+            encounter={encounter} combat={snapshot.combat} />
           <div className="breakdown-columns">
-            <section><small>DAMAGE BY ABILITY</small>{snapshot.breakdown.sources.slice(0, 6).map((source) => <article key={source.name}>
+            <section><small>DAMAGE BY ABILITY</small>{encounter.sources.slice(0, 8).map((source) => <article key={source.name}>
               <span><b>{source.name}</b><small>{source.hits} hits · max {source.maximum.toLocaleString()}</small></span><strong>{source.total.toLocaleString()}</strong>
             </article>)}</section>
-            <section><small>TARGETS</small>{snapshot.breakdown.targets.slice(0, 6).map((target) => <article key={target.name}>
+            <section><small>TARGETS</small>{encounter.targets.slice(0, 8).map((target) => <article key={target.name}>
               <span><b>{target.name}</b></span><strong>{target.total.toLocaleString()}</strong>
             </article>)}</section>
           </div>
-          {snapshot.character.composition && <p className="stance-note">ACTIVE COMPOSITION · {snapshot.character.composition}. EQ logs do not expose your active stance, so Loremaster reports evidence rather than guessing a recommendation.</p>}
+          {!settings.stanceAdvisorEnabled && <button className="stance-advisor-enable" type="button"
+            onClick={() => void enableStanceAdvisor()}>SHOW OPTIONAL STANCE LEAN</button>}
+          {settings.stanceAdvisorEnabled && <section className={`stance-advisor ${advice.tone}`}>
+            <div><small>OPTIONAL STANCE ADVISOR · {snapshot.character.composition || "COMPOSITION UNKNOWN"}</small><strong>{advice.lean}</strong></div>
+            <p>{advice.detail}</p>
+            <span>Evidence only · Loremaster cannot see your active stance, HP, or mana.</span>
+          </section>}
         </details>
 
         {weekly && <details className="weekly-card">
@@ -615,7 +814,18 @@ function MainApp() {
               {weekly.activeDifficulty == null ? "SET TIER" : `D${weekly.activeDifficulty}`}
             </span>
           </summary>
-          {weekly.pendingRaidTarget && <p className="raid-pending"><b>{weekly.pendingRaidTarget}</b> was detected. Pick its tier in Settings to record it.</p>}
+          {weekly.pendingRaidTarget && <p className="raid-pending"><b>{weekly.pendingRaidTarget}</b> is awaiting the D0–D4 confirmation shown above.</p>}
+          {weekly.altZScan && <section className={`altz-sync ${weekly.altZScan.status}`}>
+            <header><div><small>LIVE INSTANCE EVIDENCE</small><b>{weekly.altZScan.status === "scanning" ? "READING ALT+Z…" : weekly.altZLockouts?.length ? `${weekly.altZLockouts.length} ACTIVE RAID LOCKOUT${weekly.altZLockouts.length === 1 ? "" : "S"}` : "ALT+Z LOCKOUT SYNC"}</b></div><kbd>{weekly.altZScan.hotkey}</kbd></header>
+            <p>{weekly.altZScan.detail}</p>
+            {(weekly.altZLockouts?.length ?? 0) > 0 && <div className="altz-lockouts">
+              {weekly.altZLockouts?.map((lockout) => <article key={`${lockout.target}-${lockout.difficulty}`} title={`${lockout.instanceName} · ${lockout.eventName}`}>
+                <span><b>{lockout.target}</b><small>D{lockout.difficulty} · {lockout.instanceName}</small></span>
+                <strong>{formatLockout(lockout.remainingSeconds)}</strong>
+              </article>)}
+            </div>}
+            <footer>Open Instance Information with Alt+Z, point inside the timer table, then use the hotkey. Scroll and repeat to merge another visible page.</footer>
+          </section>}
           <div className="raid-grid" aria-label="Weekly D0 through D4 raid lockouts">
             <div className="raid-grid-head"><span>RAID TARGET</span>{raidDifficulties.map((difficulty) => <b key={difficulty}>D{difficulty}</b>)}</div>
             {weekly.raids.map((raid) => <div className="raid-grid-row" key={raid.target}>

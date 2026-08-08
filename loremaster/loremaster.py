@@ -186,6 +186,7 @@ MAX_READ_BYTES = 256 * 1024
 INITIAL_BACKFILL_BYTES = 2 * 1024 * 1024
 INITIAL_BACKFILL_MINUTES = 30
 MAX_FIGHT_HISTORY = 500
+DESKTOP_FIGHT_HISTORY = 60
 TIMELINE_BUCKET_SECONDS = 2
 CHARM_SPELL_FAMILIES = frozenset({
     # Enchanter
@@ -802,6 +803,8 @@ PATTERNS: list[tuple[str, re.Pattern]] = [
     ("money", re.compile(r"^You receive (?P<coins>.+?) (?:from the corpse|as your split)\.$")),
     ("money_sale", re.compile(r"^You receive (?P<coins>.+?) from (?P<vendor>.+?) for the (?P<item>.+?)\(s\)\.$")),
     # --- world ---
+    ("auto_attack", re.compile(
+        r"^Auto attack is (?P<state>on|off)\.$", re.I)),
     ("faction", re.compile(r"^Your faction standing with (?P<faction>.+?) has been adjusted by (?P<delta>-?\d+)\.$")),
     ("zone", re.compile(r"^You have entered (?P<zone>.+)\.$")),
     # EQL builds do not consistently emit a class trio.  When one does, only
@@ -1223,6 +1226,7 @@ class Fight:
         lambda: {"t": 0, "h": 0, "max": 0, "over": 0}))
     actor_damage: dict = field(default_factory=lambda: defaultdict(
         lambda: {"t": 0, "h": 0, "max": 0}))
+    actor_roles: dict = field(default_factory=dict)
     actor_healing: dict = field(default_factory=lambda: defaultdict(
         lambda: {"t": 0, "h": 0, "max": 0}))
     # `targets` is the player's attributed damage. `observed_targets` adds
@@ -1298,11 +1302,13 @@ class SessionStats:
             lambda: {"t": 0, "h": 0, "max": 0, "over": 0})
         self.actor_damage: dict[str, dict] = defaultdict(
             lambda: {"t": 0, "h": 0, "max": 0})
+        self.actor_roles: dict[str, str] = {}
         self.actor_healing: dict[str, dict] = defaultdict(
             lambda: {"t": 0, "h": 0, "max": 0})
         self.melee_hits = self.melee_misses = 0
         self.crits = 0
         self.enemy_misses = 0
+        self.auto_attack = False
         # defense
         self.damage_taken = 0
         self.heals_received = 0
@@ -1492,11 +1498,18 @@ class SessionStats:
         if "over" in row:
             row["over"] += overheal
 
-    def _record_actor_damage(self, actor: str, dmg: int):
+    def _record_actor_damage(self, actor: str, dmg: int,
+                             role: str = "observed"):
         if self.fight is None:
             return
         self._add_metric(self.fight.actor_damage, actor, dmg)
         self._add_metric(self.actor_damage, actor, dmg)
+        # Preserve ownership with the fight. Charmed aliases are deliberately
+        # removed when charm breaks, so classifying historical rows from the
+        # current pet-name set would silently turn old pet damage into an
+        # unrelated observed actor.
+        self.fight.actor_roles[actor] = role
+        self.actor_roles[actor] = role
 
     def _record_actor_healing(self, actor: str, amount: int):
         if self.fight is not None:
@@ -1515,11 +1528,14 @@ class SessionStats:
         self.combat_feed.append((ts, kind, amount, label))
 
     def _deal(self, ts: datetime, target: str, dmg: int, source: str,
-              crit: bool = False, actor: str | None = None):
+              crit: bool = False, actor: str | None = None,
+              actor_role: str | None = None):
         self._own_combat(ts)
         if self.fight is None:
             self.fight = self._new_fight(ts)
-        self._record_actor_damage(actor or self.character or "You", dmg)
+        self._record_actor_damage(
+            actor or self.character or "You", dmg,
+            actor_role or ("self" if actor is None else "observed"))
         self.fight.damage += dmg
         normalized_target = normalize_mob(target)
         self.fight.targets[normalized_target] += dmg
@@ -1549,7 +1565,7 @@ class SessionStats:
         known_targets = {name.casefold() for name in self.fight.targets}
         if normalize_mob(actor).casefold() in known_targets:
             return
-        self._record_actor_damage(actor, dmg)
+        self._record_actor_damage(actor, dmg, "observed")
         self.fight.observed_targets[normalize_mob(target)] += dmg
         self.fight.add_timeline(ts, "out", dmg)
 
@@ -1576,7 +1592,9 @@ class SessionStats:
         self.log_lines += 1
         crit = bool(g.get("crit"))
 
-        if kind == "melee_out":
+        if kind == "auto_attack":
+            self.auto_attack = g.get("state", "").casefold() == "on"
+        elif kind == "melee_out":
             self.melee_hits += 1
             self._deal(ts, g["target"], int(g["dmg"]), "Melee", crit)
         elif kind == "miss_out":
@@ -1637,6 +1655,7 @@ class SessionStats:
                 self.fight.kill_targets[mob] += 1
                 self.fight.add_timeline(ts, "kills", 1)
         elif kind == "death_you":
+            self.auto_attack = False
             self.pending_cast = None
             self._drop_charmed_pets()
             self.deaths += 1
@@ -1778,6 +1797,7 @@ class SessionStats:
             self.faction[g["faction"]] += int(g["delta"])
         elif kind == "zone":
             if is_real_zone_transition(g["zone"]):
+                self.auto_attack = False
                 # Charm never crosses a zone boundary. Keeping an NPC alias
                 # here would turn a future same-named mob into personal DPS.
                 self.pending_cast = None
@@ -1832,7 +1852,8 @@ class SessionStats:
                 self.pet_last_seen[pet] = ts
                 self.pet_damage += dmg
                 self._deal(ts, g["target"], dmg, f"Pet ({pet})",
-                           actor=f"{pet} (pet)")
+                           actor=f"{pet} (pet)",
+                           actor_role="charmed" if is_charmed else "summoned")
                 if is_charmed:
                     self.charmed_pet_damage += dmg
                     if self.fight:
@@ -1889,7 +1910,7 @@ class SessionStats:
             elif (self.fight.damage > 0 or self.fight.healing_done > 0
                   or self.fight.actor_damage):
                 pending = [self.fight]  # idle long enough: treat as closed
-        history = self.fights[-30:] + pending
+        history = self.fights[-DESKTOP_FIGHT_HISTORY:] + pending
         closed_damage = self.closed_damage + sum(f.damage for f in pending)
         closed_seconds = self.closed_seconds + sum(f.seconds for f in pending)
         if live:
@@ -1918,6 +1939,7 @@ class SessionStats:
             "session_dps": session_dps,
             "current_dps": current_dps,
             "in_combat": live is not None,
+            "auto_attack": self.auto_attack,
             "combat_damage": closed_damage,
             "combat_seconds": closed_seconds,
             # Export attribution totals explicitly for renderer-neutral
@@ -1944,13 +1966,17 @@ class SessionStats:
             "fight_actor_damage": (
                 {k: dict(v) for k, v in shown_fight.actor_damage.items()}
                 if shown_fight else {}),
+            "fight_actor_roles": (
+                dict(shown_fight.actor_roles) if shown_fight else {}),
             "fight_actor_healing": (
                 {k: dict(v) for k, v in shown_fight.actor_healing.items()}
                 if shown_fight else {}),
-            "fights": (history + ([live] if live else []))[-30:],
+            "fights": (history + ([live] if live else []))[-DESKTOP_FIGHT_HISTORY:],
+            "timeline_bucket_seconds": TIMELINE_BUCKET_SECONDS,
             "damage_by_source": {k: dict(v) for k, v in self.damage_by_source.items()},
             "healing_by_source": {k: dict(v) for k, v in self.healing_by_source.items()},
             "actor_damage": {k: dict(v) for k, v in self.actor_damage.items()},
+            "actor_roles": dict(self.actor_roles),
             "actor_healing": {k: dict(v) for k, v in self.actor_healing.items()},
             "damage_taken_by": {k: dict(v) for k, v in self.damage_taken_by.items()},
             "group_kills": dict(self.group_kills),
@@ -1969,6 +1995,9 @@ class SessionStats:
             "ambiguous_pet_damage": self.ambiguous_pet_damage,
             "active_pets": active_pets,
             "pet_names": sorted(self.pet_names),
+            "charmed_pet_names": sorted(self.charmed_pet_names),
+            "summoned_pet_names": sorted(
+                pet for pet in self.pet_names if not self.is_charmed_pet(pet)),
             "kills": sum(self.kills.values()),
             "kill_breakdown": dict(self.kills),
             "deaths": self.deaths,

@@ -13,6 +13,7 @@ export interface CharacterView {
 
 export interface CombatView {
   active: boolean;
+  autoAttack: boolean;
   encounterName: string;
   fightDps: number;
   sessionDps: number;
@@ -38,10 +39,62 @@ export interface CombatMetricView {
   maximum: number;
 }
 
+export interface CombatHealingMetricView extends CombatMetricView {
+  overheal: number;
+}
+
+export interface EncounterTimelinePointView {
+  second: number;
+  outgoing: number;
+  incoming: number;
+  healing: number;
+  kills: number;
+}
+
 export interface CombatBreakdownView {
   sources: readonly CombatMetricView[];
   targets: readonly CombatMetricView[];
   actors: readonly CombatMetricView[];
+}
+
+export type CombatActorRole = "self" | "charmed" | "summoned" | "observed";
+
+export interface CombatActorView {
+  name: string;
+  role: CombatActorRole;
+  encounterDamage: number;
+  encounterDps: number;
+  encounterHits: number;
+  encounterMaximum: number;
+  sessionDamage: number;
+  sessionDps: number;
+  sessionHits: number;
+  sessionMaximum: number;
+}
+
+export interface EncounterView {
+  encounterId: string;
+  name: string;
+  active: boolean;
+  startedAt: string;
+  endedAt: string;
+  seconds: number;
+  damage: number;
+  dps: number;
+  personalDamage: number;
+  charmedPetDamage: number;
+  summonedPetDamage: number;
+  damageTaken: number;
+  healingDone: number;
+  healsReceived: number;
+  kills: number;
+  crits: number;
+  misses: number;
+  sources: readonly CombatMetricView[];
+  targets: readonly CombatMetricView[];
+  actors: readonly CombatActorView[];
+  healingSources: readonly CombatHealingMetricView[];
+  timeline: readonly EncounterTimelinePointView[];
 }
 
 export interface ControlTimerView {
@@ -70,6 +123,7 @@ export interface EngineSnapshot {
   character: CharacterView;
   combat: CombatView;
   breakdown: CombatBreakdownView;
+  encounters?: readonly EncounterView[];
   controls: readonly ControlTimerView[];
   hiddenControlRows: number;
   controlNoticeCount: number;
@@ -103,6 +157,23 @@ export interface WeeklyRaidRowView {
   bestSeconds: readonly (number | null)[];
 }
 
+export interface AltZLockoutView {
+  target: string;
+  difficulty: number;
+  remainingSeconds: number;
+  instanceName: string;
+  eventName: string;
+  expiresAt: string;
+}
+
+export interface AltZScanView {
+  status: "idle" | "scanning" | "success" | "error";
+  detail: string;
+  scannedAt: string;
+  importedCount: number;
+  hotkey: string;
+}
+
 export interface WeeklyProgressView {
   weekStart: string;
   nextReset: string;
@@ -114,6 +185,8 @@ export interface WeeklyProgressView {
   raids: readonly WeeklyRaidRowView[];
   activeDifficulty?: number | null;
   pendingRaidTarget?: string;
+  altZLockouts?: readonly AltZLockoutView[];
+  altZScan?: AltZScanView;
 }
 
 export interface GearGoalView {
@@ -200,6 +273,7 @@ export interface DesktopSettings {
   alwaysOnTop: boolean;
   fontScale: number;
   splitCharmedPetDps: boolean;
+  stanceAdvisorEnabled: boolean;
   seedPosition: { x: number; y: number } | null;
   alerts: AlertSettings;
 }

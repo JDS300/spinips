@@ -89,6 +89,7 @@ class CharmedPetAttributionTests(unittest.TestCase):
         self.assertEqual(fight.ambiguous_pet_damage, 214)
         self.assertEqual(fight.sources["Pet (A rock golem)"]["t"], 214)
         self.assertEqual(fight.actor_damage["A rock golem (pet)"]["t"], 214)
+        self.assertEqual(fight.actor_roles["A rock golem (pet)"], "charmed")
         self.assertEqual(snap["damage_taken"], 40)
 
     def test_unowned_creature_damage_never_inflates_personal_dps(self):
@@ -151,6 +152,8 @@ class CharmedPetAttributionTests(unittest.TestCase):
         self.assertEqual(snap["charmed_pet_damage"], 60)
         self.assertEqual(stats.fight.summoned_pet_damage, 40)
         self.assertEqual(stats.fight.charmed_pet_damage, 60)
+        self.assertEqual(stats.fight.actor_roles["Gann (pet)"], "summoned")
+        self.assertEqual(stats.fight.actor_roles["A rock golem (pet)"], "charmed")
 
 
 class CharmedPetOwnershipSafetyTests(unittest.TestCase):
