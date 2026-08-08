@@ -1,0 +1,6 @@
+allowBuilds:
+  electron: true
+  # Loremaster ships the portable target only. The transitive Squirrel helper
+  # is never executed and is deliberately denied install-script permission.
+  electron-winstaller: false
+  esbuild: true

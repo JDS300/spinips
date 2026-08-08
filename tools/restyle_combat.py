@@ -432,6 +432,45 @@ def style_player() -> None:
     text = change_item(text, "Label", "PW_StanceLabel", stance_rail)
     text = change_item(text, "Label", "PW_InvocationInfo", invocation_rail)
 
+    attack_edges = {
+        "A_AttackIndicatorAnimTop": (70, 73, 0, 0),
+        "A_AttackIndicatorAnimBottom": (5, 2, 0, 0),
+        "A_AttackIndicatorAnimLeft": (70, 2, 0, 3),
+        "A_AttackIndicatorAnimRight": (70, 2, 3, 0),
+    }
+    for name, offsets in attack_edges.items():
+        def attack_edge(block: str, values=offsets) -> str:
+            for tag, value in zip((
+                    "TopAnchorOffset", "BottomAnchorOffset",
+                    "LeftAnchorOffset", "RightAnchorOffset"), values):
+                block = set_value(block, tag, value)
+            block = set_value(block, "AutoDraw", "false")
+            block = set_value(block, "AutoStretch", "true")
+            return block
+        text = change_item(text, "StaticAnimation", name, attack_edge)
+
+    def attack_fill(block: str) -> str:
+        for tag, value in (
+                ("Animation", "A_AttackIndicatorFill"),
+                ("RelativePosition", "true"),
+                ("AutoDraw", "false"),
+                ("AutoStretch", "true"),
+                ("LeftAnchorOffset", 0),
+                ("TopAnchorOffset", 70),
+                ("RightAnchorOffset", 0),
+                ("BottomAnchorOffset", 2),
+                ("TopAnchorToTop", "true"),
+                ("BottomAnchorToTop", "false"),
+                ("LeftAnchorToLeft", "true"),
+                ("RightAnchorToLeft", "false"),
+                ("Style_Transparent", "true")):
+            block = set_value(block, tag, value)
+        return block
+
+    text = change_item(
+        text, "StaticAnimation", "A_AttackIndicatorAnimFill", attack_fill,
+    )
+
     def root_style(block: str) -> str:
         block = set_container(block, "Size", CX=360, CY=193)
         block = set_or_add_value(

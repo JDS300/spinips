@@ -59,6 +59,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from charm_break import CharmBreakDetector, CharmBreakEvent
+from control_snapshot import merge_control_snapshots
 from hover_ocr import HoverOcrService
 from log_ingest import (
     LineBatchRecord,
@@ -67,6 +68,7 @@ from log_ingest import (
     SwitchRecord,
 )
 from mez_timer import MezTracker, format_mez_remaining
+from lull_timer import LullTracker
 from sky_intel import (SOURCE_URL as SKY_SOURCE_URL, inventory_names_from_text,
                        load_bundled_catalog, write_map_marker)
 from windows_hotkeys import (
@@ -779,6 +781,8 @@ PATTERNS: list[tuple[str, re.Pattern]] = [
         r"^(?P<target>.+?) (?:swoons in raptured bliss|"
         r"(?:has entered|enters) a state of rapture)\.$",
         re.I)),
+    ("lull_landed", re.compile(
+        r"^(?P<target>.+?) looks less aggressive\.$", re.I)),
     ("mez_awakened", re.compile(
         r"^(?P<target>.+?) has been awakened by (?P<breaker>.+?)\.$", re.I)),
     # --- xp / progression ---
@@ -873,6 +877,10 @@ MEZ_ONLY_KINDS = frozenset((
     "cast_begin_other", "song_begin_other", "mez_immune",
     "spell_overwritten", "mez_awakened",
 ))
+LULL_LANDING_COMPATIBILITY = frozenset({
+    "Pacify", "Calm", "Lull", "Soothe", "Calm Animal", "Pacification",
+})
+CONTROL_ONLY_KINDS = frozenset((*MEZ_ONLY_KINDS, "lull_landed"))
 
 
 def observe_mez_log_event(tracker: MezTracker, ts: datetime,
@@ -931,14 +939,69 @@ def observe_mez_log_event(tracker: MezTracker, ts: datetime,
             tracker.clear()
 
 
+def observe_lull_log_event(tracker: LullTracker, ts: datetime,
+                           kind: str, groups: dict,
+                           caster_level: int | None = None) -> None:
+    """Feed one parsed line to the independent lull evidence state machine."""
+
+    if kind == "cast_begin":
+        tracker.begin_cast(groups.get("spell", ""), ts, caster_level)
+    elif kind == "song_begin":
+        tracker.begin_cast(groups.get("song", ""), ts, caster_level)
+    elif kind == "cast_begin_other":
+        tracker.observe_nearby_cast(
+            groups.get("spell", ""), ts, caster_level)
+    elif kind == "song_begin_other":
+        tracker.observe_nearby_cast(
+            groups.get("song", ""), ts, caster_level)
+    elif kind == "fizzle":
+        tracker.observe_fizzle(ts)
+    elif kind == "interrupt":
+        tracker.observe_interrupt(ts)
+    elif kind in ("resist", "resist2"):
+        tracker.observe_resist(ts, groups.get("spell"))
+    elif kind == "lull_landed":
+        pending = tracker.pending
+        if (pending is not None
+                and pending.resolved.name in LULL_LANDING_COMPATIBILITY):
+            tracker.observe_landing(groups.get("target", ""), ts)
+        else:
+            tracker.observe_unattributed_landing(ts)
+    elif kind == "spell_fade":
+        tracker.observe_fade(groups.get("target"), ts, groups.get("spell"))
+    elif kind == "spell_overwritten":
+        tracker.observe_overwrite(
+            groups.get("target"), ts, groups.get("spell"))
+    elif kind in {
+            "melee_out", "dot_out", "nuke_out_plain", "nuke_out_school",
+            "ds_out", "melee_third", "dot_third", "nuke_third"}:
+        tracker.observe_damage(groups.get("target", ""), ts)
+        if kind in {"melee_third", "nuke_third"}:
+            tracker.observe_damage(groups.get("attacker", ""), ts)
+    elif kind in {"melee_in", "miss_in", "nuke_in", "miss_third"}:
+        tracker.observe_damage(groups.get("attacker", ""), ts)
+    elif kind in ("kill_you", "kill_other"):
+        tracker.observe_kill(groups.get("target", ""), ts)
+    elif kind == "death_you":
+        tracker.clear()
+    elif kind == "zone":
+        if is_real_zone_transition(groups.get("zone", "")):
+            tracker.clear()
+
+
 def apply_log_models(stats, tracker: MezTracker, ts: datetime, kind: str,
-                     groups: dict, *, count_lifetime: bool = True):
+                     groups: dict, *, count_lifetime: bool = True,
+                     lull_tracker: LullTracker | None = None,
+                     caster_level: int | None = None):
     """Apply a parsed line without letting timer-only prose alter DPS state."""
     charm_break_events = ()
-    if kind not in MEZ_ONLY_KINDS:
+    if kind not in CONTROL_ONLY_KINDS:
         charm_break_events = stats.apply(
             ts, kind, groups, count_lifetime=count_lifetime)
     observe_mez_log_event(tracker, ts, kind, groups)
+    if lull_tracker is not None:
+        observe_lull_log_event(
+            lull_tracker, ts, kind, groups, caster_level)
     return charm_break_events
 
 COIN_RE = re.compile(r"(\d+) (platinum|gold|silver|copper)")
@@ -1857,6 +1920,15 @@ class SessionStats:
             "in_combat": live is not None,
             "combat_damage": closed_damage,
             "combat_seconds": closed_seconds,
+            # Export attribution totals explicitly for renderer-neutral
+            # consumers.  The legacy Tk UI could read these attributes from
+            # ``SessionStats`` directly; the Electron worker cannot and must
+            # never infer a charmed-pet split from display rows.
+            "personal_damage": max(0, closed_damage - self.pet_damage),
+            "pet_damage": self.pet_damage,
+            "charmed_pet_damage": self.charmed_pet_damage,
+            "summoned_pet_damage": self.summoned_pet_damage,
+            "ambiguous_pet_damage": self.ambiguous_pet_damage,
             "best_fight": best,
             "fight": shown_fight,
             "fight_sources": ({k: dict(v) for k, v in shown_fight.sources.items()}
@@ -2167,6 +2239,9 @@ def load_config() -> dict:
         "mez_timers_enabled": True,
         "mez_timer_sound": False,
         "mez_warning_seconds": 10,
+        "lull_timers_enabled": True,
+        "lull_timer_sound": False,
+        "lull_warning_seconds": 12,
         "auto_reset_minutes": 0,
         "custom_alerts": [],
         # Exact EQL three-class identity.  Profiles are keyed by character so
@@ -3304,9 +3379,9 @@ def mez_motion_mix(now, entered_at, urgency_changed_at, urgency,
 
 
 class MezTimerOverlay:
-    """Persistent, non-activating crowd-control countdown beside Loremaster."""
+    """Persistent, non-activating mez/lull control surface."""
 
-    MAX_ROWS = 3
+    MAX_ROWS = 4
     WIDTH = 306
     ROW_HEIGHT = 43
 
@@ -3357,7 +3432,7 @@ class MezTimerOverlay:
         header.pack(fill="x")
         header.pack_propagate(False)
         tk.Label(
-            header, text="CONTROL  ·  MEZ", fg=t["cyan"], bg=t["panel"],
+            header, text="CONTROL  ·  MEZ + LULL", fg=t["cyan"], bg=t["panel"],
             font=self._font("Georgia", 8, "bold"), anchor="w",
         ).pack(side="left", padx=(10, 4), fill="y")
         self.header_count = tk.Label(
@@ -3599,6 +3674,10 @@ class MezTimerOverlay:
 
     def _color(self, row):
         t = self.theme
+        if row.timer_state == "failed":
+            return t["ember"]
+        if row.timer_state in {"ambiguous", "unconfirmed"}:
+            return t["gold_bright"]
         if row.last_tick or row.urgency == "critical":
             return t["ember"]
         if row.urgency == "warning":
@@ -3614,6 +3693,8 @@ class MezTimerOverlay:
         t = self.theme
         visible_rows = tuple(snapshot.rows[:self.MAX_ROWS])
         total_copy = f"{snapshot.active_count} TRACKED"
+        if snapshot.notice_count:
+            total_copy += f"  ·  {snapshot.notice_count} HONEST UNKNOWN"
         if snapshot.hidden_rows:
             total_copy += f"  ·  +{snapshot.hidden_rows}"
         self.header_count.configure(text=total_copy)
@@ -3630,7 +3711,8 @@ class MezTimerOverlay:
             color = self._color(row)
             identity = (
                 row.target_name.casefold(), row.spell_name.casefold(),
-                row.rank, row.landed_at, row.count)
+                row.rank, row.landed_at, row.count, row.control_kind,
+                row.timer_state, row.confidence, row.ambiguity)
             if identity != widget_row["identity"]:
                 widget_row["identity"] = identity
                 widget_row["entered_at"] = now_mono
@@ -3645,24 +3727,57 @@ class MezTimerOverlay:
             widget_row["deadline_mono"] = (
                 now_mono + max(0.0, float(row.safe_remaining_seconds)))
             target = row.target_name
-            if row.count > 1:
-                target += f"  ×{row.count}"
+            if row.timer_state != "active":
+                target = f"?  {target}"
+            elif row.count > 1:
+                target += f"  ×{row.count} · EARLIEST"
             if len(target) > 34:
                 target = target[:33].rstrip() + "…"
             widget_row["target"].configure(text=target)
-            widget_row["spell"].configure(
-                text=mez_spell_label(row.spell_name, row.rank))
-            widget_row["countdown"].configure(
-                text=format_mez_remaining(
-                    row.safe_remaining_seconds, last_tick=row.last_tick),
-                fg=color,
+            spell_copy = (
+                f"{row.control_kind.upper()} · "
+                f"{mez_spell_label(row.spell_name, row.rank)}"
             )
-            widget_row["phase"].configure(
-                text="WAKE WINDOW" if row.last_tick else "SAFE",
-                fg=color if row.last_tick else t["dim"],
-            )
+            if row.timer_state == "active":
+                if row.confidence not in {"confirmed", "exact"}:
+                    spell_copy += f" · {row.confidence.upper()}"
+                elif row.control_kind == "lull":
+                    spell_copy += " · EXACT"
+            elif row.ambiguity:
+                spell_copy += f" · {row.ambiguity}"
+            if len(spell_copy) > 62:
+                spell_copy = spell_copy[:61].rstrip() + "…"
+            widget_row["spell"].configure(text=spell_copy)
+            if row.timer_state == "active":
+                widget_row["countdown"].configure(
+                    text=format_mez_remaining(
+                        row.safe_remaining_seconds, last_tick=row.last_tick),
+                    fg=color,
+                )
+                if row.last_tick:
+                    phase_copy = "!! LAST TICK"
+                elif row.urgency == "critical":
+                    phase_copy = "!! CRITICAL"
+                elif row.urgency == "warning":
+                    phase_copy = "! WARNING"
+                else:
+                    phase_copy = "✓ SAFE"
+                widget_row["phase"].configure(
+                    text=phase_copy,
+                    fg=color if row.urgency != "safe" or row.last_tick
+                    else t["dim"],
+                )
+                meter = widget_row["meter"]
+                if not meter.winfo_manager():
+                    meter.place(x=max(2, round(2 * self.scale)), rely=1.0,
+                                relwidth=1.0, anchor="sw")
+                pending_meter_rows.append((widget_row, row, color))
+            else:
+                widget_row["countdown"].configure(text="—", fg=color)
+                widget_row["phase"].configure(
+                    text=row.timer_state.upper(), fg=color)
+                widget_row["meter"].place_forget()
             widget_row["accent"].configure(bg=color)
-            pending_meter_rows.append((widget_row, row, color))
 
         # One layout pass establishes every packed row and meter width. The
         # former per-row flushes were the timer overlay's largest jitter cost.
@@ -3708,8 +3823,10 @@ class MezTimerOverlay:
             return
         self._start_animation()
 
-    def warning_sound(self, events):
-        if not events or not self.cfg.get("mez_timer_sound", False):
+    def warning_sound(self, events, *, enabled=None):
+        if enabled is None:
+            enabled = self.cfg.get("mez_timer_sound", False)
+        if not events or not enabled:
             return
         try:
             import winsound
@@ -3793,6 +3910,7 @@ def run_gui(args):
     stats = SessionStats(session_gap=session_gap,
                          composition=configured_composition(cfg))
     mez_tracker = MezTracker()
+    lull_tracker = LullTracker()
     demo = DemoFeed() if args.demo else None
     if demo:
         stats.character = "Spin"
@@ -5207,8 +5325,15 @@ def run_gui(args):
             cfg.get("mez_timers_enabled", True)))
         mez_sound_var = tk.BooleanVar(value=bool(
             cfg.get("mez_timer_sound", False)))
+        lull_enabled_var = tk.BooleanVar(value=bool(
+            cfg.get("lull_timers_enabled", True)))
+        lull_sound_var = tk.BooleanVar(value=bool(
+            cfg.get("lull_timer_sound", False)))
         check("Show mez timers beside the HUD", mez_enabled_var)
-        check("Sound once as the safe window closes", mez_sound_var)
+        check("Sound once as a mez safe window closes", mez_sound_var)
+        check("Show confirmed lull timers and honest unknown results",
+              lull_enabled_var)
+        check("Sound once as a lull safe window closes", lull_sound_var)
         mez_warning_row = tk.Frame(frame, bg=T["bg"])
         mez_warning_row.pack(fill="x", pady=(6, 2))
         L(mez_warning_row, "Warning threshold (3-30 seconds)",
@@ -5218,6 +5343,15 @@ def run_gui(args):
             insertbackground=T["cyan"], relief="flat", font=FONT)
         mez_warning_entry.pack(side="right", ipady=3)
         mez_warning_entry.insert(0, str(cfg.get("mez_warning_seconds", 10)))
+        lull_warning_row = tk.Frame(frame, bg=T["bg"])
+        lull_warning_row.pack(fill="x", pady=(4, 2))
+        L(lull_warning_row, "Lull warning threshold (3-30 seconds)",
+          fg=T["gold"], font=FONT_S).pack(side="left")
+        lull_warning_entry = tk.Entry(
+            lull_warning_row, width=8, bg=T["void"], fg=T["text"],
+            insertbackground=T["cyan"], relief="flat", font=FONT)
+        lull_warning_entry.pack(side="right", ipady=3)
+        lull_warning_entry.insert(0, str(cfg.get("lull_warning_seconds", 12)))
 
         # ---- Alerts & notifications ----------------------------------
         L(alerts_frame, "ALERTS & NOTIFICATIONS", fg=T["cyan"],
@@ -5363,6 +5497,13 @@ def run_gui(args):
             except (ValueError, TypeError):
                 mez_warning_value = int(cfg.get("mez_warning_seconds", 10))
             mez_warning_value = max(3, min(30, mez_warning_value))
+            try:
+                lull_warning_value = int(
+                    str(lull_warning_entry.get()).strip())
+            except (ValueError, TypeError):
+                lull_warning_value = int(
+                    cfg.get("lull_warning_seconds", 12))
+            lull_warning_value = max(3, min(30, lull_warning_value))
             active_before = hotkey_service.status(HOTKEY_WIKI)
             rebind = None
             if (canonical != active_before.binding.label
@@ -5396,6 +5537,9 @@ def run_gui(args):
                        mez_timers_enabled=bool(mez_enabled_var.get()),
                        mez_timer_sound=bool(mez_sound_var.get()),
                        mez_warning_seconds=mez_warning_value,
+                       lull_timers_enabled=bool(lull_enabled_var.get()),
+                       lull_timer_sound=bool(lull_sound_var.get()),
+                       lull_warning_seconds=lull_warning_value,
                        big_hit_threshold=threshold_value,
                        alert_seconds=seconds_value,
                        mini_alert_anchor=normalize_alert_anchor(
@@ -5408,7 +5552,10 @@ def run_gui(args):
             seconds_entry.insert(0, str(cfg["alert_seconds"]))
             mez_warning_entry.delete(0, "end")
             mez_warning_entry.insert(0, str(cfg["mez_warning_seconds"]))
-            if not cfg["mez_timers_enabled"]:
+            lull_warning_entry.delete(0, "end")
+            lull_warning_entry.insert(0, str(cfg["lull_warning_seconds"]))
+            if not (cfg["mez_timers_enabled"]
+                    or cfg["lull_timers_enabled"]):
                 mez_overlay.hide()
             refresh(force_detail=True)
             if cfg["wiki_enabled"] and not hotkey["wiki_registered"]:
@@ -6990,6 +7137,7 @@ def run_gui(args):
     def do_reset():
         stats.reset()
         mez_tracker.clear()
+        lull_tracker.clear()
         mez_overlay.hide()
         state["fights_seen"] = 0
         state["selected_fight"] = None
@@ -7018,6 +7166,7 @@ def run_gui(args):
         ingest_worker = LogIngestWorker(watcher)
         ingest_pending.clear()
         mez_tracker.clear()
+        lull_tracker.clear()
         mez_overlay.hide()
         if widgets.get("status"):
             widgets["status"].configure(text="searching for the newest eqlog…")
@@ -7127,6 +7276,7 @@ def run_gui(args):
     def _apply_character_switch(record):
         save_character_state(stats.character, stats)
         mez_tracker.clear()
+        lull_tracker.clear()
         mez_overlay.hide()
         character = record.character or "?"
         stats.__init__(character, session_gap=session_gap,
@@ -7148,7 +7298,9 @@ def run_gui(args):
             cutoff = state.get("lifetime_cutoff")
             charm_break_events = apply_log_models(
                 stats, mez_tracker, ts, kind, groups,
-                count_lifetime=(cutoff is None or ts > cutoff))
+                count_lifetime=(cutoff is None or ts > cutoff),
+                lull_tracker=lull_tracker,
+                caster_level=stats.level)
             if kind == "composition" and stats.composition:
                 remember_composition(cfg, stats.character, stats.composition)
                 save_config(cfg)
@@ -7363,12 +7515,27 @@ def run_gui(args):
         now = datetime.now()
         snap = stats.snapshot(now)
         warning_seconds = config_number("mez_warning_seconds", 10, 3, 30)
+        lull_warning_seconds = config_number(
+            "lull_warning_seconds", 12, 3, 30)
         mez_snapshot = mez_tracker.snapshot(
-            now, limit=MezTimerOverlay.MAX_ROWS,
+            now, limit=None,
             warning_seconds=warning_seconds,
             critical_seconds=min(5.0, warning_seconds),
         )
-        timer_enabled = bool(cfg.get("mez_timers_enabled", True))
+        lull_snapshot = lull_tracker.snapshot(
+            now, limit=None,
+            warning_seconds=lull_warning_seconds,
+            critical_seconds=min(5.0, lull_warning_seconds),
+        )
+        mez_enabled = bool(cfg.get("mez_timers_enabled", True))
+        lull_enabled = bool(cfg.get("lull_timers_enabled", True))
+        control_snapshot = merge_control_snapshots(
+            mez_snapshot, lull_snapshot,
+            limit=MezTimerOverlay.MAX_ROWS,
+            include_mez=mez_enabled,
+            include_lull=lull_enabled,
+        )
+        timer_enabled = mez_enabled or lull_enabled
         settings_window = widgets.get("settings_window")
         lore_window = wiki_ui.get("win")
         try:
@@ -7385,12 +7552,16 @@ def run_gui(args):
             or interactive_window_visible
         ) and root_visible
         mez_overlay.render(
-            mez_snapshot, enabled=timer_enabled, hud_visible=hud_visible,
+            control_snapshot, enabled=timer_enabled, hud_visible=hud_visible,
             occupied_rects=alerts.occupied_rects())
         mez_overlay.warning_sound(mez_tracker.pop_warning_events(
             now, threshold_seconds=warning_seconds,
-            enabled=(timer_enabled and bool(cfg.get("mez_timer_sound", False))),
-        ))
+            enabled=(mez_enabled and bool(cfg.get("mez_timer_sound", False))),
+        ), enabled=(mez_enabled and bool(cfg.get("mez_timer_sound", False))))
+        mez_overlay.warning_sound(lull_tracker.pop_warning_events(
+            now, threshold_seconds=lull_warning_seconds,
+            enabled=(lull_enabled and bool(cfg.get("lull_timer_sound", False))),
+        ), enabled=(lull_enabled and bool(cfg.get("lull_timer_sound", False))))
         if state["mini"]:
             seed = widgets.get("mini_seed")
             if not seed:

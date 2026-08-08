@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "title": "Sanitized Plane of Sky crowd-control replay",
+  "events": [
+    {
+      "protocolVersion": 1,
+      "sequence": 1,
+      "occurredAt": "2026-08-06T20:00:00.000Z",
+      "eventType": "engine.snapshot",
+      "snapshot": {
+        "protocolVersion": 1,
+        "sequence": 1,
+        "observedAt": "2026-08-06T20:00:00.000Z",
+        "character": {"name": "Spin", "level": 50, "composition": "PAL/MNK/ENC", "zone": "The Plane of Sky"},
+        "combat": {"active": false, "encounterName": "", "fightDps": 0, "sessionDps": 224, "personalDamage": 28640, "charmedPetDamage": 19420, "summonedPetDamage": 0},
+        "controls": [],
+        "hiddenControlRows": 0,
+        "controlNoticeCount": 0,
+        "controlAmbiguityCount": 0
+      }
+    },
+    {
+      "protocolVersion": 1,
+      "sequence": 2,
+      "occurredAt": "2026-08-06T20:00:04.000Z",
+      "eventType": "engine.snapshot",
+      "snapshot": {
+        "protocolVersion": 1,
+        "sequence": 2,
+        "observedAt": "2026-08-06T20:00:04.000Z",
+        "character": {"name": "Spin", "level": 50, "composition": "PAL/MNK/ENC", "zone": "The Plane of Sky"},
+        "combat": {"active": true, "encounterName": "an essence carrier +2 more", "fightDps": 284, "sessionDps": 224, "personalDamage": 28840, "charmedPetDamage": 19690, "summonedPetDamage": 0},
+        "controls": [
+          {"kind": "mez", "state": "active", "target": "an essence carrier", "count": 2, "spell": "Mesmerization", "rank": 5, "landedAt": "2026-08-06T20:00:03.000Z", "safeExpiresAt": "2026-08-06T20:00:39.000Z", "expiresAt": "2026-08-06T20:00:45.000Z", "durationSeconds": 36, "safeRemainingSeconds": 35, "remainingSeconds": 41, "lastTick": false, "urgency": "safe", "confidence": "confirmed", "ambiguity": "earliest expiry of 2 same-name targets"}
+        ],
+        "hiddenControlRows": 0,
+        "controlNoticeCount": 0,
+        "controlAmbiguityCount": 0
+      }
+    },
+    {
+      "protocolVersion": 1,
+      "sequence": 3,
+      "occurredAt": "2026-08-06T20:00:30.000Z",
+      "eventType": "engine.snapshot",
+      "snapshot": {
+        "protocolVersion": 1,
+        "sequence": 3,
+        "observedAt": "2026-08-06T20:00:30.000Z",
+        "character": {"name": "Spin", "level": 50, "composition": "PAL/MNK/ENC", "zone": "The Plane of Sky"},
+        "combat": {"active": true, "encounterName": "an essence carrier +2 more", "fightDps": 301, "sessionDps": 226, "personalDamage": 31210, "charmedPetDamage": 21820, "summonedPetDamage": 0},
+        "controls": [
+          {"kind": "mez", "state": "active", "target": "an essence carrier", "count": 2, "spell": "Mesmerization", "rank": 5, "landedAt": "2026-08-06T20:00:03.000Z", "safeExpiresAt": "2026-08-06T20:00:39.000Z", "expiresAt": "2026-08-06T20:00:45.000Z", "durationSeconds": 36, "safeRemainingSeconds": 9, "remainingSeconds": 15, "lastTick": false, "urgency": "warning", "confidence": "confirmed", "ambiguity": "earliest expiry of 2 same-name targets"}
+        ],
+        "hiddenControlRows": 0,
+        "controlNoticeCount": 0,
+        "controlAmbiguityCount": 0
+      }
+    },
+    {
+      "protocolVersion": 1,
+      "sequence": 4,
+      "occurredAt": "2026-08-06T20:00:34.000Z",
+      "eventType": "engine.snapshot",
+      "snapshot": {
+        "protocolVersion": 1,
+        "sequence": 4,
+        "observedAt": "2026-08-06T20:00:34.000Z",
+        "character": {"name": "Spin", "level": 50, "composition": "PAL/MNK/ENC", "zone": "The Plane of Sky"},
+        "combat": {"active": true, "encounterName": "an essence carrier +2 more", "fightDps": 315, "sessionDps": 228, "personalDamage": 32520, "charmedPetDamage": 22990, "summonedPetDamage": 0},
+        "controls": [
+          {"kind": "mez", "state": "active", "target": "an essence carrier", "count": 2, "spell": "Mesmerization", "rank": 5, "landedAt": "2026-08-06T20:00:03.000Z", "safeExpiresAt": "2026-08-06T20:00:39.000Z", "expiresAt": "2026-08-06T20:00:45.000Z", "durationSeconds": 36, "safeRemainingSeconds": 5, "remainingSeconds": 11, "lastTick": false, "urgency": "critical", "confidence": "confirmed", "ambiguity": "earliest expiry of 2 same-name targets"},
+          {"kind": "lull", "state": "active", "target": "a soul carrier", "count": 1, "spell": "Calm", "rank": 5, "landedAt": "2026-08-06T20:00:32.000Z", "safeExpiresAt": "2026-08-06T20:01:32.000Z", "expiresAt": "2026-08-06T20:01:38.000Z", "durationSeconds": 60, "safeRemainingSeconds": 58, "remainingSeconds": 64, "lastTick": false, "urgency": "safe", "confidence": "exact", "ambiguity": ""}
+        ],
+        "hiddenControlRows": 0,
+        "controlNoticeCount": 0,
+        "controlAmbiguityCount": 0
+      }
+    },
+    {
+      "protocolVersion": 1,
+      "sequence": 5,
+      "occurredAt": "2026-08-06T20:00:40.000Z",
+      "eventType": "engine.snapshot",
+      "snapshot": {
+        "protocolVersion": 1,
+        "sequence": 5,
+        "observedAt": "2026-08-06T20:00:40.000Z",
+        "character": {"name": "Spin", "level": 50, "composition": "PAL/MNK/ENC", "zone": "The Plane of Sky"},
+        "combat": {"active": true, "encounterName": "an essence carrier +2 more", "fightDps": 326, "sessionDps": 229, "personalDamage": 33880, "charmedPetDamage": 24110, "summonedPetDamage": 0},
+        "controls": [
+          {"kind": "mez", "state": "active", "target": "an essence carrier", "count": 2, "spell": "Mesmerization", "rank": 5, "landedAt": "2026-08-06T20:00:03.000Z", "safeExpiresAt": "2026-08-06T20:00:39.000Z", "expiresAt": "2026-08-06T20:00:45.000Z", "durationSeconds": 36, "safeRemainingSeconds": 0, "remainingSeconds": 5, "lastTick": true, "urgency": "critical", "confidence": "confirmed", "ambiguity": "earliest expiry of 2 same-name targets"},
+          {"kind": "lull", "state": "unconfirmed", "target": "RESULT NOT TRACKED", "count": 1, "spell": "Harmony", "rank": 0, "landedAt": "2026-08-06T20:00:39.000Z", "safeExpiresAt": "2026-08-06T20:00:47.000Z", "expiresAt": "2026-08-06T20:00:47.000Z", "durationSeconds": 0, "safeRemainingSeconds": 0, "remainingSeconds": 0, "lastTick": false, "urgency": "warning", "confidence": "unconfirmed", "ambiguity": "This spell has no landing line in EQL; cast observed, no timer"}
+        ],
+        "hiddenControlRows": 0,
+        "controlNoticeCount": 1,
+        "controlAmbiguityCount": 0
+      }
+    },
+    {
+      "protocolVersion": 1,
+      "sequence": 6,
+      "occurredAt": "2026-08-06T20:00:44.000Z",
+      "eventType": "engine.snapshot",
+      "snapshot": {
+        "protocolVersion": 1,
+        "sequence": 6,
+        "observedAt": "2026-08-06T20:00:44.000Z",
+        "character": {"name": "Spin", "level": 50, "composition": "PAL/MNK/ENC", "zone": "The Plane of Sky"},
+        "combat": {"active": true, "encounterName": "an essence carrier +2 more", "fightDps": 334, "sessionDps": 231, "personalDamage": 34920, "charmedPetDamage": 25240, "summonedPetDamage": 0},
+        "controls": [
+          {"kind": "mez", "state": "active", "target": "an essence carrier", "count": 2, "spell": "Mesmerization", "rank": 5, "landedAt": "2026-08-06T20:00:03.000Z", "safeExpiresAt": "2026-08-06T20:00:39.000Z", "expiresAt": "2026-08-06T20:00:45.000Z", "durationSeconds": 36, "safeRemainingSeconds": 0, "remainingSeconds": 1, "lastTick": true, "urgency": "critical", "confidence": "confirmed", "ambiguity": "earliest expiry of 2 same-name targets"},
+          {"kind": "lull", "state": "ambiguous", "target": "RESULT NOT TRACKED", "count": 1, "spell": "Calm", "rank": 0, "landedAt": "2026-08-06T20:00:43.000Z", "safeExpiresAt": "2026-08-06T20:00:51.000Z", "expiresAt": "2026-08-06T20:00:51.000Z", "durationSeconds": 0, "safeRemainingSeconds": 0, "remainingSeconds": 0, "lastTick": false, "urgency": "warning", "confidence": "unconfirmed", "ambiguity": "Nearby lull cast made the landing ownership ambiguous"}
+        ],
+        "hiddenControlRows": 0,
+        "controlNoticeCount": 1,
+        "controlAmbiguityCount": 1
+      }
+    }
+  ]
+}

@@ -6,10 +6,12 @@ in ``EQUI_PlayerWindow.xml``.  They are hidden while auto-attack is off and
 shown while it is on, so the texture is a reliable client-state indicator and
 does not need log parsing or combat heuristics.
 
-The horizontal pieces sample the first two rows of ``AttackIndicator.tga``;
-the vertical pieces sample its first two columns.  A bright outer ember and a
-deeper inner crimson create a crisp two-pixel glow without painting over the
-health, mana, endurance, experience, or AA information.
+The horizontal pieces sample the first three rows of ``AttackIndicator.tga``;
+the vertical pieces sample its first three columns.  A bright outer ember,
+deeper inner crimson, and soft translucent halo create a clear three-pixel
+glow.  The remaining texture is an extremely low-opacity wash, making the ON
+state unmistakable without obscuring health, mana, endurance, experience, or
+AA information.
 
 Run from the repository root:
     python tools/paint_attack_indicator.py
@@ -27,8 +29,9 @@ OUTPUT = REPO / "spinui_reloaded" / "AttackIndicator.tga"
 SIZE = (128, 32)
 
 ATTACK_EDGE = (242, 64, 60, 255)
-ATTACK_INNER = (142, 22, 29, 255)
-ATTACK_BED = (54, 7, 12, 255)
+ATTACK_INNER = (190, 27, 34, 220)
+ATTACK_HALO = (128, 15, 23, 132)
+ATTACK_BED = (74, 7, 13, 24)
 
 
 def render() -> Image.Image:
@@ -42,6 +45,8 @@ def render() -> Image.Image:
                 pixels[x, y] = ATTACK_EDGE
             elif distance == 1:
                 pixels[x, y] = ATTACK_INNER
+            elif distance == 2:
+                pixels[x, y] = ATTACK_HALO
     return image
 
 

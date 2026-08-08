@@ -132,11 +132,13 @@ Loremaster does not claim every nearby creature as yours. Ownership comes from o
 
 The global alert switch ships **off**. The **Charmed pet breaks** and **Play alert sound** preferences are ready by default, so enabling alerts is enough to activate the warning; each can still be disabled independently.
 
-### Mez timing without fake precision
+### Mez and lull timing without fake precision
 
-Loremaster recognizes the Enchanter mez line plus supported Bard and Necromancer control songs/spells directly from the normal EQ text log. A cast alone never starts a timer: the target-specific success line must follow your own recent cast. Fizzles, interrupts, single-target resists, fades, overwrites, damage breaks, deaths, zoning, character changes, and reset all close the appropriate state. AE mez keeps accepting interleaved successes even when another target resists. If a nearby caster overlaps a spell that shares the same actorless landing message, Loremaster quarantines the ambiguous result instead of double-counting it as yours.
+Loremaster recognizes the Enchanter mez line plus supported Bard and Necromancer control songs/spells directly from the normal EQ text log. A cast alone never starts a timer: the target-specific success line must follow your own recent cast. The same evidence rule now covers Pacify, Calm, Lull, Soothe, Calm Animal, and Pacification. Harmony and Lull Animal do not expose a target-specific success line in EQL, so Loremaster labels those casts **UNCONFIRMED** instead of inventing a timer.
 
-EQ applies spell durations in six-second server ticks, but the log does not reveal the tick phase. Loremaster therefore counts down the duration that is guaranteed safe, then shows **LAST TICK** until the fade arrives or the final possible tick passes. Same-named enemies appear as `×N` with the earliest deadline. The timer stack stays at three rows plus an overflow count, follows the Rune Seed or expanded HUD, never takes keyboard focus, and is click-through during play. Visual timers are enabled by default; the one-shot warning sound is optional in **Settings → Crowd Control Timers**.
+Fizzles, interrupts, single-target resists, fades, overwrites, damage breaks, deaths, zoning, character changes, and reset all close the appropriate state. AE mez keeps accepting interleaved successes even when another target resists. If a nearby caster overlaps a spell that shares the same actorless landing message, Loremaster quarantines the ambiguous result instead of double-counting it as yours.
+
+EQ applies spell durations in six-second server ticks, but the log does not reveal the tick phase. Loremaster therefore counts down the duration that is guaranteed safe, then shows **LAST TICK** until the fade arrives or the final possible tick passes. Same-named enemies appear as `×N` with the earliest deadline. The shared control stack stays at four rows plus an overflow count, follows the Rune Seed or expanded HUD, never takes keyboard focus, and is click-through during play. Mez and lull visibility, warning thresholds, and one-shot sounds are independently configurable in **Settings → Crowd Control Timers**.
 
 ### An honest encounter model
 
@@ -300,7 +302,7 @@ This architecture supports a transparent non-injecting workflow. As with any com
 2. Type `/log on` in game. Loremaster follows the newest standard EQ log it can find; **Settings → Change EverQuest Folder** or **CHANGE / LOCATE LOG** can point it to an EverQuest root or `Logs` directory.
 3. Click the **Rune Seed** to unfold the full ledger; use **SEED** in the masthead to collapse it again. The transition fades the current surface, performs one atomic geometry/layout swap, then reveals the destination—avoiding a frame-by-frame child-widget reflow. Reduced motion switches instantly. Full and compact positions are remembered separately.
 4. DPS is the only default Rune Seed metric. Pin additional ledger sections with ✦ to build an optional four-item carousel, then use the mouse wheel over the seed to rotate it.
-5. Active mez timers appear beside either HUD state. The settings screen controls visibility, the optional one-shot sound, and its 3–30 second warning threshold.
+5. Confirmed mez and lull timers appear beside either HUD state. Settings control each family's visibility, optional one-shot sound, and independent 3–30 second warning threshold; uncertain results are visibly labeled instead of timed.
 6. Use **TOP / SHOW TOP** in Details to reclaim vertical space without changing the saved window size.
 7. **LOCK** freezes movement. Detailed mode's **CLICK-THRU** enables only when Loremaster owns the `Ctrl+Alt+L` recovery shortcut; click-through always starts off after relaunch.
 8. The notification-area icon can restore, hide, or exit Loremaster. Hiding keeps lightweight log tracking and the Lore Lens shortcut active.
@@ -349,6 +351,21 @@ python loremaster.py --demo
 python loremaster.py --selftest
 python loremaster.py --wait-for-eq
 ```
+
+### Loremaster desktop
+
+The release desktop lives in [`loremaster-desktop`](loremaster-desktop/README.md). It is a live Electron + React + TypeScript application backed by the proven parser through supervised, local-only [protocol-v1 JSONL snapshots](docs/LOREMASTER_ENGINE_PROTOCOL.md). It follows real logs, exposes self/charmed-pet damage, renders mez and lull evidence in both the Rune Seed and expanded HUD, surfaces proven charm breaks, and tracks the six classic non-Sky raid targets across independent D0–D4 weekly lockouts.
+
+Its first **BiS Gear Path** milestone imports the version-1 JSON produced by [EQ Legends Tools Character Sheet](https://eqlegendstools.com/char-sheet/) and the local TXT produced by `/outputfile inventory`. Loremaster highlights goal pieces found in equipment, bags, or bank locations and groups missing goals into a compact, most-goals-first zone route. Imported character and inventory files remain local. Current item/source metadata is fetched only when the user imports or refreshes a build, then cached locally for offline use. Gear data and the character-sheet workflow are credited to [EQ Legends Tools](https://eqlegendstools.com/), created by **FlammHammer**.
+
+```powershell
+cd loremaster-desktop
+pnpm install --frozen-lockfile
+pnpm test:fixtures
+pnpm build
+```
+
+Every UI release builds and publishes the portable Electron `Loremaster.exe` with its hidden parser engine. No installer or parallel legacy executable is produced. See the [live milestone and validation gates](docs/LOREMASTER_MILESTONE_2.md).
 
 ## Customizing and developing
 

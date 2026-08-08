@@ -1,0 +1,61 @@
+{
+  "name": "spins-loremaster",
+  "private": true,
+  "version": "0.1.0",
+  "author": "SpinUI",
+  "description": "Live EverQuest Legends combat, mez, lull, and weekly progress companion",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
+    "build": "tsc -p tsconfig.electron.json && tsc --noEmit && vite build",
+    "preview": "electron .",
+    "dist:windows": "pnpm build && electron-builder --win portable --x64 --publish never",
+    "test:fixtures": "node scripts/validate-fixture.mjs",
+    "test:gear": "node scripts/test-gear-plan.cjs"
+  },
+  "dependencies": {
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "4.3.4",
+    "@types/node": "22.10.10",
+    "@types/react": "19.0.8",
+    "@types/react-dom": "19.0.3",
+    "concurrently": "9.1.2",
+    "cross-env": "7.0.3",
+    "electron": "43.3.0",
+    "electron-builder": "26.15.7",
+    "typescript": "5.7.3",
+    "vite": "6.1.0",
+    "wait-on": "8.0.2"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@11.16.0",
+  "build": {
+    "appId": "com.spinui.loremaster",
+    "productName": "Loremaster",
+    "asar": true,
+    "directories": {
+      "output": "../dist-electron-release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../dist/LoremasterEngine.exe",
+        "to": "engine/LoremasterEngine.exe"
+      }
+    ],
+    "win": {
+      "target": ["portable"],
+      "artifactName": "Loremaster.exe",
+      "icon": "../loremaster/assets/loremaster.ico"
+    }
+  }
+}
