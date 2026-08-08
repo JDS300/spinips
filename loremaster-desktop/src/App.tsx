@@ -51,7 +51,7 @@ const emptyEvent: EngineSnapshotEvent = {
     observedAt: new Date(0).toISOString(),
     character: { name: "?", level: 0, composition: "", zone: "" },
     combat: {
-      active: false, encounterName: "", fightDps: 0, sessionDps: 0,
+      active: false, autoAttack: false, encounterName: "", fightDps: 0, sessionDps: 0,
       personalDamage: 0, charmedPetDamage: 0, summonedPetDamage: 0,
       fightSeconds: 0, fightDamage: 0, fightPersonalDamage: 0,
       fightCharmedPetDamage: 0, fightSummonedPetDamage: 0,
@@ -143,10 +143,10 @@ function RuneSeed({ event, health, onExpand }: {
     Boolean(event.snapshot.weekly?.pendingRaidTarget) || event.snapshot.controls.some((control) =>
     control.state !== "active" || control.urgency !== "safe");
   return (
-    <div className={`rune-seed ${urgent ? "urgent" : ""}`}>
+    <div className={`rune-seed ${urgent ? "urgent" : ""} ${combat.autoAttack ? "attacking" : ""}`}>
       <span className="seed-drag" aria-hidden="true" />
       <button className="seed-action" onClick={onExpand} type="button"
-        aria-label={`${formatDps(combat.fightDps)} DPS${urgent ? ", urgent signal" : ""}`}>
+        aria-label={`${formatDps(combat.fightDps)} DPS${combat.autoAttack ? ", auto attack on" : ""}${urgent ? ", urgent signal" : ""}`}>
         <CogMark compact />
         <span className="seed-metric"><strong>{formatDps(combat.fightDps)}</strong><small>DPS</small></span>
       </button>

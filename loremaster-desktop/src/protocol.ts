@@ -13,6 +13,7 @@ export interface CharacterView {
 
 export interface CombatView {
   active: boolean;
+  autoAttack: boolean;
   encounterName: string;
   fightDps: number;
   sessionDps: number;

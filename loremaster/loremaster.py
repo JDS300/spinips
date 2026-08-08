@@ -802,6 +802,8 @@ PATTERNS: list[tuple[str, re.Pattern]] = [
     ("money", re.compile(r"^You receive (?P<coins>.+?) (?:from the corpse|as your split)\.$")),
     ("money_sale", re.compile(r"^You receive (?P<coins>.+?) from (?P<vendor>.+?) for the (?P<item>.+?)\(s\)\.$")),
     # --- world ---
+    ("auto_attack", re.compile(
+        r"^Auto attack is (?P<state>on|off)\.$", re.I)),
     ("faction", re.compile(r"^Your faction standing with (?P<faction>.+?) has been adjusted by (?P<delta>-?\d+)\.$")),
     ("zone", re.compile(r"^You have entered (?P<zone>.+)\.$")),
     # EQL builds do not consistently emit a class trio.  When one does, only
@@ -1305,6 +1307,7 @@ class SessionStats:
         self.melee_hits = self.melee_misses = 0
         self.crits = 0
         self.enemy_misses = 0
+        self.auto_attack = False
         # defense
         self.damage_taken = 0
         self.heals_received = 0
@@ -1588,7 +1591,9 @@ class SessionStats:
         self.log_lines += 1
         crit = bool(g.get("crit"))
 
-        if kind == "melee_out":
+        if kind == "auto_attack":
+            self.auto_attack = g.get("state", "").casefold() == "on"
+        elif kind == "melee_out":
             self.melee_hits += 1
             self._deal(ts, g["target"], int(g["dmg"]), "Melee", crit)
         elif kind == "miss_out":
@@ -1649,6 +1654,7 @@ class SessionStats:
                 self.fight.kill_targets[mob] += 1
                 self.fight.add_timeline(ts, "kills", 1)
         elif kind == "death_you":
+            self.auto_attack = False
             self.pending_cast = None
             self._drop_charmed_pets()
             self.deaths += 1
@@ -1790,6 +1796,7 @@ class SessionStats:
             self.faction[g["faction"]] += int(g["delta"])
         elif kind == "zone":
             if is_real_zone_transition(g["zone"]):
+                self.auto_attack = False
                 # Charm never crosses a zone boundary. Keeping an NPC alias
                 # here would turn a future same-named mob into personal DPS.
                 self.pending_cast = None
@@ -1931,6 +1938,7 @@ class SessionStats:
             "session_dps": session_dps,
             "current_dps": current_dps,
             "in_combat": live is not None,
+            "auto_attack": self.auto_attack,
             "combat_damage": closed_damage,
             "combat_seconds": closed_seconds,
             # Export attribution totals explicitly for renderer-neutral

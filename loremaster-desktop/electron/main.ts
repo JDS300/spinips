@@ -984,11 +984,15 @@ function createWindow(): void {
     const screenshotPath = process.env.LOREMASTER_SCREENSHOT_PATH;
     if (screenshotPath && mainWindow && !["alert", "controls"].includes(process.env.LOREMASTER_SCREENSHOT_VIEW ?? "")) {
       const screenshotView = process.env.LOREMASTER_SCREENSHOT_VIEW;
-      void (screenshotView === "seed"
+      void (screenshotView?.startsWith("seed")
         ? Promise.resolve()
         : mainWindow.webContents.executeJavaScript(
           "document.querySelector('.seed-action')?.click()",
-        )).then(() => new Promise((resolve) => setTimeout(resolve, screenshotView === "seed" ? 250 : 500)))
+        )).then(() => new Promise((resolve) => setTimeout(resolve, screenshotView?.startsWith("seed") ? 250 : 500)))
+        .then(() => screenshotView === "seed-attack"
+          ? mainWindow?.webContents.executeJavaScript(
+            "document.querySelector('.rune-seed')?.classList.add('attacking')")
+          : undefined)
         .then(() => screenshotView === "settings"
           ? mainWindow?.webContents.executeJavaScript(
             "document.querySelector('.masthead-actions button')?.click()")

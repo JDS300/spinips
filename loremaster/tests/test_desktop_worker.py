@@ -12,6 +12,23 @@ from desktop_worker import HeadlessEngine  # noqa: E402
 
 
 class DesktopWorkerTests(unittest.TestCase):
+    def test_auto_attack_state_crosses_desktop_boundary_exactly(self):
+        with tempfile.TemporaryDirectory() as root:
+            engine = HeadlessEngine(data_dir=root)
+            try:
+                self.assertTrue(engine.process_line(
+                    "[Fri Aug 07 19:59:58 2026] Auto attack is on."))
+                enabled = engine.snapshot_event(
+                    datetime(2026, 8, 7, 19, 59, 59))
+                self.assertTrue(engine.process_line(
+                    "[Fri Aug 07 20:00:00 2026] Auto attack is off."))
+                disabled = engine.snapshot_event(
+                    datetime(2026, 8, 7, 20, 0, 1))
+            finally:
+                engine.close()
+            self.assertTrue(enabled["snapshot"]["combat"]["autoAttack"])
+            self.assertFalse(disabled["snapshot"]["combat"]["autoAttack"])
+
     def test_live_snapshot_preserves_damage_and_control_parity(self):
         with tempfile.TemporaryDirectory() as root:
             engine = HeadlessEngine(data_dir=root)

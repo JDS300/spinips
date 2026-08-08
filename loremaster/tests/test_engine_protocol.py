@@ -35,6 +35,7 @@ class EngineProtocolTests(unittest.TestCase):
             "composition": "PAL/MNK/ENC",
             "zone": "The Plane of Sky",
             "in_combat": True,
+            "auto_attack": True,
             "fight": {"name": "an abhorrent", "dps": 284, "damage": 1700,
                       "charmed_pet_damage": 700, "seconds": 6},
             "fight_sources": {"Melee": {"t": 1000, "h": 5, "max": 240},
@@ -74,6 +75,7 @@ class EngineProtocolTests(unittest.TestCase):
         self.assertEqual(decoded["snapshot"]["controls"][0]["kind"], "mez")
         self.assertEqual(decoded["snapshot"]["combat"]["charmedPetDamage"],
                          700)
+        self.assertTrue(decoded["snapshot"]["combat"]["autoAttack"])
         self.assertEqual(decoded["snapshot"]["combat"]["fightPersonalDamage"],
                          1000)
         self.assertEqual(decoded["snapshot"]["breakdown"]["sources"][0]["name"],

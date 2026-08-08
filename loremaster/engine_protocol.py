@@ -35,6 +35,7 @@ class CharacterView:
 @dataclass(frozen=True)
 class CombatView:
     active: bool
+    auto_attack: bool
     encounter_name: str
     fight_dps: int
     session_dps: int
@@ -202,6 +203,7 @@ class EngineEvent:
                     actor[new] = actor.pop(old)
         combat = snapshot["combat"]
         for old, new in (
+                ("auto_attack", "autoAttack"),
                 ("encounter_name", "encounterName"),
                 ("fight_dps", "fightDps"),
                 ("session_dps", "sessionDps"),
@@ -404,6 +406,7 @@ def build_engine_snapshot(*, sequence: int, observed_at: datetime,
         ),
         combat=CombatView(
             active=bool(stats_snapshot.get("in_combat", False)),
+            auto_attack=bool(stats_snapshot.get("auto_attack", False)),
             encounter_name=encounter_name,
             fight_dps=fight_dps,
             session_dps=int(stats_snapshot.get("session_dps") or 0),
