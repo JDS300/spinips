@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, screen, shell } from "electron";
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, screen, shell } from "electron";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -463,6 +463,10 @@ class EngineSupervisor {
 
   setRaidCompletion(target: string, difficulty: number, completed: boolean): void {
     this.send({ type: "engine.set-raid-completion", target, difficulty, completed });
+  }
+
+  scanAltZLockouts(): void {
+    this.send({ type: "engine.scan-alt-z-lockouts" });
   }
 
   private catalogCachePath(): string {
@@ -1198,6 +1202,9 @@ app.whenReady().then(() => {
   engine = new EngineSupervisor();
   engine.start();
   createWindow();
+  if (!globalShortcut.register("CommandOrControl+Shift+Z", () => engine?.scanAltZLockouts())) {
+    console.error("Could not register the Ctrl+Shift+Z Alt+Z lockout scan hotkey");
+  }
   startTopmostHeartbeat();
   screen.on("display-metrics-changed", scheduleTopmostReassertion);
   const smokeExitMs = Number(process.env.LOREMASTER_SMOKE_EXIT_MS || 0);
@@ -1206,6 +1213,7 @@ app.whenReady().then(() => {
   }
 });
 app.on("before-quit", () => {
+  globalShortcut.unregisterAll();
   clearTopmostReassertions();
   if (topmostHeartbeatTimer) clearInterval(topmostHeartbeatTimer);
   topmostHeartbeatTimer = null;

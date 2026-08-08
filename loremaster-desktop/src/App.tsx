@@ -84,6 +84,16 @@ function formatDuration(value: number): string {
   return minutes > 0 ? `${minutes}:${remainder}` : `${seconds}s`;
 }
 
+function formatLockout(value: number): string {
+  const seconds = Math.max(0, Math.floor(value));
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m ${seconds % 60}s`;
+}
+
 function spellLabel(control: ControlTimerView): string {
   const rank = control.rank > 0 ? roman[control.rank] ?? String(control.rank) : "";
   return `${control.spell}${rank ? ` ${rank}` : ""}`;
@@ -777,6 +787,17 @@ function MainApp() {
             </span>
           </summary>
           {weekly.pendingRaidTarget && <p className="raid-pending"><b>{weekly.pendingRaidTarget}</b> is awaiting the D0–D4 confirmation shown above.</p>}
+          {weekly.altZScan && <section className={`altz-sync ${weekly.altZScan.status}`}>
+            <header><div><small>LIVE INSTANCE EVIDENCE</small><b>{weekly.altZScan.status === "scanning" ? "READING ALT+Z…" : weekly.altZLockouts?.length ? `${weekly.altZLockouts.length} ACTIVE RAID LOCKOUT${weekly.altZLockouts.length === 1 ? "" : "S"}` : "ALT+Z LOCKOUT SYNC"}</b></div><kbd>{weekly.altZScan.hotkey}</kbd></header>
+            <p>{weekly.altZScan.detail}</p>
+            {(weekly.altZLockouts?.length ?? 0) > 0 && <div className="altz-lockouts">
+              {weekly.altZLockouts?.map((lockout) => <article key={`${lockout.target}-${lockout.difficulty}`} title={`${lockout.instanceName} · ${lockout.eventName}`}>
+                <span><b>{lockout.target}</b><small>D{lockout.difficulty} · {lockout.instanceName}</small></span>
+                <strong>{formatLockout(lockout.remainingSeconds)}</strong>
+              </article>)}
+            </div>}
+            <footer>Open Instance Information with Alt+Z, point inside the timer table, then use the hotkey. Scroll and repeat to merge another visible page.</footer>
+          </section>}
           <div className="raid-grid" aria-label="Weekly D0 through D4 raid lockouts">
             <div className="raid-grid-head"><span>RAID TARGET</span>{raidDifficulties.map((difficulty) => <b key={difficulty}>D{difficulty}</b>)}</div>
             {weekly.raids.map((raid) => <div className="raid-grid-row" key={raid.target}>

@@ -142,6 +142,23 @@ export interface WeeklyRaidRowView {
   bestSeconds: readonly (number | null)[];
 }
 
+export interface AltZLockoutView {
+  target: string;
+  difficulty: number;
+  remainingSeconds: number;
+  instanceName: string;
+  eventName: string;
+  expiresAt: string;
+}
+
+export interface AltZScanView {
+  status: "idle" | "scanning" | "success" | "error";
+  detail: string;
+  scannedAt: string;
+  importedCount: number;
+  hotkey: string;
+}
+
 export interface WeeklyProgressView {
   weekStart: string;
   nextReset: string;
@@ -153,6 +170,8 @@ export interface WeeklyProgressView {
   raids: readonly WeeklyRaidRowView[];
   activeDifficulty?: number | null;
   pendingRaidTarget?: string;
+  altZLockouts?: readonly AltZLockoutView[];
+  altZScan?: AltZScanView;
 }
 
 export interface GearGoalView {
