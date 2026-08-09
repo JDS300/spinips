@@ -65,6 +65,9 @@ EFFECT_NAME_WIDTH = EFFECT_ROW_WIDTH - EFFECT_NAME_X - EFFECT_NAME_TAIL
 PLAYER_MIN_SIZE = (280, 174)
 TARGET_MIN_SIZE = (260, 174)
 ATTACK_EDGE_WIDTH = 5
+ATTACK_FRAME_SIZE = (128, 32)
+ATTACK_TEXTURE_SIZE = (128, 64)
+ATTACK_PULSE_MS = 420
 
 # Older SpinUI releases exposed a large collection of visual variants.  Most of
 # those files predate the July Legends schema and can lose live controls when a
@@ -433,16 +436,54 @@ def style_player() -> None:
     text = change_item(text, "Label", "PW_StanceLabel", stance_rail)
     text = change_item(text, "Label", "PW_InvocationInfo", invocation_rail)
 
+    text = change_item(
+        text, "TextureInfo", "AttackIndicator.tga",
+        lambda b: set_container(
+            b, "Size", CX=ATTACK_TEXTURE_SIZE[0], CY=ATTACK_TEXTURE_SIZE[1]),
+    )
+
     attack_animations = {
-        "A_AttackIndicatorTop": (128, ATTACK_EDGE_WIDTH),
-        "A_AttackIndicatorBottom": (128, ATTACK_EDGE_WIDTH),
-        "A_AttackIndicatorLeft": (ATTACK_EDGE_WIDTH, 32),
-        "A_AttackIndicatorRight": (ATTACK_EDGE_WIDTH, 32),
+        "A_AttackIndicator": ATTACK_FRAME_SIZE,
+        "A_AttackIndicatorTop": (ATTACK_FRAME_SIZE[0], ATTACK_EDGE_WIDTH),
+        "A_AttackIndicatorBottom": (ATTACK_FRAME_SIZE[0], ATTACK_EDGE_WIDTH),
+        "A_AttackIndicatorLeft": (ATTACK_EDGE_WIDTH, ATTACK_FRAME_SIZE[1]),
+        "A_AttackIndicatorRight": (ATTACK_EDGE_WIDTH, ATTACK_FRAME_SIZE[1]),
+        "A_AttackIndicatorFill": ATTACK_FRAME_SIZE,
     }
+
+    def attack_animation(block: str, size: tuple[int, int]) -> str:
+        block = set_value(block, "Cycle", "true")
+        block = re.sub(r"\n\t\t<Frames>.*?</Frames>", "", block,
+                       flags=re.DOTALL)
+
+        def frame(origin_y: int) -> str:
+            return (
+                "\n\t\t<Frames>\n"
+                "\t\t\t<Texture>AttackIndicator.tga</Texture>\n"
+                "\t\t\t<Location>\n"
+                "\t\t\t\t<X>0</X>\n"
+                f"\t\t\t\t<Y>{origin_y}</Y>\n"
+                "\t\t\t</Location>\n"
+                "\t\t\t<Size>\n"
+                f"\t\t\t\t<CX>{size[0]}</CX>\n"
+                f"\t\t\t\t<CY>{size[1]}</CY>\n"
+                "\t\t\t</Size>\n"
+                f"\t\t\t<Duration>{ATTACK_PULSE_MS}</Duration>\n"
+                "\t\t</Frames>"
+            )
+
+        cycle_marker = "</Cycle>"
+        cycle_end = block.find(cycle_marker)
+        if cycle_end < 0:
+            fail("attack animation has no Cycle element")
+        cycle_end += len(cycle_marker)
+        return (block[:cycle_end] + frame(0) + frame(ATTACK_FRAME_SIZE[1])
+                + block[cycle_end:])
+
     for name, size in attack_animations.items():
         text = change_item(
             text, "Ui2DAnimation", name,
-            lambda b, s=size: set_container(b, "Size", CX=s[0], CY=s[1]),
+            lambda b, s=size: attack_animation(b, s),
         )
 
     attack_edges = {
