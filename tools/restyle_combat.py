@@ -64,29 +64,18 @@ EFFECT_NAME_WIDTH = EFFECT_ROW_WIDTH - EFFECT_NAME_X - EFFECT_NAME_TAIL
 # so users may resize them without clipping the command rows.
 PLAYER_MIN_SIZE = (280, 174)
 TARGET_MIN_SIZE = (260, 174)
-ATTACK_EDGE_WIDTH = 4
+ATTACK_EDGE_WIDTH = 5
 ATTACK_FRAME_SIZE = (128, 32)
-ATTACK_PULSE_FRAME_COUNT = 8
-ATTACK_FRAME_ORIGINS = tuple(
-    index * ATTACK_FRAME_SIZE[1] for index in range(ATTACK_PULSE_FRAME_COUNT)
-)
-ATTACK_TEXTURE_SIZE = (
-    ATTACK_FRAME_SIZE[0], ATTACK_FRAME_SIZE[1] * ATTACK_PULSE_FRAME_COUNT)
-ATTACK_PULSE_MS = 70
-ATTACK_HIGH_EDGE_WIDTH = 5
-ATTACK_HIGH_TEXTURE = "AttackIndicator.tga"
-PLAYER_HIGH_VISIBILITY_VARIANT = "EQUI_PlayerWindow1.xml"
-PLAYER_HIGH_VISIBILITY_MENU_NAME = "High-Visibility Attack Frame"
-PLAYER_HIGH_VISIBILITY_SIZE = (360, 174)
-PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP = 51
+ATTACK_TEXTURE_SIZE = ATTACK_FRAME_SIZE
 
 # Older SpinUI releases exposed a large collection of visual variants.  Most of
 # those files predate the July Legends schema and can lose live controls when a
 # saved layout still selects them.  Keep the filenames as compatibility aliases
 # (so existing INIs continue to load), but make every alias use the canonical,
-# current-schema command frame. PlayerWindow1 is the deliberate high-visibility
-# auto-attack option; CastSpellWnd3 is the named-and-numbered spell ledger. The
-# canonical player frame and icon-only spell deck remain the untouched defaults.
+# current-schema command frame.  Every PlayerWindow display type therefore
+# keeps the complete, visible main bar and the same client-native attack rail.
+# CastSpellWnd3 remains the named-and-numbered spell ledger; the canonical
+# player frame and icon-only spell deck remain the defaults.
 SPELL_LEDGER_VARIANT = "EQUI_CastSpellWnd3.xml"
 SPELL_LEDGER_MENU_NAME = "SpinUI Spell Ledger"
 SPELL_LEDGER_EQTYPES = (
@@ -113,7 +102,7 @@ EXTENDED_TARGET_BLOCK_BEGIN = "SPIN-XTAR-RESPONSIVE:BEGIN"
 EXTENDED_TARGET_BLOCK_END = "SPIN-XTAR-RESPONSIVE:END"
 
 CANONICAL_VARIANTS = {
-    "EQUI_PlayerWindow.xml": tuple(f"EQUI_PlayerWindow{i}.xml" for i in range(2, 7)),
+    "EQUI_PlayerWindow.xml": tuple(f"EQUI_PlayerWindow{i}.xml" for i in range(1, 7)),
     "EQUI_TargetWindow.xml": tuple(f"EQUI_TargetWindow{i}.xml" for i in range(1, 7)),
     "EQUI_TargetOfTargetWindow.xml": ("EQUI_TargetOfTargetWindow1.xml",),
     "EQUI_BuffWindow.xml": tuple(f"EQUI_BuffWindow{i}.xml" for i in range(1, 18)),
@@ -463,32 +452,30 @@ def style_player() -> None:
     }
 
     def attack_animation(block: str, size: tuple[int, int]) -> str:
-        block = set_value(block, "Cycle", "true")
+        # Match the working Modern UI contract exactly: EverQuest toggles and
+        # flashes these stock-named widgets itself.  A custom Cycle can look
+        # correct in static audits while never advancing in the live client.
+        block = set_value(block, "Cycle", "false")
         block = re.sub(r"\n\t\t<Frames>.*?</Frames>", "", block,
                        flags=re.DOTALL)
-
-        def frame(origin_y: int) -> str:
-            return (
-                "\n\t\t<Frames>\n"
-                "\t\t\t<Texture>AttackIndicator.tga</Texture>\n"
-                "\t\t\t<Location>\n"
-                "\t\t\t\t<X>0</X>\n"
-                f"\t\t\t\t<Y>{origin_y}</Y>\n"
-                "\t\t\t</Location>\n"
-                "\t\t\t<Size>\n"
-                f"\t\t\t\t<CX>{size[0]}</CX>\n"
-                f"\t\t\t\t<CY>{size[1]}</CY>\n"
-                "\t\t\t</Size>\n"
-                f"\t\t\t<Duration>{ATTACK_PULSE_MS}</Duration>\n"
-                "\t\t</Frames>"
-            )
-
         cycle_marker = "</Cycle>"
         cycle_end = block.find(cycle_marker)
         if cycle_end < 0:
             fail("attack animation has no Cycle element")
         cycle_end += len(cycle_marker)
-        frames = "".join(frame(origin) for origin in ATTACK_FRAME_ORIGINS)
+        frames = (
+            "\n\t\t<Frames>\n"
+            "\t\t\t<Texture>AttackIndicator.tga</Texture>\n"
+            "\t\t\t<Location>\n"
+            "\t\t\t\t<X>0</X>\n"
+            "\t\t\t\t<Y>0</Y>\n"
+            "\t\t\t</Location>\n"
+            "\t\t\t<Size>\n"
+            f"\t\t\t\t<CX>{size[0]}</CX>\n"
+            f"\t\t\t\t<CY>{size[1]}</CY>\n"
+            "\t\t\t</Size>\n"
+            "\t\t</Frames>"
+        )
         return block[:cycle_end] + frames + block[cycle_end:]
 
     for name, size in attack_animations.items():
@@ -514,23 +501,14 @@ def style_player() -> None:
             return block
         text = change_item(text, "StaticAnimation", name, attack_edge)
 
-    def attack_fill(block: str) -> str:
-        for tag, value in (
-                ("Animation", "A_AttackIndicatorFill"),
-                ("RelativePosition", "true"),
-                ("AutoDraw", "false"),
-                ("AutoStretch", "true"),
-                ("LeftAnchorOffset", 0),
-                ("TopAnchorOffset", 70),
-                ("RightAnchorOffset", 0),
-                ("BottomAnchorOffset", 2),
-                ("TopAnchorToTop", "true"),
-                ("BottomAnchorToTop", "false"),
-                ("LeftAnchorToLeft", "true"),
-                ("RightAnchorToLeft", "false"),
-                ("Style_Transparent", "true")):
-            block = set_value(block, tag, value)
-        return block
+    def attack_fill(_block: str) -> str:
+        # Keep the stock symbol because the client expects it, but leave it
+        # deliberately unbound.  Only the four edge widgets may be drawn.
+        return (
+            '\t<StaticAnimation item="A_AttackIndicatorAnimFill">\n'
+            '\t\t<ScreenID>A_AttackIndicatorAnimFill</ScreenID>\n'
+            '\t</StaticAnimation>'
+        )
 
     text = change_item(
         text, "StaticAnimation", "A_AttackIndicatorAnimFill", attack_fill,
@@ -550,6 +528,25 @@ def style_player() -> None:
         # live client; the compact PlayerSubWindow remains the visible frame.
         block = set_value(block, "Style_Border", "false")
         block = set_value(block, "Style_Sizable", "true")
+        # Draw the native rails last so the buff canvas and drag surfaces
+        # cannot cover the top edge at their shared y=70 boundary.
+        attack_pieces = tuple(
+            f"A_AttackIndicatorAnim{edge}"
+            for edge in ("Top", "Bottom", "Left", "Right", "Fill")
+        )
+        for piece in attack_pieces:
+            block = re.sub(
+                rf"\n[ \t]*<Pieces>{piece}</Pieces>", "", block,
+            )
+        pieces = "".join(
+            f"\n\t\t<Pieces>{piece}</Pieces>" for piece in attack_pieces
+        )
+        block, count = re.subn(
+            r"\n\t</Screen>$", pieces + "\n\t</Screen>", block,
+            count=1,
+        )
+        if count != 1:
+            fail("PlayerWindow root has no closing Screen tag")
         return block
 
     text = change_item(text, "Screen", "PlayerWindow", root_style)
@@ -1309,107 +1306,6 @@ def sync_canonical_variants() -> None:
             write_ascii(SKIN / variant_name, source)
 
 
-def style_high_visibility_player_variant() -> None:
-    """Expose Alternate 1 as a binding-safe, unmistakable attack frame."""
-    source = (SKIN / "EQUI_PlayerWindow.xml").read_text(encoding="ascii")
-    source, count = re.subn(
-        r"(<Schema\b[^>]*/>)",
-        (r"\g<1>\n\n\t<!-- Alternate 1: native auto-attack state with a "
-         r"pure-red high-visibility treatment. -->"),
-        source,
-        count=1,
-    )
-    if count != 1:
-        fail("missing Schema declaration in high-visibility player variant")
-
-    def animation_size(block: str, size: tuple[int, int]) -> str:
-        pattern = re.compile(
-            r"(<Size>\s*<CX>)\d+(</CX>\s*<CY>)\d+(</CY>\s*</Size>)"
-        )
-        return pattern.sub(
-            lambda match: (
-                match.group(1) + str(size[0]) + match.group(2)
-                + str(size[1]) + match.group(3)
-            ),
-            block,
-        )
-
-    for name, size in (
-            ("A_AttackIndicatorTop", (ATTACK_FRAME_SIZE[0], ATTACK_HIGH_EDGE_WIDTH)),
-            ("A_AttackIndicatorBottom", (ATTACK_FRAME_SIZE[0], ATTACK_HIGH_EDGE_WIDTH)),
-            ("A_AttackIndicatorLeft", (ATTACK_HIGH_EDGE_WIDTH, ATTACK_FRAME_SIZE[1])),
-            ("A_AttackIndicatorRight", (ATTACK_HIGH_EDGE_WIDTH, ATTACK_FRAME_SIZE[1]))):
-        source = change_item(
-            source, "Ui2DAnimation", name,
-            lambda block, wanted=size: animation_size(block, wanted),
-        )
-
-    geometry = {
-        "A_AttackIndicatorAnimTop": (
-            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP,
-            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP + ATTACK_HIGH_EDGE_WIDTH,
-            0, 0),
-        "A_AttackIndicatorAnimBottom": (
-            2 + ATTACK_HIGH_EDGE_WIDTH, 2, 0, 0),
-        "A_AttackIndicatorAnimLeft": (
-            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP,
-            2, 0, ATTACK_HIGH_EDGE_WIDTH),
-        "A_AttackIndicatorAnimRight": (
-            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP,
-            2, ATTACK_HIGH_EDGE_WIDTH, 0),
-    }
-    for name, offsets in geometry.items():
-        def high_edge(block: str, values=offsets) -> str:
-            for tag, value in zip((
-                    "TopAnchorOffset", "BottomAnchorOffset",
-                    "LeftAnchorOffset", "RightAnchorOffset"), values):
-                block = set_value(block, tag, value)
-            return block
-        source = change_item(source, "StaticAnimation", name, high_edge)
-
-    source = change_item(
-        source, "StaticAnimation", "A_AttackIndicatorAnimFill",
-        lambda block: set_value(
-            block, "TopAnchorOffset", PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP),
-    )
-    source = change_item(
-        source, "Screen", "PlayerSubWindow",
-        lambda block: set_value(
-            block, "TopAnchorOffset", PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP),
-    )
-    source = change_item(
-        source, "Screen", "PW_BuffWindow",
-        lambda block: set_value(
-            block, "BottomAnchorOffset",
-            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP + 2),
-    )
-    for name, top, bottom in (
-            ("PW_DragBox", 53, 73),
-            ("PW_DragBox2", 91, 181),
-            ("PWDragBox3", 53, 73)):
-        def compact_drag(block: str, wanted_top=top,
-                         wanted_bottom=bottom) -> str:
-            block = set_value(block, "TopAnchorOffset", wanted_top)
-            return set_value(block, "BottomAnchorOffset", wanted_bottom)
-        source = change_item(source, "DragBox", name, compact_drag)
-
-    def compact_root(block: str) -> str:
-        block = set_value(
-            block, "MenuName", PLAYER_HIGH_VISIBILITY_MENU_NAME)
-        block = set_container(
-            block, "Size", CX=PLAYER_HIGH_VISIBILITY_SIZE[0],
-            CY=PLAYER_HIGH_VISIBILITY_SIZE[1])
-        block = set_value(block, "MinVSize", PLAYER_HIGH_VISIBILITY_SIZE[1])
-        return set_or_add_value(
-            block, "MaxVSize", PLAYER_HIGH_VISIBILITY_SIZE[1],
-            after="MinVSize")
-
-    source = change_item(
-        source, "Screen", "PlayerWindow", compact_root,
-    )
-    write_ascii(SKIN / PLAYER_HIGH_VISIBILITY_VARIANT, source)
-
-
 def style_experience_gauges() -> None:
     """One color identity per progression bar, everywhere it appears.
 
@@ -1471,7 +1367,6 @@ def main() -> int:
     style_experience_gauges()
     style_raid()
     sync_canonical_variants()
-    style_high_visibility_player_variant()
     register_spell_ledger_assets()
     style_spell_ledger_variant()
     print("Combat Command Center restyle: complete")

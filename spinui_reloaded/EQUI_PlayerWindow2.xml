@@ -8,12 +8,12 @@
 	<TextureInfo item="AttackIndicator.tga">
 		<Size>
 			<CX>128</CX>
-			<CY>256</CY>
+			<CY>32</CY>
 		</Size>
 	</TextureInfo>
 
 	<Ui2DAnimation item="A_AttackIndicator">
-		<Cycle>true</Cycle>
+		<Cycle>false</Cycle>
 		<Frames>
 			<Texture>AttackIndicator.tga</Texture>
 			<Location>
@@ -24,96 +24,11 @@
 				<CX>128</CX>
 				<CY>32</CY>
 			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>32</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>64</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>96</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>128</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>160</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>192</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>224</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
 		</Frames>
 	</Ui2DAnimation>
 
 	<Ui2DAnimation item="A_AttackIndicatorTop">
-		<Cycle>true</Cycle>
+		<Cycle>false</Cycle>
 		<Frames>
 			<Texture>AttackIndicator.tga</Texture>
 			<Location>
@@ -122,98 +37,13 @@
 			</Location>
 			<Size>
 				<CX>128</CX>
-				<CY>4</CY>
+				<CY>5</CY>
 			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>32</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>4</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>64</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>4</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>96</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>4</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>128</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>4</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>160</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>4</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>192</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>4</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>224</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>4</CY>
-			</Size>
-			<Duration>70</Duration>
 		</Frames>
 	</Ui2DAnimation>
 
 	<Ui2DAnimation item="A_AttackIndicatorBottom">
-		<Cycle>true</Cycle>
+		<Cycle>false</Cycle>
 		<Frames>
 			<Texture>AttackIndicator.tga</Texture>
 			<Location>
@@ -222,98 +52,13 @@
 			</Location>
 			<Size>
 				<CX>128</CX>
-				<CY>4</CY>
+				<CY>5</CY>
 			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>32</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>4</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>64</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>4</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>96</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>4</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>128</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>4</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>160</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>4</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>192</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>4</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>224</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>4</CY>
-			</Size>
-			<Duration>70</Duration>
 		</Frames>
 	</Ui2DAnimation>
 
 	<Ui2DAnimation item="A_AttackIndicatorLeft">
-		<Cycle>true</Cycle>
+		<Cycle>false</Cycle>
 		<Frames>
 			<Texture>AttackIndicator.tga</Texture>
 			<Location>
@@ -321,99 +66,14 @@
 				<Y>0</Y>
 			</Location>
 			<Size>
-				<CX>4</CX>
+				<CX>5</CX>
 				<CY>32</CY>
 			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>32</Y>
-			</Location>
-			<Size>
-				<CX>4</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>64</Y>
-			</Location>
-			<Size>
-				<CX>4</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>96</Y>
-			</Location>
-			<Size>
-				<CX>4</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>128</Y>
-			</Location>
-			<Size>
-				<CX>4</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>160</Y>
-			</Location>
-			<Size>
-				<CX>4</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>192</Y>
-			</Location>
-			<Size>
-				<CX>4</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>224</Y>
-			</Location>
-			<Size>
-				<CX>4</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
 		</Frames>
 	</Ui2DAnimation>
 
 	<Ui2DAnimation item="A_AttackIndicatorRight">
-		<Cycle>true</Cycle>
+		<Cycle>false</Cycle>
 		<Frames>
 			<Texture>AttackIndicator.tga</Texture>
 			<Location>
@@ -421,99 +81,14 @@
 				<Y>0</Y>
 			</Location>
 			<Size>
-				<CX>4</CX>
+				<CX>5</CX>
 				<CY>32</CY>
 			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>32</Y>
-			</Location>
-			<Size>
-				<CX>4</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>64</Y>
-			</Location>
-			<Size>
-				<CX>4</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>96</Y>
-			</Location>
-			<Size>
-				<CX>4</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>128</Y>
-			</Location>
-			<Size>
-				<CX>4</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>160</Y>
-			</Location>
-			<Size>
-				<CX>4</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>192</Y>
-			</Location>
-			<Size>
-				<CX>4</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>224</Y>
-			</Location>
-			<Size>
-				<CX>4</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
 		</Frames>
 	</Ui2DAnimation>
 
 	<Ui2DAnimation item="A_AttackIndicatorFill">
-		<Cycle>true</Cycle>
+		<Cycle>false</Cycle>
 		<Frames>
 			<Texture>AttackIndicator.tga</Texture>
 			<Location>
@@ -524,91 +99,6 @@
 				<CX>128</CX>
 				<CY>32</CY>
 			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>32</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>64</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>96</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>128</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>160</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>192</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
-		</Frames>
-		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
-			<Location>
-				<X>0</X>
-				<Y>224</Y>
-			</Location>
-			<Size>
-				<CX>128</CX>
-				<CY>32</CY>
-			</Size>
-			<Duration>70</Duration>
 		</Frames>
 	</Ui2DAnimation>
 
@@ -618,7 +108,7 @@
 		<AutoDraw>false</AutoDraw>
 		<AutoStretch>true</AutoStretch>
 		<TopAnchorOffset>70</TopAnchorOffset>
-		<BottomAnchorOffset>74</BottomAnchorOffset>
+		<BottomAnchorOffset>75</BottomAnchorOffset>
 		<LeftAnchorOffset>0</LeftAnchorOffset>
 		<RightAnchorOffset>0</RightAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
@@ -632,7 +122,7 @@
 		<Animation>A_AttackIndicatorBottom</Animation>
 		<AutoDraw>false</AutoDraw>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>6</TopAnchorOffset>
+		<TopAnchorOffset>7</TopAnchorOffset>
 		<BottomAnchorOffset>2</BottomAnchorOffset>
 		<LeftAnchorOffset>0</LeftAnchorOffset>
 		<RightAnchorOffset>0</RightAnchorOffset>
@@ -650,7 +140,7 @@
 		<TopAnchorOffset>70</TopAnchorOffset>
 		<BottomAnchorOffset>2</BottomAnchorOffset>
 		<LeftAnchorOffset>0</LeftAnchorOffset>
-		<RightAnchorOffset>4</RightAnchorOffset>
+		<RightAnchorOffset>5</RightAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
 		<BottomAnchorToTop>false</BottomAnchorToTop>
 		<LeftAnchorToLeft>true</LeftAnchorToLeft>
@@ -664,7 +154,7 @@
 		<AutoStretch>true</AutoStretch>
 		<TopAnchorOffset>70</TopAnchorOffset>
 		<BottomAnchorOffset>2</BottomAnchorOffset>
-		<LeftAnchorOffset>4</LeftAnchorOffset>
+		<LeftAnchorOffset>5</LeftAnchorOffset>
 		<RightAnchorOffset>0</RightAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
 		<BottomAnchorToTop>false</BottomAnchorToTop>
@@ -672,21 +162,8 @@
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</StaticAnimation>
 
-	<StaticAnimation item="A_AttackIndicatorAnimFill">
+		<StaticAnimation item="A_AttackIndicatorAnimFill">
 		<ScreenID>A_AttackIndicatorAnimFill</ScreenID>
-		<Animation>A_AttackIndicatorFill</Animation>
-		<RelativePosition>true</RelativePosition>
-		<AutoDraw>false</AutoDraw>
-		<AutoStretch>true</AutoStretch>
-		<LeftAnchorOffset>0</LeftAnchorOffset>
-		<Style_Transparent>true</Style_Transparent>
-		<TopAnchorOffset>70</TopAnchorOffset>
-		<RightAnchorOffset>0</RightAnchorOffset>
-		<BottomAnchorOffset>2</BottomAnchorOffset>
-		<TopAnchorToTop>true</TopAnchorToTop>
-		<BottomAnchorToTop>false</BottomAnchorToTop>
-		<LeftAnchorToLeft>true</LeftAnchorToLeft>
-		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</StaticAnimation>
 <!-- End of Attack Indicator -->
 
@@ -1877,15 +1354,15 @@
 			<Y>-9</Y>
 		</KeepOnScreenOffset>
 		<Pieces>Screen:PlayerSubWindow</Pieces>
+		<Pieces>DragBox:PW_DragBox</Pieces>
+		<Pieces>DragBox:PW_DragBox2</Pieces>
+		<Pieces>DragBox:PWDragBox3</Pieces>
+		<Pieces>PW_BuffWindow</Pieces>
 		<Pieces>A_AttackIndicatorAnimTop</Pieces>
 		<Pieces>A_AttackIndicatorAnimBottom</Pieces>
 		<Pieces>A_AttackIndicatorAnimLeft</Pieces>
 		<Pieces>A_AttackIndicatorAnimRight</Pieces>
 		<Pieces>A_AttackIndicatorAnimFill</Pieces>
-		<Pieces>DragBox:PW_DragBox</Pieces>
-		<Pieces>DragBox:PW_DragBox2</Pieces>
-		<Pieces>DragBox:PWDragBox3</Pieces>
-		<Pieces>PW_BuffWindow</Pieces>
 	</Screen>
 
 </XML>
