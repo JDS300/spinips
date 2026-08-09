@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, screen, shell } from "electron";
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, screen, shell, Tray } from "electron";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -19,6 +19,8 @@ app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 if (process.env.LOREMASTER_DESKTOP_DATA_DIR) {
   app.setPath("userData", path.resolve(process.env.LOREMASTER_DESKTOP_DATA_DIR));
 }
+const ownsSingleInstance = app.requestSingleInstanceLock();
+if (!ownsSingleInstance) app.quit();
 let mainWindow: BrowserWindow | null = null;
 let alertWindow: BrowserWindow | null = null;
 let controlWindow: BrowserWindow | null = null;
@@ -27,6 +29,8 @@ let windowExpanded = false;
 let windowAnalysis = false;
 let expansionDirection: "up" | "down" = "down";
 let movingWindowProgrammatically = false;
+let tray: Tray | null = null;
+let trayMinimizeNoticeShown = false;
 let topmostReassertTimers: NodeJS.Timeout[] = [];
 let topmostHeartbeatTimer: NodeJS.Timeout | null = null;
 
@@ -714,6 +718,94 @@ function overlayWindows(): BrowserWindow[] {
   );
 }
 
+function trayIcon(): Electron.NativeImage | null {
+  const candidates = [
+    path.join(app.getAppPath(), "dist", "loremaster.ico"),
+    path.join(app.getAppPath(), "dist", "loremaster-cog.png"),
+    path.resolve(app.getAppPath(), "..", "loremaster", "assets", "loremaster.ico"),
+    path.resolve(app.getAppPath(), "..", "loremaster", "assets", "loremaster-cog.png"),
+  ];
+  for (const candidate of candidates) {
+    if (!existsSync(candidate)) continue;
+    const image = nativeImage.createFromPath(candidate);
+    if (!image.isEmpty()) return image;
+  }
+  return null;
+}
+
+function restoreLoremasterWindow(): void {
+  const window = mainWindow;
+  if (!window || window.isDestroyed()) {
+    createWindow();
+    return;
+  }
+  if (window.isMinimized()) window.restore();
+  window.setSkipTaskbar(Boolean(tray));
+  window.show();
+  window.focus();
+  window.moveTop();
+  alertWindow?.showInactive();
+  positionAlertWindow();
+  syncControlWindow();
+  applyAlwaysOnTop(engine?.getState().settings.alwaysOnTop ?? defaultSettings.alwaysOnTop);
+}
+
+function quitLoremaster(): void {
+  app.quit();
+}
+
+function ensureTray(): boolean {
+  if (tray && !tray.isDestroyed()) return true;
+  const icon = trayIcon();
+  if (!icon) {
+    console.error("Could not create the Loremaster tray icon; using taskbar minimize");
+    return false;
+  }
+  try {
+    tray = new Tray(icon);
+    tray.setToolTip("Loremaster — click to restore");
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: "Show Loremaster", click: restoreLoremasterWindow },
+      { type: "separator" },
+      { label: "Quit Loremaster", click: quitLoremaster },
+    ]));
+    tray.on("click", restoreLoremasterWindow);
+    tray.on("double-click", restoreLoremasterWindow);
+    return true;
+  } catch (error) {
+    tray = null;
+    console.error("Could not initialize the Loremaster tray icon", error);
+    return false;
+  }
+}
+
+function minimizeLoremasterWindow(): void {
+  const window = mainWindow;
+  if (!window || window.isDestroyed()) return;
+  if (ensureTray()) {
+    alertWindow?.hide();
+    controlWindow?.hide();
+    window.hide();
+    if (process.platform === "win32" && !trayMinimizeNoticeShown) {
+      trayMinimizeNoticeShown = true;
+      try {
+        tray?.displayBalloon({
+          title: "Loremaster is still running",
+          content: "Click the tray icon to restore it, or right-click and choose Quit Loremaster.",
+          iconType: "info",
+          noSound: true,
+        });
+      } catch {
+        // Some Windows notification policies suppress tray balloons.
+      }
+    }
+    return;
+  }
+  // A taskbar button is the recovery path if Windows refuses tray creation.
+  window.setSkipTaskbar(false);
+  window.minimize();
+}
+
 function reinforceOverlayZOrder(enabled: boolean): void {
   const level = process.platform === "win32" ? "screen-saver" : "floating";
   for (const window of overlayWindows()) {
@@ -766,7 +858,7 @@ function syncControlWindow(): void {
   const settings = engine?.getState().settings ?? defaultSettings;
   const rows = visibleSeedControls(engine?.getState().snapshot, settings);
   const contributors = visibleGroupContributors(engine?.getState().snapshot);
-  if (windowExpanded || (rows.length === 0 && contributors.length === 0)) {
+  if (!mainWindow.isVisible() || windowExpanded || (rows.length === 0 && contributors.length === 0)) {
     controlWindow.hide();
     positionAlertWindow();
     return;
@@ -1166,6 +1258,25 @@ function createWindow(): void {
         app.quit();
       }, 350);
     }
+    const trayProbePath = process.env.LOREMASTER_TRAY_PROBE_PATH;
+    if (trayProbePath && mainWindow) {
+      setTimeout(() => {
+        minimizeLoremasterWindow();
+        const minimized = {
+          trayAvailable: Boolean(tray && !tray.isDestroyed()),
+          mainVisible: Boolean(mainWindow?.isVisible()),
+          alertVisible: Boolean(alertWindow?.isVisible()),
+          controlsVisible: Boolean(controlWindow?.isVisible()),
+        };
+        restoreLoremasterWindow();
+        const restored = {
+          mainVisible: Boolean(mainWindow?.isVisible()),
+          mainMinimized: Boolean(mainWindow?.isMinimized()),
+        };
+        writeFileSync(trayProbePath, `${JSON.stringify({ minimized, restored }, null, 2)}\n`, "utf8");
+        quitLoremaster();
+      }, 500);
+    }
     const screenshotPath = process.env.LOREMASTER_SCREENSHOT_PATH;
     if (screenshotPath && mainWindow && !["alert", "controls"].includes(process.env.LOREMASTER_SCREENSHOT_VIEW ?? "")) {
       const screenshotView = process.env.LOREMASTER_SCREENSHOT_VIEW;
@@ -1211,7 +1322,10 @@ function createWindow(): void {
     mainWindow = null;
   });
   mainWindow.on("show", scheduleTopmostReassertion);
-  mainWindow.on("restore", scheduleTopmostReassertion);
+  mainWindow.on("restore", () => {
+    if (tray) mainWindow?.setSkipTaskbar(true);
+    scheduleTopmostReassertion();
+  });
   mainWindow.on("focus", scheduleTopmostReassertion);
   mainWindow.on("blur", scheduleTopmostReassertion);
   mainWindow.on("resize", scheduleTopmostReassertion);
@@ -1383,13 +1497,15 @@ ipcMain.on("window:set-analysis", (_event, active: boolean) => {
   setAnalysisMode(Boolean(active));
 });
 
-ipcMain.on("window:minimize", () => mainWindow?.minimize());
-ipcMain.on("window:close", () => mainWindow?.close());
+ipcMain.on("window:minimize", minimizeLoremasterWindow);
+ipcMain.on("window:close", quitLoremaster);
 
 app.whenReady().then(() => {
+  if (!ownsSingleInstance) return;
   engine = new EngineSupervisor();
   engine.start();
   createWindow();
+  ensureTray();
   if (!globalShortcut.register("CommandOrControl+Shift+Z", () => engine?.scanAltZLockouts())) {
     console.error("Could not register the Ctrl+Shift+Z Alt+Z lockout scan hotkey");
   }
@@ -1405,9 +1521,13 @@ app.on("before-quit", () => {
   clearTopmostReassertions();
   if (topmostHeartbeatTimer) clearInterval(topmostHeartbeatTimer);
   topmostHeartbeatTimer = null;
+  tray?.destroy();
+  tray = null;
   engine?.stop();
 });
 app.on("window-all-closed", () => app.quit());
+app.on("second-instance", restoreLoremasterWindow);
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  else restoreLoremasterWindow();
 });
