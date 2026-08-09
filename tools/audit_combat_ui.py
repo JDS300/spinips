@@ -16,6 +16,9 @@ from PIL import Image
 from paint_attack_indicator import (ATTACK_BED, ATTACK_EDGE, ATTACK_FADE,
                                     ATTACK_HALO, ATTACK_INNER, ATTACK_SOFT,
                                     EDGE_WIDTH as ATTACK_EDGE_WIDTH,
+                                    FRAME_SIZE as ATTACK_FRAME_SIZE,
+                                    PULSE_BED, PULSE_EDGE, PULSE_FADE,
+                                    PULSE_HALO, PULSE_INNER, PULSE_SOFT,
                                     SIZE as ATTACK_INDICATOR_SIZE)
 from restyle_combat import (EFFECT_CHIP, EFFECT_ICON, EFFECT_NAME_WIDTH,
                            EFFECT_NAME_X, EFFECT_PLATE_BLEED,
@@ -27,7 +30,7 @@ from restyle_combat import (EFFECT_CHIP, EFFECT_ICON, EFFECT_NAME_WIDTH,
                            EXTENDED_TARGET_ROW_SIZE,
                            EXTENDED_TARGET_TILE,
                            EXTENDED_TARGET_WINDOW_SIZE,
-                           PLAYER_MIN_SIZE, TARGET_MIN_SIZE,
+                           ATTACK_PULSE_MS, PLAYER_MIN_SIZE, TARGET_MIN_SIZE,
                            SPELL_LEDGER_EQTYPES, SPELL_LEDGER_ICON_SIZE,
                            SPELL_LEDGER_MENU_NAME, SPELL_LEDGER_ROW_SIZE,
                            SPELL_LEDGER_VARIANT, SPELL_LEDGER_WINDOW_BOUNDS,
@@ -157,7 +160,13 @@ def audit_player_and_target() -> None:
         "vertical soft halo": (2, 16, ATTACK_HALO),
         "vertical deep glow": (3, 16, ATTACK_SOFT),
         "vertical fade": (4, 16, ATTACK_FADE),
-        "inactive texture bed": (64, 16, ATTACK_BED),
+        "hot combat wash": (64, 16, ATTACK_BED),
+        "pulse outer edge": (64, 32, PULSE_EDGE),
+        "pulse inner glow": (64, 33, PULSE_INNER),
+        "pulse soft halo": (64, 34, PULSE_HALO),
+        "pulse deep glow": (64, 35, PULSE_SOFT),
+        "pulse fade": (64, 36, PULSE_FADE),
+        "pulse combat wash": (64, 48, PULSE_BED),
     }
     for label, (x, y, expected) in attack_samples.items():
         actual = attack_pixels[x, y]
@@ -165,12 +174,21 @@ def audit_player_and_target() -> None:
             fail(f"auto-attack {label} changed: {actual} != {expected}")
 
     for name, expected in (
-            ("A_AttackIndicatorTop", (128, ATTACK_EDGE_WIDTH)),
-            ("A_AttackIndicatorBottom", (128, ATTACK_EDGE_WIDTH)),
-            ("A_AttackIndicatorLeft", (ATTACK_EDGE_WIDTH, 32)),
-            ("A_AttackIndicatorRight", (ATTACK_EDGE_WIDTH, 32))):
+            ("A_AttackIndicator", ATTACK_FRAME_SIZE),
+            ("A_AttackIndicatorTop", (ATTACK_FRAME_SIZE[0], ATTACK_EDGE_WIDTH)),
+            ("A_AttackIndicatorBottom", (ATTACK_FRAME_SIZE[0], ATTACK_EDGE_WIDTH)),
+            ("A_AttackIndicatorLeft", (ATTACK_EDGE_WIDTH, ATTACK_FRAME_SIZE[1])),
+            ("A_AttackIndicatorRight", (ATTACK_EDGE_WIDTH, ATTACK_FRAME_SIZE[1])),
+            ("A_AttackIndicatorFill", ATTACK_FRAME_SIZE)):
         animation = item(player, "Ui2DAnimation", name)
-        if dimensions_at(animation, "Frames/Size") != expected:
+        frames = animation.findall("Frames")
+        sizes = [dimensions_at(frame, "Size") for frame in frames]
+        origins = [child_int(frame, "Location/Y") for frame in frames]
+        durations = [child_int(frame, "Duration") for frame in frames]
+        if (child_text(animation, "Cycle") != "true"
+                or sizes != [expected, expected]
+                or origins != [0, ATTACK_FRAME_SIZE[1]]
+                or durations != [ATTACK_PULSE_MS, ATTACK_PULSE_MS]):
             fail(f"{name} lost its visible five-layer combat glow")
     attack_geometry = {
         "A_AttackIndicatorAnimTop": (70, 70 + ATTACK_EDGE_WIDTH, 0, 0),
