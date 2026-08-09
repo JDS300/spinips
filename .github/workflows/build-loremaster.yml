@@ -1,4 +1,4 @@
-name: Build SpinUI Windows package
+name: Build SpinUI components and Windows release
 
 on:
   push:
@@ -33,29 +33,130 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: spinui-build-${{ github.workflow }}-${{ github.ref }}
+  # A newer test push supersedes an older one; release assembly is never cancelled.
+  cancel-in-progress: ${{ github.event_name == 'push' }}
+
 jobs:
-  build-windows-package:
+  detect-changes:
+    name: Detect changed components
+    runs-on: ubuntu-latest
+    outputs:
+      ui: ${{ steps.scope.outputs.ui }}
+      loremaster: ${{ steps.scope.outputs.loremaster }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Verify change classifier
+        run: python tools/ci_change_scope.py --self-test
+
+      - name: Classify changed paths
+        id: scope
+        shell: pwsh
+        run: |
+          $scopeArgs = @(
+            '--head', '${{ github.sha }}',
+            '--default-branch', '${{ github.event.repository.default_branch }}',
+            '--github-output', $env:GITHUB_OUTPUT
+          )
+          if ('${{ github.event_name }}' -eq 'push') {
+            $scopeArgs += @('--base', '${{ github.event.before }}')
+          } else {
+            # Manual and tagged releases always build both components fresh.
+            $scopeArgs += '--force-all'
+          }
+          python tools/ci_change_scope.py @scopeArgs
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value @"
+          | Component | Build this run |
+          | --- | --- |
+          | SpinUI skins | $((Get-Content $env:GITHUB_OUTPUT | Select-String '^ui=').Line.Split('=')[1]) |
+          | Loremaster | $((Get-Content $env:GITHUB_OUTPUT | Select-String '^loremaster=').Line.Split('=')[1]) |
+          "@
+
+  build-ui:
+    name: Validate and package SpinUI skins
+    needs: detect-changes
+    if: needs.detect-changes.outputs.ui == 'true'
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # The layout drift check rebuilds from the immutable stock-layout
           # commit used by generate_spinui_layout.py.
           fetch-depth: 0
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
-      - uses: actions/setup-node@v4
+      - name: Install UI validation tooling
+        run: python -m pip install --disable-pip-version-check pillow tzdata==2026.3
+
+      - name: Run release quality gate
+        run: python tools/release_quality_gate.py
+
+      - name: Assemble UI component package
+        shell: pwsh
+        run: |
+          $uiPackage = Join-Path $PWD 'package/SpinUI-UI'
+          New-Item -ItemType Directory -Force -Path $uiPackage | Out-Null
+          Copy-Item -Recurse -Force spinui_reloaded (Join-Path $uiPackage 'spinui_reloaded')
+          Copy-Item -Recurse -Force spinui_glass (Join-Path $uiPackage 'spinui_glass')
+          # Public aliases plus every validated resolution profile ship;
+          # layouts/original and layouts/spin-live stay internal.
+          $packageLayouts = Join-Path $uiPackage 'layouts'
+          New-Item -ItemType Directory -Force -Path $packageLayouts | Out-Null
+          foreach ($preset in @('combat-focus', 'social-focus', 'hybrid')) {
+            Copy-Item -Recurse -Force (Join-Path 'layouts' $preset) (Join-Path $packageLayouts $preset)
+          }
+          Copy-Item -Recurse -Force layouts/profiles (Join-Path $packageLayouts 'profiles')
+          Copy-Item -Recurse -Force docs (Join-Path $uiPackage 'docs')
+          Copy-Item -Force UI_Spin_qeynos_LO1.ini $uiPackage
+          Copy-Item -Force README.md $uiPackage
+          Copy-Item -Force installer/INSTALL-MANUAL.md (Join-Path $uiPackage 'INSTALL.md')
+          Compress-Archive -Path "$uiPackage/*" -DestinationPath package/SpinUI-UI.zip -CompressionLevel Optimal
+
+      - name: Upload UI test package
+        uses: actions/upload-artifact@v6
+        with:
+          name: SpinUI-UI
+          path: package/SpinUI-UI.zip
+          if-no-files-found: error
+
+  build-loremaster:
+    name: Build portable Loremaster
+    needs: detect-changes
+    if: needs.detect-changes.outputs.loremaster == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: "11.16.0"
+          run_install: false
+
+      - uses: actions/setup-node@v6
         with:
           node-version: "24"
+          cache: pnpm
+          cache-dependency-path: loremaster-desktop/pnpm-lock.yaml
 
-      - name: Install build tooling
+      - name: Install Loremaster build tooling
         run: python -m pip install --disable-pip-version-check pyinstaller==6.21.0 pillow tzdata==2026.3
-
-      - name: Install pinned desktop preview tooling
-        run: npm install --global pnpm@11.16.0
 
       - name: Verify Loremaster desktop source
         working-directory: loremaster-desktop
@@ -92,7 +193,6 @@ jobs:
           if ($version -notmatch '^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$') {
             $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
           }
-          pnpm build
           pnpm exec electron-builder --win portable --x64 --publish never "-c.extraMetadata.version=$version"
 
       - name: Smoke-test Electron application
@@ -102,33 +202,70 @@ jobs:
           $lore = Start-Process -FilePath 'dist-electron-release/win-unpacked/Loremaster.exe' -PassThru -Wait -WindowStyle Hidden
           if ($lore.ExitCode -ne 0) { throw "Loremaster Electron smoke exit code $($lore.ExitCode)" }
 
+      - name: Publish Loremaster component checksum
+        shell: pwsh
+        run: |
+          $component = Join-Path $PWD 'package/Loremaster-Windows'
+          New-Item -ItemType Directory -Force -Path $component | Out-Null
+          Copy-Item -Force dist-electron-release/Loremaster.exe $component
+          $file = Join-Path $component 'Loremaster.exe'
+          $hash = (Get-FileHash -Algorithm SHA256 $file).Hash.ToLower()
+          $checksum = Join-Path $component 'Loremaster-SHA256.txt'
+          Set-Content -Path $checksum -Value "$hash  Loremaster.exe`n" -NoNewline
+          Get-Content $checksum
+
+      - name: Upload Loremaster test build
+        uses: actions/upload-artifact@v6
+        with:
+          name: Loremaster-Windows
+          path: package/Loremaster-Windows/*
+          if-no-files-found: error
+
+  package-windows-release:
+    name: Assemble complete Windows release
+    needs: [detect-changes, build-ui, build-loremaster]
+    if: github.event_name != 'push'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install package validation tooling
+        run: python -m pip install --disable-pip-version-check pillow tzdata==2026.3
+
+      - name: Download verified UI component
+        uses: actions/download-artifact@v6
+        with:
+          name: SpinUI-UI
+          path: package/ui-component
+
+      - name: Download verified Loremaster component
+        uses: actions/download-artifact@v6
+        with:
+          name: Loremaster-Windows
+          path: package/loremaster-component
+
       - name: Assemble staged manual release
         shell: pwsh
         run: |
           $manualPackage = Join-Path $PWD 'package/SpinUI-Manual'
           New-Item -ItemType Directory -Force -Path $manualPackage | Out-Null
-          Copy-Item -Recurse -Force spinui_reloaded (Join-Path $manualPackage 'spinui_reloaded')
-          Copy-Item -Recurse -Force spinui_glass (Join-Path $manualPackage 'spinui_glass')
-          # Public aliases plus every validated resolution profile ship;
-          # layouts/original and layouts/spin-live stay internal.
-          $packageLayouts = Join-Path $manualPackage 'layouts'
-          New-Item -ItemType Directory -Force -Path $packageLayouts | Out-Null
-          foreach ($preset in @('combat-focus', 'social-focus', 'hybrid')) {
-            Copy-Item -Recurse -Force (Join-Path 'layouts' $preset) (Join-Path $packageLayouts $preset)
-          }
-          Copy-Item -Recurse -Force layouts/profiles (Join-Path $packageLayouts 'profiles')
-          Copy-Item -Recurse -Force docs (Join-Path $manualPackage 'docs')
-          Copy-Item -Force UI_Spin_qeynos_LO1.ini $manualPackage
-          Copy-Item -Force README.md $manualPackage
-          Copy-Item -Force installer/INSTALL-MANUAL.md (Join-Path $manualPackage 'INSTALL.md')
+          Expand-Archive -LiteralPath package/ui-component/SpinUI-UI.zip -DestinationPath $manualPackage -Force
+          New-Item -ItemType Directory -Force -Path dist-electron-release | Out-Null
+          Copy-Item -Force package/loremaster-component/Loremaster.exe dist-electron-release/Loremaster.exe
           Copy-Item -Force dist-electron-release/Loremaster.exe $manualPackage
 
-      - name: Verify staged release packages
+      - name: Verify staged release package
         run: >
           python tools/release_quality_gate.py --packages-only
           --package manual=package/SpinUI-Manual
 
-      - name: Compress verified release packages
+      - name: Compress verified release package
         shell: pwsh
         run: |
           $manualPackage = Join-Path $PWD 'package/SpinUI-Manual'
@@ -149,15 +286,15 @@ jobs:
           Add-Content -Path package/SHA256SUMS.txt -Value "`n"
           Get-Content package/SHA256SUMS.txt
 
-      - name: Upload manual package
-        uses: actions/upload-artifact@v4
+      - name: Upload complete manual package
+        uses: actions/upload-artifact@v6
         with:
           name: SpinUI-Manual
           path: package/SpinUI-Manual.zip
           if-no-files-found: error
 
-      - name: Upload standalone executable and checksums
-        uses: actions/upload-artifact@v4
+      - name: Upload complete Windows tools and checksums
+        uses: actions/upload-artifact@v6
         with:
           name: SpinUI-Windows-tools
           path: |

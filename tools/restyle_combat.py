@@ -68,14 +68,18 @@ ATTACK_EDGE_WIDTH = 5
 ATTACK_FRAME_SIZE = (128, 32)
 ATTACK_TEXTURE_SIZE = (128, 64)
 ATTACK_PULSE_MS = 420
+ATTACK_HIGH_EDGE_WIDTH = 9
+ATTACK_HIGH_TEXTURE = "AttackIndicatorHigh.tga"
+PLAYER_HIGH_VISIBILITY_VARIANT = "EQUI_PlayerWindow1.xml"
+PLAYER_HIGH_VISIBILITY_MENU_NAME = "High-Visibility Attack Frame"
 
 # Older SpinUI releases exposed a large collection of visual variants.  Most of
 # those files predate the July Legends schema and can lose live controls when a
 # saved layout still selects them.  Keep the filenames as compatibility aliases
 # (so existing INIs continue to load), but make every alias use the canonical,
-# current-schema command frame.  CastSpellWnd3 is the deliberate exception: it
-# is a current-schema, named-and-numbered spell ledger while the canonical deck
-# remains the untouched icon-only default.
+# current-schema command frame. PlayerWindow1 is the deliberate high-visibility
+# auto-attack option; CastSpellWnd3 is the named-and-numbered spell ledger. The
+# canonical player frame and icon-only spell deck remain the untouched defaults.
 SPELL_LEDGER_VARIANT = "EQUI_CastSpellWnd3.xml"
 SPELL_LEDGER_MENU_NAME = "SpinUI Spell Ledger"
 SPELL_LEDGER_EQTYPES = (
@@ -102,7 +106,7 @@ EXTENDED_TARGET_BLOCK_BEGIN = "SPIN-XTAR-RESPONSIVE:BEGIN"
 EXTENDED_TARGET_BLOCK_END = "SPIN-XTAR-RESPONSIVE:END"
 
 CANONICAL_VARIANTS = {
-    "EQUI_PlayerWindow.xml": tuple(f"EQUI_PlayerWindow{i}.xml" for i in range(1, 7)),
+    "EQUI_PlayerWindow.xml": tuple(f"EQUI_PlayerWindow{i}.xml" for i in range(2, 7)),
     "EQUI_TargetWindow.xml": tuple(f"EQUI_TargetWindow{i}.xml" for i in range(1, 7)),
     "EQUI_TargetOfTargetWindow.xml": ("EQUI_TargetOfTargetWindow1.xml",),
     "EQUI_BuffWindow.xml": tuple(f"EQUI_BuffWindow{i}.xml" for i in range(1, 18)),
@@ -1298,6 +1302,69 @@ def sync_canonical_variants() -> None:
             write_ascii(SKIN / variant_name, source)
 
 
+def style_high_visibility_player_variant() -> None:
+    """Expose Alternate 1 as a binding-safe, unmistakable attack frame."""
+    source = (SKIN / "EQUI_PlayerWindow.xml").read_text(encoding="ascii")
+    source = source.replace("AttackIndicator.tga", ATTACK_HIGH_TEXTURE)
+    source, count = re.subn(
+        r"(<Schema\b[^>]*/>)",
+        (r"\g<1>\n\n\t<!-- Alternate 1: native auto-attack state with a "
+         r"pure-red high-visibility treatment. -->"),
+        source,
+        count=1,
+    )
+    if count != 1:
+        fail("missing Schema declaration in high-visibility player variant")
+
+    def animation_size(block: str, size: tuple[int, int]) -> str:
+        pattern = re.compile(
+            r"(<Size>\s*<CX>)\d+(</CX>\s*<CY>)\d+(</CY>\s*</Size>)"
+        )
+        return pattern.sub(
+            lambda match: (
+                match.group(1) + str(size[0]) + match.group(2)
+                + str(size[1]) + match.group(3)
+            ),
+            block,
+        )
+
+    for name, size in (
+            ("A_AttackIndicatorTop", (ATTACK_FRAME_SIZE[0], ATTACK_HIGH_EDGE_WIDTH)),
+            ("A_AttackIndicatorBottom", (ATTACK_FRAME_SIZE[0], ATTACK_HIGH_EDGE_WIDTH)),
+            ("A_AttackIndicatorLeft", (ATTACK_HIGH_EDGE_WIDTH, ATTACK_FRAME_SIZE[1])),
+            ("A_AttackIndicatorRight", (ATTACK_HIGH_EDGE_WIDTH, ATTACK_FRAME_SIZE[1]))):
+        source = change_item(
+            source, "Ui2DAnimation", name,
+            lambda block, wanted=size: animation_size(block, wanted),
+        )
+
+    geometry = {
+        "A_AttackIndicatorAnimTop": (
+            70, 70 + ATTACK_HIGH_EDGE_WIDTH, 0, 0),
+        "A_AttackIndicatorAnimBottom": (
+            2 + ATTACK_HIGH_EDGE_WIDTH, 2, 0, 0),
+        "A_AttackIndicatorAnimLeft": (
+            70, 2, 0, ATTACK_HIGH_EDGE_WIDTH),
+        "A_AttackIndicatorAnimRight": (
+            70, 2, ATTACK_HIGH_EDGE_WIDTH, 0),
+    }
+    for name, offsets in geometry.items():
+        def high_edge(block: str, values=offsets) -> str:
+            for tag, value in zip((
+                    "TopAnchorOffset", "BottomAnchorOffset",
+                    "LeftAnchorOffset", "RightAnchorOffset"), values):
+                block = set_value(block, tag, value)
+            return block
+        source = change_item(source, "StaticAnimation", name, high_edge)
+
+    source = change_item(
+        source, "Screen", "PlayerWindow",
+        lambda block: set_value(
+            block, "MenuName", PLAYER_HIGH_VISIBILITY_MENU_NAME),
+    )
+    write_ascii(SKIN / PLAYER_HIGH_VISIBILITY_VARIANT, source)
+
+
 def style_experience_gauges() -> None:
     """One color identity per progression bar, everywhere it appears.
 
@@ -1359,6 +1426,7 @@ def main() -> int:
     style_experience_gauges()
     style_raid()
     sync_canonical_variants()
+    style_high_visibility_player_variant()
     register_spell_ledger_assets()
     style_spell_ledger_variant()
     print("Combat Command Center restyle: complete")
