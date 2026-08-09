@@ -23,7 +23,7 @@ const eqToolsCharSheetUrl = "https://eqlegendstools.com/char-sheet/";
 
 const defaultDesktopSettings: DesktopSettings = {
   logPath: "", raidDifficulty: null, bisBuildPath: "", inventoryPath: "",
-  alwaysOnTop: true, fontScale: 1.1, splitCharmedPetDps: false,
+  alwaysOnTop: true, fontScale: 1.15, composition: "", splitCharmedPetDps: false,
   stanceAdvisorEnabled: false, seedPosition: null,
   alerts: {
     alertsEnabled: true, alertSound: true, alertSeconds: 5, alertAnchor: "auto",
@@ -51,6 +51,7 @@ const emptyEvent: EngineSnapshotEvent = {
     sequence: 0,
     observedAt: new Date(0).toISOString(),
     character: { name: "?", level: 0, composition: "", zone: "" },
+    groupMembers: [],
     combat: {
       active: false, autoAttack: false, encounterName: "", fightDps: 0, sessionDps: 0,
       personalDamage: 0, charmedPetDamage: 0, summonedPetDamage: 0,
@@ -215,14 +216,34 @@ function SeedControlSurface() {
     control.state === "active" &&
     (control.kind === "mez" ? settings.alerts.mezTimersEnabled : settings.alerts.lullTimersEnabled),
   ).slice(0, 6);
-  if (controls.length === 0) return <div className="seed-control-surface empty" />;
-  return <section className="seed-control-surface" aria-live="polite" aria-label="Active mez and lull timers">
-    <header><span><i /> CONTROL</span><strong>{controls.length} ACTIVE · MEZ / LULL</strong></header>
-    <div>{controls.map((control, index) => <SeedControlRow
-      key={`${control.kind}-${control.target}-${control.landedAt}-${index}`}
-      control={control}
-    />)}</div>
-  </section>;
+  const latest = event.snapshot.encounters?.at(-1);
+  const activeGroup = new Set((event.snapshot.groupMembers ?? []).map((name) => name.toLocaleLowerCase()));
+  const group = [...(latest?.actors ?? [])]
+    .filter((actor) => actor.role === "group" && actor.encounterDamage > 0 &&
+      activeGroup.has(actor.name.toLocaleLowerCase()))
+    .sort((left, right) => right.encounterDamage - left.encounterDamage)
+    .slice(0, 5);
+  if (controls.length === 0 && group.length === 0) {
+    return <div className="seed-companion-surface empty" />;
+  }
+  const groupTotal = group.reduce((total, actor) => total + actor.encounterDamage, 0);
+  return <main className="seed-companion-surface" aria-live="polite">
+    {group.length > 0 && <section className="seed-group-surface" aria-label="Group DPS contributors">
+      <header><span><i /> GROUP DPS</span><strong>{latest?.active ? "LIVE" : "LAST FIGHT"} · {group.length} VERIFIED</strong></header>
+      <div>{group.map((actor) => <article className="seed-group-row" key={actor.name}>
+        <span><b>{actor.name}</b><small>{groupTotal > 0 ? Math.round(actor.encounterDamage / groupTotal * 100) : 0}% GROUP SHARE</small></span>
+        <strong>{formatDps(actor.encounterDps)}<small>DPS</small></strong>
+        <em>{actor.encounterDamage.toLocaleString()} DMG</em>
+      </article>)}</div>
+    </section>}
+    {controls.length > 0 && <section className="seed-control-surface" aria-label="Active mez and lull timers">
+      <header><span><i /> CONTROL</span><strong>{controls.length} ACTIVE · MEZ / LULL</strong></header>
+      <div>{controls.map((control, index) => <SeedControlRow
+        key={`${control.kind}-${control.target}-${control.landedAt}-${index}`}
+        control={control}
+      />)}</div>
+    </section>}
+  </main>;
 }
 
 function SettingsToggle({ checked, label, detail, onChange }: {
@@ -269,6 +290,7 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
     const saved = await window.loremasterDesktop?.updateSettings({
       alwaysOnTop: draft.alwaysOnTop,
       fontScale: draft.fontScale,
+      composition: draft.composition,
       splitCharmedPetDps: draft.splitCharmedPetDps,
       stanceAdvisorEnabled: draft.stanceAdvisorEnabled,
       alerts: draft.alerts,
@@ -276,7 +298,7 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
     if (saved) onSettings(saved);
   };
   const changeFontScale = async (delta: number) => {
-    const fontScale = Math.max(0.9, Math.min(1.4, Math.round((draft.fontScale + delta) * 20) / 20));
+    const fontScale = Math.max(0.9, Math.min(1.6, Math.round((draft.fontScale + delta) * 20) / 20));
     setDraft((current) => ({ ...current, fontScale }));
     const saved = await window.loremasterDesktop?.updateSettings({ fontScale });
     if (saved) onSettings(saved);
@@ -302,6 +324,11 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
       <article className="settings-card">
         <label>HUD BEHAVIOR</label>
         <p>The Rune Seed stays edge-safe, remembers its location, and can remain visible above EverQuest.</p>
+        <label htmlFor="class-composition">CLASS COMPOSITION</label>
+        <p>Used when the log does not announce the active trio. Example: PAL/MNK/ENC.</p>
+        <input id="class-composition" value={draft.composition}
+          maxLength={48} placeholder="PAL/MNK/ENC"
+          onChange={(event) => patchDraft({ composition: event.target.value.toUpperCase() })} />
         <SettingsToggle checked={draft.alwaysOnTop} label="Keep Loremaster above EverQuest"
           onChange={(alwaysOnTop) => patchDraft({ alwaysOnTop })} />
         <SettingsToggle checked={draft.splitCharmedPetDps} label="Split self and charmed-pet DPS"
@@ -535,7 +562,8 @@ function currentEncounter(event: EngineSnapshotEvent): EncounterView {
 }
 
 const actorRoleLabels: Record<CombatActorRole, string> = {
-  self: "SELF", charmed: "CHARMED PET", summoned: "SUMMONED PET", observed: "OBSERVED",
+  self: "SELF", charmed: "CHARMED PET", summoned: "SUMMONED PET",
+  group: "GROUP", observed: "OBSERVED",
 };
 
 function stanceAdvice(encounter: EncounterView): { lean: string; detail: string; tone: "offense" | "defense" } {
@@ -692,6 +720,8 @@ function MainApp() {
     self: encounter.personalDamage,
     charmed: encounter.charmedPetDamage,
     summoned: encounter.summonedPetDamage,
+    group: encounter.actors.filter((actor) => actor.role === "group")
+      .reduce((total, actor) => total + actor.encounterDamage, 0),
     observed: encounter.actors.filter((actor) => actor.role === "observed")
       .reduce((total, actor) => total + actor.encounterDamage, 0),
   };
@@ -716,7 +746,7 @@ function MainApp() {
         onSettings={setSettings}
         onRaidDifficulty={changeRaidDifficulty} onClose={() => setSettingsOpen(false)} /> : <>
         <section className="context-line">
-          <span>{snapshot.character.name !== "?" ? snapshot.character.name : "NO LOG YET"}{snapshot.character.level > 0 ? ` · ${snapshot.character.level}` : ""}{snapshot.character.composition ? ` · ${snapshot.character.composition}` : ""}</span>
+          <span><b>{snapshot.character.name !== "?" ? snapshot.character.name : "NO LOG YET"}{snapshot.character.level > 0 ? ` · ${snapshot.character.level}` : ""}</b>{snapshot.character.composition && <em>{snapshot.character.composition.replaceAll(" ", "")}</em>}</span>
           <span>{snapshot.character.zone || health.state}</span>
         </section>
 

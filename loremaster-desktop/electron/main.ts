@@ -38,6 +38,9 @@ const CONTROL_SURFACE_WIDTH = 304;
 const CONTROL_SURFACE_HEADER_HEIGHT = 31;
 const CONTROL_SURFACE_ROW_HEIGHT = 48;
 const CONTROL_SURFACE_MAX_ROWS = 6;
+const GROUP_SURFACE_HEADER_HEIGHT = 31;
+const GROUP_SURFACE_ROW_HEIGHT = 38;
+const GROUP_SURFACE_MAX_ROWS = 5;
 const screenshotControls = [
   {
     kind: "mez", state: "active", target: "an essence carrier", count: 2,
@@ -83,6 +86,7 @@ interface DesktopSettings {
   inventoryPath: string;
   alwaysOnTop: boolean;
   fontScale: number;
+  composition: string;
   splitCharmedPetDps: boolean;
   stanceAdvisorEnabled: boolean;
   seedPosition: { x: number; y: number } | null;
@@ -133,7 +137,8 @@ const defaultSettings: DesktopSettings = {
   bisBuildPath: "",
   inventoryPath: "",
   alwaysOnTop: true,
-  fontScale: 1.1,
+  fontScale: 1.15,
+  composition: "",
   splitCharmedPetDps: false,
   stanceAdvisorEnabled: false,
   seedPosition: null,
@@ -170,7 +175,8 @@ function readSettings(): DesktopSettings {
       bisBuildPath: typeof value.bisBuildPath === "string" ? value.bisBuildPath : "",
       inventoryPath: typeof value.inventoryPath === "string" ? value.inventoryPath : "",
       alwaysOnTop: boolean(value.alwaysOnTop, true),
-      fontScale: clampInteger(value.fontScale === undefined ? 110 : Number(value.fontScale) * 100, 110, 90, 140) / 100,
+      fontScale: clampInteger(value.fontScale === undefined ? 115 : Number(value.fontScale) * 100, 115, 90, 160) / 100,
+      composition: typeof value.composition === "string" ? value.composition.slice(0, 48) : "",
       splitCharmedPetDps: boolean(value.splitCharmedPetDps, false),
       stanceAdvisorEnabled: boolean(value.stanceAdvisorEnabled, false),
       seedPosition,
@@ -326,6 +332,7 @@ class EngineSupervisor {
         type: "engine.initialize",
         logPath: parserLogPath,
         raidDifficulty: this.settings.raidDifficulty,
+        composition: this.settings.composition,
         alertConfig: this.settings.alerts,
       });
     });
@@ -434,20 +441,30 @@ class EngineSupervisor {
     this.send({ type: "engine.set-raid-difficulty", raidDifficulty });
   }
 
-  updateDesktopSettings(patch: Partial<Pick<DesktopSettings, "alwaysOnTop" | "fontScale" | "splitCharmedPetDps" | "stanceAdvisorEnabled">> & {
+  updateDesktopSettings(patch: Partial<Pick<DesktopSettings, "alwaysOnTop" | "fontScale" | "composition" | "splitCharmedPetDps" | "stanceAdvisorEnabled">> & {
     alerts?: Partial<AlertSettings>;
   }): DesktopSettings {
     const nextAlerts = patch.alerts ? { ...this.settings.alerts, ...patch.alerts } : this.settings.alerts;
+    const previousScale = this.settings.fontScale;
+    const nextScale = typeof patch.fontScale === "number" ? clamp(patch.fontScale, 0.9, 1.6) : previousScale;
+    const nextSeedPosition = nextScale !== previousScale
+      ? scaledSeedPosition(this.settings.seedPosition, previousScale, nextScale)
+      : this.settings.seedPosition;
     this.settings = {
       ...this.settings,
       ...(typeof patch.alwaysOnTop === "boolean" ? { alwaysOnTop: patch.alwaysOnTop } : {}),
-      ...(typeof patch.fontScale === "number" ? { fontScale: clamp(patch.fontScale, 0.9, 1.4) } : {}),
+      fontScale: nextScale,
+      seedPosition: nextSeedPosition,
+      ...(typeof patch.composition === "string" ? { composition: patch.composition.trim().slice(0, 48) } : {}),
       ...(typeof patch.splitCharmedPetDps === "boolean" ? { splitCharmedPetDps: patch.splitCharmedPetDps } : {}),
       ...(typeof patch.stanceAdvisorEnabled === "boolean" ? { stanceAdvisorEnabled: patch.stanceAdvisorEnabled } : {}),
       alerts: nextAlerts,
     };
     saveSettings(this.settings);
     this.send({ type: "engine.set-alert-config", alertConfig: this.settings.alerts });
+    if (typeof patch.composition === "string") {
+      this.send({ type: "engine.set-composition", composition: this.settings.composition });
+    }
     applyDisplayScale(this.settings.fontScale);
     applyAlwaysOnTop(this.settings.alwaysOnTop);
     positionAlertWindow();
@@ -602,6 +619,29 @@ function scaledSize(size: { width: number; height: number }, scale?: number) {
   };
 }
 
+function scaledSeedPosition(
+  position: { x: number; y: number } | null,
+  previousScale: number,
+  nextScale: number,
+): { x: number; y: number } | null {
+  if (!position || previousScale === nextScale) return position;
+  const previous = scaledSize(SEED_SIZE, previousScale);
+  const next = scaledSize(SEED_SIZE, nextScale);
+  const display = screen.getDisplayNearestPoint({
+    x: position.x + Math.round(previous.width / 2),
+    y: position.y + Math.round(previous.height / 2),
+  });
+  const workArea = display.workArea;
+  const anchorRight = position.x + previous.width / 2 > workArea.x + workArea.width / 2;
+  const anchorBottom = position.y + previous.height / 2 > workArea.y + workArea.height / 2;
+  const x = anchorRight ? position.x + previous.width - next.width : position.x;
+  const y = anchorBottom ? position.y + previous.height - next.height : position.y;
+  return {
+    x: clamp(x, workArea.x, workArea.x + workArea.width - next.width),
+    y: clamp(y, workArea.y, workArea.y + workArea.height - next.height),
+  };
+}
+
 function visibleSeedControls(value: unknown, settings: DesktopSettings): Record<string, unknown>[] {
   if (!value || typeof value !== "object") return [];
   const snapshot = (value as { snapshot?: unknown }).snapshot;
@@ -618,15 +658,46 @@ function visibleSeedControls(value: unknown, settings: DesktopSettings): Record<
   }).slice(0, CONTROL_SURFACE_MAX_ROWS);
 }
 
-function controlSurfaceSize(rowCount: number, scale: number) {
+function visibleGroupContributors(value: unknown): Record<string, unknown>[] {
+  if (!value || typeof value !== "object") return [];
+  const snapshot = (value as { snapshot?: unknown }).snapshot;
+  if (!snapshot || typeof snapshot !== "object") return [];
+  const encounters = (snapshot as { encounters?: unknown }).encounters;
+  const groupMembersValue = (snapshot as { groupMembers?: unknown }).groupMembers;
+  const groupMembers = new Set(Array.isArray(groupMembersValue)
+    ? groupMembersValue.filter((name): name is string => typeof name === "string")
+      .map((name) => name.toLocaleLowerCase())
+    : []);
+  if (!Array.isArray(encounters) || encounters.length === 0) return [];
+  const latest = encounters[encounters.length - 1];
+  if (!latest || typeof latest !== "object") return [];
+  const actors = (latest as { actors?: unknown }).actors;
+  if (!Array.isArray(actors)) return [];
+  return actors.filter((candidate): candidate is Record<string, unknown> => (
+    Boolean(candidate) && typeof candidate === "object" &&
+    (candidate as Record<string, unknown>).role === "group" &&
+    Number((candidate as Record<string, unknown>).encounterDamage) > 0 &&
+    groupMembers.has(String((candidate as Record<string, unknown>).name).toLocaleLowerCase())
+  )).sort((left, right) => (
+    Number(right.encounterDamage) - Number(left.encounterDamage)
+  )).slice(0, GROUP_SURFACE_MAX_ROWS);
+}
+
+function controlSurfaceSize(controlRows: number, groupRows: number, scale: number) {
+  const controlHeight = controlRows > 0
+    ? CONTROL_SURFACE_HEADER_HEIGHT + controlRows * CONTROL_SURFACE_ROW_HEIGHT
+    : 0;
+  const groupHeight = groupRows > 0
+    ? GROUP_SURFACE_HEADER_HEIGHT + groupRows * GROUP_SURFACE_ROW_HEIGHT
+    : 0;
   return scaledSize({
     width: CONTROL_SURFACE_WIDTH,
-    height: CONTROL_SURFACE_HEADER_HEIGHT + Math.max(1, rowCount) * CONTROL_SURFACE_ROW_HEIGHT,
+    height: Math.max(1, controlHeight + groupHeight),
   }, scale);
 }
 
 function applyDisplayScale(scale: number): void {
-  const factor = clamp(scale, 0.9, 1.4);
+  const factor = clamp(scale, 0.9, 1.6);
   mainWindow?.webContents.setZoomFactor(factor);
   alertWindow?.webContents.setZoomFactor(factor);
   controlWindow?.webContents.setZoomFactor(factor);
@@ -694,12 +765,14 @@ function syncControlWindow(): void {
   if (process.env.LOREMASTER_SCREENSHOT_VIEW === "controls") return;
   const settings = engine?.getState().settings ?? defaultSettings;
   const rows = visibleSeedControls(engine?.getState().snapshot, settings);
-  if (windowExpanded || rows.length === 0) {
+  const contributors = visibleGroupContributors(engine?.getState().snapshot);
+  if (windowExpanded || (rows.length === 0 && contributors.length === 0)) {
     controlWindow.hide();
+    positionAlertWindow();
     return;
   }
 
-  const panelSize = controlSurfaceSize(rows.length, settings.fontScale);
+  const panelSize = controlSurfaceSize(rows.length, contributors.length, settings.fontScale);
   const anchor = mainWindow.getBounds();
   const workArea = screen.getDisplayMatching(anchor).workArea;
   const gap = Math.max(5, Math.round(6 * settings.fontScale));
@@ -710,15 +783,15 @@ function syncControlWindow(): void {
 
   let x: number;
   let y: number;
-  if (spaceRight >= panelSize.width + gap) {
+  if (spaceAbove >= panelSize.height + gap) {
+    x = anchor.x + Math.round((anchor.width - panelSize.width) / 2);
+    y = anchor.y - panelSize.height - gap;
+  } else if (spaceRight >= panelSize.width + gap) {
     x = anchor.x + anchor.width + gap;
     y = anchor.y + Math.round((anchor.height - panelSize.height) / 2);
   } else if (spaceLeft >= panelSize.width + gap) {
     x = anchor.x - panelSize.width - gap;
     y = anchor.y + Math.round((anchor.height - panelSize.height) / 2);
-  } else if (spaceAbove >= panelSize.height + gap) {
-    x = anchor.x + Math.round((anchor.width - panelSize.width) / 2);
-    y = anchor.y - panelSize.height - gap;
   } else {
     x = anchor.x + Math.round((anchor.width - panelSize.width) / 2);
     y = anchor.y + anchor.height + gap;
@@ -727,6 +800,25 @@ function syncControlWindow(): void {
   y = clamp(y, workArea.y, workArea.y + workArea.height - panelSize.height);
   controlWindow.setBounds({ x, y, ...panelSize }, false);
   if (!controlWindow.webContents.isLoadingMainFrame()) controlWindow.showInactive();
+  positionAlertWindow();
+}
+
+function canonicalSeedAnchor(settings: DesktopSettings, fallback: Electron.Rectangle) {
+  const size = scaledSize(SEED_SIZE, settings.fontScale);
+  const saved = settings.seedPosition ?? { x: fallback.x, y: fallback.y };
+  const display = screen.getDisplayNearestPoint({
+    x: saved.x + Math.round(size.width / 2),
+    y: saved.y + Math.round(size.height / 2),
+  });
+  const workArea = display.workArea;
+  return {
+    workArea,
+    bounds: {
+      x: clamp(saved.x, workArea.x, workArea.x + workArea.width - size.width),
+      y: clamp(saved.y, workArea.y, workArea.y + workArea.height - size.height),
+      ...size,
+    },
+  };
 }
 
 function positionAlertWindow(): void {
@@ -734,11 +826,17 @@ function positionAlertWindow(): void {
   const settings = engine?.getState().settings ?? defaultSettings;
   const alertSize = scaledSize(ALERT_SIZE, settings.fontScale);
   const anchorBounds = mainWindow.getBounds();
+  const companionBounds = controlWindow?.isVisible() ? controlWindow.getBounds() : null;
+  const companionAbove = Boolean(
+    companionBounds && companionBounds.y + companionBounds.height <= anchorBounds.y);
   const workArea = screen.getDisplayMatching(anchorBounds).workArea;
   const gap = 10;
   let anchor = settings.alerts.alertAnchor;
   if (anchor === "auto") {
-    const above = anchorBounds.y - workArea.y;
+    const aboveEdge = companionAbove && companionBounds
+      ? companionBounds.y
+      : anchorBounds.y;
+    const above = aboveEdge - workArea.y;
     const below = workArea.y + workArea.height - (anchorBounds.y + anchorBounds.height);
     const right = workArea.x + workArea.width - (anchorBounds.x + anchorBounds.width);
     anchor = above >= alertSize.height + gap && above >= below
@@ -747,7 +845,8 @@ function positionAlertWindow(): void {
         : below >= alertSize.height + gap ? "below" : "left";
   }
   let x = anchorBounds.x + Math.round((anchorBounds.width - alertSize.width) / 2);
-  let y = anchorBounds.y - alertSize.height - gap;
+  let y = (companionAbove && companionBounds ? companionBounds.y : anchorBounds.y)
+    - alertSize.height - gap;
   if (anchor === "below") y = anchorBounds.y + anchorBounds.height + gap;
   if (anchor === "left") {
     x = anchorBounds.x - alertSize.width - gap;
@@ -765,40 +864,34 @@ function positionAlertWindow(): void {
 function setWindowMode(expanded: boolean, preserveAnchor = false): void {
   if (!mainWindow) return;
   const current = mainWindow.getBounds();
-  const workArea = screen.getDisplayMatching(current).workArea;
   const settings = engine?.getState().settings ?? defaultSettings;
-  const seedSize = scaledSize(SEED_SIZE, settings.fontScale);
+  const anchor = canonicalSeedAnchor(settings, current);
+  const workArea = anchor.workArea;
+  const seedBounds = anchor.bounds;
   const expandedSize = scaledSize(EXPANDED_SIZE, settings.fontScale);
   movingWindowProgrammatically = true;
   windowExpanded = expanded;
   windowAnalysis = false;
   if (expanded) {
-    const spaceBelow = workArea.y + workArea.height - (current.y + current.height);
-    const spaceAbove = current.y - workArea.y;
+    const spaceBelow = workArea.y + workArea.height - (seedBounds.y + seedBounds.height);
+    const spaceAbove = seedBounds.y - workArea.y;
     if (!preserveAnchor) {
-      expansionDirection = spaceBelow < expandedSize.height - current.height && spaceAbove > spaceBelow
+      expansionDirection = spaceBelow < expandedSize.height - seedBounds.height && spaceAbove > spaceBelow
         ? "up"
         : "down";
     }
     const y = expansionDirection === "up"
-      ? current.y + current.height - expandedSize.height
-      : current.y;
+      ? seedBounds.y + seedBounds.height - expandedSize.height
+      : seedBounds.y;
     const target = {
-      x: clamp(current.x, workArea.x, workArea.x + workArea.width - expandedSize.width),
+      x: clamp(seedBounds.x, workArea.x, workArea.x + workArea.width - expandedSize.width),
       y: clamp(y, workArea.y, workArea.y + workArea.height - expandedSize.height),
       ...expandedSize,
     };
     mainWindow.setMinimumSize(Math.round(390 * settings.fontScale), Math.round(500 * settings.fontScale));
     mainWindow.setBounds(target, false);
   } else {
-    const y = expansionDirection === "up"
-      ? current.y + current.height - seedSize.height
-      : current.y;
-    const target = {
-      x: clamp(current.x, workArea.x, workArea.x + workArea.width - seedSize.width),
-      y: clamp(y, workArea.y, workArea.y + workArea.height - seedSize.height),
-      ...seedSize,
-    };
+    const target = seedBounds;
     mainWindow.setMinimumSize(118, 64);
     mainWindow.setBounds(target, false);
     engine?.saveSeedPosition({ x: target.x, y: target.y });
@@ -816,27 +909,29 @@ function setAnalysisMode(active: boolean, preserveAnchor = false): void {
   }
   if (!mainWindow) return;
   const current = mainWindow.getBounds();
-  const workArea = screen.getDisplayMatching(current).workArea;
   const settings = engine?.getState().settings ?? defaultSettings;
-  const requested = scaledSize(ANALYSIS_SIZE, Math.min(settings.fontScale, 1.2));
+  const anchor = canonicalSeedAnchor(settings, current);
+  const workArea = anchor.workArea;
+  const seedBounds = anchor.bounds;
+  const requested = scaledSize(ANALYSIS_SIZE, Math.min(settings.fontScale, 1.35));
   const availableWidth = Math.max(480, workArea.width - 16);
   const availableHeight = Math.max(440, workArea.height - 16);
   const targetSize = {
     width: Math.min(Math.max(780, requested.width), availableWidth),
     height: Math.min(Math.max(620, requested.height), availableHeight),
   };
-  const spaceBelow = workArea.y + workArea.height - (current.y + current.height);
-  const spaceAbove = current.y - workArea.y;
+  const spaceBelow = workArea.y + workArea.height - (seedBounds.y + seedBounds.height);
+  const spaceAbove = seedBounds.y - workArea.y;
   if (!preserveAnchor) {
-    expansionDirection = spaceBelow < targetSize.height - current.height && spaceAbove > spaceBelow
+    expansionDirection = spaceBelow < targetSize.height - seedBounds.height && spaceAbove > spaceBelow
       ? "up"
       : "down";
   }
   const y = expansionDirection === "up"
-    ? current.y + current.height - targetSize.height
-    : current.y;
+    ? seedBounds.y + seedBounds.height - targetSize.height
+    : seedBounds.y;
   const target = {
-    x: clamp(current.x, workArea.x, workArea.x + workArea.width - targetSize.width),
+    x: clamp(seedBounds.x, workArea.x, workArea.x + workArea.width - targetSize.width),
     y: clamp(y, workArea.y, workArea.y + workArea.height - targetSize.height),
     ...targetSize,
   };
@@ -907,7 +1002,7 @@ function createAlertWindow(): void {
 
 function createControlWindow(): void {
   const settings = engine?.getState().settings ?? defaultSettings;
-  const initialSize = controlSurfaceSize(1, settings.fontScale);
+  const initialSize = controlSurfaceSize(1, 0, settings.fontScale);
   controlWindow = new BrowserWindow({
     ...initialSize,
     frame: false,
@@ -949,10 +1044,20 @@ function createControlWindow(): void {
           observedAt: new Date().toISOString(),
           character: { name: "Spin", level: 50, composition: "PAL/MNK/ENC", zone: "The Plane of Sky" },
           combat: { fightDps: 328 },
+          groupMembers: ["Aromek", "Verdume", "Lilith"],
+          encounters: [{
+            active: true,
+            actors: [
+              { name: "Aromek", role: "group", encounterDamage: 48210, encounterDps: 412 },
+              { name: "Verdume", role: "group", encounterDamage: 35180, encounterDps: 301 },
+              { name: "Lilith", role: "group", encounterDamage: 18490, encounterDps: 158 },
+              { name: "Nearby", role: "observed", encounterDamage: 99999, encounterDps: 999 },
+            ],
+          }],
           controls: screenshotControls,
         },
       };
-      const size = controlSurfaceSize(screenshotControls.length, settings.fontScale);
+      const size = controlSurfaceSize(screenshotControls.length, 3, settings.fontScale);
       controlWindow?.setBounds({ x: 80, y: 80, ...size }, false);
       setTimeout(() => {
         controlWindow?.webContents.send("engine:snapshot", fixtureEvent);
@@ -1019,7 +1124,7 @@ function createWindow(): void {
     const topmostProbePath = process.env.LOREMASTER_TOPMOST_PROBE_PATH;
     if (topmostProbePath) {
       const rawProbeScale = Number(process.env.LOREMASTER_TOPMOST_PROBE_SCALE || 1.15);
-      const requestedScale = clamp(Number.isFinite(rawProbeScale) ? rawProbeScale : 1.15, 0.9, 1.4);
+      const requestedScale = clamp(Number.isFinite(rawProbeScale) ? rawProbeScale : 1.15, 0.9, 1.6);
       engine?.updateDesktopSettings({ alwaysOnTop: true, fontScale: requestedScale });
       setTimeout(() => {
         const report = {
@@ -1035,6 +1140,31 @@ function createWindow(): void {
         writeFileSync(topmostProbePath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
         app.quit();
       }, 500);
+    }
+    const positionProbePath = process.env.LOREMASTER_POSITION_PROBE_PATH;
+    const positionProbeWindow = mainWindow;
+    if (positionProbePath && positionProbeWindow) {
+      setTimeout(() => {
+        const initialSeed = positionProbeWindow.getBounds();
+        setWindowMode(true);
+        const hud = positionProbeWindow.getBounds();
+        setAnalysisMode(true);
+        const analysis = positionProbeWindow.getBounds();
+        setAnalysisMode(false);
+        const hudAfterAnalysis = positionProbeWindow.getBounds();
+        setWindowMode(false);
+        const finalSeed = positionProbeWindow.getBounds();
+        writeFileSync(positionProbePath, `${JSON.stringify({
+          scale: engine?.getState().settings.fontScale,
+          initialSeed,
+          hud,
+          analysis,
+          hudAfterAnalysis,
+          finalSeed,
+          savedSeedPosition: engine?.getState().settings.seedPosition,
+        }, null, 2)}\n`, "utf8");
+        app.quit();
+      }, 350);
     }
     const screenshotPath = process.env.LOREMASTER_SCREENSHOT_PATH;
     if (screenshotPath && mainWindow && !["alert", "controls"].includes(process.env.LOREMASTER_SCREENSHOT_VIEW ?? "")) {
@@ -1147,7 +1277,8 @@ ipcMain.handle("settings:update", (_event, value: unknown) => {
   const raw = value as Record<string, unknown>;
   const patch: Parameters<EngineSupervisor["updateDesktopSettings"]>[0] = {};
   if (typeof raw.alwaysOnTop === "boolean") patch.alwaysOnTop = raw.alwaysOnTop;
-  if (Number.isFinite(Number(raw.fontScale))) patch.fontScale = clamp(Number(raw.fontScale), 0.9, 1.4);
+  if (Number.isFinite(Number(raw.fontScale))) patch.fontScale = clamp(Number(raw.fontScale), 0.9, 1.6);
+  if (typeof raw.composition === "string") patch.composition = raw.composition.slice(0, 48);
   if (typeof raw.splitCharmedPetDps === "boolean") patch.splitCharmedPetDps = raw.splitCharmedPetDps;
   if (typeof raw.stanceAdvisorEnabled === "boolean") patch.stanceAdvisorEnabled = raw.stanceAdvisorEnabled;
   if (raw.alerts && typeof raw.alerts === "object") {

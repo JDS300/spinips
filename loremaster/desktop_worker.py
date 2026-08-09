@@ -23,7 +23,7 @@ from engine_protocol import build_engine_snapshot, snapshot_event
 try:
     # Script/PyInstaller import used by the production worker.
     from loremaster import (LogWatcher, SessionStats, apply_log_models,
-                            check_alerts, parse_line)
+                            check_alerts, normalize_composition, parse_line)
 except (ImportError, AttributeError):
     # ``python -m unittest loremaster.tests...`` reserves ``loremaster`` as a
     # namespace package. Load the runtime file under a private name so worker
@@ -41,6 +41,7 @@ except (ImportError, AttributeError):
     apply_log_models = runtime_module.apply_log_models
     check_alerts = runtime_module.check_alerts
     parse_line = runtime_module.parse_line
+    normalize_composition = runtime_module.normalize_composition
 from lull_timer import LullTracker
 from mez_timer import MezTracker
 from hover_ocr import HoverOcrService
@@ -82,6 +83,7 @@ class HeadlessEngine:
         self.lockout_ocr = HoverOcrService()
         self._load_instance_lockouts()
         self.raid_difficulty: int | None = None
+        self.configured_composition = ""
         self.pending_raid_target = ""
         self.pending_raid_seconds = 0.0
         self.sequence = 0
@@ -329,6 +331,22 @@ class HeadlessEngine:
             self.pending_raid_seconds = 0.0
         return True
 
+    def set_composition(self, value: str) -> bool:
+        cleaned = str(value or "").strip()
+        if not cleaned:
+            self.configured_composition = ""
+            if self.stats.composition_source == "desktop setting":
+                self.stats.composition = ""
+                self.stats.composition_source = "unset"
+            return True
+        try:
+            canonical = normalize_composition(cleaned)
+        except ValueError:
+            return False
+        self.configured_composition = canonical
+        self.stats.set_composition(canonical, source="desktop setting")
+        return True
+
     def set_raid_completion(self, target: str, difficulty: int,
                             completed: bool) -> bool:
         return self.weekly.set_completion(
@@ -336,9 +354,15 @@ class HeadlessEngine:
             character=self.stats.character, completed=completed)
 
     def _switch_character(self) -> None:
-        composition = self.stats.composition
+        context = self.watcher.recent_context()
+        composition = str(self.configured_composition
+                          or context.get("composition", ""))
         self.stats = SessionStats(
             self.watcher.character or "?", composition=composition)
+        self.stats.zone = str(context.get("zone", ""))
+        self.stats.group_members = set(context.get("group_members", ()))
+        if self.stats.zone:
+            self.stats.zones.append(self.stats.zone)
         self.mez.clear()
         self.lull.clear()
 
@@ -501,6 +525,8 @@ class JsonLineWorker:
     def _handle(self, command: dict) -> None:
         kind = command.get("type")
         if kind == "engine.initialize":
+            if not self.engine.set_composition(str(command.get("composition") or "")):
+                raise ValueError("composition must contain exactly three valid classes")
             self.engine.set_log_path(str(command.get("logPath") or ""))
             self.engine.set_raid_difficulty(command.get("raidDifficulty"))
             self.engine.set_alert_config(command.get("alertConfig"))
@@ -511,6 +537,9 @@ class JsonLineWorker:
                 raise ValueError("raidDifficulty must be null or an integer from 0 to 4")
         elif kind == "engine.set-alert-config":
             self.engine.set_alert_config(command.get("alertConfig"))
+        elif kind == "engine.set-composition":
+            if not self.engine.set_composition(str(command.get("composition") or "")):
+                raise ValueError("composition must contain exactly three valid classes")
         elif kind == "engine.set-raid-completion":
             self.engine.set_raid_completion(
                 str(command.get("target") or ""),

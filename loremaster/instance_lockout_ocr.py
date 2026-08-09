@@ -17,9 +17,9 @@ from weekly_tracker import RAID_TARGETS, normalize_target
 
 
 _TIMER_RE = re.compile(
-    r"(?P<days>[0-9Oo]{1,3})\s*d\s*[:;.]?\s*"
-    r"(?P<hours>[0-9Oo]{1,2})\s*h\s*[:;.]?\s*"
-    r"(?P<minutes>[0-9Oo]{1,2})\s*m\s*[:;.]?\s*"
+    r"(?P<days>[0-9Oo]{1,3})\s*d\s*[-:;.,|]?\s*"
+    r"(?P<hours>[0-9Oo]{1,2})\s*h\s*[-:;.,|]?\s*"
+    r"(?P<minutes>[0-9Oo]{1,2})\s*m\s*[-:;.,|]?\s*"
     r"(?P<seconds>[0-9Oo]{1,2})\s*s\b", re.I)
 _DIFFICULTY_RE = re.compile(r"\b(?:solo|group)\s*([0-4])\b", re.I)
 _VARIANT_RE = re.compile(
@@ -141,8 +141,35 @@ def _parse_row(parts: list[OcrLine]) -> ParsedRaidLockout | None:
 def parse_instance_lockouts(lines: Iterable[OcrLine]) -> list[ParsedRaidLockout]:
     """Return recognized raid rows, deduplicated by boss and difficulty."""
 
+    groups = _row_groups(lines)
+    timer_lines = [
+        line for parts in groups for line in parts
+        if _TIMER_RE.search(line.text)
+    ]
     found: dict[tuple[str, int], ParsedRaidLockout] = {}
-    for parts in _row_groups(lines):
+    for parts in groups:
+        raw = " ".join(line.text.strip() for line in parts)
+        if (_TIMER_RE.search(raw) is None
+                and _DIFFICULTY_RE.search(raw) is not None
+                and any(_target_from_event(line.text) for line in parts)
+                and timer_lines):
+            center = sum(
+                line.y + line.height / 2.0 for line in parts) / len(parts)
+            nearest = min(
+                timer_lines,
+                key=lambda line: abs(center - (line.y + line.height / 2.0)))
+            distance = abs(center - (nearest.y + nearest.height / 2.0))
+            # Legends rows are approximately 15 physical pixels apart in the
+            # compact table. Recover only an immediately adjacent timer cell;
+            # wider gaps could cross into a different lockout duration.
+            if distance <= 18.0:
+                parts = [OcrLine(
+                    nearest.text,
+                    min(line.x for line in parts) - max(1.0, nearest.width),
+                    min(line.y for line in parts),
+                    nearest.width,
+                    nearest.height,
+                ), *parts]
         lockout = _parse_row(parts)
         if lockout is None:
             continue
@@ -158,7 +185,12 @@ def parse_instance_character(lines: Iterable[OcrLine]) -> str:
 
     for parts in _row_groups(lines):
         raw = " ".join(part.text.strip() for part in sorted(parts, key=lambda item: item.x))
-        match = re.search(r"\bLeader\s*[:;]\s*([A-Za-z][A-Za-z'-]{1,31})\b", raw, re.I)
+        # Compact UI text regularly loses the colon while preserving the two
+        # cells as one row (``Leader Spin``). The exclusions below still keep
+        # the nearby ``Leader Options`` heading from becoming a character.
+        match = re.search(
+            r"\bLeader\s*(?:[:;]\s*|\s+)([A-Za-z][A-Za-z'-]{1,31})\b",
+            raw, re.I)
         if match and match.group(1).casefold() not in {"option", "options", "targeted"}:
             return match.group(1)
     return ""

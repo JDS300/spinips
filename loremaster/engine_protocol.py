@@ -154,6 +154,7 @@ class EngineSnapshot:
     sequence: int
     observed_at: str
     character: CharacterView
+    group_members: tuple[str, ...]
     combat: CombatView
     breakdown: CombatBreakdownView
     encounters: tuple[EncounterView, ...]
@@ -188,6 +189,7 @@ class EngineEvent:
         snapshot = payload["snapshot"]
         snapshot["protocolVersion"] = snapshot.pop("protocol_version")
         snapshot["observedAt"] = snapshot.pop("observed_at")
+        snapshot["groupMembers"] = snapshot.pop("group_members")
         snapshot["hiddenControlRows"] = snapshot.pop("hidden_control_rows")
         snapshot["controlNoticeCount"] = snapshot.pop("control_notice_count")
         snapshot["controlAmbiguityCount"] = snapshot.pop(
@@ -380,7 +382,7 @@ def build_engine_snapshot(*, sequence: int, observed_at: datetime,
                 actor_name, session_actor_roles.get(actor_name, "observed"))
             actors.append(CombatActorView(
                 name=actor_name,
-                role=role if role in {"self", "charmed", "summoned", "observed"} else "observed",
+                role=role if role in {"self", "charmed", "summoned", "group", "observed"} else "observed",
                 encounter_damage=row["t"],
                 encounter_dps=int(round(row["t"] / seconds)),
                 encounter_hits=row["h"],
@@ -473,6 +475,8 @@ def build_engine_snapshot(*, sequence: int, observed_at: datetime,
             composition=str(stats_snapshot.get("composition") or ""),
             zone=str(stats_snapshot.get("zone") or ""),
         ),
+        group_members=tuple(str(name) for name in
+                            (stats_snapshot.get("group_members") or ())),
         combat=CombatView(
             active=bool(stats_snapshot.get("in_combat", False)),
             auto_attack=bool(stats_snapshot.get("auto_attack", False)),
