@@ -102,6 +102,31 @@ class DesktopWorkerTests(unittest.TestCase):
                 snapshot["snapshot"]["weekly"]["altZLockouts"][0]["target"],
                 "Lord Nagafen")
 
+    def test_alt_z_timerless_row_checks_weekly_without_inventing_expiry(self):
+        scanned_at = datetime(2026, 8, 7, 20, 0, 0)
+        with tempfile.TemporaryDirectory() as root:
+            engine = HeadlessEngine(data_dir=root)
+            try:
+                engine.stats.character = "Spin"
+                count = engine.import_instance_lockouts([
+                    ParsedRaidLockout(
+                        target="Cazic-Thule", difficulty=1,
+                        remaining_seconds=None,
+                        instance_name="The Plane of Fear",
+                        event_name="cauc- I nule", raw_text="fixture"),
+                ], scanned_at=scanned_at)
+                event = engine.snapshot_event(datetime(2026, 8, 7, 21, 0, 0))
+            finally:
+                engine.close()
+            self.assertEqual(count, 1)
+            weekly = event["snapshot"]["weekly"]
+            cazic = next(row for row in weekly["raids"]
+                         if row["target"] == "Cazic-Thule")
+            self.assertTrue(cazic["difficulties"][1])
+            self.assertEqual(weekly["altZLockouts"], [])
+            self.assertEqual(weekly["altZScan"]["timedCount"], 0)
+            self.assertIn("no expiry was guessed", weekly["altZScan"]["detail"])
+
     def test_auto_attack_state_crosses_desktop_boundary_exactly(self):
         with tempfile.TemporaryDirectory() as root:
             engine = HeadlessEngine(data_dir=root)

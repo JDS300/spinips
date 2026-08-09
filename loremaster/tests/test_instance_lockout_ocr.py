@@ -28,6 +28,15 @@ class InstanceLockoutOcrTests(unittest.TestCase):
         ]
         self.assertEqual(parse_instance_character(lines), "Spin")
 
+    def test_blank_leader_does_not_borrow_distant_interface_text(self):
+        lines = [
+            OcrLine("Leader", 35, 56, 42, 12),
+            OcrLine("Min Players: 1", 402, 56, 92, 12),
+            OcrLine("Invite", 36, 727, 48, 12),
+            OcrLine("Raid", 292, 727, 35, 12),
+        ]
+        self.assertEqual(parse_instance_character(lines), "")
+
     def test_parses_only_tracked_difficulty_lockouts_from_merged_rows(self):
         lines = [
             OcrLine("Lockout Time Instance Name Event Name", 20, 10, 520, 14),
@@ -84,13 +93,26 @@ class InstanceLockoutOcrTests(unittest.TestCase):
             row.remaining_seconds == 2 * 86400 + 15 * 3600 + 41 * 60 + 44
             for row in rows))
 
-    def test_does_not_recover_timer_across_multiple_table_rows(self):
+    def test_keeps_weekly_evidence_without_guessing_a_distant_timer(self):
         rows = parse_instance_lockouts([
             OcrLine("2d:15h-41 m:44s", 29, 306, 89, 10),
             OcrLine("The Permafrost Caverns - Solo 3 (Fused)", 130, 336, 195, 12),
             OcrLine("Lady Vox", 405, 336, 48, 12),
         ])
-        self.assertEqual(rows, [])
+        self.assertEqual([(row.target, row.difficulty) for row in rows],
+                         [("Lady Vox", 3)])
+        self.assertIsNone(rows[0].remaining_seconds)
+
+    def test_screenshot_cazic_d1_survives_missing_timer_and_event_ocr(self):
+        rows = parse_instance_lockouts([
+            # Exact geometry and OCR text reproduced from the reported Alt+Z
+            # capture. Windows OCR omitted the entire compact timer column.
+            OcrLine("The Plane of Fear - Group 1", 137.5, 603.5, 181, 11.5),
+            OcrLine("cauc- I nule", 405, 605, 70, 8),
+        ])
+        self.assertEqual([(row.target, row.difficulty) for row in rows],
+                         [("Cazic-Thule", 1)])
+        self.assertIsNone(rows[0].remaining_seconds)
 
     def test_conservative_name_matching_accepts_minor_event_ocr_error(self):
         rows = parse_instance_lockouts([

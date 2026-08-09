@@ -172,6 +172,7 @@ export interface AltZScanView {
   detail: string;
   scannedAt: string;
   importedCount: number;
+  timedCount?: number;
   hotkey: string;
 }
 
