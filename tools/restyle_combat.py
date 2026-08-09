@@ -64,14 +64,21 @@ EFFECT_NAME_WIDTH = EFFECT_ROW_WIDTH - EFFECT_NAME_X - EFFECT_NAME_TAIL
 # so users may resize them without clipping the command rows.
 PLAYER_MIN_SIZE = (280, 174)
 TARGET_MIN_SIZE = (260, 174)
-ATTACK_EDGE_WIDTH = 5
+ATTACK_EDGE_WIDTH = 4
 ATTACK_FRAME_SIZE = (128, 32)
-ATTACK_TEXTURE_SIZE = (128, 64)
-ATTACK_PULSE_MS = 420
-ATTACK_HIGH_EDGE_WIDTH = 9
-ATTACK_HIGH_TEXTURE = "AttackIndicatorHigh.tga"
+ATTACK_PULSE_FRAME_COUNT = 8
+ATTACK_FRAME_ORIGINS = tuple(
+    index * ATTACK_FRAME_SIZE[1] for index in range(ATTACK_PULSE_FRAME_COUNT)
+)
+ATTACK_TEXTURE_SIZE = (
+    ATTACK_FRAME_SIZE[0], ATTACK_FRAME_SIZE[1] * ATTACK_PULSE_FRAME_COUNT)
+ATTACK_PULSE_MS = 70
+ATTACK_HIGH_EDGE_WIDTH = 5
+ATTACK_HIGH_TEXTURE = "AttackIndicator.tga"
 PLAYER_HIGH_VISIBILITY_VARIANT = "EQUI_PlayerWindow1.xml"
 PLAYER_HIGH_VISIBILITY_MENU_NAME = "High-Visibility Attack Frame"
+PLAYER_HIGH_VISIBILITY_SIZE = (360, 174)
+PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP = 51
 
 # Older SpinUI releases exposed a large collection of visual variants.  Most of
 # those files predate the July Legends schema and can lose live controls when a
@@ -481,8 +488,8 @@ def style_player() -> None:
         if cycle_end < 0:
             fail("attack animation has no Cycle element")
         cycle_end += len(cycle_marker)
-        return (block[:cycle_end] + frame(0) + frame(ATTACK_FRAME_SIZE[1])
-                + block[cycle_end:])
+        frames = "".join(frame(origin) for origin in ATTACK_FRAME_ORIGINS)
+        return block[:cycle_end] + frames + block[cycle_end:]
 
     for name, size in attack_animations.items():
         text = change_item(
@@ -1348,7 +1355,6 @@ def sync_canonical_variants() -> None:
 def style_high_visibility_player_variant() -> None:
     """Expose Alternate 1 as a binding-safe, unmistakable attack frame."""
     source = (SKIN / "EQUI_PlayerWindow.xml").read_text(encoding="ascii")
-    source = source.replace("AttackIndicator.tga", ATTACK_HIGH_TEXTURE)
     source, count = re.subn(
         r"(<Schema\b[^>]*/>)",
         (r"\g<1>\n\n\t<!-- Alternate 1: native auto-attack state with a "
@@ -1383,13 +1389,17 @@ def style_high_visibility_player_variant() -> None:
 
     geometry = {
         "A_AttackIndicatorAnimTop": (
-            70, 70 + ATTACK_HIGH_EDGE_WIDTH, 0, 0),
+            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP,
+            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP + ATTACK_HIGH_EDGE_WIDTH,
+            0, 0),
         "A_AttackIndicatorAnimBottom": (
             2 + ATTACK_HIGH_EDGE_WIDTH, 2, 0, 0),
         "A_AttackIndicatorAnimLeft": (
-            70, 2, 0, ATTACK_HIGH_EDGE_WIDTH),
+            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP,
+            2, 0, ATTACK_HIGH_EDGE_WIDTH),
         "A_AttackIndicatorAnimRight": (
-            70, 2, ATTACK_HIGH_EDGE_WIDTH, 0),
+            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP,
+            2, ATTACK_HIGH_EDGE_WIDTH, 0),
     }
     for name, offsets in geometry.items():
         def high_edge(block: str, values=offsets) -> str:
@@ -1401,9 +1411,44 @@ def style_high_visibility_player_variant() -> None:
         source = change_item(source, "StaticAnimation", name, high_edge)
 
     source = change_item(
-        source, "Screen", "PlayerWindow",
+        source, "StaticAnimation", "A_AttackIndicatorAnimFill",
         lambda block: set_value(
-            block, "MenuName", PLAYER_HIGH_VISIBILITY_MENU_NAME),
+            block, "TopAnchorOffset", PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP),
+    )
+    source = change_item(
+        source, "Screen", "PlayerSubWindow",
+        lambda block: set_value(
+            block, "TopAnchorOffset", PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP),
+    )
+    source = change_item(
+        source, "Screen", "PW_BuffWindow",
+        lambda block: set_value(
+            block, "BottomAnchorOffset",
+            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP + 2),
+    )
+    for name, top, bottom in (
+            ("PW_DragBox", 53, 73),
+            ("PW_DragBox2", 91, 181),
+            ("PWDragBox3", 53, 73)):
+        def compact_drag(block: str, wanted_top=top,
+                         wanted_bottom=bottom) -> str:
+            block = set_value(block, "TopAnchorOffset", wanted_top)
+            return set_value(block, "BottomAnchorOffset", wanted_bottom)
+        source = change_item(source, "DragBox", name, compact_drag)
+
+    def compact_root(block: str) -> str:
+        block = set_value(
+            block, "MenuName", PLAYER_HIGH_VISIBILITY_MENU_NAME)
+        block = set_container(
+            block, "Size", CX=PLAYER_HIGH_VISIBILITY_SIZE[0],
+            CY=PLAYER_HIGH_VISIBILITY_SIZE[1])
+        block = set_value(block, "MinVSize", PLAYER_HIGH_VISIBILITY_SIZE[1])
+        return set_or_add_value(
+            block, "MaxVSize", PLAYER_HIGH_VISIBILITY_SIZE[1],
+            after="MinVSize")
+
+    source = change_item(
+        source, "Screen", "PlayerWindow", compact_root,
     )
     write_ascii(SKIN / PLAYER_HIGH_VISIBILITY_VARIANT, source)
 

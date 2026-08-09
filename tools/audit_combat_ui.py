@@ -13,16 +13,13 @@ from PIL import Image
 
 # The effects-row grid is authored once in tools/restyle_combat.py; the audit
 # imports it so a geometry change can never pass by editing only one side.
-from paint_attack_indicator import (ATTACK_BED, ATTACK_EDGE, ATTACK_FADE,
-                                    ATTACK_HALO, ATTACK_INNER, ATTACK_SOFT,
-                                    EDGE_WIDTH as ATTACK_EDGE_WIDTH,
+from paint_attack_indicator import (EDGE_WIDTH as ATTACK_EDGE_WIDTH,
                                     FRAME_SIZE as ATTACK_FRAME_SIZE,
-                                    HIGH_ATTACK_BED, HIGH_ATTACK_RAIL,
+                                    FRAME_DURATION_MS, FRAME_ORIGINS,
+                                    FRAME_RAILS,
                                     HIGH_EDGE_WIDTH,
-                                    HIGH_PULSE_BED, HIGH_PULSE_RAIL,
-                                    PULSE_BED, PULSE_EDGE, PULSE_FADE,
-                                    PULSE_HALO, PULSE_INNER, PULSE_SOFT,
-                                    SIZE as ATTACK_INDICATOR_SIZE)
+                                    SIZE as ATTACK_INDICATOR_SIZE,
+                                    TRANSPARENT)
 from restyle_combat import (EFFECT_CHIP, EFFECT_ICON, EFFECT_NAME_WIDTH,
                            EFFECT_NAME_X, EFFECT_PLATE_BLEED,
                            EFFECT_ROW_WIDTH, EFFECT_TIMER_FONT,
@@ -33,10 +30,13 @@ from restyle_combat import (EFFECT_CHIP, EFFECT_ICON, EFFECT_NAME_WIDTH,
                            EXTENDED_TARGET_ROW_SIZE,
                            EXTENDED_TARGET_TILE,
                            EXTENDED_TARGET_WINDOW_SIZE,
-                           ATTACK_HIGH_EDGE_WIDTH, ATTACK_HIGH_TEXTURE,
+                           ATTACK_FRAME_ORIGINS, ATTACK_HIGH_EDGE_WIDTH,
+                           ATTACK_HIGH_TEXTURE, ATTACK_PULSE_FRAME_COUNT,
                            ATTACK_PULSE_MS, PLAYER_HIGH_VISIBILITY_MENU_NAME,
-                           PLAYER_HIGH_VISIBILITY_VARIANT, PLAYER_MIN_SIZE,
-                           TARGET_MIN_SIZE,
+                           PLAYER_HIGH_VISIBILITY_SIZE,
+                           PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP,
+                           PLAYER_HIGH_VISIBILITY_VARIANT,
+                           PLAYER_MIN_SIZE, TARGET_MIN_SIZE,
                            SPELL_LEDGER_EQTYPES, SPELL_LEDGER_ICON_SIZE,
                            SPELL_LEDGER_MENU_NAME, SPELL_LEDGER_ROW_SIZE,
                            SPELL_LEDGER_VARIANT, SPELL_LEDGER_WINDOW_BOUNDS,
@@ -154,30 +154,29 @@ def audit_player_and_target() -> None:
             "AttackIndicator.tga size changed: "
             f"{attack_texture.size} != {ATTACK_INDICATOR_SIZE}"
         )
+    if (ATTACK_FRAME_ORIGINS != FRAME_ORIGINS or
+            ATTACK_PULSE_FRAME_COUNT != len(FRAME_RAILS) or
+            ATTACK_PULSE_MS != FRAME_DURATION_MS):
+        fail("attack texture and XML pulse definitions disagree")
     attack_pixels = attack_texture.load()
-    attack_samples = {
-        "horizontal outer edge": (64, 0, ATTACK_EDGE),
-        "horizontal inner glow": (64, 1, ATTACK_INNER),
-        "horizontal soft halo": (64, 2, ATTACK_HALO),
-        "horizontal deep glow": (64, 3, ATTACK_SOFT),
-        "horizontal fade": (64, 4, ATTACK_FADE),
-        "vertical outer edge": (0, 16, ATTACK_EDGE),
-        "vertical inner glow": (1, 16, ATTACK_INNER),
-        "vertical soft halo": (2, 16, ATTACK_HALO),
-        "vertical deep glow": (3, 16, ATTACK_SOFT),
-        "vertical fade": (4, 16, ATTACK_FADE),
-        "hot combat wash": (64, 16, ATTACK_BED),
-        "pulse outer edge": (64, 32, PULSE_EDGE),
-        "pulse inner glow": (64, 33, PULSE_INNER),
-        "pulse soft halo": (64, 34, PULSE_HALO),
-        "pulse deep glow": (64, 35, PULSE_SOFT),
-        "pulse fade": (64, 36, PULSE_FADE),
-        "pulse combat wash": (64, 48, PULSE_BED),
-    }
-    for label, (x, y, expected) in attack_samples.items():
-        actual = attack_pixels[x, y]
-        if actual != expected:
-            fail(f"auto-attack {label} changed: {actual} != {expected}")
+    for index, (origin, rail) in enumerate(zip(FRAME_ORIGINS, FRAME_RAILS)):
+        samples = {
+            "horizontal outer rail": (64, origin),
+            "horizontal inner rail": (
+                64, origin + ATTACK_EDGE_WIDTH - 1),
+            "vertical outer rail": (0, origin + 16),
+            "vertical inner rail": (
+                ATTACK_EDGE_WIDTH - 1, origin + 16),
+        }
+        for label, (x, y) in samples.items():
+            actual = attack_pixels[x, y]
+            if actual != rail:
+                fail(
+                    f"auto-attack frame {index} {label} changed: "
+                    f"{actual} != {rail}"
+                )
+        if attack_pixels[64, origin + 16] != TRANSPARENT:
+            fail(f"auto-attack frame {index} paints over player information")
 
     for name, expected in (
             ("A_AttackIndicator", ATTACK_FRAME_SIZE),
@@ -192,10 +191,10 @@ def audit_player_and_target() -> None:
         origins = [child_int(frame, "Location/Y") for frame in frames]
         durations = [child_int(frame, "Duration") for frame in frames]
         if (child_text(animation, "Cycle") != "true"
-                or sizes != [expected, expected]
-                or origins != [0, ATTACK_FRAME_SIZE[1]]
-                or durations != [ATTACK_PULSE_MS, ATTACK_PULSE_MS]):
-            fail(f"{name} lost its visible five-layer combat glow")
+                or sizes != [expected] * ATTACK_PULSE_FRAME_COUNT
+                or origins != list(ATTACK_FRAME_ORIGINS)
+                or durations != [ATTACK_PULSE_MS] * ATTACK_PULSE_FRAME_COUNT):
+            fail(f"{name} lost its smooth outline-only combat pulse")
     attack_geometry = {
         "A_AttackIndicatorAnimTop": (70, 70 + ATTACK_EDGE_WIDTH, 0, 0),
         "A_AttackIndicatorAnimBottom": (2 + ATTACK_EDGE_WIDTH, 2, 0, 0),
@@ -1091,6 +1090,11 @@ def audit_high_visibility_player_variant() -> None:
     """Prove Alternate 1 is opt-in, vivid, and binding-identical."""
     if ATTACK_HIGH_EDGE_WIDTH != HIGH_EDGE_WIDTH:
         fail("high-visibility texture and XML edge widths disagree")
+    if ATTACK_HIGH_TEXTURE != "AttackIndicator.tga":
+        fail("high-visibility frame must use the client's stock texture name")
+    retired_texture = SKIN / "AttackIndicatorHigh.tga"
+    if retired_texture.exists():
+        fail("retired secondary attack texture is still shipped")
 
     def gameplay_bindings(path: Path):
         return {
@@ -1107,8 +1111,11 @@ def audit_high_visibility_player_variant() -> None:
     window = item(root, "Screen", "PlayerWindow")
     if child_text(window, "MenuName") != PLAYER_HIGH_VISIBILITY_MENU_NAME:
         fail("high-visibility player variant is not named in Display Types")
-    if dimensions(window) != (360, 193):
+    if dimensions(window) != PLAYER_HIGH_VISIBILITY_SIZE:
         fail("high-visibility player variant changed the compact footprint")
+    if (child_int(window, "MinVSize") != PLAYER_HIGH_VISIBILITY_SIZE[1] or
+            child_int(window, "MaxVSize") != PLAYER_HIGH_VISIBILITY_SIZE[1]):
+        fail("high-visibility player variant can reopen at the tall size")
 
     texture_info = item(root, "TextureInfo", ATTACK_HIGH_TEXTURE)
     if dimensions(texture_info) != ATTACK_INDICATOR_SIZE:
@@ -1117,20 +1124,18 @@ def audit_high_visibility_player_variant() -> None:
     if texture.size != ATTACK_INDICATOR_SIZE:
         fail("high-visibility attack texture size changed")
     pixels = texture.load()
-    samples = {
-        "hot horizontal outer rail": (64, 0, HIGH_ATTACK_RAIL[0]),
-        "hot horizontal inner rail": (64, 8, HIGH_ATTACK_RAIL[8]),
-        "hot vertical outer rail": (0, 16, HIGH_ATTACK_RAIL[0]),
-        "hot vertical inner rail": (8, 16, HIGH_ATTACK_RAIL[8]),
-        "hot red wash": (64, 16, HIGH_ATTACK_BED),
-        "pulse horizontal outer rail": (64, 32, HIGH_PULSE_RAIL[0]),
-        "pulse horizontal inner rail": (64, 40, HIGH_PULSE_RAIL[8]),
-        "pulse red wash": (64, 48, HIGH_PULSE_BED),
-    }
-    for label, (x, y, expected) in samples.items():
-        actual = pixels[x, y]
-        if actual != expected:
-            fail(f"high-visibility {label} changed: {actual} != {expected}")
+    for index, (origin, rail) in enumerate(zip(FRAME_ORIGINS, FRAME_RAILS)):
+        samples = (
+            (64, origin),
+            (64, origin + ATTACK_HIGH_EDGE_WIDTH - 1),
+            (0, origin + 16),
+            (ATTACK_HIGH_EDGE_WIDTH - 1, origin + 16),
+        )
+        for x, y in samples:
+            if pixels[x, y] != rail:
+                fail(f"high-visibility frame {index} pure-red rail changed")
+        if pixels[64, origin + 16] != TRANSPARENT:
+            fail(f"high-visibility frame {index} is no longer outline-only")
 
     animation_sizes = {
         "A_AttackIndicator": ATTACK_FRAME_SIZE,
@@ -1147,30 +1152,37 @@ def audit_high_visibility_player_variant() -> None:
     for name, expected in animation_sizes.items():
         animation = item(root, "Ui2DAnimation", name)
         frames = animation.findall("Frames")
-        if len(frames) != 2:
-            fail(f"high-visibility {name} must retain two pulse frames")
+        if len(frames) != ATTACK_PULSE_FRAME_COUNT:
+            fail(
+                f"high-visibility {name} must retain "
+                f"{ATTACK_PULSE_FRAME_COUNT} pulse frames"
+            )
         if any(child_text(frame, "Texture") != ATTACK_HIGH_TEXTURE
                for frame in frames):
             fail(f"high-visibility {name} does not use the pure-red texture")
         if [dimensions_at(frame, "Size") for frame in frames] != [
-                expected, expected]:
+                expected] * ATTACK_PULSE_FRAME_COUNT:
             fail(f"high-visibility {name} geometry changed")
-        if [child_int(frame, "Location/Y") for frame in frames] != [
-                0, ATTACK_FRAME_SIZE[1]]:
+        if [child_int(frame, "Location/Y") for frame in frames] != list(
+                ATTACK_FRAME_ORIGINS):
             fail(f"high-visibility {name} pulse origins changed")
         if [child_int(frame, "Duration") for frame in frames] != [
-                ATTACK_PULSE_MS, ATTACK_PULSE_MS]:
+                ATTACK_PULSE_MS] * ATTACK_PULSE_FRAME_COUNT:
             fail(f"high-visibility {name} pulse timing changed")
 
     geometry = {
         "A_AttackIndicatorAnimTop": (
-            70, 70 + ATTACK_HIGH_EDGE_WIDTH, 0, 0),
+            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP,
+            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP + ATTACK_HIGH_EDGE_WIDTH,
+            0, 0),
         "A_AttackIndicatorAnimBottom": (
             2 + ATTACK_HIGH_EDGE_WIDTH, 2, 0, 0),
         "A_AttackIndicatorAnimLeft": (
-            70, 2, 0, ATTACK_HIGH_EDGE_WIDTH),
+            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP,
+            2, 0, ATTACK_HIGH_EDGE_WIDTH),
         "A_AttackIndicatorAnimRight": (
-            70, 2, ATTACK_HIGH_EDGE_WIDTH, 0),
+            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP,
+            2, ATTACK_HIGH_EDGE_WIDTH, 0),
     }
     for name, expected in geometry.items():
         node = item(root, "StaticAnimation", name)
@@ -1182,8 +1194,30 @@ def audit_high_visibility_player_variant() -> None:
             fail(f"high-visibility {name} lost native attack-state control")
     fill = item(root, "StaticAnimation", "A_AttackIndicatorAnimFill")
     if (child_text(fill, "AutoDraw") != "false" or
-            child_text(fill, "Animation") != "A_AttackIndicatorFill"):
-        fail("high-visibility red wash lost native attack-state control")
+            child_text(fill, "Animation") != "A_AttackIndicatorFill" or
+            child_int(fill, "TopAnchorOffset") !=
+            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP):
+        fail("high-visibility outline overlay lost native attack-state control")
+
+    subwindow = item(root, "Screen", "PlayerSubWindow")
+    buffs = item(root, "Screen", "PW_BuffWindow")
+    if child_int(subwindow, "TopAnchorOffset") != \
+            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP:
+        fail("high-visibility command frame did not retain its content height")
+    if child_int(buffs, "BottomAnchorOffset") != \
+            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP + 2:
+        fail("high-visibility compact buff lane overlaps the command frame")
+    for name, expected in (
+            ("PW_DragBox", (53, 73)),
+            ("PW_DragBox2", (91, 181)),
+            ("PWDragBox3", (53, 73))):
+        drag = item(root, "DragBox", name)
+        actual = (
+            child_int(drag, "TopAnchorOffset"),
+            child_int(drag, "BottomAnchorOffset"),
+        )
+        if actual != expected:
+            fail(f"high-visibility {name} drag geometry changed: {actual}")
 
 
 def audit_variant_safety() -> None:
