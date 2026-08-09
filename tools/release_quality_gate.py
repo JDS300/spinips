@@ -160,6 +160,7 @@ SOURCE_REQUIRED = (
     "tools/spinui_glass_theme.py",
     "tools/spinui_theme.py",
     "tools/smoke_loremaster_gui.py",
+    "tools/ci_change_scope.py",
     "tools/update_plane_of_sky_data.py",
     "loremaster/assets/plane_of_sky_quests.json",
     "loremaster/desktop_worker.py",
@@ -307,6 +308,17 @@ def check_loremaster_release_pipeline() -> None:
     required = (
         "loremaster-desktop/**",
         "loremaster/desktop_worker.py",
+        "python tools/ci_change_scope.py",
+        "needs.detect-changes.outputs.ui == 'true'",
+        "needs.detect-changes.outputs.loremaster == 'true'",
+        "if: github.event_name != 'push'",
+        "SpinUI-UI.zip",
+        "Loremaster-Windows",
+        "actions/checkout@v6",
+        "actions/setup-python@v6",
+        "actions/setup-node@v6",
+        "actions/upload-artifact@v6",
+        "actions/download-artifact@v6",
         "electron-builder --win portable --x64 --publish never",
         "-c.extraMetadata.version=$version",
         "dist-electron-release/Loremaster.exe",
@@ -325,8 +337,8 @@ def check_loremaster_release_pipeline() -> None:
     if present:
         fail("release workflow still publishes the legacy/preview GUI: " + ", ".join(present))
     print(
-        "[PASS] UI releases build, smoke-test, package, checksum, and publish "
-        "the portable Electron Loremaster.exe",
+        "[PASS] push builds are component-scoped; full releases freshly build, "
+        "verify, package, checksum, and publish both UI and Loremaster",
         flush=True,
     )
 

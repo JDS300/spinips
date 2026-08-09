@@ -2,10 +2,10 @@
 <XML ID="EQInterfaceDefinitionLanguage">
 	<Schema xmlns="EverQuestData" xmlns:dt="EverQuestDataTypes" />
 
-	<!-- Canonical Legends compatibility alias: current bindings, signature visuals. -->
+	<!-- Alternate 1: native auto-attack state with a pure-red high-visibility treatment. -->
 
 <!-- 	Attack Indicator -->
-	<TextureInfo item="AttackIndicator.tga">
+	<TextureInfo item="AttackIndicatorHigh.tga">
 		<Size>
 			<CX>128</CX>
 			<CY>64</CY>
@@ -15,7 +15,7 @@
 	<Ui2DAnimation item="A_AttackIndicator">
 		<Cycle>true</Cycle>
 		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
+			<Texture>AttackIndicatorHigh.tga</Texture>
 			<Location>
 				<X>0</X>
 				<Y>0</Y>
@@ -27,7 +27,7 @@
 			<Duration>420</Duration>
 		</Frames>
 		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
+			<Texture>AttackIndicatorHigh.tga</Texture>
 			<Location>
 				<X>0</X>
 				<Y>32</Y>
@@ -43,26 +43,26 @@
 	<Ui2DAnimation item="A_AttackIndicatorTop">
 		<Cycle>true</Cycle>
 		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
+			<Texture>AttackIndicatorHigh.tga</Texture>
 			<Location>
 				<X>0</X>
 				<Y>0</Y>
 			</Location>
 			<Size>
 				<CX>128</CX>
-				<CY>5</CY>
+				<CY>9</CY>
 			</Size>
 			<Duration>420</Duration>
 		</Frames>
 		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
+			<Texture>AttackIndicatorHigh.tga</Texture>
 			<Location>
 				<X>0</X>
 				<Y>32</Y>
 			</Location>
 			<Size>
 				<CX>128</CX>
-				<CY>5</CY>
+				<CY>9</CY>
 			</Size>
 			<Duration>420</Duration>
 		</Frames>
@@ -71,26 +71,26 @@
 	<Ui2DAnimation item="A_AttackIndicatorBottom">
 		<Cycle>true</Cycle>
 		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
+			<Texture>AttackIndicatorHigh.tga</Texture>
 			<Location>
 				<X>0</X>
 				<Y>0</Y>
 			</Location>
 			<Size>
 				<CX>128</CX>
-				<CY>5</CY>
+				<CY>9</CY>
 			</Size>
 			<Duration>420</Duration>
 		</Frames>
 		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
+			<Texture>AttackIndicatorHigh.tga</Texture>
 			<Location>
 				<X>0</X>
 				<Y>32</Y>
 			</Location>
 			<Size>
 				<CX>128</CX>
-				<CY>5</CY>
+				<CY>9</CY>
 			</Size>
 			<Duration>420</Duration>
 		</Frames>
@@ -99,25 +99,25 @@
 	<Ui2DAnimation item="A_AttackIndicatorLeft">
 		<Cycle>true</Cycle>
 		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
+			<Texture>AttackIndicatorHigh.tga</Texture>
 			<Location>
 				<X>0</X>
 				<Y>0</Y>
 			</Location>
 			<Size>
-				<CX>5</CX>
+				<CX>9</CX>
 				<CY>32</CY>
 			</Size>
 			<Duration>420</Duration>
 		</Frames>
 		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
+			<Texture>AttackIndicatorHigh.tga</Texture>
 			<Location>
 				<X>0</X>
 				<Y>32</Y>
 			</Location>
 			<Size>
-				<CX>5</CX>
+				<CX>9</CX>
 				<CY>32</CY>
 			</Size>
 			<Duration>420</Duration>
@@ -127,25 +127,25 @@
 	<Ui2DAnimation item="A_AttackIndicatorRight">
 		<Cycle>true</Cycle>
 		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
+			<Texture>AttackIndicatorHigh.tga</Texture>
 			<Location>
 				<X>0</X>
 				<Y>0</Y>
 			</Location>
 			<Size>
-				<CX>5</CX>
+				<CX>9</CX>
 				<CY>32</CY>
 			</Size>
 			<Duration>420</Duration>
 		</Frames>
 		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
+			<Texture>AttackIndicatorHigh.tga</Texture>
 			<Location>
 				<X>0</X>
 				<Y>32</Y>
 			</Location>
 			<Size>
-				<CX>5</CX>
+				<CX>9</CX>
 				<CY>32</CY>
 			</Size>
 			<Duration>420</Duration>
@@ -155,7 +155,7 @@
 	<Ui2DAnimation item="A_AttackIndicatorFill">
 		<Cycle>true</Cycle>
 		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
+			<Texture>AttackIndicatorHigh.tga</Texture>
 			<Location>
 				<X>0</X>
 				<Y>0</Y>
@@ -167,7 +167,7 @@
 			<Duration>420</Duration>
 		</Frames>
 		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
+			<Texture>AttackIndicatorHigh.tga</Texture>
 			<Location>
 				<X>0</X>
 				<Y>32</Y>
@@ -186,7 +186,7 @@
 		<AutoDraw>false</AutoDraw>
 		<AutoStretch>true</AutoStretch>
 		<TopAnchorOffset>70</TopAnchorOffset>
-		<BottomAnchorOffset>75</BottomAnchorOffset>
+		<BottomAnchorOffset>79</BottomAnchorOffset>
 		<LeftAnchorOffset>0</LeftAnchorOffset>
 		<RightAnchorOffset>0</RightAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
@@ -200,7 +200,7 @@
 		<Animation>A_AttackIndicatorBottom</Animation>
 		<AutoDraw>false</AutoDraw>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>7</TopAnchorOffset>
+		<TopAnchorOffset>11</TopAnchorOffset>
 		<BottomAnchorOffset>2</BottomAnchorOffset>
 		<LeftAnchorOffset>0</LeftAnchorOffset>
 		<RightAnchorOffset>0</RightAnchorOffset>
@@ -218,7 +218,7 @@
 		<TopAnchorOffset>70</TopAnchorOffset>
 		<BottomAnchorOffset>2</BottomAnchorOffset>
 		<LeftAnchorOffset>0</LeftAnchorOffset>
-		<RightAnchorOffset>5</RightAnchorOffset>
+		<RightAnchorOffset>9</RightAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
 		<BottomAnchorToTop>false</BottomAnchorToTop>
 		<LeftAnchorToLeft>true</LeftAnchorToLeft>
@@ -232,7 +232,7 @@
 		<AutoStretch>true</AutoStretch>
 		<TopAnchorOffset>70</TopAnchorOffset>
 		<BottomAnchorOffset>2</BottomAnchorOffset>
-		<LeftAnchorOffset>5</LeftAnchorOffset>
+		<LeftAnchorOffset>9</LeftAnchorOffset>
 		<RightAnchorOffset>0</RightAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
 		<BottomAnchorToTop>false</BottomAnchorToTop>
@@ -1417,6 +1417,7 @@
 
 	<Screen item="PlayerWindow">
 		<RelativePosition>false</RelativePosition>
+		<MenuName>High-Visibility Attack Frame</MenuName>
 		<Location>
 			<X>3</X>
 			<Y>0</Y>

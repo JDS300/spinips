@@ -17,6 +17,9 @@ from paint_attack_indicator import (ATTACK_BED, ATTACK_EDGE, ATTACK_FADE,
                                     ATTACK_HALO, ATTACK_INNER, ATTACK_SOFT,
                                     EDGE_WIDTH as ATTACK_EDGE_WIDTH,
                                     FRAME_SIZE as ATTACK_FRAME_SIZE,
+                                    HIGH_ATTACK_BED, HIGH_ATTACK_RAIL,
+                                    HIGH_EDGE_WIDTH,
+                                    HIGH_PULSE_BED, HIGH_PULSE_RAIL,
                                     PULSE_BED, PULSE_EDGE, PULSE_FADE,
                                     PULSE_HALO, PULSE_INNER, PULSE_SOFT,
                                     SIZE as ATTACK_INDICATOR_SIZE)
@@ -30,7 +33,10 @@ from restyle_combat import (EFFECT_CHIP, EFFECT_ICON, EFFECT_NAME_WIDTH,
                            EXTENDED_TARGET_ROW_SIZE,
                            EXTENDED_TARGET_TILE,
                            EXTENDED_TARGET_WINDOW_SIZE,
-                           ATTACK_PULSE_MS, PLAYER_MIN_SIZE, TARGET_MIN_SIZE,
+                           ATTACK_HIGH_EDGE_WIDTH, ATTACK_HIGH_TEXTURE,
+                           ATTACK_PULSE_MS, PLAYER_HIGH_VISIBILITY_MENU_NAME,
+                           PLAYER_HIGH_VISIBILITY_VARIANT, PLAYER_MIN_SIZE,
+                           TARGET_MIN_SIZE,
                            SPELL_LEDGER_EQTYPES, SPELL_LEDGER_ICON_SIZE,
                            SPELL_LEDGER_MENU_NAME, SPELL_LEDGER_ROW_SIZE,
                            SPELL_LEDGER_VARIANT, SPELL_LEDGER_WINDOW_BOUNDS,
@@ -68,7 +74,7 @@ FILES = (
 )
 
 CANONICAL_VARIANTS = {
-    "EQUI_PlayerWindow.xml": tuple(f"EQUI_PlayerWindow{i}.xml" for i in range(1, 7)),
+    "EQUI_PlayerWindow.xml": tuple(f"EQUI_PlayerWindow{i}.xml" for i in range(2, 7)),
     "EQUI_TargetWindow.xml": tuple(f"EQUI_TargetWindow{i}.xml" for i in range(1, 7)),
     "EQUI_TargetOfTargetWindow.xml": ("EQUI_TargetOfTargetWindow1.xml",),
     "EQUI_BuffWindow.xml": tuple(f"EQUI_BuffWindow{i}.xml" for i in range(1, 18)),
@@ -1081,6 +1087,105 @@ def audit_spell_ledger_variant() -> None:
         fail("spell ledger lost its compact SpinUI frame")
 
 
+def audit_high_visibility_player_variant() -> None:
+    """Prove Alternate 1 is opt-in, vivid, and binding-identical."""
+    if ATTACK_HIGH_EDGE_WIDTH != HIGH_EDGE_WIDTH:
+        fail("high-visibility texture and XML edge widths disagree")
+
+    def gameplay_bindings(path: Path):
+        return {
+            key: value for key, value in binding_map(path).items()
+            if value != ("", "")
+        }
+
+    canonical_bindings = gameplay_bindings(SKIN / "EQUI_PlayerWindow.xml")
+    variant_path = SKIN / PLAYER_HIGH_VISIBILITY_VARIANT
+    if gameplay_bindings(variant_path) != canonical_bindings:
+        fail("high-visibility player variant changed gameplay bindings")
+
+    root = root_for(PLAYER_HIGH_VISIBILITY_VARIANT)
+    window = item(root, "Screen", "PlayerWindow")
+    if child_text(window, "MenuName") != PLAYER_HIGH_VISIBILITY_MENU_NAME:
+        fail("high-visibility player variant is not named in Display Types")
+    if dimensions(window) != (360, 193):
+        fail("high-visibility player variant changed the compact footprint")
+
+    texture_info = item(root, "TextureInfo", ATTACK_HIGH_TEXTURE)
+    if dimensions(texture_info) != ATTACK_INDICATOR_SIZE:
+        fail("high-visibility attack TextureInfo size changed")
+    texture = Image.open(SKIN / ATTACK_HIGH_TEXTURE).convert("RGBA")
+    if texture.size != ATTACK_INDICATOR_SIZE:
+        fail("high-visibility attack texture size changed")
+    pixels = texture.load()
+    samples = {
+        "hot horizontal outer rail": (64, 0, HIGH_ATTACK_RAIL[0]),
+        "hot horizontal inner rail": (64, 8, HIGH_ATTACK_RAIL[8]),
+        "hot vertical outer rail": (0, 16, HIGH_ATTACK_RAIL[0]),
+        "hot vertical inner rail": (8, 16, HIGH_ATTACK_RAIL[8]),
+        "hot red wash": (64, 16, HIGH_ATTACK_BED),
+        "pulse horizontal outer rail": (64, 32, HIGH_PULSE_RAIL[0]),
+        "pulse horizontal inner rail": (64, 40, HIGH_PULSE_RAIL[8]),
+        "pulse red wash": (64, 48, HIGH_PULSE_BED),
+    }
+    for label, (x, y, expected) in samples.items():
+        actual = pixels[x, y]
+        if actual != expected:
+            fail(f"high-visibility {label} changed: {actual} != {expected}")
+
+    animation_sizes = {
+        "A_AttackIndicator": ATTACK_FRAME_SIZE,
+        "A_AttackIndicatorTop": (
+            ATTACK_FRAME_SIZE[0], ATTACK_HIGH_EDGE_WIDTH),
+        "A_AttackIndicatorBottom": (
+            ATTACK_FRAME_SIZE[0], ATTACK_HIGH_EDGE_WIDTH),
+        "A_AttackIndicatorLeft": (
+            ATTACK_HIGH_EDGE_WIDTH, ATTACK_FRAME_SIZE[1]),
+        "A_AttackIndicatorRight": (
+            ATTACK_HIGH_EDGE_WIDTH, ATTACK_FRAME_SIZE[1]),
+        "A_AttackIndicatorFill": ATTACK_FRAME_SIZE,
+    }
+    for name, expected in animation_sizes.items():
+        animation = item(root, "Ui2DAnimation", name)
+        frames = animation.findall("Frames")
+        if len(frames) != 2:
+            fail(f"high-visibility {name} must retain two pulse frames")
+        if any(child_text(frame, "Texture") != ATTACK_HIGH_TEXTURE
+               for frame in frames):
+            fail(f"high-visibility {name} does not use the pure-red texture")
+        if [dimensions_at(frame, "Size") for frame in frames] != [
+                expected, expected]:
+            fail(f"high-visibility {name} geometry changed")
+        if [child_int(frame, "Location/Y") for frame in frames] != [
+                0, ATTACK_FRAME_SIZE[1]]:
+            fail(f"high-visibility {name} pulse origins changed")
+        if [child_int(frame, "Duration") for frame in frames] != [
+                ATTACK_PULSE_MS, ATTACK_PULSE_MS]:
+            fail(f"high-visibility {name} pulse timing changed")
+
+    geometry = {
+        "A_AttackIndicatorAnimTop": (
+            70, 70 + ATTACK_HIGH_EDGE_WIDTH, 0, 0),
+        "A_AttackIndicatorAnimBottom": (
+            2 + ATTACK_HIGH_EDGE_WIDTH, 2, 0, 0),
+        "A_AttackIndicatorAnimLeft": (
+            70, 2, 0, ATTACK_HIGH_EDGE_WIDTH),
+        "A_AttackIndicatorAnimRight": (
+            70, 2, ATTACK_HIGH_EDGE_WIDTH, 0),
+    }
+    for name, expected in geometry.items():
+        node = item(root, "StaticAnimation", name)
+        actual = tuple(child_int(node, tag) for tag in (
+            "TopAnchorOffset", "BottomAnchorOffset",
+            "LeftAnchorOffset", "RightAnchorOffset",
+        ))
+        if actual != expected or child_text(node, "AutoDraw") != "false":
+            fail(f"high-visibility {name} lost native attack-state control")
+    fill = item(root, "StaticAnimation", "A_AttackIndicatorAnimFill")
+    if (child_text(fill, "AutoDraw") != "false" or
+            child_text(fill, "Animation") != "A_AttackIndicatorFill"):
+        fail("high-visibility red wash lost native attack-state control")
+
+
 def audit_variant_safety() -> None:
     """Ensure old INI variant selections cannot restore stale bindings."""
     checked = 0
@@ -1125,6 +1230,9 @@ def audit_variant_safety() -> None:
                 fail(f"compatibility variant visual drift: {variant_name}")
             checked += 1
 
+    audit_high_visibility_player_variant()
+    checked += 1
+
     # Stance keeps two genuinely useful text-position alternatives.  They must
     # remain current-schema, accessible, and compact.
     stance_expected = binding_map(SKIN / "EQUI_StanceWnd.xml")
@@ -1168,7 +1276,7 @@ def main() -> int:
     print("Combat Command Center audit: ALL PASS")
     print("  Player/Target/ToT | Group 1..11 | XTarget 0..22 | Raid groups 1..12")
     print("  buffs 30 | songs 15 | spell gems 14 | hotbars 11 x 12 | stance + invocation")
-    print("  52 compatibility aliases + named spell-ledger alternate retain bindings")
+    print("  51 compatibility aliases + high-visibility attack frame + spell ledger")
     print("  contrast AAA/AA | July stock parity " + ("PASS" if stock_checked else "not available"))
     return 0
 
