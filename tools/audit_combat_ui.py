@@ -13,8 +13,9 @@ from PIL import Image
 
 # The effects-row grid is authored once in tools/restyle_combat.py; the audit
 # imports it so a geometry change can never pass by editing only one side.
-from paint_attack_indicator import (ATTACK_BED, ATTACK_EDGE, ATTACK_HALO,
-                                    ATTACK_INNER,
+from paint_attack_indicator import (ATTACK_BED, ATTACK_EDGE, ATTACK_FADE,
+                                    ATTACK_HALO, ATTACK_INNER, ATTACK_SOFT,
+                                    EDGE_WIDTH as ATTACK_EDGE_WIDTH,
                                     SIZE as ATTACK_INDICATOR_SIZE)
 from restyle_combat import (EFFECT_CHIP, EFFECT_ICON, EFFECT_NAME_WIDTH,
                            EFFECT_NAME_X, EFFECT_PLATE_BLEED,
@@ -149,9 +150,13 @@ def audit_player_and_target() -> None:
         "horizontal outer edge": (64, 0, ATTACK_EDGE),
         "horizontal inner glow": (64, 1, ATTACK_INNER),
         "horizontal soft halo": (64, 2, ATTACK_HALO),
+        "horizontal deep glow": (64, 3, ATTACK_SOFT),
+        "horizontal fade": (64, 4, ATTACK_FADE),
         "vertical outer edge": (0, 16, ATTACK_EDGE),
         "vertical inner glow": (1, 16, ATTACK_INNER),
         "vertical soft halo": (2, 16, ATTACK_HALO),
+        "vertical deep glow": (3, 16, ATTACK_SOFT),
+        "vertical fade": (4, 16, ATTACK_FADE),
         "inactive texture bed": (64, 16, ATTACK_BED),
     }
     for label, (x, y, expected) in attack_samples.items():
@@ -160,18 +165,18 @@ def audit_player_and_target() -> None:
             fail(f"auto-attack {label} changed: {actual} != {expected}")
 
     for name, expected in (
-            ("A_AttackIndicatorTop", (128, 3)),
-            ("A_AttackIndicatorBottom", (128, 3)),
-            ("A_AttackIndicatorLeft", (3, 32)),
-            ("A_AttackIndicatorRight", (3, 32))):
+            ("A_AttackIndicatorTop", (128, ATTACK_EDGE_WIDTH)),
+            ("A_AttackIndicatorBottom", (128, ATTACK_EDGE_WIDTH)),
+            ("A_AttackIndicatorLeft", (ATTACK_EDGE_WIDTH, 32)),
+            ("A_AttackIndicatorRight", (ATTACK_EDGE_WIDTH, 32))):
         animation = item(player, "Ui2DAnimation", name)
         if dimensions_at(animation, "Frames/Size") != expected:
-            fail(f"{name} lost its visible three-pixel glow")
+            fail(f"{name} lost its visible five-layer combat glow")
     attack_geometry = {
-        "A_AttackIndicatorAnimTop": (70, 73, 0, 0),
-        "A_AttackIndicatorAnimBottom": (5, 2, 0, 0),
-        "A_AttackIndicatorAnimLeft": (70, 2, 0, 3),
-        "A_AttackIndicatorAnimRight": (70, 2, 3, 0),
+        "A_AttackIndicatorAnimTop": (70, 70 + ATTACK_EDGE_WIDTH, 0, 0),
+        "A_AttackIndicatorAnimBottom": (2 + ATTACK_EDGE_WIDTH, 2, 0, 0),
+        "A_AttackIndicatorAnimLeft": (70, 2, 0, ATTACK_EDGE_WIDTH),
+        "A_AttackIndicatorAnimRight": (70, 2, ATTACK_EDGE_WIDTH, 0),
     }
     for name, expected in attack_geometry.items():
         node = item(player, "StaticAnimation", name)
