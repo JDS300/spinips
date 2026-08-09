@@ -77,6 +77,7 @@ class HeadlessEngine:
             "detail": "Open Alt+Z, point at Outstanding Instance Timers, then press Ctrl+Shift+Z.",
             "scannedAt": "",
             "importedCount": 0,
+            "timedCount": 0,
             "hotkey": "Ctrl+Shift+Z",
         }
         self._lockout_request_id = 0
@@ -142,6 +143,7 @@ class HeadlessEngine:
                     "detail": str(scan.get("detail") or self.lockout_scan["detail"])[:240],
                     "scannedAt": scan.get("scannedAt", ""),
                     "importedCount": int(scan.get("importedCount", 0) or 0),
+                    "timedCount": int(scan.get("timedCount", 0) or 0),
                 })
         except (OSError, ValueError, TypeError, json.JSONDecodeError):
             self.instance_lockouts = []
@@ -161,6 +163,7 @@ class HeadlessEngine:
             "status": "scanning",
             "detail": "Reading the visible Alt+Z Outstanding Instance Timers…",
             "importedCount": 0,
+            "timedCount": 0,
         })
         self._lockout_request_id = self.lockout_ocr.submit()
 
@@ -174,7 +177,16 @@ class HeadlessEngine:
              str(row.get("target", "")).casefold(), row.get("difficulty")): row
             for row in self.instance_lockouts
         }
+        timed_count = 0
         for lockout in rows:
+            self.weekly.set_completion(
+                observed_at, lockout.target, lockout.difficulty,
+                character=character, completed=True)
+            # A recognized boss/difficulty is sufficient weekly evidence, but
+            # never fabricate an expiry when the tiny timer glyphs were not
+            # actually read by Windows OCR.
+            if lockout.remaining_seconds is None:
+                continue
             if character != "?":
                 by_key.pop(("?", lockout.target.casefold(), lockout.difficulty), None)
                 by_key.pop(("", lockout.target.casefold(), lockout.difficulty), None)
@@ -190,18 +202,27 @@ class HeadlessEngine:
             }
             by_key[(character.casefold(), lockout.target.casefold(),
                     lockout.difficulty)] = stored
-            self.weekly.set_completion(
-                observed_at, lockout.target, lockout.difficulty,
-                character=character, completed=True)
+            timed_count += 1
         self.instance_lockouts = list(by_key.values())
         stamp = observed_at.isoformat(timespec="seconds")
         count = len(rows)
+        if timed_count == count:
+            detail = (f"Marked {count} visible raid completion"
+                      f"{'s' if count != 1 else ''} and read every timer. ")
+        elif timed_count:
+            detail = (f"Marked {count} visible raid completion"
+                      f"{'s' if count != 1 else ''}; read {timed_count} timer"
+                      f"{'s' if timed_count != 1 else ''}. ")
+        else:
+            detail = (f"Marked {count} visible raid completion"
+                      f"{'s' if count != 1 else ''}. Compact timer text was unreadable, "
+                      "so no expiry was guessed. ")
         self.lockout_scan.update({
             "status": "success",
-            "detail": (f"Imported {count} visible raid lockout"
-                       f"{'s' if count != 1 else ''}. Scroll Alt+Z and scan again to merge more rows."),
+            "detail": detail + "Scroll Alt+Z and scan again to merge more rows.",
             "scannedAt": stamp,
             "importedCount": count,
+            "timedCount": timed_count,
         })
         self._save_instance_lockouts()
         if self.alert_config.get("alerts_enabled", True):
@@ -210,7 +231,7 @@ class HeadlessEngine:
                 "kind": "lockoutSync",
                 "severity": "info",
                 "title": "LOCKOUTS SYNCED",
-                "target": f"{count} visible D0–D4 raid lockout{'s' if count != 1 else ''}",
+                "target": f"{count} visible D0–D4 raid completion{'s' if count != 1 else ''}",
                 "occurredAt": stamp,
                 "expiresAt": (observed_at + timedelta(
                     seconds=self.alert_config["alert_seconds"])).isoformat(

@@ -64,6 +64,7 @@ EFFECT_NAME_WIDTH = EFFECT_ROW_WIDTH - EFFECT_NAME_X - EFFECT_NAME_TAIL
 # so users may resize them without clipping the command rows.
 PLAYER_MIN_SIZE = (280, 174)
 TARGET_MIN_SIZE = (260, 174)
+ATTACK_EDGE_WIDTH = 5
 
 # Older SpinUI releases exposed a large collection of visual variants.  Most of
 # those files predate the July Legends schema and can lose live controls when a
@@ -432,11 +433,23 @@ def style_player() -> None:
     text = change_item(text, "Label", "PW_StanceLabel", stance_rail)
     text = change_item(text, "Label", "PW_InvocationInfo", invocation_rail)
 
+    attack_animations = {
+        "A_AttackIndicatorTop": (128, ATTACK_EDGE_WIDTH),
+        "A_AttackIndicatorBottom": (128, ATTACK_EDGE_WIDTH),
+        "A_AttackIndicatorLeft": (ATTACK_EDGE_WIDTH, 32),
+        "A_AttackIndicatorRight": (ATTACK_EDGE_WIDTH, 32),
+    }
+    for name, size in attack_animations.items():
+        text = change_item(
+            text, "Ui2DAnimation", name,
+            lambda b, s=size: set_container(b, "Size", CX=s[0], CY=s[1]),
+        )
+
     attack_edges = {
-        "A_AttackIndicatorAnimTop": (70, 73, 0, 0),
-        "A_AttackIndicatorAnimBottom": (5, 2, 0, 0),
-        "A_AttackIndicatorAnimLeft": (70, 2, 0, 3),
-        "A_AttackIndicatorAnimRight": (70, 2, 3, 0),
+        "A_AttackIndicatorAnimTop": (70, 70 + ATTACK_EDGE_WIDTH, 0, 0),
+        "A_AttackIndicatorAnimBottom": (2 + ATTACK_EDGE_WIDTH, 2, 0, 0),
+        "A_AttackIndicatorAnimLeft": (70, 2, 0, ATTACK_EDGE_WIDTH),
+        "A_AttackIndicatorAnimRight": (70, 2, ATTACK_EDGE_WIDTH, 0),
     }
     for name, offsets in attack_edges.items():
         def attack_edge(block: str, values=offsets) -> str:

@@ -24,13 +24,18 @@ _TIMER_RE = re.compile(
 _DIFFICULTY_RE = re.compile(r"\b(?:solo|group)\s*([0-4])\b", re.I)
 _VARIANT_RE = re.compile(
     r"^[\s([{<]*(?:adaptive|normal|fused|refined)[\s)\]}>:;-]*", re.I)
+_OCR_EVENT_ALIASES = {
+    "cauc i nule": "Cazic-Thule",
+    "cauc l nule": "Cazic-Thule",
+    "cazic tnule": "Cazic-Thule",
+}
 
 
 @dataclass(frozen=True, slots=True)
 class ParsedRaidLockout:
     target: str
     difficulty: int
-    remaining_seconds: int
+    remaining_seconds: int | None
     instance_name: str
     event_name: str
     raw_text: str
@@ -68,6 +73,11 @@ def _target_from_event(value: str) -> str:
     candidate = _ocr_name(value)
     if not candidate:
         return ""
+    # The compact red Cazic-Thule row in Legends is consistently mangled by
+    # Windows OCR even at high capture scale. Keep this deliberately narrow:
+    # a broad fuzzy threshold would risk crediting the wrong weekly boss.
+    if candidate in _OCR_EVENT_ALIASES:
+        return _OCR_EVENT_ALIASES[candidate]
     direct: dict[str, str] = {}
     for target in RAID_TARGETS:
         direct[_ocr_name(target.name)] = target.name
@@ -99,7 +109,7 @@ def _parse_row(parts: list[OcrLine]) -> ParsedRaidLockout | None:
     raw = re.sub(r"\s+", " ", raw).strip()
     timer = _TIMER_RE.search(raw)
     difficulty = _DIFFICULTY_RE.search(raw)
-    if timer is None or difficulty is None:
+    if difficulty is None:
         return None
 
     tail = raw[difficulty.end():].strip()
@@ -120,9 +130,10 @@ def _parse_row(parts: list[OcrLine]) -> ParsedRaidLockout | None:
     if not target:
         return None
 
-    prefix = raw[timer.end():difficulty.start()].strip(" -|:")
+    prefix_start = timer.end() if timer is not None else 0
+    prefix = raw[prefix_start:difficulty.start()].strip(" -|:")
     instance_name = re.sub(r"\s*-\s*$", "", prefix).strip()
-    remaining = (
+    remaining = None if timer is None else (
         _number(timer.group("days")) * 86400
         + _number(timer.group("hours")) * 3600
         + _number(timer.group("minutes")) * 60
@@ -175,7 +186,12 @@ def parse_instance_lockouts(lines: Iterable[OcrLine]) -> list[ParsedRaidLockout]
             continue
         key = (normalize_target(lockout.target), lockout.difficulty)
         previous = found.get(key)
-        if previous is None or lockout.remaining_seconds > previous.remaining_seconds:
+        should_replace = previous is None or (
+            lockout.remaining_seconds is not None
+            and (previous.remaining_seconds is None
+                 or lockout.remaining_seconds > previous.remaining_seconds)
+        )
+        if should_replace:
             found[key] = lockout
     return sorted(found.values(), key=lambda row: (row.target, row.difficulty))
 
@@ -183,16 +199,32 @@ def parse_instance_lockouts(lines: Iterable[OcrLine]) -> list[ParsedRaidLockout]
 def parse_instance_character(lines: Iterable[OcrLine]) -> str:
     """Read the optional ``Leader: Name`` evidence shown in Alt+Z."""
 
+    excluded = {"option", "options", "targeted"}
     for parts in _row_groups(lines):
-        raw = " ".join(part.text.strip() for part in sorted(parts, key=lambda item: item.x))
-        # Compact UI text regularly loses the colon while preserving the two
-        # cells as one row (``Leader Spin``). The exclusions below still keep
-        # the nearby ``Leader Options`` heading from becoming a character.
-        match = re.search(
-            r"\bLeader\s*(?:[:;]\s*|\s+)([A-Za-z][A-Za-z'-]{1,31})\b",
-            raw, re.I)
-        if match and match.group(1).casefold() not in {"option", "options", "targeted"}:
-            return match.group(1)
+        ordered = sorted(parts, key=lambda item: item.x)
+        for index, part in enumerate(ordered):
+            text = part.text.strip()
+            # Handle one OCR line containing both label and value.
+            match = re.fullmatch(
+                r"Leader\s*(?:[:;]\s*|\s+)([A-Za-z][A-Za-z'-]{1,31})",
+                text, re.I)
+            if match and match.group(1).casefold() not in excluded:
+                return match.group(1)
+
+            # If OCR split the cells, require the value to be physically next
+            # to Leader. This prevents blank Leader fields from borrowing
+            # distant labels such as Min Players or the bottom Invite button.
+            if not re.fullmatch(r"Leader\s*[:;]?", text, re.I):
+                continue
+            if index + 1 >= len(ordered):
+                continue
+            candidate = ordered[index + 1]
+            gap = candidate.x - (part.x + part.width)
+            value = candidate.text.strip()
+            if (gap <= 120.0
+                    and re.fullmatch(r"[A-Za-z][A-Za-z'-]{1,31}", value)
+                    and value.casefold() not in excluded):
+                return value
     return ""
 
 

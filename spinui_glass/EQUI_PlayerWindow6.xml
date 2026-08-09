@@ -37,7 +37,7 @@
 			</Location>
 			<Size>
 				<CX>128</CX>
-				<CY>3</CY>
+				<CY>5</CY>
 			</Size>
 		</Frames>
 	</Ui2DAnimation>
@@ -52,7 +52,7 @@
 			</Location>
 			<Size>
 				<CX>128</CX>
-				<CY>3</CY>
+				<CY>5</CY>
 			</Size>
 		</Frames>
 	</Ui2DAnimation>
@@ -66,7 +66,7 @@
 				<Y>0</Y>
 			</Location>
 			<Size>
-				<CX>3</CX>
+				<CX>5</CX>
 				<CY>32</CY>
 			</Size>
 		</Frames>
@@ -81,7 +81,7 @@
 				<Y>0</Y>
 			</Location>
 			<Size>
-				<CX>3</CX>
+				<CX>5</CX>
 				<CY>32</CY>
 			</Size>
 		</Frames>
@@ -108,7 +108,7 @@
 		<AutoDraw>false</AutoDraw>
 		<AutoStretch>true</AutoStretch>
 		<TopAnchorOffset>70</TopAnchorOffset>
-		<BottomAnchorOffset>73</BottomAnchorOffset>
+		<BottomAnchorOffset>75</BottomAnchorOffset>
 		<LeftAnchorOffset>0</LeftAnchorOffset>
 		<RightAnchorOffset>0</RightAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
@@ -122,7 +122,7 @@
 		<Animation>A_AttackIndicatorBottom</Animation>
 		<AutoDraw>false</AutoDraw>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>5</TopAnchorOffset>
+		<TopAnchorOffset>7</TopAnchorOffset>
 		<BottomAnchorOffset>2</BottomAnchorOffset>
 		<LeftAnchorOffset>0</LeftAnchorOffset>
 		<RightAnchorOffset>0</RightAnchorOffset>
@@ -140,7 +140,7 @@
 		<TopAnchorOffset>70</TopAnchorOffset>
 		<BottomAnchorOffset>2</BottomAnchorOffset>
 		<LeftAnchorOffset>0</LeftAnchorOffset>
-		<RightAnchorOffset>3</RightAnchorOffset>
+		<RightAnchorOffset>5</RightAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
 		<BottomAnchorToTop>false</BottomAnchorToTop>
 		<LeftAnchorToLeft>true</LeftAnchorToLeft>
@@ -154,7 +154,7 @@
 		<AutoStretch>true</AutoStretch>
 		<TopAnchorOffset>70</TopAnchorOffset>
 		<BottomAnchorOffset>2</BottomAnchorOffset>
-		<LeftAnchorOffset>3</LeftAnchorOffset>
+		<LeftAnchorOffset>5</LeftAnchorOffset>
 		<RightAnchorOffset>0</RightAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
 		<BottomAnchorToTop>false</BottomAnchorToTop>
