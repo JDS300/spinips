@@ -57,7 +57,7 @@ export interface CombatBreakdownView {
   actors: readonly CombatMetricView[];
 }
 
-export type CombatActorRole = "self" | "charmed" | "summoned" | "observed";
+export type CombatActorRole = "self" | "charmed" | "summoned" | "group" | "observed";
 
 export interface CombatActorView {
   name: string;
@@ -121,6 +121,7 @@ export interface EngineSnapshot {
   sequence: number;
   observedAt: string;
   character: CharacterView;
+  groupMembers: readonly string[];
   combat: CombatView;
   breakdown: CombatBreakdownView;
   encounters?: readonly EncounterView[];
@@ -272,6 +273,7 @@ export interface DesktopSettings {
   inventoryPath: string;
   alwaysOnTop: boolean;
   fontScale: number;
+  composition: string;
   splitCharmedPetDps: boolean;
   stanceAdvisorEnabled: boolean;
   seedPosition: { x: number; y: number } | null;

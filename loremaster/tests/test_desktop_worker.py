@@ -13,6 +13,62 @@ from instance_lockout_ocr import ParsedRaidLockout  # noqa: E402
 
 
 class DesktopWorkerTests(unittest.TestCase):
+    def test_log_attach_recovers_zone_and_composition_beyond_combat_warm_start(self):
+        with tempfile.TemporaryDirectory() as root:
+            log = Path(root) / "eqlog_Spin_qeynos.txt"
+            log.write_text(
+                "[Sat Aug 08 10:00:00 2026] You have entered The Plane of Fear.\n"
+                "[Sat Aug 08 10:00:01 2026] Your active classes are PAL / MNK / ENC.\n"
+                "[Sat Aug 08 10:00:02 2026] AromeK has joined the group.\n"
+                "[Sat Aug 08 17:00:00 2026] Auto attack is off.\n",
+                encoding="latin-1")
+            engine = HeadlessEngine(log_path=str(log), data_dir=root)
+            try:
+                _parsed, switched = engine.poll()
+                event = engine.snapshot_event(datetime(2026, 8, 8, 17, 0, 1))
+            finally:
+                engine.close()
+            self.assertTrue(switched)
+            self.assertEqual(event["snapshot"]["character"]["zone"],
+                             "The Plane of Fear")
+            self.assertEqual(event["snapshot"]["character"]["composition"],
+                             "PAL / MNK / ENC")
+            self.assertEqual(event["snapshot"]["groupMembers"], ("AromeK",))
+
+    def test_explicit_group_members_are_distinct_from_nearby_actors(self):
+        with tempfile.TemporaryDirectory() as root:
+            engine = HeadlessEngine(data_dir=root)
+            try:
+                engine.stats.character = "Spin"
+                for line in (
+                    "[Sat Aug 08 17:00:00 2026] AromeK has joined the group.",
+                    "[Sat Aug 08 17:00:01 2026] You slash a rock golem for 100 points of damage.",
+                    "[Sat Aug 08 17:00:02 2026] AromeK slashes a rock golem for 70 points of damage.",
+                    "[Sat Aug 08 17:00:03 2026] Stranger slashes a rock golem for 40 points of damage.",
+                ):
+                    self.assertTrue(engine.process_line(line))
+                event = engine.snapshot_event(datetime(2026, 8, 8, 17, 0, 4))
+            finally:
+                engine.close()
+            actors = {row["name"]: row for row in
+                      event["snapshot"]["encounters"][-1]["actors"]}
+            self.assertEqual(actors["AromeK"]["role"], "group")
+            self.assertEqual(actors["Stranger"]["role"], "observed")
+            self.assertEqual(event["snapshot"]["groupMembers"], ("AromeK",))
+            self.assertEqual(event["snapshot"]["combat"]["fightDamage"], 100)
+
+    def test_manual_composition_setting_is_validated_and_applied(self):
+        with tempfile.TemporaryDirectory() as root:
+            engine = HeadlessEngine(data_dir=root)
+            try:
+                self.assertTrue(engine.set_composition("pal/mnk/enc"))
+                self.assertFalse(engine.set_composition("pal/enc"))
+                event = engine.snapshot_event(datetime(2026, 8, 8, 17, 0, 0))
+            finally:
+                engine.close()
+            self.assertEqual(event["snapshot"]["character"]["composition"],
+                             "PAL / MNK / ENC")
+
     def test_alt_z_lockouts_credit_weekly_ledger_and_survive_restart(self):
         scanned_at = datetime(2026, 8, 7, 20, 0, 0)
         with tempfile.TemporaryDirectory() as root:

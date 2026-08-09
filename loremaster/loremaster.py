@@ -185,6 +185,7 @@ LOG_RESCAN_SECONDS = 2.0
 MAX_READ_BYTES = 256 * 1024
 INITIAL_BACKFILL_BYTES = 2 * 1024 * 1024
 INITIAL_BACKFILL_MINUTES = 30
+CONTEXT_BACKFILL_BYTES = 32 * 1024 * 1024
 MAX_FIGHT_HISTORY = 500
 DESKTOP_FIGHT_HISTORY = 60
 TIMELINE_BUCKET_SECONDS = 2
@@ -814,6 +815,17 @@ PATTERNS: list[tuple[str, re.Pattern]] = [
         r"^(?:Your active classes are|Your active class composition is|"
         r"Your class composition is|Active classes:)\s+(?P<classes>.+?)[.!]?$",
         re.I)),
+    # Group membership is explicit log evidence. It lets the desktop overlay
+    # distinguish known group contributors from unrelated nearby players.
+    ("group_join", re.compile(
+        r"^(?P<member>[A-Za-z][A-Za-z'`-]{1,31}) (?:has joined|joins) (?:the|your) group\.$",
+        re.I)),
+    ("group_leave", re.compile(
+        r"^(?P<member>[A-Za-z][A-Za-z'`-]{1,31}) has (?:left|been removed from) the group\.$",
+        re.I)),
+    ("group_clear", re.compile(
+        r"^(?:Your group has been disbanded|You have left the group|"
+        r"You have been removed from the group)\.?$", re.I)),
     # --- pets ---
     # Summoned pets have one-word names, while charmed creatures retain names
     # such as "A rock golem". Both ownership messages are visible only to the
@@ -1303,6 +1315,7 @@ class SessionStats:
         self.actor_damage: dict[str, dict] = defaultdict(
             lambda: {"t": 0, "h": 0, "max": 0})
         self.actor_roles: dict[str, str] = {}
+        self.group_members: set[str] = set()
         self.actor_healing: dict[str, dict] = defaultdict(
             lambda: {"t": 0, "h": 0, "max": 0})
         self.melee_hits = self.melee_misses = 0
@@ -1422,11 +1435,13 @@ class SessionStats:
         elif self.session_gap and self.last_event and ts - self.last_event > self.session_gap:
             level, xsl, known = self.level, self.xp_since_level, self.xp_pct_known
             pets = set(self.persistent_pet_names())
+            group_members = set(self.group_members)
             zone = self.zone
             self.reset()
             self.session_start = ts
             self.level, self.xp_since_level, self.xp_pct_known = level, xsl, known
             self.pet_names, self.zone = pets, zone
+            self.group_members = group_members
         self.last_event = ts
 
     def set_composition(self, composition, *, source: str = "manual",
@@ -1565,7 +1580,10 @@ class SessionStats:
         known_targets = {name.casefold() for name in self.fight.targets}
         if normalize_mob(actor).casefold() in known_targets:
             return
-        self._record_actor_damage(actor, dmg, "observed")
+        role = "group" if actor.casefold() in {
+            member.casefold() for member in self.group_members
+        } else "observed"
+        self._record_actor_damage(actor, dmg, role)
         self.fight.observed_targets[normalize_mob(target)] += dmg
         self.fight.add_timeline(ts, "out", dmg)
 
@@ -1812,6 +1830,18 @@ class SessionStats:
                 self.set_composition(g.get("classes", ""), source="exact log")
             except ValueError:
                 pass
+        elif kind == "group_join":
+            member = (g.get("member") or "").strip()
+            if member and member.casefold() != self.character.casefold():
+                self.group_members.add(member)
+        elif kind == "group_leave":
+            member = (g.get("member") or "").strip().casefold()
+            self.group_members = {
+                existing for existing in self.group_members
+                if existing.casefold() != member
+            }
+        elif kind == "group_clear":
+            self.group_members.clear()
 
         elif kind == "tell_in":
             self.tells += 1
@@ -1977,6 +2007,7 @@ class SessionStats:
             "healing_by_source": {k: dict(v) for k, v in self.healing_by_source.items()},
             "actor_damage": {k: dict(v) for k, v in self.actor_damage.items()},
             "actor_roles": dict(self.actor_roles),
+            "group_members": sorted(self.group_members, key=str.casefold),
             "actor_healing": {k: dict(v) for k, v in self.actor_healing.items()},
             "damage_taken_by": {k: dict(v) for k, v in self.damage_taken_by.items()},
             "group_kills": dict(self.group_kills),
@@ -2089,6 +2120,62 @@ class LogWatcher:
                     return base + cursor
             cursor += len(raw)
         return size
+
+    def recent_context(self) -> dict[str, object]:
+        """Recover zone, class trio, and group roster without replaying combat.
+
+        The normal warm start intentionally reads only thirty minutes of log
+        activity. A player can remain in one zone much longer, so identity
+        context gets one separate bounded reverse scan when a log is attached.
+        """
+        if self.path is None:
+            return {"zone": "", "composition": "", "group_members": []}
+        try:
+            size = self.path.stat().st_size
+            start = max(0, size - CONTEXT_BACKFILL_BYTES)
+            with self.path.open("rb") as handle:
+                handle.seek(start)
+                data = handle.read()
+        except OSError:
+            return {"zone": "", "composition": "", "group_members": []}
+        if start and b"\n" in data:
+            data = data[data.index(b"\n") + 1:]
+        zone = ""
+        composition = ""
+        group_members: dict[str, str] = {}
+        for raw in data.splitlines():
+            folded = raw.lower()
+            if not any(marker in folded for marker in (
+                    b"you have entered", b"active class", b"group")):
+                continue
+            parsed = parse_line(raw.decode("latin-1", errors="replace"))
+            if parsed is None:
+                continue
+            _stamp, kind, groups = parsed
+            if kind == "zone":
+                candidate = groups.get("zone", "")
+                if is_real_zone_transition(candidate):
+                    zone = candidate
+            elif kind == "composition":
+                try:
+                    composition = normalize_composition(
+                        groups.get("classes", ""))
+                except ValueError:
+                    pass
+            elif kind == "group_join":
+                member = (groups.get("member") or "").strip()
+                if member:
+                    group_members[member.casefold()] = member
+            elif kind == "group_leave":
+                group_members.pop(
+                    (groups.get("member") or "").strip().casefold(), None)
+            elif kind == "group_clear":
+                group_members.clear()
+        return {
+            "zone": zone,
+            "composition": composition,
+            "group_members": sorted(group_members.values(), key=str.casefold),
+        }
 
     def _pick(self) -> Path | None:
         if self.explicit:

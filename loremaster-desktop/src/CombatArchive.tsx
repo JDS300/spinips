@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   CombatActorRole,
   CombatHealingMetricView,
@@ -45,8 +45,13 @@ const fallbackBosses = [
 ];
 
 const actorLabels: Record<CombatActorRole, string> = {
-  self: "SELF", charmed: "CHARMED", summoned: "SUMMONED", observed: "OBSERVED",
+  self: "SELF", charmed: "CHARMED", summoned: "SUMMONED",
+  group: "GROUP", observed: "OBSERVED",
 };
+
+function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.max(minimum, Math.min(maximum, value));
+}
 
 function compactNumber(value: number): string {
   const magnitude = Math.abs(value);
@@ -182,6 +187,8 @@ function rowsFor(tab: DetailTab, encounter: EncounterView, actorFilter: ActorFil
 }
 
 function TimelineChart({ points, seconds }: { points: readonly EncounterTimelinePointView[]; seconds: number }) {
+  const [hovered, setHovered] = useState<EncounterTimelinePointView | null>(null);
+  const plotRef = useRef<HTMLDivElement>(null);
   if (points.length === 0) return <div className="archive-empty-chart"><b>NO TIMELINE FOR THIS SCOPE</b><span>Select one encounter to inspect its two-second combat trace.</span></div>;
   const width = 920;
   const height = 220;
@@ -192,14 +199,34 @@ function TimelineChart({ points, seconds }: { points: readonly EncounterTimeline
     const y = height - (point[key] / ceiling * (height - 18)) - 8;
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   }).join(" ");
+  const hoverX = hovered ? hovered.second / duration * width : 0;
+  const inspect = (clientX: number) => {
+    const bounds = plotRef.current?.getBoundingClientRect();
+    if (!bounds || bounds.width <= 0) return;
+    const second = clamp((clientX - bounds.left) / bounds.width, 0, 1) * duration;
+    setHovered(points.reduce((nearest, point) => (
+      Math.abs(point.second - second) < Math.abs(nearest.second - second) ? point : nearest
+    ), points[0]));
+  };
   return <section className="archive-timeline">
-    <header><span><i className="out" /> OUTGOING</span><span><i className="inc" /> INCOMING</span><span><i className="heal" /> HEALING</span><b>PEAK {compactNumber(ceiling)} / 2s</b></header>
-    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label="Encounter outgoing, incoming and healing timeline">
-      {[0.25, 0.5, 0.75].map((position) => <line key={position} x1="0" x2={width} y1={height * position} y2={height * position} className="grid" />)}
-      <polyline points={line("incoming")} className="incoming" />
-      <polyline points={line("healing")} className="healing" />
-      <polyline points={line("outgoing")} className="outgoing" />
-    </svg>
+    <header><span><i className="out" /> OUTGOING</span><span><i className="inc" /> INCOMING</span><span><i className="heal" /> HEALING</span><b>HOVER FOR PLAY-BY-PLAY · PEAK {compactNumber(ceiling)}</b></header>
+    <div className="archive-timeline-plot" ref={plotRef}
+      onPointerMove={(event) => inspect(event.clientX)} onPointerLeave={() => setHovered(null)}>
+      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label="Encounter outgoing, incoming and healing timeline">
+        {[0.25, 0.5, 0.75].map((position) => <line key={position} x1="0" x2={width} y1={height * position} y2={height * position} className="grid" />)}
+        <polyline points={line("incoming")} className="incoming" />
+        <polyline points={line("healing")} className="healing" />
+        <polyline points={line("outgoing")} className="outgoing" />
+        {hovered && <line className="cursor" x1={hoverX} x2={hoverX} y1="0" y2={height} />}
+      </svg>
+      {hovered && <output className="archive-timeline-tooltip" style={{ left: `${clamp(hovered.second / duration * 100, 8, 92)}%` }}>
+        <b>{clock(hovered.second)}</b>
+        <span><i className="out" /> OUT <strong>{hovered.outgoing.toLocaleString()}</strong></span>
+        <span><i className="inc" /> IN <strong>{hovered.incoming.toLocaleString()}</strong></span>
+        <span><i className="heal" /> HEAL <strong>{hovered.healing.toLocaleString()}</strong></span>
+        {hovered.kills > 0 && <em>{hovered.kills} KILL{hovered.kills === 1 ? "" : "S"}</em>}
+      </output>}
+    </div>
     <footer><span>0:00</span><span>{clock(duration / 2)}</span><span>{clock(duration)}</span></footer>
   </section>;
 }
@@ -326,7 +353,7 @@ export function CombatArchive({ event, health, weekly, onHud, onSeed, onMinimize
 
         {tab === "timeline" ? <TimelineChart points={analyzed.timeline} seconds={analyzed.seconds} /> : <section className="archive-detail-grid">
           <div className="archive-table-wrap">
-            <header className="archive-table-tools"><input aria-label="Search breakdown rows" placeholder={`Search ${tab}…`} value={detailQuery} onChange={(change) => setDetailQuery(change.target.value)} />{tab === "actors" && <select aria-label="Actor role" value={actorFilter} onChange={(change) => setActorFilter(change.target.value as ActorFilter)}><option value="all">ALL ROLES</option><option value="self">SELF</option><option value="charmed">CHARMED</option><option value="summoned">SUMMONED</option><option value="observed">OBSERVED</option></select>}<span>{tableRows.length} ROWS</span></header>
+            <header className="archive-table-tools"><input aria-label="Search breakdown rows" placeholder={`Search ${tab}…`} value={detailQuery} onChange={(change) => setDetailQuery(change.target.value)} />{tab === "actors" && <select aria-label="Actor role" value={actorFilter} onChange={(change) => setActorFilter(change.target.value as ActorFilter)}><option value="all">ALL ROLES</option><option value="self">SELF</option><option value="charmed">CHARMED</option><option value="summoned">SUMMONED</option><option value="group">GROUP</option><option value="observed">OBSERVED</option></select>}<span>{tableRows.length} ROWS</span></header>
             <div className="archive-table">
               <header><span>NAME / ROLE</span>{(["damage", "dps", "share", "hits", "average", "maximum"] as DetailSort[]).map((value) => <button className={detailSort === value ? "active" : ""} key={value} onClick={() => setDetailSort(value)}>{tab === "healing" && value === "damage" ? "HEAL" : tab === "healing" && value === "dps" ? "HPS" : value === "maximum" ? "MAX" : value === "average" ? "AVG" : value.toUpperCase()}</button>)}</header>
               {tableRows.slice(0, 50).map((row) => <article key={`${row.role}-${row.name}`}>
