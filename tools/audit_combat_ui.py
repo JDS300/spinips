@@ -13,13 +13,10 @@ from PIL import Image
 
 # The effects-row grid is authored once in tools/restyle_combat.py; the audit
 # imports it so a geometry change can never pass by editing only one side.
-from paint_attack_indicator import (EDGE_WIDTH as ATTACK_EDGE_WIDTH,
+from paint_attack_indicator import (COLOR as ATTACK_INDICATOR_COLOR,
+                                    EDGE_WIDTH as ATTACK_EDGE_WIDTH,
                                     FRAME_SIZE as ATTACK_FRAME_SIZE,
-                                    FRAME_DURATION_MS, FRAME_ORIGINS,
-                                    FRAME_RAILS,
-                                    HIGH_EDGE_WIDTH,
-                                    SIZE as ATTACK_INDICATOR_SIZE,
-                                    TRANSPARENT)
+                                    SIZE as ATTACK_INDICATOR_SIZE)
 from restyle_combat import (EFFECT_CHIP, EFFECT_ICON, EFFECT_NAME_WIDTH,
                            EFFECT_NAME_X, EFFECT_PLATE_BLEED,
                            EFFECT_ROW_WIDTH, EFFECT_TIMER_FONT,
@@ -30,12 +27,6 @@ from restyle_combat import (EFFECT_CHIP, EFFECT_ICON, EFFECT_NAME_WIDTH,
                            EXTENDED_TARGET_ROW_SIZE,
                            EXTENDED_TARGET_TILE,
                            EXTENDED_TARGET_WINDOW_SIZE,
-                           ATTACK_FRAME_ORIGINS, ATTACK_HIGH_EDGE_WIDTH,
-                           ATTACK_HIGH_TEXTURE, ATTACK_PULSE_FRAME_COUNT,
-                           ATTACK_PULSE_MS, PLAYER_HIGH_VISIBILITY_MENU_NAME,
-                           PLAYER_HIGH_VISIBILITY_SIZE,
-                           PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP,
-                           PLAYER_HIGH_VISIBILITY_VARIANT,
                            PLAYER_MIN_SIZE, TARGET_MIN_SIZE,
                            SPELL_LEDGER_EQTYPES, SPELL_LEDGER_ICON_SIZE,
                            SPELL_LEDGER_MENU_NAME, SPELL_LEDGER_ROW_SIZE,
@@ -74,7 +65,7 @@ FILES = (
 )
 
 CANONICAL_VARIANTS = {
-    "EQUI_PlayerWindow.xml": tuple(f"EQUI_PlayerWindow{i}.xml" for i in range(2, 7)),
+    "EQUI_PlayerWindow.xml": tuple(f"EQUI_PlayerWindow{i}.xml" for i in range(1, 7)),
     "EQUI_TargetWindow.xml": tuple(f"EQUI_TargetWindow{i}.xml" for i in range(1, 7)),
     "EQUI_TargetOfTargetWindow.xml": ("EQUI_TargetOfTargetWindow1.xml",),
     "EQUI_BuffWindow.xml": tuple(f"EQUI_BuffWindow{i}.xml" for i in range(1, 18)),
@@ -154,29 +145,14 @@ def audit_player_and_target() -> None:
             "AttackIndicator.tga size changed: "
             f"{attack_texture.size} != {ATTACK_INDICATOR_SIZE}"
         )
-    if (ATTACK_FRAME_ORIGINS != FRAME_ORIGINS or
-            ATTACK_PULSE_FRAME_COUNT != len(FRAME_RAILS) or
-            ATTACK_PULSE_MS != FRAME_DURATION_MS):
-        fail("attack texture and XML pulse definitions disagree")
-    attack_pixels = attack_texture.load()
-    for index, (origin, rail) in enumerate(zip(FRAME_ORIGINS, FRAME_RAILS)):
-        samples = {
-            "horizontal outer rail": (64, origin),
-            "horizontal inner rail": (
-                64, origin + ATTACK_EDGE_WIDTH - 1),
-            "vertical outer rail": (0, origin + 16),
-            "vertical inner rail": (
-                ATTACK_EDGE_WIDTH - 1, origin + 16),
-        }
-        for label, (x, y) in samples.items():
-            actual = attack_pixels[x, y]
-            if actual != rail:
-                fail(
-                    f"auto-attack frame {index} {label} changed: "
-                    f"{actual} != {rail}"
-                )
-        if attack_pixels[64, origin + 16] != TRANSPARENT:
-            fail(f"auto-attack frame {index} paints over player information")
+    colors = attack_texture.getcolors(maxcolors=ATTACK_INDICATOR_SIZE[0]
+                                      * ATTACK_INDICATOR_SIZE[1])
+    expected_colors = [(
+        ATTACK_INDICATOR_SIZE[0] * ATTACK_INDICATOR_SIZE[1],
+        ATTACK_INDICATOR_COLOR,
+    )]
+    if colors != expected_colors:
+        fail("AttackIndicator.tga is no longer a solid opaque pure-red rail")
 
     for name, expected in (
             ("A_AttackIndicator", ATTACK_FRAME_SIZE),
@@ -187,14 +163,16 @@ def audit_player_and_target() -> None:
             ("A_AttackIndicatorFill", ATTACK_FRAME_SIZE)):
         animation = item(player, "Ui2DAnimation", name)
         frames = animation.findall("Frames")
-        sizes = [dimensions_at(frame, "Size") for frame in frames]
-        origins = [child_int(frame, "Location/Y") for frame in frames]
-        durations = [child_int(frame, "Duration") for frame in frames]
-        if (child_text(animation, "Cycle") != "true"
-                or sizes != [expected] * ATTACK_PULSE_FRAME_COUNT
-                or origins != list(ATTACK_FRAME_ORIGINS)
-                or durations != [ATTACK_PULSE_MS] * ATTACK_PULSE_FRAME_COUNT):
-            fail(f"{name} lost its smooth outline-only combat pulse")
+        if len(frames) != 1:
+            fail(f"{name} must use the client's single native attack frame")
+        frame = frames[0]
+        if (child_text(animation, "Cycle") != "false"
+                or child_text(frame, "Texture") != "AttackIndicator.tga"
+                or dimensions_at(frame, "Size") != expected
+                or (child_int(frame, "Location/X"),
+                    child_int(frame, "Location/Y")) != (0, 0)
+                or frame.find("Duration") is not None):
+            fail(f"{name} no longer matches the client-native attack contract")
     attack_geometry = {
         "A_AttackIndicatorAnimTop": (70, 70 + ATTACK_EDGE_WIDTH, 0, 0),
         "A_AttackIndicatorAnimBottom": (2 + ATTACK_EDGE_WIDTH, 2, 0, 0),
@@ -210,10 +188,20 @@ def audit_player_and_target() -> None:
         if actual != expected or child_text(node, "AutoDraw") != "false":
             fail(f"{name} no longer follows the native auto-attack state: {actual}")
     attack_fill = item(player, "StaticAnimation", "A_AttackIndicatorAnimFill")
-    if (child_text(attack_fill, "Animation") != "A_AttackIndicatorFill" or
-            child_text(attack_fill, "AutoDraw") != "false" or
-            child_text(attack_fill, "Style_Transparent") != "true"):
-        fail("native auto-attack fill wash is missing or always visible")
+    if (child_text(attack_fill, "ScreenID") != "A_AttackIndicatorAnimFill"
+            or attack_fill.find("Animation") is not None
+            or attack_fill.find("AutoDraw") is not None):
+        fail("native auto-attack fill must remain an unbound placeholder")
+
+    player_window = item(player, "Screen", "PlayerWindow")
+    piece_names = [(piece.text or "").strip()
+                   for piece in player_window.findall("Pieces")]
+    attack_pieces = [
+        f"A_AttackIndicatorAnim{edge}"
+        for edge in ("Top", "Bottom", "Left", "Right", "Fill")
+    ]
+    if piece_names[-len(attack_pieces):] != attack_pieces:
+        fail("native attack rails are not the topmost PlayerWindow pieces")
 
     require_binding(player, "Gauge", "Player_HP", "PlayerHP", 1)
     require_binding(player, "Gauge", "Player_Mana", "PlayerMana", 2)
@@ -1086,140 +1074,6 @@ def audit_spell_ledger_variant() -> None:
         fail("spell ledger lost its compact SpinUI frame")
 
 
-def audit_high_visibility_player_variant() -> None:
-    """Prove Alternate 1 is opt-in, vivid, and binding-identical."""
-    if ATTACK_HIGH_EDGE_WIDTH != HIGH_EDGE_WIDTH:
-        fail("high-visibility texture and XML edge widths disagree")
-    if ATTACK_HIGH_TEXTURE != "AttackIndicator.tga":
-        fail("high-visibility frame must use the client's stock texture name")
-    retired_texture = SKIN / "AttackIndicatorHigh.tga"
-    if retired_texture.exists():
-        fail("retired secondary attack texture is still shipped")
-
-    def gameplay_bindings(path: Path):
-        return {
-            key: value for key, value in binding_map(path).items()
-            if value != ("", "")
-        }
-
-    canonical_bindings = gameplay_bindings(SKIN / "EQUI_PlayerWindow.xml")
-    variant_path = SKIN / PLAYER_HIGH_VISIBILITY_VARIANT
-    if gameplay_bindings(variant_path) != canonical_bindings:
-        fail("high-visibility player variant changed gameplay bindings")
-
-    root = root_for(PLAYER_HIGH_VISIBILITY_VARIANT)
-    window = item(root, "Screen", "PlayerWindow")
-    if child_text(window, "MenuName") != PLAYER_HIGH_VISIBILITY_MENU_NAME:
-        fail("high-visibility player variant is not named in Display Types")
-    if dimensions(window) != PLAYER_HIGH_VISIBILITY_SIZE:
-        fail("high-visibility player variant changed the compact footprint")
-    if (child_int(window, "MinVSize") != PLAYER_HIGH_VISIBILITY_SIZE[1] or
-            child_int(window, "MaxVSize") != PLAYER_HIGH_VISIBILITY_SIZE[1]):
-        fail("high-visibility player variant can reopen at the tall size")
-
-    texture_info = item(root, "TextureInfo", ATTACK_HIGH_TEXTURE)
-    if dimensions(texture_info) != ATTACK_INDICATOR_SIZE:
-        fail("high-visibility attack TextureInfo size changed")
-    texture = Image.open(SKIN / ATTACK_HIGH_TEXTURE).convert("RGBA")
-    if texture.size != ATTACK_INDICATOR_SIZE:
-        fail("high-visibility attack texture size changed")
-    pixels = texture.load()
-    for index, (origin, rail) in enumerate(zip(FRAME_ORIGINS, FRAME_RAILS)):
-        samples = (
-            (64, origin),
-            (64, origin + ATTACK_HIGH_EDGE_WIDTH - 1),
-            (0, origin + 16),
-            (ATTACK_HIGH_EDGE_WIDTH - 1, origin + 16),
-        )
-        for x, y in samples:
-            if pixels[x, y] != rail:
-                fail(f"high-visibility frame {index} pure-red rail changed")
-        if pixels[64, origin + 16] != TRANSPARENT:
-            fail(f"high-visibility frame {index} is no longer outline-only")
-
-    animation_sizes = {
-        "A_AttackIndicator": ATTACK_FRAME_SIZE,
-        "A_AttackIndicatorTop": (
-            ATTACK_FRAME_SIZE[0], ATTACK_HIGH_EDGE_WIDTH),
-        "A_AttackIndicatorBottom": (
-            ATTACK_FRAME_SIZE[0], ATTACK_HIGH_EDGE_WIDTH),
-        "A_AttackIndicatorLeft": (
-            ATTACK_HIGH_EDGE_WIDTH, ATTACK_FRAME_SIZE[1]),
-        "A_AttackIndicatorRight": (
-            ATTACK_HIGH_EDGE_WIDTH, ATTACK_FRAME_SIZE[1]),
-        "A_AttackIndicatorFill": ATTACK_FRAME_SIZE,
-    }
-    for name, expected in animation_sizes.items():
-        animation = item(root, "Ui2DAnimation", name)
-        frames = animation.findall("Frames")
-        if len(frames) != ATTACK_PULSE_FRAME_COUNT:
-            fail(
-                f"high-visibility {name} must retain "
-                f"{ATTACK_PULSE_FRAME_COUNT} pulse frames"
-            )
-        if any(child_text(frame, "Texture") != ATTACK_HIGH_TEXTURE
-               for frame in frames):
-            fail(f"high-visibility {name} does not use the pure-red texture")
-        if [dimensions_at(frame, "Size") for frame in frames] != [
-                expected] * ATTACK_PULSE_FRAME_COUNT:
-            fail(f"high-visibility {name} geometry changed")
-        if [child_int(frame, "Location/Y") for frame in frames] != list(
-                ATTACK_FRAME_ORIGINS):
-            fail(f"high-visibility {name} pulse origins changed")
-        if [child_int(frame, "Duration") for frame in frames] != [
-                ATTACK_PULSE_MS] * ATTACK_PULSE_FRAME_COUNT:
-            fail(f"high-visibility {name} pulse timing changed")
-
-    geometry = {
-        "A_AttackIndicatorAnimTop": (
-            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP,
-            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP + ATTACK_HIGH_EDGE_WIDTH,
-            0, 0),
-        "A_AttackIndicatorAnimBottom": (
-            2 + ATTACK_HIGH_EDGE_WIDTH, 2, 0, 0),
-        "A_AttackIndicatorAnimLeft": (
-            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP,
-            2, 0, ATTACK_HIGH_EDGE_WIDTH),
-        "A_AttackIndicatorAnimRight": (
-            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP,
-            2, ATTACK_HIGH_EDGE_WIDTH, 0),
-    }
-    for name, expected in geometry.items():
-        node = item(root, "StaticAnimation", name)
-        actual = tuple(child_int(node, tag) for tag in (
-            "TopAnchorOffset", "BottomAnchorOffset",
-            "LeftAnchorOffset", "RightAnchorOffset",
-        ))
-        if actual != expected or child_text(node, "AutoDraw") != "false":
-            fail(f"high-visibility {name} lost native attack-state control")
-    fill = item(root, "StaticAnimation", "A_AttackIndicatorAnimFill")
-    if (child_text(fill, "AutoDraw") != "false" or
-            child_text(fill, "Animation") != "A_AttackIndicatorFill" or
-            child_int(fill, "TopAnchorOffset") !=
-            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP):
-        fail("high-visibility outline overlay lost native attack-state control")
-
-    subwindow = item(root, "Screen", "PlayerSubWindow")
-    buffs = item(root, "Screen", "PW_BuffWindow")
-    if child_int(subwindow, "TopAnchorOffset") != \
-            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP:
-        fail("high-visibility command frame did not retain its content height")
-    if child_int(buffs, "BottomAnchorOffset") != \
-            PLAYER_HIGH_VISIBILITY_SUBWINDOW_TOP + 2:
-        fail("high-visibility compact buff lane overlaps the command frame")
-    for name, expected in (
-            ("PW_DragBox", (53, 73)),
-            ("PW_DragBox2", (91, 181)),
-            ("PWDragBox3", (53, 73))):
-        drag = item(root, "DragBox", name)
-        actual = (
-            child_int(drag, "TopAnchorOffset"),
-            child_int(drag, "BottomAnchorOffset"),
-        )
-        if actual != expected:
-            fail(f"high-visibility {name} drag geometry changed: {actual}")
-
-
 def audit_variant_safety() -> None:
     """Ensure old INI variant selections cannot restore stale bindings."""
     checked = 0
@@ -1264,9 +1118,6 @@ def audit_variant_safety() -> None:
                 fail(f"compatibility variant visual drift: {variant_name}")
             checked += 1
 
-    audit_high_visibility_player_variant()
-    checked += 1
-
     # Stance keeps two genuinely useful text-position alternatives.  They must
     # remain current-schema, accessible, and compact.
     stance_expected = binding_map(SKIN / "EQUI_StanceWnd.xml")
@@ -1310,7 +1161,7 @@ def main() -> int:
     print("Combat Command Center audit: ALL PASS")
     print("  Player/Target/ToT | Group 1..11 | XTarget 0..22 | Raid groups 1..12")
     print("  buffs 30 | songs 15 | spell gems 14 | hotbars 11 x 12 | stance + invocation")
-    print("  51 compatibility aliases + high-visibility attack frame + spell ledger")
+    print("  52 compatibility aliases + native bright attack rail + spell ledger")
     print("  contrast AAA/AA | July stock parity " + ("PASS" if stock_checked else "not available"))
     return 0
 
