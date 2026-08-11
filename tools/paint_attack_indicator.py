@@ -3,9 +3,11 @@
 
 EverQuest owns the visibility and flashing cadence of the four
 ``A_AttackIndicatorAnim*`` edge widgets in ``EQUI_PlayerWindow.xml``.  The
-texture therefore remains a single, fully opaque pure-red frame just like the
-working Modern UI contract.  Only narrow edge slices are drawn by the XML; the
-fill widget is intentionally unbound so player information is never tinted.
+texture therefore remains a single, fully opaque neutral frame like the
+working Modern UI contract.  EverQuest modulates that neutral source from
+white/gray to red; pre-coloring the source red destroys the visible flash
+because every tint phase remains red.  Only narrow edge slices are drawn by
+the XML, and the fill widget is intentionally unbound.
 
 Run from the repository root:
     python tools/paint_attack_indicator.py
@@ -23,7 +25,9 @@ OUTPUT = REPO / "spinui_reloaded" / "AttackIndicator.tga"
 FRAME_SIZE = (128, 32)
 SIZE = FRAME_SIZE
 EDGE_WIDTH = 5
-COLOR = (255, 0, 0, 255)
+# Modern uses 189 gray.  Full neutral white preserves the same native tint
+# animation while raising its red peak to 255 for dark Reloaded/Glass frames.
+COLOR = (255, 255, 255, 255)
 
 
 def render() -> Image.Image:
@@ -34,8 +38,8 @@ def main() -> int:
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     save_tga(render(), OUTPUT)
     print(
-        "AttackIndicator.tga: native pure-red attack rail painted | "
-        "EverQuest-controlled flash | no fill wash"
+        "AttackIndicator.tga: full-bright neutral attack rail painted | "
+        "EverQuest tint-driven red flash | no fill wash"
     )
     return 0
 

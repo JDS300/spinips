@@ -162,7 +162,7 @@
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</StaticAnimation>
 
-		<StaticAnimation item="A_AttackIndicatorAnimFill">
+	<StaticAnimation item="A_AttackIndicatorAnimFill">
 		<ScreenID>A_AttackIndicatorAnimFill</ScreenID>
 	</StaticAnimation>
 <!-- End of Attack Indicator -->

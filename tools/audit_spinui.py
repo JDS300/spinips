@@ -638,6 +638,73 @@ def audit_inventory_progression() -> None:
                 )
 
 
+def audit_aa_window() -> None:
+    """Protect the AA command deck's bindings, true progress, and hierarchy."""
+    root = ET.parse(SKIN / "EQUI_AAWindow.xml").getroot()
+    for gauge_name, eq_type in (
+            ("AAW_ExpGauge", 5), ("AAW_MercAAExpGauge", 150)):
+        gauge = item(root, "Gauge", gauge_name)
+        if child_int(gauge, "EQType") != eq_type:
+            fail(f"AA window {gauge_name} lost EQType {eq_type}")
+        if (gauge.findtext("DrawLinesFill") or "").strip().casefold() != "false":
+            fail(
+                f"AA window {gauge_name} must show total 0-100 progression "
+                "without the 20-percent sub-tick overlay"
+            )
+        if (gauge.findtext("GaugeDrawTemplate/Lines") or "").strip() != "A_GaugeLines":
+            fail(f"AA window {gauge_name} lost its fixed progression ticks")
+
+    window = item(root, "Screen", "AAWindow")
+    pieces = [(node.text or "").strip() for node in window.findall("Pieces")]
+    for required in (
+            "AAW_ProgressPanel", "AAW_ProgressPanelTitle",
+            "AAW_FilterPanel", "AAW_FilterPanelTitle"):
+        if pieces.count(required) != 1:
+            fail(f"AA command deck must mount {required} exactly once")
+    for panel_name, location, size in (
+            ("AAW_ProgressPanel", (520, 2), (150, 174)),
+            ("AAW_FilterPanel", (520, 180), (150, 196))):
+        panel = item(root, "Screen", panel_name)
+        actual_location = (
+            child_int(panel, "Location/X"), child_int(panel, "Location/Y"))
+        actual_size = (child_int(panel, "Size/CX"), child_int(panel, "Size/CY"))
+        if actual_location != location or actual_size != size:
+            fail(
+                f"{panel_name} geometry changed: "
+                f"{actual_location} {actual_size}"
+            )
+
+    list_specs = {
+        "AAW_GeneralList": ((330, "Ability"), (62, "Rank"), (52, "Cost"), (58, "Reuse")),
+        "AAW_ArchList": ((330, "Ability"), (62, "Rank"), (52, "Cost"), (58, "Reuse")),
+        "AAW_ClassList": ((330, "Ability"), (62, "Rank"), (52, "Cost"), (58, "Reuse")),
+        "AAW_SpecialList": ((330, "Ability"), (62, "Rank"), (52, "Cost"), (58, "Reuse")),
+        "AAW_FocusList": ((330, "Ability"), (62, "Rank"), (52, "Cost"), (58, "Reuse")),
+        "AAW_MercAAList": ((380, "Ability"), (66, "Rank"), (56, "Cost")),
+    }
+    for list_name, expected in list_specs.items():
+        listbox = item(root, "Listbox", list_name)
+        actual = tuple(
+            (child_int(column, "Width"), (column.findtext("Heading") or "").strip())
+            for column in listbox.findall("Columns")
+        )
+        if actual != expected:
+            fail(f"AA window {list_name} columns changed: {actual}")
+
+    expected_tabs = {
+        "AAW_GeneralPage": "General",
+        "AAW_ArchetypePage": "Archetype",
+        "AAW_ClassPage": "Class",
+        "AAW_SpecialPage": "Special",
+        "AAW_FocusPage": "Focus",
+        "AAW_MercAAPage": "Merc",
+    }
+    for page_name, tab_text in expected_tabs.items():
+        page = item(root, "Page", page_name)
+        if (page.findtext("TabText") or "").strip() != tab_text:
+            fail(f"AA category {page_name} no longer maps to {tab_text}")
+
+
 def audit_map_resizing() -> None:
     """Keep map resize bounds compatible with every shipped layout."""
     default_minimum = (400, 400)
@@ -1214,6 +1281,7 @@ def main() -> int:
     audit_pet_geometry()
     audit_map_resizing()
     audit_inventory_progression()
+    audit_aa_window()
     audit_inventory_geometry()
     print("SpinUI asset audit: ALL PASS")
     print(f"  XML {len(xml_files)} | texture refs {len(texture_refs)} | "
@@ -1227,7 +1295,7 @@ def main() -> int:
         f"fixed | commands 14 | effects {BUFF_CAPACITY[pet_default]} "
         f"icon cells | variants {len(WINDOW_SIZES)}"
     )
-    print("  inventory 660x668 | equipment 23 | ledger 15/15 + 6/6 | footer 6 | persona 23 | bags 12")
+    print("  inventory 660x668 | equipment 23 | AA deck 6 tabs + true progress | ledger 15/15 + 6/6 | footer 6 | persona 23 | bags 12")
     return 0
 
 

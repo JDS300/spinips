@@ -1,13 +1,97 @@
 <?xml version="1.0" encoding="us-ascii"?>
 <XML ID="EQInterfaceDefinitionLanguage">
 	<Schema xmlns="EverQuestData" xmlns:dt="EverQuestDataTypes" />
+	<!-- SpinUI AA command deck: presentation-only section frames. Gameplay
+	     bindings remain on the stock AA controls below. -->
+	<Screen item="AAW_ProgressPanel">
+		<ScreenID>AAW_ProgressPanel</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Location>
+			<X>520</X>
+			<Y>2</Y>
+		</Location>
+		<Size>
+			<CX>150</CX>
+			<CY>174</CY>
+		</Size>
+		<Style_Transparent>false</Style_Transparent>
+		<DrawTemplate>WDT_InsetStone</DrawTemplate>
+		<Style_Titlebar>false</Style_Titlebar>
+		<Style_Closebox>false</Style_Closebox>
+		<Style_Minimizebox>false</Style_Minimizebox>
+		<Style_Border>true</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+	</Screen>
+	<Label item="AAW_ProgressPanelTitle">
+		<ScreenID>AAW_ProgressPanelTitle</ScreenID>
+		<Font>2</Font>
+		<RelativePosition>true</RelativePosition>
+		<Location>
+			<X>528</X>
+			<Y>7</Y>
+		</Location>
+		<Size>
+			<CX>134</CX>
+			<CY>14</CY>
+		</Size>
+		<Text>AA PROGRESSION</Text>
+		<TextColor>
+			<R>207</R>
+			<G>247</G>
+			<B>255</B>
+		</TextColor>
+		<NoWrap>true</NoWrap>
+		<AlignCenter>false</AlignCenter>
+		<AlignLeft>true</AlignLeft>
+	</Label>
+	<Screen item="AAW_FilterPanel">
+		<ScreenID>AAW_FilterPanel</ScreenID>
+		<RelativePosition>true</RelativePosition>
+		<Location>
+			<X>520</X>
+			<Y>180</Y>
+		</Location>
+		<Size>
+			<CX>150</CX>
+			<CY>196</CY>
+		</Size>
+		<Style_Transparent>false</Style_Transparent>
+		<DrawTemplate>WDT_InsetStone</DrawTemplate>
+		<Style_Titlebar>false</Style_Titlebar>
+		<Style_Closebox>false</Style_Closebox>
+		<Style_Minimizebox>false</Style_Minimizebox>
+		<Style_Border>true</Style_Border>
+		<Style_Sizable>false</Style_Sizable>
+	</Screen>
+	<Label item="AAW_FilterPanelTitle">
+		<ScreenID>AAW_FilterPanelTitle</ScreenID>
+		<Font>2</Font>
+		<RelativePosition>true</RelativePosition>
+		<Location>
+			<X>528</X>
+			<Y>186</Y>
+		</Location>
+		<Size>
+			<CX>134</CX>
+			<CY>14</CY>
+		</Size>
+		<Text>ABILITY FILTERS</Text>
+		<TextColor>
+			<R>178</R>
+			<G>206</G>
+			<B>252</B>
+		</TextColor>
+		<NoWrap>true</NoWrap>
+		<AlignCenter>false</AlignCenter>
+		<AlignLeft>true</AlignLeft>
+	</Label>
 	<Button item="AAW_BuyAllButton">
 		<ScreenID>AAW_BuyAllButton</ScreenID>
 		<!--<Font>3</Font>-->
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>524</X>
-			<Y>142</Y>
+			<Y>148</Y>
 		</Location>
 		<Size>
 			<CX>71</CX>
@@ -26,7 +110,7 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>597</X>
-			<Y>142</Y>
+			<Y>148</Y>
 		</Location>
 		<Size>
 			<CX>70</CX>
@@ -138,8 +222,8 @@
 		<!--<Font>3</Font>-->
 		<RelativePosition>true</RelativePosition>
 		<Location>
-			<X>543</X>
-			<Y>45</Y>
+			<X>529</X>
+			<Y>68</Y>
 		</Location>
 		<Size>
 			<CX>20</CX>
@@ -162,8 +246,8 @@
 		<!--<Font>3</Font>-->
 		<RelativePosition>true</RelativePosition>
 		<Location>
-			<X>625</X>
-			<Y>45</Y>
+			<X>641</X>
+			<Y>68</Y>
 		</Location>
 		<Size>
 			<CX>20</CX>
@@ -186,14 +270,14 @@
 		<!--<Font>3</Font>-->
 		<RelativePosition>true</RelativePosition>
 		<Location>
-			<X>533</X>
-			<Y>30</Y>
+			<X>528</X>
+			<Y>52</Y>
 		</Location>
 		<Size>
-			<CX>120</CX>
+			<CX>134</CX>
 			<CY>20</CY>
 		</Size>
-		<Text>Exp to AA</Text>
+		<Text>EXPERIENCE TO AA</Text>
 		<NoWrap>false</NoWrap>
 		<AlignCenter>true</AlignCenter>
 		<AlignRight>false</AlignRight>
@@ -203,11 +287,11 @@
 		<!--<Font>3</Font>-->
 		<RelativePosition>true</RelativePosition>
 		<Location>
-			<X>569</X>
-			<Y>45</Y>
+			<X>553</X>
+			<Y>68</Y>
 		</Location>
 		<Size>
-			<CX>60</CX>
+			<CX>86</CX>
 			<CY>20</CY>
 		</Size>
 		<Text>100%</Text>
@@ -221,7 +305,7 @@
 		<Font>2</Font>
 		<Location>
 			<X>615</X>
-			<Y>24</Y>
+			<Y>25</Y>
 		</Location>
 		<Size>
 			<CX>40</CX>
@@ -237,7 +321,7 @@
 		<Font>2</Font>
 		<Location>
 			<X>657</X>
-			<Y>24</Y>
+			<Y>25</Y>
 		</Location>
 		<Size>
 			<CX>10</CX>
@@ -252,14 +336,14 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>525</X>
-			<Y>24</Y>
+			<Y>25</Y>
 		</Location>
 		<Size>
 			<CX>142</CX>
 			<CY>30</CY>
 		</Size>
 		<GaugeOffsetY>16</GaugeOffsetY>
-		<Text>NEXT ALT ADV</Text>
+		<Text>NEXT AA POINT</Text>
 		<TextOffsetY>0</TextOffsetY>
 		<TextOffsetX>1</TextOffsetX>
 		<Style_VScroll>false</Style_VScroll>
@@ -276,11 +360,12 @@
 			<G>206</G>
 			<B>252</B>
 		</LinesFillTint>
-		<DrawLinesFill>true</DrawLinesFill>
+		<DrawLinesFill>false</DrawLinesFill>
 		<EQType>5</EQType>
 		<GaugeDrawTemplate>
 			<Background>A_GaugeBackground</Background>
 			<Fill>A_GaugeFill</Fill>
+			<Lines>A_GaugeLines</Lines>
 			<LinesFill>A_GaugeLinesFill</LinesFill>
 			<EndCapLeft>A_GaugeEndCapLeft</EndCapLeft>
 			<EndCapRight>A_GaugeEndCapRight</EndCapRight>
@@ -292,7 +377,7 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>528</X>
-			<Y>115</Y>
+			<Y>126</Y>
 		</Location>
 		<Size>
 			<CX>90</CX>
@@ -309,7 +394,7 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>528</X>
-			<Y>90</Y>
+			<Y>106</Y>
 		</Location>
 		<Size>
 			<CX>90</CX>
@@ -326,13 +411,13 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>528</X>
-			<Y>65</Y>
+			<Y>86</Y>
 		</Location>
 		<Size>
 			<CX>90</CX>
 			<CY>20</CY>
 		</Size>
-		<Text>Unallocated AA:</Text>
+		<Text>Available AA:</Text>
 		<NoWrap>true</NoWrap>
 		<AlignCenter>false</AlignCenter>
 		<AlignLeft>true</AlignLeft>
@@ -360,7 +445,7 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>560</X>
-			<Y>115</Y>
+			<Y>126</Y>
 		</Location>
 		<Size>
 			<CX>100</CX>
@@ -377,7 +462,7 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>610</X>
-			<Y>90</Y>
+			<Y>106</Y>
 		</Location>
 		<Size>
 			<CX>50</CX>
@@ -394,7 +479,7 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>610</X>
-			<Y>65</Y>
+			<Y>86</Y>
 		</Location>
 		<Size>
 			<CX>50</CX>
@@ -448,9 +533,9 @@
 		<DrawTemplate>WDT_Def</DrawTemplate>
 		<TabText>Current Rank</TabText>
 		<TabTextActiveColor>
-			<R>255</R>
-			<G>255</G>
-			<B>0</B>
+			<R>178</R>
+			<G>206</G>
+			<B>252</B>
 		</TabTextActiveColor>
 		<Style_Sizable>false</Style_Sizable>
 		<Pieces>AAW_Description</Pieces>
@@ -472,9 +557,9 @@
 		<DrawTemplate>WDT_Def</DrawTemplate>
 		<TabText>Next Rank</TabText>
 		<TabTextActiveColor>
-			<R>255</R>
-			<G>255</G>
-			<B>0</B>
+			<R>178</R>
+			<G>206</G>
+			<B>252</B>
 		</TabTextActiveColor>
 		<Style_Sizable>false</Style_Sizable>
 		<Pieces>AAW_DescriptionNext</Pieces>
@@ -516,20 +601,20 @@
 		<Style_Border>false</Style_Border>
 		<Style_VScroll>true</Style_VScroll>
 		<Columns>
-			<Width>210</Width>
-			<Heading>Title</Heading>
+			<Width>330</Width>
+			<Heading>Ability</Heading>
 		</Columns>
 		<Columns>
-			<Width>50</Width>
-			<Heading>Cur/Max</Heading>
+			<Width>62</Width>
+			<Heading>Rank</Heading>
 		</Columns>
 		<Columns>
-			<Width>40</Width>
+			<Width>52</Width>
 			<Heading>Cost</Heading>
 		</Columns>
 		<Columns>
-			<Width>40</Width>
-			<Heading>Timer</Heading>
+			<Width>58</Width>
+			<Heading>Reuse</Heading>
 		</Columns>
 	</Listbox>
 	<Page item="AAW_GeneralPage">
@@ -543,9 +628,9 @@
 		<DrawTemplate>WDT_Def</DrawTemplate>
 		<TabText>General</TabText>
 		<TabTextActiveColor>
-			<R>255</R>
-			<G>255</G>
-			<B>0</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TabTextActiveColor>
 		<Style_Sizable>true</Style_Sizable>
 		<Pieces>AAW_GeneralList</Pieces>
@@ -570,20 +655,20 @@
 		<Style_Border>false</Style_Border>
 		<Style_VScroll>true</Style_VScroll>
 		<Columns>
-			<Width>210</Width>
-			<Heading>Title</Heading>
+			<Width>330</Width>
+			<Heading>Ability</Heading>
 		</Columns>
 		<Columns>
-			<Width>50</Width>
-			<Heading>Cur/Max</Heading>
+			<Width>62</Width>
+			<Heading>Rank</Heading>
 		</Columns>
 		<Columns>
-			<Width>40</Width>
+			<Width>52</Width>
 			<Heading>Cost</Heading>
 		</Columns>
 		<Columns>
-			<Width>40</Width>
-			<Heading>Timer</Heading>
+			<Width>58</Width>
+			<Heading>Reuse</Heading>
 		</Columns>
 	</Listbox>
 	<Page item="AAW_ArchetypePage">
@@ -597,9 +682,9 @@
 		<DrawTemplate>WDT_Def</DrawTemplate>
 		<TabText>Archetype</TabText>
 		<TabTextActiveColor>
-			<R>255</R>
-			<G>255</G>
-			<B>0</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TabTextActiveColor>
 		<Style_Sizable>true</Style_Sizable>
 		<Pieces>AAW_ArchList</Pieces>
@@ -624,20 +709,20 @@
 		<Style_Border>false</Style_Border>
 		<Style_VScroll>true</Style_VScroll>
 		<Columns>
-			<Width>210</Width>
-			<Heading>Title</Heading>
+			<Width>330</Width>
+			<Heading>Ability</Heading>
 		</Columns>
 		<Columns>
-			<Width>50</Width>
-			<Heading>Cur/Max</Heading>
+			<Width>62</Width>
+			<Heading>Rank</Heading>
 		</Columns>
 		<Columns>
-			<Width>40</Width>
+			<Width>52</Width>
 			<Heading>Cost</Heading>
 		</Columns>
 		<Columns>
-			<Width>40</Width>
-			<Heading>Timer</Heading>
+			<Width>58</Width>
+			<Heading>Reuse</Heading>
 		</Columns>
 	</Listbox>
 	<Page item="AAW_ClassPage">
@@ -651,9 +736,9 @@
 		<DrawTemplate>WDT_Def</DrawTemplate>
 		<TabText>Class</TabText>
 		<TabTextActiveColor>
-			<R>255</R>
-			<G>255</G>
-			<B>0</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TabTextActiveColor>
 		<Style_Sizable>true</Style_Sizable>
 		<Pieces>AAW_ClassList</Pieces>
@@ -678,20 +763,20 @@
 		<Style_Border>false</Style_Border>
 		<Style_VScroll>true</Style_VScroll>
 		<Columns>
-			<Width>210</Width>
-			<Heading>Title</Heading>
+			<Width>330</Width>
+			<Heading>Ability</Heading>
 		</Columns>
 		<Columns>
-			<Width>50</Width>
-			<Heading>Cur/Max</Heading>
+			<Width>62</Width>
+			<Heading>Rank</Heading>
 		</Columns>
 		<Columns>
-			<Width>40</Width>
+			<Width>52</Width>
 			<Heading>Cost</Heading>
 		</Columns>
 		<Columns>
-			<Width>40</Width>
-			<Heading>Timer</Heading>
+			<Width>58</Width>
+			<Heading>Reuse</Heading>
 		</Columns>
 	</Listbox>
 	<Page item="AAW_SpecialPage">
@@ -705,9 +790,9 @@
 		<DrawTemplate>WDT_Def</DrawTemplate>
 		<TabText>Special</TabText>
 		<TabTextActiveColor>
-			<R>255</R>
-			<G>255</G>
-			<B>0</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TabTextActiveColor>
 		<Style_Sizable>true</Style_Sizable>
 		<Pieces>AAW_SpecialList</Pieces>
@@ -732,20 +817,20 @@
 		<Style_VScroll>true</Style_VScroll>
 		<Style_Transparent>false</Style_Transparent>
 		<Columns>
-			<Width>210</Width>
-			<Heading>Title</Heading>
+			<Width>330</Width>
+			<Heading>Ability</Heading>
 		</Columns>
 		<Columns>
-			<Width>50</Width>
-			<Heading>Cur/Max</Heading>
+			<Width>62</Width>
+			<Heading>Rank</Heading>
 		</Columns>
 		<Columns>
-			<Width>40</Width>
+			<Width>52</Width>
 			<Heading>Cost</Heading>
 		</Columns>
 		<Columns>
-			<Width>40</Width>
-			<Heading>Timer</Heading>
+			<Width>58</Width>
+			<Heading>Reuse</Heading>
 		</Columns>
 	</Listbox>
 	<Page item="AAW_FocusPage">
@@ -759,9 +844,9 @@
 		<DrawTemplate>WDT_Def</DrawTemplate>
 		<TabText>Focus</TabText>
 		<TabTextActiveColor>
-			<R>255</R>
-			<G>255</G>
-			<B>0</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TabTextActiveColor>
 		<Style_Sizable>true</Style_Sizable>
 		<Pieces>AAW_FocusList</Pieces>
@@ -785,15 +870,15 @@
 		<Style_Border>true</Style_Border>
 		<Style_VScroll>true</Style_VScroll>
 		<Columns>
-			<Width>210</Width>
-			<Heading>Title</Heading>
+			<Width>380</Width>
+			<Heading>Ability</Heading>
 		</Columns>
 		<Columns>
-			<Width>50</Width>
-			<Heading>Cur/Max</Heading>
+			<Width>66</Width>
+			<Heading>Rank</Heading>
 		</Columns>
 		<Columns>
-			<Width>40</Width>
+			<Width>56</Width>
 			<Heading>Cost</Heading>
 		</Columns>
 	</Listbox>
@@ -808,9 +893,9 @@
 		<DrawTemplate>WDT_Def</DrawTemplate>
 		<TabText>Merc</TabText>
 		<TabTextActiveColor>
-			<R>255</R>
-			<G>255</G>
-			<B>0</B>
+			<R>248</R>
+			<G>214</G>
+			<B>140</B>
 		</TabTextActiveColor>
 		<Style_Sizable>true</Style_Sizable>
 		<Pieces>AAW_MercAAList</Pieces>
@@ -849,7 +934,7 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>524</X>
-			<Y>390</Y>
+			<Y>355</Y>
 		</Location>
 		<Size>
 			<CX>70</CX>
@@ -870,7 +955,7 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>597</X>
-			<Y>390</Y>
+			<Y>355</Y>
 		</Location>
 		<Size>
 			<CX>70</CX>
@@ -892,7 +977,7 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>524</X>
-			<Y>210</Y>
+			<Y>205</Y>
 		</Location>
 		<Size>
 			<CX>160</CX>
@@ -903,7 +988,7 @@
 		<TooltipReference>Filter Only Trainable Abilities</TooltipReference>
 		<Style_Checkbox>true</Style_Checkbox>
 		<!--<RadioGroup/>-->
-		<Text>Show Trainable Only</Text>
+		<Text>TRAINABLE ONLY</Text>
 		<Template>BDT_CheckboxWithText</Template>
 		<DecalSize>
 			<CX>16</CX>
@@ -917,7 +1002,7 @@
 		<DrawTemplate>WDT_InnerSolid</DrawTemplate>
 		<Location>
 			<X>524</X>
-			<Y>250</Y>
+			<Y>247</Y>
 		</Location>
 		<Size>
 			<CX>144</CX>
@@ -929,16 +1014,16 @@
 	</Combobox>
 	<Label item="AAW_PassiveFilterLabel">
 		<ScreenID>AAW_PassiveFilterLabel</ScreenID>
-		<Font>3</Font>
+		<Font>2</Font>
 		<Location>
 			<X>526</X>
-			<Y>234</Y>
+			<Y>231</Y>
 		</Location>
 		<Size>
 			<CX>110</CX>
 			<CY>14</CY>
 		</Size>
-		<Text>Filter Ability Type</Text>
+		<Text>ABILITY TYPE</Text>
 		<NoWrap>true</NoWrap>
 		<AlignCenter>false</AlignCenter>
 		<AlignRight>false</AlignRight>
@@ -966,7 +1051,7 @@
 		<AutoStretchList>true</AutoStretchList>
 		<Location>
 			<X>524</X>
-			<Y>300</Y>
+			<Y>293</Y>
 		</Location>
 		<Size>
 			<CX>144</CX>
@@ -978,16 +1063,16 @@
 	</Combobox>
 	<Label item="AAW_CatigoryFilterLabel">
 		<ScreenID>AAW_CatigoryFilterLabel</ScreenID>
-		<Font>3</Font>
+		<Font>2</Font>
 		<Location>
 			<X>526</X>
-			<Y>284</Y>
+			<Y>277</Y>
 		</Location>
 		<Size>
 			<CX>80</CX>
 			<CY>14</CY>
 		</Size>
-		<Text>Filter Category</Text>
+		<Text>CATEGORY</Text>
 		<NoWrap>true</NoWrap>
 		<AlignCenter>false</AlignCenter>
 		<AlignRight>false</AlignRight>
@@ -1014,17 +1099,17 @@
 		<RelativePosition>true</RelativePosition>
 		<Location>
 			<X>524</X>
-			<Y>330</Y>
+			<Y>328</Y>
 		</Location>
 		<Size>
-			<CX>71</CX>
-			<CY>34</CY>
+			<CX>144</CX>
+			<CY>24</CY>
 		</Size>
 		<Style_Transparent>false</Style_Transparent>
 		<TooltipReference>Resets filters to their default setting</TooltipReference>
 		<Style_Checkbox>false</Style_Checkbox>
 		<!--<RadioGroup/>-->
-		<Text>Reset  Filters</Text>
+		<Text>RESET FILTERS</Text>
 		<Template>BDT_Normal</Template>
 	</Button>
 	<Gauge item="AAW_MercAAExpGauge">
@@ -1052,11 +1137,12 @@
 			<G>220</G>
 			<B>220</B>
 		</LinesFillTint>
-		<DrawLinesFill>true</DrawLinesFill>
+		<DrawLinesFill>false</DrawLinesFill>
 		<EQType>150</EQType>
 		<GaugeDrawTemplate>
 			<Background>A_GaugeBackground</Background>
 			<Fill>A_GaugeFill</Fill>
+			<Lines>A_GaugeLines</Lines>
 			<LinesFill>A_GaugeLinesFill</LinesFill>
 			<EndCapLeft>A_GaugeEndCapLeft</EndCapLeft>
 			<EndCapRight>A_GaugeEndCapRight</EndCapRight>
@@ -1289,8 +1375,12 @@
 		<MinVSize>457</MinVSize>
 		<MaxHSize>670</MaxHSize>
 		<MaxVSize>900</MaxVSize>
+		<Pieces>AAW_ProgressPanel</Pieces>
+		<Pieces>AAW_FilterPanel</Pieces>
 		<Pieces>AAW_Subwindows</Pieces>
 		<Pieces>AAW_DescriptionWindows</Pieces>
+		<Pieces>AAW_ProgressPanelTitle</Pieces>
+		<Pieces>AAW_FilterPanelTitle</Pieces>
 		<Pieces>AAW_AssignedLabel</Pieces>
 		<Pieces>AAW_AssignedCount</Pieces>
 		<Pieces>AAW_TotalLabel</Pieces>
