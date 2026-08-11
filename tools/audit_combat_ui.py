@@ -152,7 +152,7 @@ def audit_player_and_target() -> None:
         ATTACK_INDICATOR_COLOR,
     )]
     if colors != expected_colors:
-        fail("AttackIndicator.tga is no longer a solid opaque pure-red rail")
+        fail("AttackIndicator.tga is no longer a solid opaque neutral tint source")
 
     for name, expected in (
             ("A_AttackIndicator", ATTACK_FRAME_SIZE),

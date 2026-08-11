@@ -9187,9 +9187,9 @@
 		<AutoStretch>true</AutoStretch>
 		<GaugeOffsetY>0</GaugeOffsetY>
 		<FillTint>
-			<R>220</R>
-			<G>150</G>
-			<B>0</B>
+			<R>208</R>
+			<G>162</G>
+			<B>84</B>
 		</FillTint>
 		<LinesFillTint>
 			<R>0</R>
@@ -9274,9 +9274,9 @@
 		<AutoStretch>true</AutoStretch>
 		<GaugeOffsetY>0</GaugeOffsetY>
 		<FillTint>
-			<R>51</R>
-			<G>150</G>
-			<B>51</B>
+			<R>126</R>
+			<G>170</G>
+			<B>244</B>
 		</FillTint>
 		<LinesFillTint>
 			<R>0</R>

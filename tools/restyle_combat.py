@@ -505,13 +505,22 @@ def style_player() -> None:
         # Keep the stock symbol because the client expects it, but leave it
         # deliberately unbound.  Only the four edge widgets may be drawn.
         return (
-            '\t<StaticAnimation item="A_AttackIndicatorAnimFill">\n'
+            '<StaticAnimation item="A_AttackIndicatorAnimFill">\n'
             '\t\t<ScreenID>A_AttackIndicatorAnimFill</ScreenID>\n'
             '\t</StaticAnimation>'
         )
 
     text = change_item(
         text, "StaticAnimation", "A_AttackIndicatorAnimFill", attack_fill,
+    )
+    # change_item intentionally starts at the element's opening ``<`` and
+    # leaves its existing line prefix in place.  Older generator runs returned
+    # an additional leading tab here, so normalize the one stock placeholder
+    # explicitly to keep repeated runs byte-stable.
+    text = re.sub(
+        r'(?m)^[ \t]*(<StaticAnimation item="A_AttackIndicatorAnimFill">)',
+        r'\t\1',
+        text,
     )
 
     def root_style(block: str) -> str:
@@ -1376,8 +1385,25 @@ def style_experience_gauges() -> None:
 
     path = SKIN / "EQUI_AAWindow.xml"
     text = path.read_text(encoding="ascii")
-    text = change_item(text, "Gauge", "AAW_ExpGauge",
-                       lambda b: style_gauge(b, CYAN, CYAN_BRIGHT))
+    text = change_item(
+        text, "Gauge", "AAW_ExpGauge",
+        lambda b: show_total_progression_ticks(
+            style_gauge(b, CYAN, CYAN_BRIGHT)
+        ),
+    )
+    text = change_item(
+        text, "Gauge", "AAW_MercAAExpGauge",
+        show_total_progression_ticks,
+    )
+    text = change_matching(
+        text, "Page",
+        r"AAW_(?:GeneralPage|ArchetypePage|ClassPage|SpecialPage|FocusPage|MercAAPage)",
+        lambda b: set_color(b, "TabTextActiveColor", GOLD_BRIGHT),
+    )
+    text = change_matching(
+        text, "Page", r"AAW_DescriptionPage(?:Current|Next)",
+        lambda b: set_color(b, "TabTextActiveColor", CYAN_BRIGHT),
+    )
     write_ascii(path, text)
 
 
