@@ -359,12 +359,17 @@ body.control-window { background: transparent; }
 .settings-panel button:disabled { opacity: .55; cursor: wait; }
 .settings-card.update-card .update-ready { color: #08110f; border-color: #45e3a1; background: #45e3a1; }
 
-.settings-toggle { display: flex; align-items: center; gap: 12px; min-height: 39px; border-top: 1px solid rgba(91,123,151,.13); cursor: pointer; }
+.settings-toggle { position: relative; display: flex; align-items: center; gap: 12px; min-height: 39px; border-top: 1px solid rgba(91,123,151,.13); cursor: pointer; }
 .settings-toggle > span { min-width: 0; display: grid; gap: 2px; }
 .settings-toggle > span b { color: #dce9f1; font: 600 10px "Segoe UI", sans-serif; letter-spacing: 0; }
 .settings-toggle > span small { color: var(--dim); font: 400 8px "Segoe UI", sans-serif; letter-spacing: 0; }
-.settings-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.settings-toggle input {
+  position: absolute; top: 0; left: 0; width: 1px; height: 1px;
+  margin: 0; padding: 0; border: 0; overflow: hidden; white-space: nowrap;
+  clip-path: inset(50%);
+}
 .settings-toggle > i { width: 31px; height: 17px; flex: 0 0 auto; margin-left: auto; position: relative; border: 1px solid var(--line); border-radius: 12px; background: #0a0e14; transition: 150ms ease; }
+.settings-toggle input:focus-visible + i { outline: 2px solid var(--cyan); outline-offset: 2px; }
 .settings-toggle > i::after { content: ""; position: absolute; width: 11px; height: 11px; left: 2px; top: 2px; border-radius: 50%; background: var(--dim); transition: 150ms ease; }
 .settings-toggle input:checked + i { border-color: rgba(69,227,161,.65); background: rgba(29,94,72,.44); }
 .settings-toggle input:checked + i::after { transform: translateX(14px); background: #45e3a1; box-shadow: 0 0 7px rgba(69,227,161,.55); }
