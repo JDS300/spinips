@@ -158,24 +158,6 @@ export interface WeeklyRaidRowView {
   bestSeconds: readonly (number | null)[];
 }
 
-export interface AltZLockoutView {
-  target: string;
-  difficulty: number;
-  remainingSeconds: number;
-  instanceName: string;
-  eventName: string;
-  expiresAt: string;
-}
-
-export interface AltZScanView {
-  status: "idle" | "scanning" | "success" | "error";
-  detail: string;
-  scannedAt: string;
-  importedCount: number;
-  timedCount?: number;
-  hotkey: string;
-}
-
 export interface WeeklyProgressView {
   weekStart: string;
   nextReset: string;
@@ -187,8 +169,6 @@ export interface WeeklyProgressView {
   raids: readonly WeeklyRaidRowView[];
   activeDifficulty?: number | null;
   pendingRaidTarget?: string;
-  altZLockouts?: readonly AltZLockoutView[];
-  altZScan?: AltZScanView;
 }
 
 export interface GearGoalView {
@@ -246,6 +226,16 @@ export interface EngineHealth {
 }
 
 export type AlertAnchor = "auto" | "above" | "below" | "left" | "right";
+export type LoremasterTheme = "vellum" | "glass";
+export type AlertSoundKind = "default" | "charmBreak" | "tell" | "summon" | "death" | "bigHit" | "nameCalled" | "mez" | "lull";
+export type AlertSoundPreset = "rune" | "crystal" | "ember" | "bell" | "custom" | "silent";
+
+export interface AlertSoundProfile {
+  preset: AlertSoundPreset;
+  customPath: string;
+}
+
+export type AlertSoundProfiles = Record<AlertSoundKind, AlertSoundProfile>;
 
 export interface AlertSettings {
   alertsEnabled: boolean;
@@ -265,6 +255,7 @@ export interface AlertSettings {
   lullTimersEnabled: boolean;
   lullTimerSound: boolean;
   lullWarningSeconds: number;
+  soundProfiles: AlertSoundProfiles;
 }
 
 export interface DesktopSettings {
@@ -272,6 +263,7 @@ export interface DesktopSettings {
   raidDifficulty: number | null;
   bisBuildPath: string;
   inventoryPath: string;
+  uiTheme: LoremasterTheme;
   alwaysOnTop: boolean;
   fontScale: number;
   composition: string;

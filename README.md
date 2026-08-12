@@ -17,6 +17,7 @@
   · <a href="#spins-loremaster">Explore Loremaster</a>
   · <a href="#layout-profiles">Choose a layout</a>
   · <a href="#4k-readability-with-spinfourkayyy">4K scaling</a>
+  · <a href="#sharper-world-textures-with-spintexture">Texture upgrades</a>
 </p>
 
 <p align="center">
@@ -236,6 +237,12 @@ Choose the exact profile for your display when possible, or the nearest validate
 - **Non-intrusive and recoverable.** It does not inject into EverQuest, alter network traffic, replace game assets, install a display driver, or resize an already-running client. Verified profiles and recovery state live under `%LOCALAPPDATA%\SpinFOURKAYYY`.
 
 Download SpinFOURKAYYY separately from its [latest GitHub release](https://github.com/itsspin/SPINFOURKAYYY/releases/latest), extract the complete ZIP into a normal user-writable folder, choose the percentage **before** launching, click **Start EverQuest for me**, and keep the scaler open until the game exits. EverQuest, SpinFOURKAYYY, and companion overlays should run at the same Windows privilege level.
+
+## Sharper world textures with SpinTexture
+
+[**SpinTexture**](https://itsspin.github.io/spintexture/) is a separate companion project for improving EverQuest Legends textures. SpinUI modernizes the native interface while SpinTexture enhances the world around it, so players can use either project independently or combine them for a more complete visual upgrade.
+
+Visit the [SpinTexture project site](https://itsspin.github.io/spintexture/) for previews, downloads, and installation guidance.
 
 ## A compact tour of the rest
 

@@ -620,6 +620,21 @@ def audit_inventory_progression() -> None:
 
     for path in paths:
         root = ET.parse(path).getroot()
+        illusion_label = item(root, "Label", "IWM_PetIllusionLabel")
+        if (illusion_label.findtext("Text") or "").strip() != "Pet Illusion:":
+            fail(f"{path.name} pet illusion label is missing or renamed")
+        illusion_combo = item(root, "Combobox", "IWM_PetIllusionComboBox")
+        if (illusion_combo.findtext("ScreenID") or "").strip() != "IWM_PetIllusionComboBox":
+            fail(f"{path.name} lost the client-native pet illusion binding")
+        if (illusion_combo.findtext("Choices") or "").strip() != "None":
+            fail(f"{path.name} pet illusion selector lost its safe empty choice")
+        pet_page = item(root, "Page", "IW_PetInvPage")
+        pet_pieces = [(node.text or "").strip() for node in pet_page.findall("Pieces")]
+        for required_piece in ("IWM_PetIllusionComboBox", "IWM_PetIllusionLabel"):
+            if pet_pieces.count(required_piece) != 1:
+                fail(
+                    f"{path.name} pet page must include {required_piece} exactly once"
+                )
         gauges: list[ET.Element] = []
         for gauge_name, eq_type in (
                 ("IW_ExpGauge", 4), ("IW_AltAdvGauge", 5)):
@@ -1316,7 +1331,9 @@ def main() -> int:
         f"fixed | commands 14 | effects {BUFF_CAPACITY[pet_default]} "
         f"icon cells | variants {len(WINDOW_SIZES)}"
     )
-    print("  inventory 660x668 | equipment 23 | AA deck 6 tabs + true progress | ledger 15/15 + 6/6 | footer 6 | persona 23 | bags 12")
+    print("  inventory 660x668 | equipment 23 + pet illusion selector | "
+          "AA deck 6 tabs + true progress | ledger 15/15 + 6/6 | "
+          "footer 6 | persona 23 | bags 12")
     return 0
 
 

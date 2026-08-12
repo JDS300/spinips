@@ -1,0 +1,1170 @@
+/*
+ * Loremaster material themes
+ * --------------------------
+ * Vellum & Ember is the default companion for SpinUI Reloaded.
+ * Midnight Frost Glass is the companion for SpinUI Glass.
+ *
+ * Keep state colors semantic: danger, warning and success never inherit a
+ * decorative theme accent.  All window surfaces remain opaque enough for EQ
+ * readability and deliberately avoid live blur effects.
+ */
+
+:root,
+:root[data-theme="vellum"] {
+  color-scheme: dark;
+
+  --lm-void: #090704;
+  --lm-surface-0: #0c0906;
+  --lm-panel: #130e09;
+  --lm-raised: #1e160e;
+  --lm-surface-3: #2e2215;
+  --lm-line-soft: #342819;
+  --lm-line: #685030;
+  --lm-line-bright: #a68252;
+  --lm-text: #f1e7d4;
+  --lm-text-strong: #fff8e9;
+  --lm-dim: #ac9a7e;
+  --lm-muted: #7f705b;
+  --lm-heading: #f8d68c;
+  --lm-primary: #d0a254;
+  --lm-primary-deep: #705222;
+  --lm-secondary: #7eaaf4;
+  --lm-secondary-deep: #304a84;
+  --lm-action: #f2762c;
+  --lm-success: #42cf8b;
+  --lm-danger: #de3e48;
+  --lm-warning: #f2c96f;
+  --lm-meter: #2e1c10;
+  --lm-meter-edge: #9a5a24;
+
+  --lm-primary-rgb: 208, 162, 84;
+  --lm-secondary-rgb: 126, 170, 244;
+  --lm-action-rgb: 242, 118, 44;
+  --lm-success-rgb: 66, 207, 139;
+  --lm-danger-rgb: 222, 62, 72;
+  --lm-warning-rgb: 242, 201, 111;
+  --lm-line-rgb: 104, 80, 48;
+  --lm-line-bright-rgb: 166, 130, 82;
+  --lm-meter-edge-rgb: 154, 90, 36;
+  --lm-text-rgb: 241, 231, 212;
+
+  --lm-shell-bg:
+    radial-gradient(circle at 11% -8%, rgba(112, 82, 34, .32), transparent 35%),
+    radial-gradient(circle at 94% 4%, rgba(76, 48, 20, .19), transparent 29%),
+    linear-gradient(152deg, rgba(19, 14, 9, .995), rgba(9, 7, 4, .998));
+  --lm-seed-bg:
+    radial-gradient(circle at 28% 0%, rgba(166, 130, 82, .17), transparent 45%),
+    linear-gradient(145deg, rgba(30, 22, 14, .995), rgba(9, 7, 4, .998));
+  --lm-header-bg: linear-gradient(105deg, rgba(38, 29, 18, .995), rgba(15, 11, 7, .997));
+  --lm-card-bg: linear-gradient(145deg, rgba(30, 22, 14, .94), rgba(15, 11, 7, .96));
+  --lm-card-raised-bg: linear-gradient(145deg, rgba(46, 34, 21, .9), rgba(20, 14, 9, .95));
+  --lm-inset-bg: rgba(9, 7, 4, .82);
+  --lm-selected-bg: linear-gradient(145deg, rgba(112, 82, 34, .48), rgba(26, 19, 12, .9));
+  --lm-shadow: 0 14px 38px rgba(0, 0, 0, .48), inset 0 1px rgba(255, 248, 233, .055);
+}
+
+:root[data-theme="glass"] {
+  --lm-void: #02060b;
+  --lm-surface-0: #03080e;
+  --lm-panel: #060f18;
+  --lm-raised: #0a1b28;
+  --lm-surface-3: #123042;
+  --lm-line-soft: #163646;
+  --lm-line: #30798f;
+  --lm-line-bright: #99effa;
+  --lm-text: #e8f8fc;
+  --lm-text-strong: #f4fdff;
+  --lm-dim: #8bb4be;
+  --lm-muted: #617f89;
+  --lm-heading: #cff7ff;
+  --lm-primary: #69e1f2;
+  --lm-primary-deep: #1c6677;
+  --lm-secondary: #ab80ff;
+  --lm-secondary-deep: #3f2770;
+  --lm-action: #55f2be;
+  --lm-success: #55f2be;
+  --lm-danger: #f25567;
+  --lm-warning: #d2aa5e;
+  --lm-meter: #0b2430;
+  --lm-meter-edge: #3eaac2;
+
+  --lm-primary-rgb: 105, 225, 242;
+  --lm-secondary-rgb: 171, 128, 255;
+  --lm-action-rgb: 85, 242, 190;
+  --lm-success-rgb: 85, 242, 190;
+  --lm-danger-rgb: 242, 85, 103;
+  --lm-warning-rgb: 210, 170, 94;
+  --lm-line-rgb: 48, 121, 143;
+  --lm-line-bright-rgb: 153, 239, 250;
+  --lm-meter-edge-rgb: 62, 170, 194;
+  --lm-text-rgb: 232, 248, 252;
+
+  --lm-shell-bg:
+    radial-gradient(circle at 10% -8%, rgba(62, 170, 194, .24), transparent 36%),
+    radial-gradient(circle at 94% 0%, rgba(112, 75, 188, .15), transparent 30%),
+    linear-gradient(152deg, rgba(6, 15, 24, .995), rgba(2, 6, 11, .998));
+  --lm-seed-bg:
+    radial-gradient(circle at 25% 0%, rgba(105, 225, 242, .16), transparent 46%),
+    linear-gradient(145deg, rgba(10, 27, 40, .995), rgba(2, 6, 11, .998));
+  --lm-header-bg: linear-gradient(105deg, rgba(10, 29, 42, .995), rgba(3, 9, 15, .997));
+  --lm-card-bg: linear-gradient(145deg, rgba(10, 27, 40, .94), rgba(4, 11, 18, .97));
+  --lm-card-raised-bg: linear-gradient(145deg, rgba(18, 48, 66, .82), rgba(6, 16, 25, .95));
+  --lm-inset-bg: rgba(2, 6, 11, .84);
+  --lm-selected-bg: linear-gradient(145deg, rgba(36, 97, 116, .5), rgba(8, 24, 35, .92));
+  --lm-shadow: 0 14px 38px rgba(0, 0, 0, .5), inset 0 1px rgba(232, 248, 252, .065);
+}
+
+/* Backwards-compatible aliases used by the existing component stylesheet. */
+:root {
+  --void: var(--lm-void);
+  --panel: rgba(var(--lm-text-rgb), .01);
+  --raised: var(--lm-raised);
+  --line: var(--lm-line);
+  --soft-line: rgba(var(--lm-line-rgb), .35);
+  --cyan: var(--lm-primary);
+  --blue: var(--lm-secondary);
+  --gold: var(--lm-primary);
+  --ember: var(--lm-danger);
+  --dim: var(--lm-dim);
+  --danger: var(--lm-danger);
+  --warning: var(--lm-warning);
+  --success: var(--lm-success);
+}
+
+html,
+body,
+#root {
+  color: var(--lm-text);
+}
+
+body {
+  text-rendering: geometricPrecision;
+}
+
+:is(button, input, select, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--lm-line-bright);
+  outline-offset: 2px;
+}
+
+::selection {
+  color: var(--lm-text-strong);
+  background: rgba(var(--lm-secondary-rgb), .42);
+}
+
+/* Seed and its compact companion surfaces. */
+.rune-seed {
+  color: var(--lm-text-strong);
+  border-color: rgba(var(--lm-line-bright-rgb), .74);
+  background: var(--lm-seed-bg);
+  box-shadow: var(--lm-shadow);
+}
+
+.rune-seed::after {
+  border-color: rgba(var(--lm-primary-rgb), .22);
+}
+
+.brand-cog {
+  border-color: rgba(var(--lm-line-bright-rgb), .45);
+  background:
+    radial-gradient(circle, rgba(var(--lm-primary-rgb), .13), transparent 64%),
+    var(--lm-inset-bg);
+  box-shadow: inset 0 1px rgba(var(--lm-text-rgb), .07), 0 0 14px rgba(var(--lm-primary-rgb), .09);
+}
+
+.brand-cog img {
+  filter: drop-shadow(0 0 5px rgba(var(--lm-primary-rgb), .24));
+}
+
+.seed-metric small,
+.seed-group-row > strong small {
+  color: var(--lm-primary);
+}
+
+.seed-alert,
+.rune-seed.urgent {
+  color: var(--lm-danger);
+}
+
+.rune-seed.urgent {
+  border-color: rgba(var(--lm-danger-rgb), .82);
+}
+
+.seed-companion-surface {
+  background: rgba(2, 4, 7, .2);
+}
+
+.seed-group-surface,
+.seed-control-surface {
+  color: var(--lm-text);
+  border-color: rgba(var(--lm-line-bright-rgb), .52);
+  background: var(--lm-card-bg);
+  box-shadow: var(--lm-shadow);
+}
+
+.seed-group-surface > header,
+.seed-control-surface > header {
+  border-bottom-color: rgba(var(--lm-line-rgb), .38);
+  background: var(--lm-header-bg);
+}
+
+.seed-group-surface > header span,
+.seed-control-surface > header span,
+.seed-control-time strong {
+  color: var(--lm-primary);
+}
+
+.seed-group-surface > header span i,
+.seed-control-surface > header span i,
+.masthead small b,
+.alerts-rail i,
+.engine-status.live > i,
+.archive-health i {
+  background: var(--lm-success);
+  box-shadow: 0 0 9px rgba(var(--lm-success-rgb), .68);
+}
+
+.seed-group-surface > header strong,
+.seed-group-row > span small,
+.seed-group-row > em,
+.seed-control-copy small,
+.seed-control-time small {
+  color: var(--lm-dim);
+}
+
+.seed-group-row,
+.seed-control-row {
+  border-bottom-color: rgba(var(--lm-line-rgb), .2);
+  background: rgba(3, 5, 7, .18);
+}
+
+.seed-group-row > span b,
+.seed-control-copy strong,
+.seed-group-row > strong {
+  color: var(--lm-text-strong);
+}
+
+.seed-control-accent,
+.control-accent {
+  background: var(--lm-secondary);
+  box-shadow: 0 0 12px rgba(var(--lm-secondary-rgb), .44);
+}
+
+.seed-control-row.lull .seed-control-accent,
+.control-row.lull .control-accent {
+  background: var(--lm-primary);
+  box-shadow: 0 0 12px rgba(var(--lm-primary-rgb), .43);
+}
+
+.seed-control-row.warning .seed-control-accent,
+.control-row.warning .control-accent,
+.control-row.ambiguous .control-accent,
+.control-row.unconfirmed .control-accent {
+  background: var(--lm-warning);
+}
+
+.seed-control-row.critical .seed-control-accent,
+.control-row.critical .control-accent,
+.control-row.failed .control-accent {
+  background: var(--lm-danger);
+  box-shadow: 0 0 13px rgba(var(--lm-danger-rgb), .5);
+}
+
+.seed-control-row.warning .seed-control-time strong,
+.control-row.warning .control-time strong,
+.control-row.unconfirmed .control-time strong,
+.control-row.ambiguous .control-time strong {
+  color: var(--lm-warning);
+}
+
+.seed-control-row.critical .seed-control-time strong,
+.control-row.critical .control-time strong,
+.control-row.failed .control-time strong {
+  color: var(--lm-danger);
+  text-shadow: 0 0 10px rgba(var(--lm-danger-rgb), .28);
+}
+
+.seed-control-meter,
+.control-meter,
+.hero-rule,
+.archive-share-track {
+  background: var(--lm-meter);
+  box-shadow: inset 0 0 0 1px rgba(var(--lm-meter-edge-rgb), .12);
+}
+
+.seed-control-meter > i,
+.control-meter span,
+.hero-rule i {
+  background: linear-gradient(90deg, var(--lm-secondary), var(--lm-primary));
+}
+
+.seed-control-row.lull .seed-control-meter > i,
+.control-row.lull .control-meter span {
+  background: linear-gradient(90deg, var(--lm-primary-deep), var(--lm-primary));
+}
+
+/* Expanded HUD shell and reusable cards. */
+.loremaster-shell {
+  color: var(--lm-text);
+  border-color: rgba(var(--lm-line-bright-rgb), .68);
+  background: var(--lm-shell-bg);
+  box-shadow: inset 0 1px rgba(var(--lm-text-rgb), .06);
+}
+
+.masthead {
+  border-bottom-color: rgba(var(--lm-line-rgb), .44);
+  background: var(--lm-header-bg);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, .32), inset 0 1px rgba(var(--lm-text-rgb), .055);
+}
+
+.masthead::before {
+  background: var(--lm-panel);
+}
+
+.masthead p,
+.settings-panel h2,
+.archive-masthead h1,
+.archive-report-head h2 {
+  color: var(--lm-heading);
+}
+
+.masthead small,
+.context-line,
+.health-banner span,
+.quiet-state,
+.health-line {
+  color: var(--lm-dim);
+}
+
+.masthead button,
+.health-banner button,
+.encounter-nav button,
+.settings-panel button,
+.gear-credit button,
+.alerts-rail button,
+.replay-controls button {
+  color: var(--lm-primary);
+  border-color: rgba(var(--lm-line-rgb), .46);
+  background: var(--lm-inset-bg);
+}
+
+:is(.masthead, .settings-panel, .encounter-nav, .gear-credit, .alerts-rail, .replay-controls) button:hover:not(:disabled) {
+  color: var(--lm-text-strong);
+  border-color: rgba(var(--lm-line-bright-rgb), .8);
+  background: var(--lm-selected-bg);
+}
+
+.context-line > span:first-child b,
+.control-deck h2,
+.breakdown-card h2,
+.weekly-card h2,
+.gear-card h2,
+.settings-toggle > span b,
+.font-scale-setting > span b {
+  color: var(--lm-text);
+}
+
+.context-line em {
+  color: var(--lm-text-strong);
+  border-color: rgba(var(--lm-secondary-rgb), .4);
+  background: rgba(var(--lm-secondary-rgb), .16);
+}
+
+.context-line span:last-child,
+.hero-card > p,
+.encounter-nav > span b,
+.weekly-card summary small,
+.gear-card summary > span,
+.bag-upgrades > small,
+.farm-routes > small,
+.settings-card label,
+.font-scale-setting strong {
+  color: var(--lm-primary);
+}
+
+.health-banner {
+  border-color: rgba(var(--lm-primary-rgb), .34);
+  background: rgba(var(--lm-primary-rgb), .11);
+}
+
+.health-banner > i,
+.engine-status > i {
+  background: var(--lm-primary);
+  box-shadow: 0 0 10px rgba(var(--lm-primary-rgb), .62);
+}
+
+.health-banner.error {
+  border-color: rgba(var(--lm-danger-rgb), .48);
+  background: rgba(var(--lm-danger-rgb), .12);
+}
+
+.health-banner.error > i,
+.engine-status.error > i,
+.masthead small b.error,
+.archive-health.error i {
+  background: var(--lm-danger);
+  box-shadow: 0 0 10px rgba(var(--lm-danger-rgb), .7);
+}
+
+.danger-toast {
+  border-color: rgba(var(--lm-danger-rgb), .68);
+  background: linear-gradient(100deg, rgba(var(--lm-danger-rgb), .24), rgba(12, 7, 8, .96));
+  box-shadow: inset 0 1px rgba(var(--lm-text-rgb), .05), 0 0 22px rgba(var(--lm-danger-rgb), .14);
+}
+
+.danger-toast > span,
+.danger-toast small {
+  color: var(--lm-danger);
+  border-color: var(--lm-danger);
+}
+
+.danger-toast strong {
+  color: var(--lm-text-strong);
+}
+
+.raid-confirmation {
+  border-color: rgba(var(--lm-success-rgb), .5);
+  background: linear-gradient(115deg, rgba(var(--lm-success-rgb), .2), var(--lm-inset-bg));
+  box-shadow: inset 0 1px rgba(var(--lm-text-rgb), .06), 0 0 24px rgba(var(--lm-success-rgb), .1);
+}
+
+.raid-confirmation-glyph,
+.raid-confirmation small {
+  color: var(--lm-success);
+  border-color: rgba(var(--lm-success-rgb), .76);
+}
+
+.raid-confirmation strong {
+  color: var(--lm-text-strong);
+}
+
+.raid-confirmation p {
+  color: var(--lm-dim);
+}
+
+.raid-confirmation-tiers button {
+  color: var(--lm-success);
+  border-color: rgba(var(--lm-success-rgb), .4);
+  background: var(--lm-inset-bg);
+}
+
+.raid-confirmation-tiers button:hover {
+  color: var(--lm-void);
+  background: var(--lm-success);
+}
+
+.hero-card,
+.stat-grid article,
+.breakdown-card,
+.weekly-card,
+.gear-card,
+.settings-card {
+  color: var(--lm-text);
+  border-color: rgba(var(--lm-line-rgb), .4);
+  background: var(--lm-card-bg);
+  box-shadow: inset 0 1px rgba(var(--lm-text-rgb), .04);
+}
+
+.hero-metric > strong,
+.hero-metric aside b,
+.stat-grid strong,
+.fight-facts b,
+.actor-tabs button b,
+.actor-drilldown h3,
+.actor-facts b,
+.actor-identities b,
+.breakdown-columns article b,
+.stance-advisor strong,
+.raid-grid-row > span > b,
+.farm-routes strong,
+.engine-status b {
+  color: var(--lm-text-strong);
+}
+
+.hero-metric > span,
+.dps-split b,
+.control-deck header small,
+.breakdown-card summary small,
+.breakdown-columns > section > small,
+.actor-drilldown > header small,
+.stance-advisor small,
+.gear-card summary small,
+.settings-panel header small {
+  color: var(--lm-primary);
+}
+
+.dps-split span,
+.actor-facts > span,
+.actor-identities,
+.breakdown-columns article,
+.number-setting,
+.font-scale-setting,
+.settings-toggle {
+  border-color: rgba(var(--lm-line-rgb), .25);
+}
+
+.control-deck {
+  border-color: rgba(var(--lm-line-rgb), .43);
+  background: var(--lm-inset-bg);
+}
+
+.control-deck > header {
+  border-bottom-color: rgba(var(--lm-line-rgb), .36);
+  background: var(--lm-card-raised-bg);
+}
+
+.control-row {
+  border-bottom-color: rgba(var(--lm-line-rgb), .23);
+}
+
+.control-copy strong,
+.actor-tabs button,
+.breakdown-columns article b {
+  color: var(--lm-text);
+}
+
+.control-copy small,
+.control-time small,
+.stat-grid small,
+.fight-facts small,
+.actor-tabs button small,
+.actor-facts small,
+.actor-identities small,
+.actor-estimate,
+.breakdown-columns article small,
+.stance-advisor p,
+.weekly-card > p,
+.gear-card > p,
+.settings-card > p,
+.settings-toggle > span small,
+.font-scale-setting > span small {
+  color: var(--lm-dim);
+}
+
+.actor-tabs button,
+.fight-facts span,
+.actor-drilldown {
+  border-color: rgba(var(--lm-line-rgb), .34);
+  background: var(--lm-inset-bg);
+}
+
+.actor-tabs button.selected {
+  color: var(--lm-text-strong);
+  border-color: rgba(var(--lm-primary-rgb), .7);
+  background: var(--lm-selected-bg);
+  box-shadow: inset 0 1px rgba(var(--lm-text-rgb), .05), 0 0 13px rgba(var(--lm-primary-rgb), .09);
+}
+
+.actor-drilldown {
+  background: var(--lm-card-raised-bg);
+}
+
+.stance-advisor {
+  border-color: rgba(var(--lm-primary-rgb), .34);
+  border-left-color: var(--lm-primary);
+  background: rgba(var(--lm-primary-rgb), .1);
+}
+
+.stance-advisor.defense {
+  border-color: rgba(var(--lm-danger-rgb), .34);
+  border-left-color: var(--lm-danger);
+  background: rgba(var(--lm-danger-rgb), .1);
+}
+
+.stance-advisor.defense small {
+  color: var(--lm-danger);
+}
+
+.stance-advisor-enable {
+  color: var(--lm-primary);
+  border-color: rgba(var(--lm-primary-rgb), .36);
+  background: rgba(var(--lm-primary-rgb), .09);
+}
+
+.stance-advisor-enable:hover {
+  background: rgba(var(--lm-primary-rgb), .17);
+}
+
+/* Raid reset, gear planning and passive controls. */
+.weekly-card {
+  border-color: rgba(var(--lm-primary-rgb), .36);
+}
+
+.weekly-card summary > span,
+.gear-card summary::after,
+.weekly-card summary::after {
+  color: var(--lm-primary);
+}
+
+.weekly-card summary > span.tier-needed,
+.weekly-card .raid-pending {
+  color: var(--lm-warning);
+}
+
+.weekly-card .raid-pending {
+  border-left-color: var(--lm-warning);
+  background: rgba(var(--lm-warning-rgb), .08);
+}
+
+.raid-grid-head,
+.raid-grid-row > span > small,
+.weekly-card .raid-reset,
+.gear-credit span {
+  color: var(--lm-dim);
+}
+
+.raid-grid-head b {
+  color: var(--lm-primary);
+}
+
+.raid-grid-row button {
+  color: var(--lm-muted);
+  border-color: rgba(var(--lm-line-rgb), .42);
+  background: var(--lm-inset-bg);
+}
+
+.raid-grid-row button:hover {
+  color: var(--lm-primary);
+  border-color: var(--lm-primary);
+}
+
+.raid-grid-row button.done {
+  color: var(--lm-success);
+  border-color: rgba(var(--lm-success-rgb), .55);
+  background: rgba(var(--lm-success-rgb), .12);
+  box-shadow: inset 0 0 8px rgba(var(--lm-success-rgb), .09);
+}
+
+.gear-card {
+  border-color: rgba(var(--lm-secondary-rgb), .34);
+}
+
+.gear-card.error {
+  border-color: rgba(var(--lm-danger-rgb), .5);
+}
+
+.bag-upgrades button {
+  color: var(--lm-success);
+  border-color: rgba(var(--lm-success-rgb), .42);
+  background: rgba(var(--lm-success-rgb), .1);
+}
+
+.farm-routes article {
+  border-color: rgba(var(--lm-line-rgb), .38);
+  background: var(--lm-inset-bg);
+}
+
+.farm-routes article > b {
+  color: var(--lm-void);
+  background: var(--lm-primary);
+}
+
+.alerts-rail {
+  border-color: rgba(var(--lm-line-rgb), .42);
+  background: var(--lm-card-bg);
+}
+
+.alerts-rail button.active {
+  color: var(--lm-success);
+  border-color: rgba(var(--lm-success-rgb), .46);
+  background: rgba(var(--lm-success-rgb), .1);
+}
+
+.health-line,
+.gear-credit,
+.engine-status,
+.settings-card .source-credit {
+  border-color: rgba(var(--lm-line-rgb), .32);
+}
+
+/* Settings and theme chooser. */
+.path-row input,
+.settings-card > input,
+.number-setting input,
+.archive-search input,
+.archive-search select,
+.archive-table-tools input,
+.archive-table-tools select {
+  color: var(--lm-text);
+  border-color: rgba(var(--lm-line-rgb), .64);
+  background: var(--lm-inset-bg);
+  caret-color: var(--lm-primary);
+}
+
+:is(.path-row input, .settings-card > input, .number-setting input, .archive-search input, .archive-search select, .archive-table-tools input, .archive-table-tools select):focus {
+  border-color: var(--lm-primary);
+  box-shadow: 0 0 0 2px rgba(var(--lm-primary-rgb), .12);
+}
+
+.difficulty-picker button.selected,
+.settings-card.update-card .update-ready {
+  color: var(--lm-void);
+  border-color: var(--lm-success);
+  background: var(--lm-success);
+  box-shadow: 0 0 12px rgba(var(--lm-success-rgb), .18);
+}
+
+.difficulty-picker button.unset.selected {
+  color: var(--lm-void);
+  border-color: var(--lm-warning);
+  background: var(--lm-warning);
+}
+
+.sound-profile { border-color: rgba(var(--lm-line-rgb), .25); }
+.sound-profile > span b { color: var(--lm-text); }
+.sound-profile > span small,
+.sound-note { color: var(--lm-dim); }
+.sound-preset-trigger,
+.sound-preset-menu {
+  color: var(--lm-text);
+  border-color: rgba(var(--lm-line-rgb), .52);
+  background: var(--lm-inset-bg);
+}
+.sound-preset-trigger:hover,
+.sound-preset-trigger.open,
+.sound-preset-trigger:focus-visible {
+  border-color: var(--lm-line-bright);
+  box-shadow: 0 0 0 2px rgba(var(--lm-primary-rgb), .12);
+}
+.sound-preset-menu button { color: var(--lm-dim); }
+.sound-preset-menu button:hover,
+.sound-preset-menu button:focus-visible { color: var(--lm-text); border-color: var(--lm-line); background: rgba(var(--lm-primary-rgb), .07); }
+.sound-preset-menu button.selected { color: var(--lm-primary); border-color: rgba(var(--lm-primary-rgb), .54); background: rgba(var(--lm-primary-rgb), .11); }
+.sound-profile .sound-preview { color: var(--lm-primary); }
+.sound-profile .sound-file { color: var(--lm-secondary); }
+
+.settings-toggle > i {
+  border-color: var(--lm-line);
+  background: var(--lm-void);
+}
+
+.settings-toggle > i::after {
+  background: var(--lm-dim);
+}
+
+.settings-toggle input:checked + i {
+  border-color: rgba(var(--lm-success-rgb), .72);
+  background: rgba(var(--lm-success-rgb), .22);
+}
+
+.settings-toggle input:checked + i::after {
+  background: var(--lm-success);
+  box-shadow: 0 0 7px rgba(var(--lm-success-rgb), .58);
+}
+
+.settings-toggle input:focus-visible + i {
+  outline-color: var(--lm-line-bright);
+}
+
+.anchor-picker button.selected {
+  color: var(--lm-primary);
+  border-color: var(--lm-primary);
+  background: rgba(var(--lm-primary-rgb), .13);
+}
+
+.save-preferences {
+  color: var(--lm-success) !important;
+  border-color: rgba(var(--lm-success-rgb), .52) !important;
+}
+
+.theme-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.theme-option {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 76px;
+  padding: 9px !important;
+  color: var(--lm-text) !important;
+  border: 1px solid rgba(var(--lm-line-rgb), .46) !important;
+  border-radius: 10px !important;
+  background: var(--lm-inset-bg) !important;
+  text-align: left;
+}
+
+.theme-option:hover,
+.theme-option[aria-checked="true"],
+.theme-option[aria-pressed="true"],
+.theme-option.selected {
+  color: var(--lm-text-strong) !important;
+  border-color: rgba(var(--lm-line-bright-rgb), .86) !important;
+  background: var(--lm-selected-bg) !important;
+  box-shadow: inset 0 1px rgba(var(--lm-text-rgb), .06), 0 0 16px rgba(var(--lm-primary-rgb), .09);
+}
+
+.theme-option > span:not(.theme-preview) {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.theme-option b {
+  overflow: hidden;
+  color: var(--lm-heading);
+  font: 700 9px Georgia, serif;
+  letter-spacing: .08em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-option small {
+  color: var(--lm-dim);
+  font: 400 8px/1.3 "Segoe UI Variable Text", "Segoe UI", sans-serif;
+}
+
+.theme-option em {
+  grid-column: 2;
+  color: var(--lm-success);
+  font: normal 7px "Segoe UI Variable Text", "Segoe UI", sans-serif;
+  letter-spacing: .11em;
+}
+
+.theme-preview {
+  width: 54px;
+  height: 48px;
+  display: grid;
+  grid-template-rows: 9px 1fr 7px;
+  gap: 4px;
+  padding: 5px;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .08), 0 6px 14px rgba(0, 0, 0, .32);
+}
+
+.theme-preview > i {
+  display: block;
+  border-radius: 3px;
+}
+
+.theme-preview > i:nth-child(2) {
+  width: 75%;
+}
+
+.theme-preview.vellum,
+.theme-option.vellum .theme-preview,
+.theme-option[data-theme-option="vellum"] .theme-preview {
+  border: 1px solid #a68252;
+  background: linear-gradient(145deg, #1e160e, #090704);
+}
+
+.theme-preview.vellum > i,
+.theme-option.vellum .theme-preview > i,
+.theme-option[data-theme-option="vellum"] .theme-preview > i {
+  background: #d0a254;
+}
+
+.theme-preview.vellum > i:nth-child(2),
+.theme-option.vellum .theme-preview > i:nth-child(2),
+.theme-option[data-theme-option="vellum"] .theme-preview > i:nth-child(2) {
+  background: #7eaaf4;
+}
+
+.theme-preview.glass,
+.theme-option.glass .theme-preview,
+.theme-option[data-theme-option="glass"] .theme-preview {
+  border: 1px solid #99effa;
+  background: linear-gradient(145deg, #0a1b28, #02060b);
+}
+
+.theme-preview.glass > i,
+.theme-option.glass .theme-preview > i,
+.theme-option[data-theme-option="glass"] .theme-preview > i {
+  background: #69e1f2;
+}
+
+.theme-preview.glass > i:nth-child(2),
+.theme-option.glass .theme-preview > i:nth-child(2),
+.theme-option[data-theme-option="glass"] .theme-preview > i:nth-child(2) {
+  background: #ab80ff;
+}
+
+/* Alert window: urgency remains semantic in both themes. */
+.alert-surface {
+  color: var(--lm-text-strong);
+  border-color: rgba(var(--lm-danger-rgb), .84);
+  background: linear-gradient(105deg, rgba(var(--lm-danger-rgb), .28), rgba(5, 7, 10, .985));
+  box-shadow: inset 0 1px rgba(var(--lm-text-rgb), .08), 0 12px 35px rgba(0, 0, 0, .52), 0 0 22px rgba(var(--lm-danger-rgb), .17);
+}
+
+.alert-surface.warn {
+  border-color: rgba(var(--lm-warning-rgb), .86);
+  background: linear-gradient(105deg, rgba(var(--lm-warning-rgb), .23), rgba(5, 7, 10, .985));
+  box-shadow: inset 0 1px rgba(var(--lm-text-rgb), .08), 0 12px 35px rgba(0, 0, 0, .52), 0 0 22px rgba(var(--lm-warning-rgb), .14);
+}
+
+.alert-surface.info {
+  border-color: rgba(var(--lm-primary-rgb), .82);
+  background: linear-gradient(105deg, rgba(var(--lm-primary-rgb), .2), rgba(5, 7, 10, .985));
+}
+
+.alert-glyph,
+.alert-surface small {
+  color: var(--lm-danger);
+}
+
+.alert-surface.warn .alert-glyph,
+.alert-surface.warn small {
+  color: var(--lm-warning);
+}
+
+.alert-surface.info .alert-glyph,
+.alert-surface.info small {
+  color: var(--lm-primary);
+}
+
+.alert-surface strong,
+.alert-surface.tell-alert p {
+  color: var(--lm-text-strong);
+}
+
+.alert-surface p {
+  color: var(--lm-text);
+}
+
+/* Full Combat Archive. */
+.archive-shell {
+  color: var(--lm-text);
+  border-color: rgba(var(--lm-line-bright-rgb), .68);
+  background: var(--lm-shell-bg);
+  box-shadow: var(--lm-shadow);
+}
+
+.archive-masthead {
+  border-bottom-color: rgba(var(--lm-line-rgb), .42);
+  background: var(--lm-header-bg);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .36), inset 0 1px rgba(var(--lm-text-rgb), .055);
+}
+
+.archive-masthead > img {
+  filter: drop-shadow(0 0 8px rgba(var(--lm-primary-rgb), .2));
+}
+
+.archive-masthead small,
+.archive-fights > header > span,
+.archive-kpis article.primary small,
+.archive-tabs button:hover,
+.archive-tabs button.active {
+  color: var(--lm-primary);
+}
+
+.archive-masthead button,
+.archive-filter-pills button,
+.archive-scope button {
+  color: var(--lm-dim);
+  border-color: rgba(var(--lm-line-rgb), .42);
+  background: var(--lm-inset-bg);
+}
+
+.archive-masthead button:hover,
+.archive-filter-pills button:hover,
+.archive-filter-pills button.active,
+.archive-scope button:hover,
+.archive-scope button.active {
+  color: var(--lm-text-strong);
+  border-color: rgba(var(--lm-primary-rgb), .68);
+  background: var(--lm-selected-bg);
+}
+
+.archive-fights {
+  border-right-color: rgba(var(--lm-line-rgb), .4);
+  background: linear-gradient(180deg, rgba(var(--lm-line-rgb), .1), var(--lm-inset-bg));
+}
+
+.archive-fights > header b,
+.archive-fight-list button > span b,
+.archive-report-head h2,
+.archive-kpis b,
+.archive-contribution header b,
+.archive-history header b,
+.archive-table > article > span b,
+.archive-insights header b,
+.archive-insights article b,
+.archive-timeline-tooltip strong {
+  color: var(--lm-text-strong);
+}
+
+.archive-fight-list > button {
+  color: var(--lm-text);
+  background: rgba(var(--lm-line-rgb), .08);
+}
+
+.archive-fight-list > button:hover {
+  border-color: rgba(var(--lm-line-rgb), .52);
+  background: rgba(var(--lm-line-rgb), .16);
+}
+
+.archive-fight-list > button.selected {
+  border-color: rgba(var(--lm-primary-rgb), .58);
+  background: var(--lm-selected-bg);
+  box-shadow: inset 0 1px rgba(var(--lm-text-rgb), .035), 0 0 14px rgba(var(--lm-primary-rgb), .07);
+}
+
+.archive-fight-list > button.selected::before {
+  background: var(--lm-primary);
+  box-shadow: 0 0 8px rgba(var(--lm-primary-rgb), .62);
+}
+
+.archive-fight-list > button.live::after {
+  color: var(--lm-success);
+}
+
+.archive-report {
+  background: rgba(var(--lm-text-rgb), .01);
+}
+
+.archive-kpis article,
+.archive-contribution,
+.archive-history,
+.archive-table-wrap,
+.archive-insights,
+.archive-timeline,
+.archive-timeline-tooltip {
+  border-color: rgba(var(--lm-line-rgb), .34);
+  background: var(--lm-card-bg);
+}
+
+.archive-kpis article.primary {
+  border-color: rgba(var(--lm-primary-rgb), .52);
+  background: var(--lm-selected-bg);
+}
+
+.archive-kpis article.primary b {
+  color: var(--lm-heading);
+}
+
+.archive-contribution header strong,
+.archive-history header strong,
+.archive-tabs button.active small,
+.archive-table > header button:hover,
+.archive-table > header button.active,
+.archive-insights header small,
+.archive-timeline header b,
+.archive-timeline-tooltip > b,
+.archive-empty-chart b {
+  color: var(--lm-primary);
+}
+
+.archive-share-track .self,
+.archive-contribution footer i.self {
+  background: var(--lm-secondary);
+}
+
+.archive-share-track .charmed,
+.archive-contribution footer i.charmed {
+  background: var(--lm-primary);
+}
+
+.archive-share-track .summoned,
+.archive-contribution footer i.summoned,
+.archive-timeline header i.heal,
+.archive-timeline-tooltip i.heal {
+  background: var(--lm-success);
+}
+
+.archive-history > div {
+  border-bottom-color: rgba(var(--lm-line-rgb), .4);
+}
+
+.archive-history > div button {
+  background: linear-gradient(180deg, rgba(var(--lm-primary-rgb), .92), rgba(var(--lm-secondary-rgb), .42));
+}
+
+.archive-tabs {
+  border-bottom-color: rgba(var(--lm-line-rgb), .4);
+}
+
+.archive-tabs button.active {
+  border-bottom-color: var(--lm-primary);
+  background: linear-gradient(0deg, rgba(var(--lm-primary-rgb), .09), transparent);
+}
+
+.archive-table-wrap {
+  background: var(--lm-inset-bg);
+}
+
+.archive-table-tools {
+  border-bottom-color: rgba(var(--lm-line-rgb), .34);
+  background: var(--lm-card-raised-bg);
+}
+
+.archive-table > header,
+.archive-table > article,
+.archive-insights article {
+  border-color: rgba(var(--lm-line-rgb), .22);
+}
+
+.archive-table > header button:hover,
+.archive-table > header button.active {
+  background: rgba(var(--lm-primary-rgb), .08);
+}
+
+.archive-table > article > i {
+  background: linear-gradient(90deg, rgba(var(--lm-secondary-rgb), .16), transparent 74%);
+}
+
+.archive-table > article > strong:first-of-type {
+  color: var(--lm-heading);
+}
+
+.archive-timeline header i.out,
+.archive-timeline-tooltip i.out {
+  background: var(--lm-primary);
+}
+
+.archive-timeline header i.inc,
+.archive-timeline-tooltip i.inc {
+  background: var(--lm-danger);
+}
+
+.archive-timeline polyline.outgoing {
+  stroke: var(--lm-primary);
+  filter: drop-shadow(0 0 3px rgba(var(--lm-primary-rgb), .22));
+}
+
+.archive-timeline polyline.incoming {
+  stroke: var(--lm-danger);
+}
+
+.archive-timeline polyline.healing {
+  stroke: var(--lm-success);
+}
+
+.archive-timeline line.grid {
+  stroke: rgba(var(--lm-line-rgb), .24);
+}
+
+.archive-timeline line.cursor {
+  stroke: rgba(var(--lm-line-bright-rgb), .9);
+}
+
+.archive-timeline-tooltip em {
+  color: var(--lm-danger);
+}
+
+.archive-empty-chart {
+  color: var(--lm-dim);
+  border-color: rgba(var(--lm-line-rgb), .42);
+}
+
+@media (max-width: 520px) {
+  .theme-picker {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-cog,
+  .rune-seed,
+  .loremaster-shell,
+  .archive-shell,
+  .alert-surface {
+    scroll-behavior: auto;
+  }
+}
