@@ -41,7 +41,7 @@ STOCK = Path(r"C:\EQLegends\uifiles\default")
 # from approving itself.  The source slices and RLE texture envelope mirror the
 # known-working EQ Modern implementation; only destination thickness is SpinUI.
 ATTACK_TEXTURE_SIZE = (128, 32)
-ATTACK_TEXTURE_COLOR = (189, 189, 189, 255)
+ATTACK_TEXTURE_COLOR = (245, 245, 245, 255)
 ATTACK_EDGE_WIDTH = 8
 ATTACK_SOURCE_SIZES = {
     "A_AttackIndicator": (128, 32),
@@ -214,8 +214,8 @@ def audit_attack_indicator_contract() -> None:
             colors = rgba.getcolors(maxcolors=width * height)
         if colors != [(width * height, ATTACK_TEXTURE_COLOR)]:
             fail(
-                f"{skin.name} AttackIndicator.tga is not the solid neutral "
-                "native tint source"
+                f"{skin.name} AttackIndicator.tga is not the high-luminance "
+                "neutral native tint source"
             )
 
         for filename in PLAYER_WINDOW_FILES:
@@ -284,13 +284,13 @@ def audit_attack_indicator_contract() -> None:
             ]
             player_subwindow_index = pieces.index("Screen:PlayerSubWindow")
             compositor_slice = pieces[
-                player_subwindow_index + 1:player_subwindow_index + 6
+                player_subwindow_index - 5:player_subwindow_index
             ]
             if (compositor_slice != expected_pieces
                     or any(pieces.count(piece) != 1 for piece in expected_pieces)):
                 fail(
                     f"{label} attack rails must be unique and immediately "
-                    "follow PlayerSubWindow in the native compositor slot"
+                    "precede PlayerSubWindow in the foreground compositor slot"
                 )
 
             combat_state = item(root, "Button", "PW_CombatStateAnim")

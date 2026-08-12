@@ -22,11 +22,11 @@ OUTPUT = REPO / "spinui_reloaded" / "AttackIndicator.tga"
 FRAME_SIZE = (128, 32)
 SIZE = FRAME_SIZE
 EDGE_WIDTH = 8
-# Use the exact neutral source proven by EQ's working Modern UI.  The client
-# modulates this gray to its bright neutral/red phases only while attack is on.
-# Pre-coloring it red collapses the modulation, and an uncompressed 32-bit
-# pure-white texture is an unproven legacy-renderer combination.
-COLOR = (189, 189, 189, 255)
+# Keep the source neutral so EverQuest can still modulate it between its native
+# white and red attack phases, but raise the luminance to health-bar intensity.
+# The sub-white RLE envelope remains friendly to the legacy renderer while its
+# red phase is vivid enough to remain unmistakable over either SpinUI theme.
+COLOR = (245, 245, 245, 255)
 
 
 def render() -> Image.Image:
@@ -40,7 +40,7 @@ def main() -> int:
     render().save(OUTPUT, format="TGA", compression="tga_rle")
     print(
         "AttackIndicator.tga: native neutral RLE attack rail painted | "
-        "8px EverQuest tint-driven pulse | no fill wash"
+        "8px high-luminance EverQuest tint-driven pulse | no fill wash"
     )
     return 0
 

@@ -1334,7 +1334,7 @@
 			<CY>193</CY>
 		</Size>
 		<MinHSize>280</MinHSize>
-		<MinVSize>174</MinVSize>
+		<MinVSize>193</MinVSize>
 		<Style_VScroll>false</Style_VScroll>
 		<Style_HScroll>false</Style_HScroll>
 		<DrawTemplate>WDT_RoundedTransparentNoArrow</DrawTemplate>
@@ -1352,12 +1352,12 @@
 			<X>-6</X>
 			<Y>-9</Y>
 		</KeepOnScreenOffset>
-		<Pieces>Screen:PlayerSubWindow</Pieces>
 		<Pieces>A_AttackIndicatorAnimTop</Pieces>
 		<Pieces>A_AttackIndicatorAnimBottom</Pieces>
 		<Pieces>A_AttackIndicatorAnimLeft</Pieces>
 		<Pieces>A_AttackIndicatorAnimRight</Pieces>
 		<Pieces>A_AttackIndicatorAnimFill</Pieces>
+		<Pieces>Screen:PlayerSubWindow</Pieces>
 		<Pieces>DragBox:PW_DragBox</Pieces>
 		<Pieces>DragBox:PW_DragBox2</Pieces>
 		<Pieces>DragBox:PWDragBox3</Pieces>

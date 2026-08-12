@@ -62,7 +62,7 @@ EFFECT_NAME_WIDTH = EFFECT_ROW_WIDTH - EFFECT_NAME_X - EFFECT_NAME_TAIL
 # The authored 360x193 command frames remain unchanged on first load. Their
 # anchored subwindows can safely contract to these Legends-compatible bounds,
 # so users may resize them without clipping the command rows.
-PLAYER_MIN_SIZE = (280, 174)
+PLAYER_MIN_SIZE = (280, 193)
 TARGET_MIN_SIZE = (260, 174)
 # EverQuest recognizes the attack indicator by exact animation and ScreenID
 # names, then owns its attack-on visibility and pulse.  Keep the proven stock
@@ -598,12 +598,11 @@ def style_player() -> None:
         # live client; the compact PlayerSubWindow remains the visible frame.
         block = set_value(block, "Style_Border", "false")
         block = set_value(block, "Style_Sizable", "true")
-        # Keep the native rails in EverQuest's proven compositor slot: directly
-        # after PlayerSubWindow.  SIDL Pieces do not behave like a browser DOM;
-        # placing these state-owned children last causes the themed subwindow
-        # chrome to be composed over parts of the pulse in the live client.
-        # Default Modern uses this exact placement and renders the rails above
-        # the command frame, which is the behavior Reloaded and Glass need.
+        # EverQuest paints SIDL siblings foreground-first. Put the state-owned
+        # rails immediately before PlayerSubWindow so its themed template
+        # cannot cover the pulse. Keeping them at the end or after the
+        # subwindow leaves the native red/white modulation behind the Vellum
+        # or Glass chrome in the live client.
         attack_pieces = tuple(
             f"A_AttackIndicatorAnim{edge}"
             for edge in ("Top", "Bottom", "Left", "Right", "Fill")
@@ -617,7 +616,7 @@ def style_player() -> None:
         )
         block, count = re.subn(
             r"(\n[ \t]*<Pieces>Screen:PlayerSubWindow</Pieces>)",
-            r"\1" + pieces,
+            pieces + r"\1",
             block,
             count=1,
         )
