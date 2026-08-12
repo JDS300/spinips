@@ -1340,7 +1340,7 @@ function createWindow(): void {
           ? mainWindow?.webContents.executeJavaScript(
             "document.querySelector('.rune-seed')?.classList.add('attacking')")
           : undefined)
-        .then(() => screenshotView === "settings" || screenshotView === "sounds"
+        .then(() => screenshotView === "settings" || screenshotView?.startsWith("sounds")
           ? mainWindow?.webContents.executeJavaScript(
             "document.querySelector('button[aria-label=\"Open settings\"]')?.click()")
           : screenshotView === "analysis"
@@ -1354,11 +1354,15 @@ function createWindow(): void {
             `)
           : undefined)
         .then(() => new Promise((resolve) => setTimeout(resolve, 250)))
-        .then(() => screenshotView === "sounds"
+        .then(() => screenshotView?.startsWith("sounds")
           ? mainWindow?.webContents.executeJavaScript(
             "document.querySelector('.sound-studio')?.scrollIntoView({ block: 'start' })")
           : undefined)
-        .then(() => new Promise((resolve) => setTimeout(resolve, screenshotView === "sounds" ? 150 : 0)))
+        .then(() => screenshotView === "sounds-menu"
+          ? mainWindow?.webContents.executeJavaScript(
+            "document.querySelector('.sound-preset-trigger')?.click()")
+          : undefined)
+        .then(() => new Promise((resolve) => setTimeout(resolve, screenshotView?.startsWith("sounds") ? 180 : 0)))
         .then(() => mainWindow?.webContents.capturePage())
         .then((image) => {
           if (image) writeFileSync(screenshotPath, image.toPNG());

@@ -598,8 +598,12 @@ def style_player() -> None:
         # live client; the compact PlayerSubWindow remains the visible frame.
         block = set_value(block, "Style_Border", "false")
         block = set_value(block, "Style_Sizable", "true")
-        # Draw the native rails last so Reloaded/Glass chrome, the buff canvas,
-        # and drag surfaces cannot cover any edge of the attack perimeter.
+        # Keep the native rails in EverQuest's proven compositor slot: directly
+        # after PlayerSubWindow.  SIDL Pieces do not behave like a browser DOM;
+        # placing these state-owned children last causes the themed subwindow
+        # chrome to be composed over parts of the pulse in the live client.
+        # Default Modern uses this exact placement and renders the rails above
+        # the command frame, which is the behavior Reloaded and Glass need.
         attack_pieces = tuple(
             f"A_AttackIndicatorAnim{edge}"
             for edge in ("Top", "Bottom", "Left", "Right", "Fill")
@@ -612,11 +616,13 @@ def style_player() -> None:
             f"\n\t\t<Pieces>{piece}</Pieces>" for piece in attack_pieces
         )
         block, count = re.subn(
-            r"\n\t</Screen>$", pieces + "\n\t</Screen>", block,
+            r"(\n[ \t]*<Pieces>Screen:PlayerSubWindow</Pieces>)",
+            r"\1" + pieces,
+            block,
             count=1,
         )
         if count != 1:
-            fail("PlayerWindow root has no closing Screen tag")
+            fail("PlayerWindow root has no PlayerSubWindow piece")
         return block
 
     text = change_item(text, "Screen", "PlayerWindow", root_style)

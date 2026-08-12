@@ -282,9 +282,16 @@ def audit_attack_indicator_contract() -> None:
                 f"A_AttackIndicatorAnim{edge}"
                 for edge in ("Top", "Bottom", "Left", "Right", "Fill")
             ]
-            if (pieces[-5:] != expected_pieces
+            player_subwindow_index = pieces.index("Screen:PlayerSubWindow")
+            compositor_slice = pieces[
+                player_subwindow_index + 1:player_subwindow_index + 6
+            ]
+            if (compositor_slice != expected_pieces
                     or any(pieces.count(piece) != 1 for piece in expected_pieces)):
-                fail(f"{label} attack rails must be unique and render topmost")
+                fail(
+                    f"{label} attack rails must be unique and immediately "
+                    "follow PlayerSubWindow in the native compositor slot"
+                )
 
             combat_state = item(root, "Button", "PW_CombatStateAnim")
             if child_text(combat_state, "Style_Transparent") != "false":

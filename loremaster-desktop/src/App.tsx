@@ -299,8 +299,17 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
 }) {
   const [manualPath, setManualPath] = useState(health.configuredPath);
   const [draft, setDraft] = useState(settings);
+  const [activeSoundMenu, setActiveSoundMenu] = useState<AlertSoundKind | null>(null);
   const [updateInfo, setUpdateInfo] = useState<Awaited<ReturnType<NonNullable<typeof window.loremasterDesktop>["checkForUpdates"]>> | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  useEffect(() => {
+    if (!activeSoundMenu) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setActiveSoundMenu(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [activeSoundMenu]);
   const chooseFolder = async () => {
     const selected = await window.loremasterDesktop?.chooseLogFolder();
     if (selected) setManualPath(selected);
@@ -323,12 +332,16 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
     ...current, alerts: { ...current.alerts, ...value },
   }));
   const patchSoundProfile = (kind: AlertSoundKind, preset: AlertSoundPreset) => {
-    patchAlerts({
-      soundProfiles: {
-        ...draft.alerts.soundProfiles,
-        [kind]: { ...draft.alerts.soundProfiles[kind], preset },
+    setDraft((current) => ({
+      ...current,
+      alerts: {
+        ...current.alerts,
+        soundProfiles: {
+          ...current.alerts.soundProfiles,
+          [kind]: { ...current.alerts.soundProfiles[kind], preset },
+        },
       },
-    });
+    }));
   };
   const chooseCustomSound = async (kind: AlertSoundKind) => {
     const synchronized = await window.loremasterDesktop?.updateSettings({ alerts: draft.alerts });
@@ -337,6 +350,14 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
     if (!saved) return;
     setDraft(saved);
     onSettings(saved);
+  };
+  const selectSoundPreset = async (kind: AlertSoundKind, preset: AlertSoundPreset) => {
+    setActiveSoundMenu(null);
+    if (preset === "custom" && !draft.alerts.soundProfiles[kind].customPath) {
+      await chooseCustomSound(kind);
+      return;
+    }
+    patchSoundProfile(kind, preset);
   };
   const savePreferences = async () => {
     const saved = await window.loremasterDesktop?.updateSettings({
@@ -478,17 +499,29 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
           {soundKinds.map((kind) => {
             const profile = draft.alerts.soundProfiles[kind.id];
             const customName = profile.customPath.split(/[\\/]/).pop() || "Choose an audio file";
+            const presetLabel = soundPresets.find((preset) => preset.id === profile.preset)?.label ?? "Rune Pulse";
+            const menuOpen = activeSoundMenu === kind.id;
             return <section className="sound-profile" key={kind.id}>
               <span><b>{kind.label}</b><small>{kind.detail}</small></span>
-              <select aria-label={`${kind.label} sound`} value={profile.preset}
-                onChange={(event) => patchSoundProfile(kind.id, event.target.value as AlertSoundPreset)}>
-                {soundPresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.label}</option>)}
-              </select>
+              <button className={`sound-preset-trigger ${menuOpen ? "open" : ""}`} type="button"
+                aria-label={`${kind.label} sound preset`}
+                aria-haspopup="listbox" aria-expanded={menuOpen}
+                onClick={() => setActiveSoundMenu((current) => current === kind.id ? null : kind.id)}>
+                <span>{presetLabel}</span><i aria-hidden="true" />
+              </button>
               {profile.preset === "custom" && <button className="sound-file" type="button"
                 title={profile.customPath || "No custom sound selected"}
                 onClick={() => void chooseCustomSound(kind.id)}>{customName}</button>}
               <button className="sound-preview" type="button" aria-label={`Preview ${kind.label} sound`}
                 onClick={() => void previewConfiguredSound(kind.id, profile, kind.id === "tell" || kind.id === "nameCalled" ? "info" : kind.id === "bigHit" || kind.id === "mez" || kind.id === "lull" ? "warn" : "danger")}>▶</button>
+              {menuOpen && <div className="sound-preset-menu" role="listbox" aria-label={`${kind.label} sound choices`}>
+                {soundPresets.map((preset) => <button type="button" role="option"
+                  aria-selected={profile.preset === preset.id}
+                  className={profile.preset === preset.id ? "selected" : ""}
+                  key={preset.id} onClick={() => void selectSoundPreset(kind.id, preset.id)}>
+                  <i aria-hidden="true" /><span>{preset.label}</span>
+                </button>)}
+              </div>}
             </section>;
           })}
         </div>

@@ -713,15 +713,22 @@ body {
 .sound-profile > span b { color: var(--lm-text); }
 .sound-profile > span small,
 .sound-note { color: var(--lm-dim); }
-.sound-profile select {
+.sound-preset-trigger,
+.sound-preset-menu {
   color: var(--lm-text);
   border-color: rgba(var(--lm-line-rgb), .52);
   background: var(--lm-inset-bg);
 }
-.sound-profile select:focus-visible {
+.sound-preset-trigger:hover,
+.sound-preset-trigger.open,
+.sound-preset-trigger:focus-visible {
   border-color: var(--lm-line-bright);
   box-shadow: 0 0 0 2px rgba(var(--lm-primary-rgb), .12);
 }
+.sound-preset-menu button { color: var(--lm-dim); }
+.sound-preset-menu button:hover,
+.sound-preset-menu button:focus-visible { color: var(--lm-text); border-color: var(--lm-line); background: rgba(var(--lm-primary-rgb), .07); }
+.sound-preset-menu button.selected { color: var(--lm-primary); border-color: rgba(var(--lm-primary-rgb), .54); background: rgba(var(--lm-primary-rgb), .11); }
 .sound-profile .sound-preview { color: var(--lm-primary); }
 .sound-profile .sound-file { color: var(--lm-secondary); }
 

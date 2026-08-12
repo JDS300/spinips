@@ -348,9 +348,18 @@ body.control-window { background: transparent; }
 .sound-profile>span { min-width:0; display:grid; gap:2px; }
 .sound-profile>span b { color:#dce9f1; font:600 10px "Segoe UI",sans-serif; }
 .sound-profile>span small,.sound-note { color:var(--dim); font:400 8px/1.35 "Segoe UI",sans-serif; }
-.sound-profile select { min-width:0; height:28px; border:1px solid var(--line); border-radius:6px; padding:0 6px; color:#dce9f1; background:#080c12; font:600 9px "Segoe UI",sans-serif; }
+.sound-preset-trigger { min-width:0; width:100%; height:28px; display:flex; align-items:center; justify-content:space-between; gap:6px; border:1px solid var(--line); border-radius:6px; padding:0 7px; color:#dce9f1; background:#080c12; font:600 9px "Segoe UI",sans-serif; text-align:left; }
+.sound-preset-trigger span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sound-preset-trigger>i { width:6px; height:6px; flex:0 0 auto; border-right:1px solid currentColor; border-bottom:1px solid currentColor; transform:translateY(-2px) rotate(45deg); transition:transform .14s ease; }
+.sound-preset-trigger.open>i { transform:translateY(2px) rotate(225deg); }
 .sound-profile .sound-preview { width:28px; height:28px; padding:0; color:var(--cyan); }
 .sound-profile .sound-file { grid-column:2/4; min-width:0; overflow:hidden; padding:5px 7px; color:var(--gold); font-size:8px; text-align:left; text-overflow:ellipsis; white-space:nowrap; }
+.sound-preset-menu { grid-column:1/4; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; border:1px solid var(--line); border-radius:8px; padding:6px; background:#080c12; box-shadow:0 9px 22px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.04); }
+.sound-preset-menu button { min-width:0; min-height:27px; display:flex; align-items:center; gap:6px; padding:5px 7px; border-color:var(--soft-line); text-align:left; }
+.sound-preset-menu button>i { width:6px; height:6px; flex:0 0 auto; border:1px solid currentColor; border-radius:50%; opacity:.48; }
+.sound-preset-menu button>span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sound-preset-menu button.selected { color:var(--gold); border-color:var(--line); background:rgba(214,173,103,.09); }
+.sound-preset-menu button.selected>i { border-color:currentColor; background:currentColor; box-shadow:0 0 6px currentColor; opacity:1; }
 .sound-note { display:block; padding-top:2px; }
 
 .settings-toggle { position: relative; display: flex; align-items: center; gap: 12px; min-height: 39px; border-top: 1px solid rgba(91,123,151,.13); cursor: pointer; }
