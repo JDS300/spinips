@@ -17,17 +17,16 @@ from pathlib import Path
 
 from PIL import Image
 
-from generate_spinui_textures import save_tga
-
-
 REPO = Path(__file__).resolve().parent.parent
 OUTPUT = REPO / "spinui_reloaded" / "AttackIndicator.tga"
 FRAME_SIZE = (128, 32)
 SIZE = FRAME_SIZE
-EDGE_WIDTH = 5
-# Modern uses 189 gray.  Full neutral white preserves the same native tint
-# animation while raising its red peak to 255 for dark Reloaded/Glass frames.
-COLOR = (255, 255, 255, 255)
+EDGE_WIDTH = 8
+# Use the exact neutral source proven by EQ's working Modern UI.  The client
+# modulates this gray to its bright neutral/red phases only while attack is on.
+# Pre-coloring it red collapses the modulation, and an uncompressed 32-bit
+# pure-white texture is an unproven legacy-renderer combination.
+COLOR = (189, 189, 189, 255)
 
 
 def render() -> Image.Image:
@@ -36,10 +35,12 @@ def render() -> Image.Image:
 
 def main() -> int:
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    save_tga(render(), OUTPUT)
+    # RLE 32-bit is the known-working Modern TGA envelope.  For this solid
+    # source Pillow emits a deterministic 204-byte file (type 10, alpha 8).
+    render().save(OUTPUT, format="TGA", compression="tga_rle")
     print(
-        "AttackIndicator.tga: full-bright neutral attack rail painted | "
-        "EverQuest tint-driven red flash | no fill wash"
+        "AttackIndicator.tga: native neutral RLE attack rail painted | "
+        "8px EverQuest tint-driven pulse | no fill wash"
     )
     return 0
 

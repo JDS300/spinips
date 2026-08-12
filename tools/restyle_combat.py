@@ -64,9 +64,24 @@ EFFECT_NAME_WIDTH = EFFECT_ROW_WIDTH - EFFECT_NAME_X - EFFECT_NAME_TAIL
 # so users may resize them without clipping the command rows.
 PLAYER_MIN_SIZE = (280, 174)
 TARGET_MIN_SIZE = (260, 174)
-ATTACK_EDGE_WIDTH = 5
+# EverQuest recognizes the attack indicator by exact animation and ScreenID
+# names, then owns its attack-on visibility and pulse.  Keep the proven stock
+# source slices byte-for-byte compatible and make only the destination rails
+# bolder.  Eight screen pixels remains clear at high resolutions without
+# washing over the command-frame contents.
+ATTACK_EDGE_WIDTH = 8
 ATTACK_FRAME_SIZE = (128, 32)
 ATTACK_TEXTURE_SIZE = ATTACK_FRAME_SIZE
+ATTACK_SOURCE_SIZES = {
+    "A_AttackIndicator": ATTACK_FRAME_SIZE,
+    "A_AttackIndicatorTop": (128, 2),
+    "A_AttackIndicatorBottom": (128, 2),
+    "A_AttackIndicatorLeft": (2, 32),
+    # This asymmetric crop is intentional.  It is the native contract used by
+    # the working Default, Default Light, and Default Modern player windows.
+    "A_AttackIndicatorRight": (128, 2),
+    "A_AttackIndicatorFill": ATTACK_FRAME_SIZE,
+}
 
 # Older SpinUI releases exposed a large collection of visual variants.  Most of
 # those files predate the July Legends schema and can lose live controls when a
@@ -442,19 +457,10 @@ def style_player() -> None:
             b, "Size", CX=ATTACK_TEXTURE_SIZE[0], CY=ATTACK_TEXTURE_SIZE[1]),
     )
 
-    attack_animations = {
-        "A_AttackIndicator": ATTACK_FRAME_SIZE,
-        "A_AttackIndicatorTop": (ATTACK_FRAME_SIZE[0], ATTACK_EDGE_WIDTH),
-        "A_AttackIndicatorBottom": (ATTACK_FRAME_SIZE[0], ATTACK_EDGE_WIDTH),
-        "A_AttackIndicatorLeft": (ATTACK_EDGE_WIDTH, ATTACK_FRAME_SIZE[1]),
-        "A_AttackIndicatorRight": (ATTACK_EDGE_WIDTH, ATTACK_FRAME_SIZE[1]),
-        "A_AttackIndicatorFill": ATTACK_FRAME_SIZE,
-    }
-
     def attack_animation(block: str, size: tuple[int, int]) -> str:
-        # Match the working Modern UI contract exactly: EverQuest toggles and
-        # flashes these stock-named widgets itself.  A custom Cycle can look
-        # correct in static audits while never advancing in the live client.
+        # Match the working native source contract exactly: EverQuest toggles,
+        # tints, and flashes these stock-named widgets itself.  A custom Cycle
+        # can look correct in static audits while never advancing in game.
         block = set_value(block, "Cycle", "false")
         block = re.sub(r"\n\t\t<Frames>.*?</Frames>", "", block,
                        flags=re.DOTALL)
@@ -478,7 +484,7 @@ def style_player() -> None:
         )
         return block[:cycle_end] + frames + block[cycle_end:]
 
-    for name, size in attack_animations.items():
+    for name, size in ATTACK_SOURCE_SIZES.items():
         text = change_item(
             text, "Ui2DAnimation", name,
             lambda b, s=size: attack_animation(b, s),
@@ -513,6 +519,13 @@ def style_player() -> None:
     text = change_item(
         text, "StaticAnimation", "A_AttackIndicatorAnimFill", attack_fill,
     )
+    # Preserve the stock command-state button contract as well.  This is a
+    # separate native widget, but matching the proven player-window semantics
+    # avoids a transparent child swallowing state-driven rendering.
+    text = change_item(
+        text, "Button", "PW_CombatStateAnim",
+        lambda b: set_value(b, "Style_Transparent", "false"),
+    )
     # change_item intentionally starts at the element's opening ``<`` and
     # leaves its existing line prefix in place.  Older generator runs returned
     # an additional leading tab here, so normalize the one stock placeholder
@@ -537,8 +550,8 @@ def style_player() -> None:
         # live client; the compact PlayerSubWindow remains the visible frame.
         block = set_value(block, "Style_Border", "false")
         block = set_value(block, "Style_Sizable", "true")
-        # Draw the native rails last so the buff canvas and drag surfaces
-        # cannot cover the top edge at their shared y=70 boundary.
+        # Draw the native rails last so Reloaded/Glass chrome, the buff canvas,
+        # and drag surfaces cannot cover any edge of the attack perimeter.
         attack_pieces = tuple(
             f"A_AttackIndicatorAnim{edge}"
             for edge in ("Top", "Bottom", "Left", "Right", "Fill")

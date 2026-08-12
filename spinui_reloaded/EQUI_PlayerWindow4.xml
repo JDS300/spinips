@@ -37,7 +37,7 @@
 			</Location>
 			<Size>
 				<CX>128</CX>
-				<CY>5</CY>
+				<CY>2</CY>
 			</Size>
 		</Frames>
 	</Ui2DAnimation>
@@ -52,7 +52,7 @@
 			</Location>
 			<Size>
 				<CX>128</CX>
-				<CY>5</CY>
+				<CY>2</CY>
 			</Size>
 		</Frames>
 	</Ui2DAnimation>
@@ -66,7 +66,7 @@
 				<Y>0</Y>
 			</Location>
 			<Size>
-				<CX>5</CX>
+				<CX>2</CX>
 				<CY>32</CY>
 			</Size>
 		</Frames>
@@ -81,8 +81,8 @@
 				<Y>0</Y>
 			</Location>
 			<Size>
-				<CX>5</CX>
-				<CY>32</CY>
+				<CX>128</CX>
+				<CY>2</CY>
 			</Size>
 		</Frames>
 	</Ui2DAnimation>
@@ -108,7 +108,7 @@
 		<AutoDraw>false</AutoDraw>
 		<AutoStretch>true</AutoStretch>
 		<TopAnchorOffset>70</TopAnchorOffset>
-		<BottomAnchorOffset>75</BottomAnchorOffset>
+		<BottomAnchorOffset>78</BottomAnchorOffset>
 		<LeftAnchorOffset>0</LeftAnchorOffset>
 		<RightAnchorOffset>0</RightAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
@@ -122,7 +122,7 @@
 		<Animation>A_AttackIndicatorBottom</Animation>
 		<AutoDraw>false</AutoDraw>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>7</TopAnchorOffset>
+		<TopAnchorOffset>10</TopAnchorOffset>
 		<BottomAnchorOffset>2</BottomAnchorOffset>
 		<LeftAnchorOffset>0</LeftAnchorOffset>
 		<RightAnchorOffset>0</RightAnchorOffset>
@@ -140,7 +140,7 @@
 		<TopAnchorOffset>70</TopAnchorOffset>
 		<BottomAnchorOffset>2</BottomAnchorOffset>
 		<LeftAnchorOffset>0</LeftAnchorOffset>
-		<RightAnchorOffset>5</RightAnchorOffset>
+		<RightAnchorOffset>8</RightAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
 		<BottomAnchorToTop>false</BottomAnchorToTop>
 		<LeftAnchorToLeft>true</LeftAnchorToLeft>
@@ -154,7 +154,7 @@
 		<AutoStretch>true</AutoStretch>
 		<TopAnchorOffset>70</TopAnchorOffset>
 		<BottomAnchorOffset>2</BottomAnchorOffset>
-		<LeftAnchorOffset>5</LeftAnchorOffset>
+		<LeftAnchorOffset>8</LeftAnchorOffset>
 		<RightAnchorOffset>0</RightAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
 		<BottomAnchorToTop>false</BottomAnchorToTop>
@@ -321,7 +321,7 @@
 	<Button item="PW_CombatStateAnim">
 		<ScreenID>PW_CombatStateAnim</ScreenID>
 		<RelativePosition>true</RelativePosition>
-		<Style_Transparent>true</Style_Transparent>
+		<Style_Transparent>false</Style_Transparent>
 		<Style_Checkbox>false</Style_Checkbox>
 		<DecalSize>
 			<CX>13</CX>
