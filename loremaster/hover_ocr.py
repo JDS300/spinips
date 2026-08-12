@@ -38,6 +38,7 @@ ROI_WIDTH = 960
 ROI_HEIGHT = 720
 OCR_SCALE = 2
 OCR_TIMEOUT_SECONDS = 5.0
+GAME_WINDOW_TIMEOUT_SECONDS = 30.0
 # The only process a capture may ever come from, on either platform.
 EQ_PROCESS_NAME = "eqgame.exe"
 # A blank capture is rejected below this sampled luminance spread.
@@ -393,6 +394,11 @@ def _capture_hovered_tooltip_x11() -> HoverCapture:
             ROI_WIDTH, ROI_HEIGHT, expected_process=EQ_PROCESS_NAME)
     except linux_capture.LinuxCaptureError as exc:
         raise HoverCaptureError(str(exc)[:240]) from exc
+    return _hover_capture_from_region(region)
+
+
+def _hover_capture_from_region(region) -> HoverCapture:
+    """Wrap a verified X11 region in the same contract the Win32 path returns."""
     variance = _luminance_range(
         region.pixels, region.region_width, region.region_height, region.stride)
     if variance < MIN_LUMINANCE_RANGE:
@@ -415,6 +421,40 @@ def _capture_hovered_tooltip_x11() -> HoverCapture:
             region.stride),
         luminance_range=variance,
     )
+
+
+# The Alt+Z panel sits wherever the player left it, and the scan is started
+# from a button, so the pointer is usually not on it -- often not even on the
+# same monitor. Framing that scan on the cursor reads terrain. The whole game
+# window is captured instead, and at 1:1 rather than the tooltip path's 2x,
+# because a full window upscaled is far too large to hand to tesseract.
+GAME_WINDOW_LIMIT = 4096
+
+
+def capture_game_window() -> HoverCapture:
+    """Freeze the whole verified EverQuest window, not a cursor region."""
+    if os.name == "nt":
+        # Unchanged on Windows, where this scan already works from its hotkey.
+        return capture_hovered_tooltip()
+    import linux_capture  # Imported lazily so Windows never loads libX11.
+
+    try:
+        region = linux_capture.capture_active_window_region(
+            GAME_WINDOW_LIMIT, GAME_WINDOW_LIMIT, expected_process=EQ_PROCESS_NAME)
+    except linux_capture.LinuxCaptureError as exc:
+        raise HoverCaptureError(str(exc)[:240]) from exc
+    return _hover_capture_from_region(region)
+
+
+def scan_game_window(capture: HoverCapture,
+                     cancel_event: threading.Event | None = None,
+                     timeout: float = OCR_TIMEOUT_SECONDS
+                     ) -> tuple[list[str], list[OcrLine]]:
+    """OCR a whole-window capture at 1:1."""
+    if os.name == "nt":
+        return scan_hovered_tooltip(capture, cancel_event, timeout)
+    return _scan_hovered_tooltip_tesseract(
+        capture, cancel_event, max(timeout, GAME_WINDOW_TIMEOUT_SECONDS), scale=1)
 
 
 def capture_hovered_tooltip() -> HoverCapture:
@@ -649,7 +689,8 @@ def cleanup_stale_scan_dirs(root: Path | None = None, *, now: float | None = Non
 
 def _scan_hovered_tooltip_tesseract(
         capture: HoverCapture, cancel_event: threading.Event | None,
-        timeout: float) -> tuple[list[str], list[OcrLine]]:
+        timeout: float, scale: int = OCR_SCALE
+        ) -> tuple[list[str], list[OcrLine]]:
     """OCR an already-frozen capture with one bounded tesseract process.
 
     The frozen pixels arrive as the same 24-bit BMP the Windows worker gets, so
@@ -664,7 +705,7 @@ def _scan_hovered_tooltip_tesseract(
     try:
         pixels, width, height, stride = linux_capture.bgr_from_bmp(capture.bmp_bytes)
         rows = linux_capture.recognize_lines(
-            pixels, width, height, stride, scale=OCR_SCALE,
+            pixels, width, height, stride, scale=scale,
             cancel_event=cancel_event,
             # Tesseract on a 2x-upscaled full ROI needs more headroom than the
             # WinRT engine; the caller's budget is a floor, never a ceiling.

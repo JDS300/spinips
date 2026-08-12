@@ -44,7 +44,7 @@ except (ImportError, AttributeError):
     normalize_composition = runtime_module.normalize_composition
 from lull_timer import LullTracker
 from mez_timer import MezTracker
-from hover_ocr import HoverOcrService
+from hover_ocr import HoverOcrService, capture_game_window, scan_game_window
 from instance_lockout_ocr import (
     ParsedRaidLockout, parse_instance_character, parse_instance_lockouts)
 from weekly_tracker import DIFFICULTIES, WeeklyBossTracker
@@ -81,7 +81,10 @@ class HeadlessEngine:
             "hotkey": "Ctrl+Shift+Z",
         }
         self._lockout_request_id = 0
-        self.lockout_ocr = HoverOcrService()
+        # The Alt+Z panel is wherever the player put it, so this scan reads the
+        # whole game window rather than a region framed on the cursor.
+        self.lockout_ocr = HoverOcrService(
+            scanner=scan_game_window, capture_factory=capture_game_window)
         self._load_instance_lockouts()
         self.raid_difficulty: int | None = None
         self.configured_composition = ""
