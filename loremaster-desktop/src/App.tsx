@@ -846,7 +846,14 @@ function MainApp() {
           </summary>
           {weekly.pendingRaidTarget && <p className="raid-pending"><b>{weekly.pendingRaidTarget}</b> is awaiting the D0–D4 confirmation shown above.</p>}
           {weekly.altZScan && <section className={`altz-sync ${weekly.altZScan.status}`}>
-            <header><div><small>LIVE INSTANCE EVIDENCE</small><b>{weekly.altZScan.status === "scanning" ? "READING ALT+Z…" : weekly.altZLockouts?.length ? `${weekly.altZLockouts.length} ACTIVE RAID LOCKOUT${weekly.altZLockouts.length === 1 ? "" : "S"}` : "ALT+Z LOCKOUT SYNC"}</b></div><kbd>{weekly.altZScan.hotkey}</kbd></header>
+            <header><div><small>LIVE INSTANCE EVIDENCE</small><b>{weekly.altZScan.status === "scanning" ? "READING ALT+Z…" : weekly.altZLockouts?.length ? `${weekly.altZLockouts.length} ACTIVE RAID LOCKOUT${weekly.altZLockouts.length === 1 ? "" : "S"}` : "ALT+Z LOCKOUT SYNC"}</b></div><button type="button" className="altz-scan"
+              onClick={() => window.loremasterDesktop?.scanLockouts()}
+              disabled={weekly.altZScan.status === "scanning"}
+              title={weekly.altZScan.hotkey
+                ? `Scan the Alt+Z window now (${weekly.altZScan.hotkey})`
+                : "Scan the Alt+Z window now"}>
+              {weekly.altZScan.status === "scanning" ? "SCANNING…" : "SCAN"}
+            </button></header>
             <p>{weekly.altZScan.detail}</p>
             {(weekly.altZLockouts?.length ?? 0) > 0 && <div className="altz-lockouts">
               {weekly.altZLockouts?.map((lockout) => <article key={`${lockout.target}-${lockout.difficulty}`} title={`${lockout.instanceName} · ${lockout.eventName}`}>

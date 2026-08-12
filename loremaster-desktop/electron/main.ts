@@ -1644,19 +1644,25 @@ function createWindow(): void {
 }
 
 function registerLockoutScanHotkey(): void {
+  // Off unless asked for. A global shortcut is claimed system-wide, and the
+  // previous default of Ctrl+Shift+Z is Redo nearly everywhere -- on Wayland it
+  // also raises a desktop portal prompt reporting the conflict. The scan is
+  // reachable from the lockout panel, so nothing is lost by not grabbing a key.
+  const accelerator = (process.env.LOREMASTER_LOCKOUT_HOTKEY ?? "").trim();
+  if (!accelerator) return;
   let registered = false;
   try {
-    registered = globalShortcut.register("CommandOrControl+Shift+Z", () => engine?.scanAltZLockouts());
+    registered = globalShortcut.register(accelerator, () => engine?.scanAltZLockouts());
   } catch (error) {
     // Some X11 setups reject the grab outright rather than returning false.
-    console.error("Could not register the Ctrl+Shift+Z Alt+Z lockout scan hotkey", error);
+    console.error(`Could not register the ${accelerator} lockout scan hotkey`, error);
   }
   if (registered) return;
-  console.error("Could not register the Ctrl+Shift+Z Alt+Z lockout scan hotkey");
+  console.error(`Could not register the ${accelerator} lockout scan hotkey`);
   notifyUser(
     "Loremaster hotkey unavailable",
-    "Ctrl+Shift+Z is already claimed by another app, so Alt+Z lockout scanning is off."
-      + " Free that shortcut and restart Loremaster, or tick raid lockouts by hand.",
+    `${accelerator} is already claimed by another application.`
+      + " Use the scan button in the lockout panel, or pick a free shortcut.",
   );
 }
 
@@ -1697,6 +1703,7 @@ ipcMain.handle("engine:set-raid-completion", (_event, target: unknown, difficult
   return true;
 });
 ipcMain.on("engine:reset", () => engine?.reset());
+ipcMain.on("engine:scan-lockouts", () => engine?.scanAltZLockouts());
 ipcMain.on("alerts:test", () => {
   positionAlertWindow();
   alertWindow?.webContents.send("alerts:test", {
