@@ -74,8 +74,9 @@ def _target_from_event(value: str) -> str:
     if not candidate:
         return ""
     # The compact red Cazic-Thule row in Legends is consistently mangled by
-    # Windows OCR even at high capture scale. Keep this deliberately narrow:
-    # a broad fuzzy threshold would risk crediting the wrong weekly boss.
+    # Windows OCR even at high capture scale; the Linux Tesseract backend has
+    # not been measured against that row. Keep this deliberately narrow: a
+    # broad fuzzy threshold would risk crediting the wrong weekly boss.
     if candidate in _OCR_EVENT_ALIASES:
         return _OCR_EVENT_ALIASES[candidate]
     direct: dict[str, str] = {}

@@ -5,6 +5,12 @@ with typed Win32 GDI calls.  An immutable capture is then handed to one
 bounded worker, which asks a hidden Windows PowerShell process to decode,
 scale, and recognize it with Windows.Media.Ocr.  Nothing inspects or injects
 into ``eqgame.exe`` and neither Tk nor network code runs on the OCR worker.
+
+Linux players run the client through Wine, so the same two steps -- freeze,
+then recognize -- resolve to an X11/XWayland backend in :mod:`linux_capture`.
+Only those two functions differ; the immutable capture record, the candidate
+ranking and the bounded worker are shared, and the Windows paths below are
+untouched by the Linux ones.
 """
 
 from __future__ import annotations
@@ -32,6 +38,10 @@ ROI_WIDTH = 960
 ROI_HEIGHT = 720
 OCR_SCALE = 2
 OCR_TIMEOUT_SECONDS = 5.0
+# The only process a capture may ever come from, on either platform.
+EQ_PROCESS_NAME = "eqgame.exe"
+# A blank capture is rejected below this sampled luminance spread.
+MIN_LUMINANCE_RANGE = 6
 MAX_OCR_STDOUT_BYTES = 256 * 1024
 MAX_CANDIDATES = 4
 STALE_SCAN_SECONDS = 24 * 60 * 60
@@ -368,8 +378,49 @@ def _luminance_range(pixels: bytes, width: int, height: int, stride: int,
     return max(0, high - low)
 
 
+def _capture_hovered_tooltip_x11() -> HoverCapture:
+    """Freeze the cursor ROI from the verified EverQuest window under X11.
+
+    The X11 backend reads the game window's own drawable rather than the root
+    window, so the region is clamped to the window instead of to the desktop.
+    Everything after this point -- the BMP, the blank-frame guard, the
+    metadata contract -- is identical to the Win32 path above.
+    """
+    import linux_capture  # Imported lazily so Windows never loads libX11.
+
+    try:
+        region = linux_capture.capture_active_window_region(
+            ROI_WIDTH, ROI_HEIGHT, expected_process=EQ_PROCESS_NAME)
+    except linux_capture.LinuxCaptureError as exc:
+        raise HoverCaptureError(str(exc)[:240]) from exc
+    variance = _luminance_range(
+        region.pixels, region.region_width, region.region_height, region.stride)
+    if variance < MIN_LUMINANCE_RANGE:
+        raise HoverCaptureError(
+            "The EQ frame was blank; try windowed or borderless mode.")
+    metadata = CaptureMetadata(
+        cursor_x=region.cursor_x, cursor_y=region.cursor_y,
+        region_left=region.region_left, region_top=region.region_top,
+        region_width=region.region_width, region_height=region.region_height,
+        # X11 has no HWND; the window id plays the same identifying role.
+        foreground_hwnd=region.window, foreground_pid=region.pid,
+        captured_at=time.time(),
+        virtual_left=region.screen_left, virtual_top=region.screen_top,
+        virtual_width=region.screen_width, virtual_height=region.screen_height,
+    )
+    return HoverCapture(
+        metadata=metadata,
+        bmp_bytes=_bmp_from_bgr(
+            region.pixels, region.region_width, region.region_height,
+            region.stride),
+        luminance_range=variance,
+    )
+
+
 def capture_hovered_tooltip() -> HoverCapture:
     """Synchronously freeze the cursor ROI from the exact foreground EQ HWND."""
+    if os.name != "nt":
+        return _capture_hovered_tooltip_x11()
     user32, gdi32, kernel32 = _typed_win32_libraries()
     from ctypes import wintypes
 
@@ -385,7 +436,7 @@ def capture_hovered_tooltip() -> HoverCapture:
         pid = wintypes.DWORD()
         if not user32.GetWindowThreadProcessId(foreground, ctypes.byref(pid)) or not pid.value:
             raise HoverCaptureError("EverQuest foreground window could not be verified.")
-        if _process_image_name(kernel32, int(pid.value)) != "eqgame.exe":
+        if _process_image_name(kernel32, int(pid.value)) != EQ_PROCESS_NAME:
             raise HoverCaptureError("Hover scan only captures EverQuest.")
 
         cursor = _Point()
@@ -437,7 +488,7 @@ def capture_hovered_tooltip() -> HoverCapture:
         gdi32.GdiFlush()
         pixels = bytes(ctypes.string_at(bits.value, image_size))
         variance = _luminance_range(pixels, width, height, stride)
-        if variance < 6:
+        if variance < MIN_LUMINANCE_RANGE:
             raise HoverCaptureError(
                 "The EQ frame was blank; try windowed or borderless mode.")
         metadata = CaptureMetadata(
@@ -596,12 +647,44 @@ def cleanup_stale_scan_dirs(root: Path | None = None, *, now: float | None = Non
     return removed
 
 
+def _scan_hovered_tooltip_tesseract(
+        capture: HoverCapture, cancel_event: threading.Event | None,
+        timeout: float) -> tuple[list[str], list[OcrLine]]:
+    """OCR an already-frozen capture with one bounded tesseract process.
+
+    The frozen pixels arrive as the same 24-bit BMP the Windows worker gets, so
+    they are unpacked and upscaled by :data:`OCR_SCALE` here exactly as
+    BitmapTransform does there.  No temporary file is written: tesseract reads
+    the image from its stdin, so a crashed scan leaves nothing behind.
+    """
+    import linux_capture  # Imported lazily so Windows never loads this path.
+
+    if cancel_event is not None and cancel_event.is_set():
+        raise RuntimeError("Hover scan cancelled.")
+    try:
+        pixels, width, height, stride = linux_capture.bgr_from_bmp(capture.bmp_bytes)
+        rows = linux_capture.recognize_lines(
+            pixels, width, height, stride, scale=OCR_SCALE,
+            cancel_event=cancel_event,
+            # Tesseract on a 2x-upscaled full ROI needs more headroom than the
+            # WinRT engine; the caller's budget is a floor, never a ceiling.
+            timeout=max(float(timeout), linux_capture.TESSERACT_TIMEOUT_SECONDS))
+    except linux_capture.LinuxOcrCancelled as exc:
+        raise RuntimeError("Hover scan cancelled.") from exc
+    except linux_capture.LinuxCaptureError as exc:
+        raise RuntimeError(str(exc)[:240]) from exc
+    lines = [OcrLine(text=row.text, x=row.x, y=row.y,
+                     width=row.width, height=row.height) for row in rows]
+    candidates = rank_item_candidates(lines, *capture.metadata.cursor_in_region)
+    return candidates, lines
+
+
 def scan_hovered_tooltip(capture: HoverCapture,
                          cancel_event: threading.Event | None = None,
                          timeout: float = OCR_TIMEOUT_SECONDS) -> tuple[list[str], list[OcrLine]]:
     """Decode and OCR an already-frozen capture in one hidden worker process."""
     if os.name != "nt":
-        raise RuntimeError("Hover scan is available on Windows only.")
+        return _scan_hovered_tooltip_tesseract(capture, cancel_event, timeout)
     if cancel_event is not None and cancel_event.is_set():
         raise RuntimeError("Hover scan cancelled.")
     script = _powershell_script()
@@ -674,6 +757,22 @@ def scan_hovered_tooltip(capture: HoverCapture,
             pass
 
 
+def _backend_problem() -> str:
+    """Report an OCR backend that cannot work yet, without capturing anything.
+
+    Windows ships its OCR engine with the operating system, so there is nothing
+    to check there and this stays empty.
+    """
+    if os.name == "nt":
+        return ""
+    try:
+        import linux_capture
+
+        return linux_capture.readiness_problem()[:240]
+    except (ImportError, OSError, RuntimeError):
+        return ""
+
+
 class HoverOcrService:
     """One bounded OCR worker; capture itself is synchronous and immutable."""
 
@@ -692,6 +791,11 @@ class HoverOcrService:
         self._closed = threading.Event()
         self._cancel_lock = threading.Lock()
         self._active_cancel: threading.Event | None = None
+        # A player whose distribution ships tesseract without its language data
+        # is in a confusing state: the tool is installed and the feature still
+        # cannot work.  Detecting it here lets a UI say so before the first
+        # hotkey press; an empty string means the backend is ready.
+        self.backend_problem = _backend_problem()
         cleanup_stale_scan_dirs()
         self._thread = threading.Thread(target=self._run, name="LoremasterHoverOCR", daemon=True)
         self._thread.start()

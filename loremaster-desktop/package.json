@@ -4,12 +4,14 @@
   "version": "0.1.0",
   "author": "SpinUI",
   "description": "Live EverQuest Legends combat, mez, lull, and weekly progress companion",
+  "desktopName": "loremaster.desktop",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
     "build": "tsc -p tsconfig.electron.json && tsc --noEmit && vite build",
     "preview": "electron .",
     "dist:windows": "pnpm build && electron-builder --win portable --x64 --publish never",
+    "dist:linux": "pnpm build && electron-builder --linux AppImage tar.gz --x64 --publish never",
     "test:fixtures": "node scripts/validate-fixture.mjs",
     "test:gear": "node scripts/test-gear-plan.cjs"
   },
@@ -46,16 +48,53 @@
       "dist-electron/**/*",
       "package.json"
     ],
-    "extraResources": [
-      {
-        "from": "../dist/LoremasterEngine.exe",
-        "to": "engine/LoremasterEngine.exe"
-      }
-    ],
     "win": {
-      "target": ["portable"],
+      "target": [
+        "portable"
+      ],
       "artifactName": "Loremaster.exe",
-      "icon": "../loremaster/assets/loremaster.ico"
+      "icon": "../loremaster/assets/loremaster.ico",
+      "extraResources": [
+        {
+          "from": "../dist/LoremasterEngine.exe",
+          "to": "engine/LoremasterEngine.exe"
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "tar.gz",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "executableName": "loremaster",
+      "category": "Game",
+      "synopsis": "Live EverQuest Legends combat, mez, lull, and weekly progress companion",
+      "syncDesktopName": true,
+      "icon": "../loremaster/assets/loremaster-256.png",
+      "artifactName": "Loremaster-${version}-${arch}.${ext}",
+      "extraResources": [
+        {
+          "from": "../loremaster",
+          "to": "engine",
+          "filter": [
+            "*.py"
+          ]
+        },
+        {
+          "from": "../loremaster/assets/plane_of_sky_quests.json",
+          "to": "engine/assets/plane_of_sky_quests.json"
+        }
+      ]
     }
   }
 }

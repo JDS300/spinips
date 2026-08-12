@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, screen, shell, Tray } from "electron";
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, shell, Tray } from "electron";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -16,6 +16,14 @@ import {
 
 const processStartedAt = performance.now();
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
+if (process.platform === "linux") {
+  // EverQuest runs under Proton/XWayland, and only the X11 backend gives the
+  // overlays working always-on-top, click-through, and global hotkeys; native
+  // Wayland silently drops all three. LOREMASTER_OZONE is the escape hatch.
+  const requested = (process.env.LOREMASTER_OZONE ?? "").trim().toLowerCase();
+  const ozone = ["x11", "wayland", "auto"].includes(requested) ? requested : "x11";
+  app.commandLine.appendSwitch("ozone-platform", ozone);
+}
 if (process.env.LOREMASTER_DESKTOP_DATA_DIR) {
   app.setPath("userData", path.resolve(process.env.LOREMASTER_DESKTOP_DATA_DIR));
 }
@@ -216,17 +224,170 @@ function saveSettings(settings: DesktopSettings): void {
   renameSync(temporary, target);
 }
 
+const WINDOWS_LOG_DIRECTORIES = [
+  "C:\\EQLegends\\Logs", "C:\\EQLegends",
+  "C:\\Users\\Public\\Daybreak Game Company\\Installed Games\\EverQuest Legends\\Logs",
+  "C:\\Users\\Public\\Daybreak Game Company\\Installed Games\\EverQuest Legends",
+  "C:\\Users\\Public\\Daybreak Game Company\\Installed Games\\EverQuest\\Logs",
+  "C:\\Users\\Public\\Daybreak Game Company\\Installed Games\\EverQuest",
+];
+
+// EverQuest folder shapes probed inside each Wine/Proton prefix. Wine does not
+// always map C:\Users\Public the way a real Windows install does, so the
+// Program Files layout is probed alongside it.
+// Proton names its only user profile "steamuser" rather than the real account
+// name, so an installer that wrote under the current user's profile on Windows
+// lands there instead of under users/Public.
+const WINE_LOG_SUBPATHS = [
+  "EQLegends",
+  "users/Public/Daybreak Game Company/Installed Games/EverQuest Legends",
+  "users/Public/Daybreak Game Company/Installed Games/EverQuest",
+  "users/steamuser/Daybreak Game Company/Installed Games/EverQuest Legends",
+  "users/steamuser/Daybreak Game Company/Installed Games/EverQuest",
+  "Program Files (x86)/Daybreak Game Company/Installed Games/EverQuest Legends",
+  "Program Files (x86)/Daybreak Game Company/Installed Games/EverQuest",
+];
+
+// Auto-detect runs on every engine start, so prefix enumeration is capped
+// rather than allowed to walk an arbitrarily large Steam library.
+const MAX_WINE_PREFIXES = 40;
+
+function subdirectoryNames(directory: string): string[] {
+  try {
+    return readdirSync(directory, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() || entry.isSymbolicLink())
+      .map((entry) => entry.name);
+  } catch {
+    // Absent or unreadable prefix parents are normal during auto-detect.
+    return [];
+  }
+}
+
+// Lutris writes one YAML per game carrying an absolute `prefix:` path. Reading
+// it is the only reliable way to find Lutris prefixes, which routinely live
+// outside $HOME on a separate drive and so are invisible to any home-relative
+// probe. Nested installer tasks repeat the same key; collecting every absolute
+// match and de-duplicating is simpler than parsing YAML, and a non-prefix path
+// costs only the drive_c existence check that every root already gets.
+function lutrisPrefixRoots(): string[] {
+  const home = app.getPath("home");
+  const configDirs = [
+    path.join(home, ".local", "share", "lutris", "games"),
+    path.join(home, ".var", "app", "net.lutris.Lutris", "data", "lutris", "games"),
+  ];
+  const roots: string[] = [];
+  for (const directory of configDirs) {
+    let names: string[];
+    try {
+      names = readdirSync(directory);
+    } catch {
+      continue;
+    }
+    for (const name of names) {
+      if (!name.endsWith(".yml")) continue;
+      try {
+        const text = readFileSync(path.join(directory, name), "utf8");
+        for (const match of text.matchAll(/^[ \t]*prefix:[ \t]*(\/[^\r\n]+?)[ \t]*$/gm)) {
+          roots.push(match[1]);
+        }
+      } catch {
+        // An unreadable or half-written game config is not fatal.
+      }
+    }
+  }
+  return roots;
+}
+
+function winePrefixRoots(): string[] {
+  const home = app.getPath("home");
+  const roots: string[] = [];
+  const configured = process.env.WINEPREFIX?.trim();
+  if (configured) roots.push(path.resolve(configured));
+  roots.push(path.join(home, ".wine"));
+  // Added before the compatdata sweep so a large Steam library cannot push
+  // Lutris prefixes past MAX_WINE_PREFIXES.
+  roots.push(...lutrisPrefixRoots());
+  const compatParents = [
+    path.join(home, ".steam", "steam", "steamapps", "compatdata"),
+    path.join(home, ".local", "share", "Steam", "steamapps", "compatdata"),
+    path.join(home, ".var", "app", "com.valvesoftware.Steam", ".local", "share",
+      "Steam", "steamapps", "compatdata"),
+  ];
+  for (const parent of compatParents) {
+    for (const entry of subdirectoryNames(parent)) {
+      if (roots.length >= MAX_WINE_PREFIXES) return roots;
+      roots.push(path.join(parent, entry, "pfx"));
+    }
+  }
+  // Lutris installs one prefix per game directly under ~/Games.
+  const lutris = path.join(home, "Games");
+  for (const entry of subdirectoryNames(lutris)) {
+    if (roots.length >= MAX_WINE_PREFIXES) break;
+    roots.push(path.join(lutris, entry));
+  }
+  return roots;
+}
+
+// A Steam-installed EverQuest lives in the library's steamapps/common, which
+// sits on the Linux filesystem OUTSIDE any prefix's drive_c and is only visible
+// inside the prefix through a dosdevices symlink. Prefix probing alone
+// therefore cannot find it, so libraries are searched natively as well. This
+// mirrors the Steam library scan installer/spinui_installer.py already does.
+const STEAM_EQ_SUBPATHS = [
+  "steamapps/common/EverQuest Legends",
+  "steamapps/common/EverQuest",
+];
+
+function steamLibraryRoots(): string[] {
+  const home = app.getPath("home");
+  const roots = [
+    path.join(home, ".steam", "steam"),
+    path.join(home, ".local", "share", "Steam"),
+    path.join(home, ".var", "app", "com.valvesoftware.Steam", ".local", "share", "Steam"),
+  ];
+  const libraries: string[] = [];
+  for (const root of roots) {
+    if (!existsSync(root)) continue;
+    libraries.push(root);
+    try {
+      const vdf = readFileSync(
+        path.join(root, "steamapps", "libraryfolders.vdf"), "utf8");
+      for (const match of vdf.matchAll(/"path"\s+"([^"]+)"/g)) {
+        libraries.push(match[1].replace(/\\\\/g, "\\"));
+      }
+    } catch {
+      // A missing or unreadable libraryfolders.vdf just means no extra drives.
+    }
+  }
+  return libraries;
+}
+
+function defaultLogDirectories(): string[] {
+  if (process.platform === "win32") return WINDOWS_LOG_DIRECTORIES;
+  if (process.platform !== "linux") return [];
+  const candidates: string[] = [];
+  for (const root of winePrefixRoots()) {
+    const driveC = path.join(root, "drive_c");
+    if (!existsSync(driveC)) continue;
+    for (const relative of WINE_LOG_SUBPATHS) {
+      const base = path.join(driveC, ...relative.split("/"));
+      candidates.push(path.join(base, "Logs"), base);
+    }
+  }
+  for (const library of new Set(steamLibraryRoots())) {
+    for (const relative of STEAM_EQ_SUBPATHS) {
+      const base = path.join(library, ...relative.split("/"));
+      candidates.push(path.join(base, "Logs"), base);
+    }
+  }
+  return candidates;
+}
+
 function newestEqLog(selectedPath: string): string {
   const cleaned = selectedPath.trim().replace(/^"|"$/g, "");
   const candidates = cleaned
     ? [cleaned, path.join(cleaned, "Logs")]
-    : [
-        "C:\\EQLegends\\Logs", "C:\\EQLegends",
-        "C:\\Users\\Public\\Daybreak Game Company\\Installed Games\\EverQuest Legends\\Logs",
-        "C:\\Users\\Public\\Daybreak Game Company\\Installed Games\\EverQuest Legends",
-        "C:\\Users\\Public\\Daybreak Game Company\\Installed Games\\EverQuest\\Logs",
-        "C:\\Users\\Public\\Daybreak Game Company\\Installed Games\\EverQuest",
-      ];
+    : defaultLogDirectories();
   if (cleaned.toLowerCase().endsWith(".txt") && existsSync(cleaned)) return path.resolve(cleaned);
   let newest = "";
   let newestMtime = -1;
@@ -246,6 +407,75 @@ function newestEqLog(selectedPath: string): string {
     }
   }
   return newest;
+}
+
+type EngineCommand = { executable: string; args: string[] };
+type EngineResolution = { command: EngineCommand } | { error: string };
+
+// A bare interpreter name has to stay bare so spawn keeps resolving it through
+// PATH; this only answers "does it exist", so a missing python3 becomes an
+// actionable message instead of a raw ENOENT.
+function executableExists(name: string): boolean {
+  if (name.includes("/") || name.includes("\\")) return existsSync(name);
+  const extensions = process.platform === "win32"
+    ? (process.env.PATHEXT ?? ".EXE;.CMD;.BAT").split(";")
+    : [""];
+  for (const directory of (process.env.PATH ?? "").split(path.delimiter)) {
+    if (!directory) continue;
+    for (const extension of extensions) {
+      try {
+        if (statSync(path.join(directory, `${name}${extension}`)).isFile()) return true;
+      } catch {
+        // Unreadable or stale PATH entries are normal.
+      }
+    }
+  }
+  return false;
+}
+
+function engineScriptPath(): string {
+  // Linux ships no PyInstaller binary because the engine is stdlib-only, so the
+  // packaged build carries the sources next to the bundled-engine slot.
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "engine", "desktop_worker.py")
+    : path.resolve(app.getAppPath(), "..", "loremaster", "desktop_worker.py");
+}
+
+function resolveEngineCommand(): EngineResolution {
+  if (app.isPackaged) {
+    const binary = path.join(process.resourcesPath, "engine",
+      process.platform === "win32" ? "LoremasterEngine.exe" : "LoremasterEngine");
+    if (existsSync(binary)) return { command: { executable: binary, args: [] } };
+  }
+  const script = engineScriptPath();
+  if (!existsSync(script)) {
+    return {
+      error: app.isPackaged
+        ? "The packaged parser engine is missing. Reinstall Loremaster."
+        : `Could not find the parser engine script at ${script}.`,
+    };
+  }
+  const configuredPython = process.env.LOREMASTER_PYTHON;
+  if (configuredPython) return { command: { executable: configuredPython, args: [script] } };
+  const interpreter: EngineCommand = process.platform === "win32"
+    ? { executable: "py", args: ["-3", script] }
+    : { executable: "python3", args: [script] };
+  if (!executableExists(interpreter.executable)) {
+    return {
+      error: "No Python interpreter was found. Install Python 3.10 or newer, "
+        + "or set LOREMASTER_PYTHON to your interpreter.",
+    };
+  }
+  return { command: interpreter };
+}
+
+// Wine and Proton prefix layouts vary too much to auto-detect reliably, so a
+// failed search has to name the manual escape hatch instead of idling.
+function autoDetectHint(health: EngineHealth, configuredPath: string): string | null {
+  if (process.platform !== "linux") return null;
+  if (health.state !== "searching" || health.activeLogPath || configuredPath) return null;
+  return "No eqlog_*.txt found in any Wine or Proton prefix. "
+    + "Open settings and set EVERQUEST DIRECTORY to your Logs folder.";
 }
 
 class EngineSupervisor {
@@ -272,36 +502,18 @@ class EngineSupervisor {
     this.spawnWorker();
   }
 
-  private command(): { executable: string; args: string[] } {
-    if (app.isPackaged) {
-      return {
-        executable: path.join(process.resourcesPath, "engine", "LoremasterEngine.exe"),
-        args: [],
-      };
-    }
-    const script = path.resolve(app.getAppPath(), "..", "loremaster", "desktop_worker.py");
-    const configuredPython = process.env.LOREMASTER_PYTHON;
-    if (configuredPython) return { executable: configuredPython, args: [script] };
-    return process.platform === "win32"
-      ? { executable: "py", args: ["-3", script] }
-      : { executable: "python3", args: [script] };
-  }
-
   private publishHealth(health: EngineHealth): void {
     this.health = health;
     mainWindow?.webContents.send("engine:health", health);
   }
 
   private spawnWorker(): void {
-    const command = this.command();
-    if (app.isPackaged && !existsSync(command.executable)) {
-      this.publishHealth({
-        ...defaultHealth,
-        state: "error",
-        detail: "The packaged parser engine is missing. Reinstall Loremaster.",
-      });
+    const resolution = resolveEngineCommand();
+    if ("error" in resolution) {
+      this.publishHealth({ ...defaultHealth, state: "error", detail: resolution.error });
       return;
     }
+    const command = resolution.command;
     this.publishHealth({
       ...defaultHealth,
       configuredPath: this.settings.logPath,
@@ -332,6 +544,8 @@ class EngineSupervisor {
     });
     child.once("spawn", () => {
       const parserLogPath = newestEqLog(this.settings.logPath) || this.settings.logPath;
+      console.log(`[Loremaster] engine ${[command.executable, ...command.args].join(" ")}`
+        + ` | log ${parserLogPath || "(auto-detect found nothing)"}`);
       this.send({
         type: "engine.initialize",
         logPath: parserLogPath,
@@ -388,7 +602,11 @@ class EngineSupervisor {
       const health = event.health as EngineHealth | undefined;
       if (health && typeof health.state === "string") {
         this.restartCount = 0;
-        this.publishHealth({ ...health, configuredPath: this.settings.logPath });
+        this.publishHealth({
+          ...health,
+          configuredPath: this.settings.logPath,
+          detail: autoDetectHint(health, this.settings.logPath) ?? health.detail,
+        });
       }
     } else if (event.eventType === "engine.error") {
       this.publishHealth({
@@ -719,12 +937,14 @@ function overlayWindows(): BrowserWindow[] {
 }
 
 function trayIcon(): Electron.NativeImage | null {
-  const candidates = [
-    path.join(app.getAppPath(), "dist", "loremaster.ico"),
-    path.join(app.getAppPath(), "dist", "loremaster-cog.png"),
-    path.resolve(app.getAppPath(), "..", "loremaster", "assets", "loremaster.ico"),
-    path.resolve(app.getAppPath(), "..", "loremaster", "assets", "loremaster-cog.png"),
-  ];
+  // Linux status-notifier hosts do not read .ico, so the PNG leads there.
+  const names = process.platform === "linux"
+    ? ["loremaster-cog.png", "loremaster.ico"]
+    : ["loremaster.ico", "loremaster-cog.png"];
+  const candidates = names.flatMap((name) => [
+    path.join(app.getAppPath(), "dist", name),
+    path.resolve(app.getAppPath(), "..", "loremaster", "assets", name),
+  ]);
   for (const candidate of candidates) {
     if (!existsSync(candidate)) continue;
     const image = nativeImage.createFromPath(candidate);
@@ -779,6 +999,30 @@ function ensureTray(): boolean {
   }
 }
 
+function notifyUser(title: string, body: string): void {
+  try {
+    if (Notification.isSupported()) new Notification({ title, body, silent: true }).show();
+  } catch (error) {
+    console.warn("Could not show a Loremaster desktop notification", error);
+  }
+}
+
+function showTrayMinimizeNotice(): void {
+  const title = "Loremaster is still running";
+  const body = "Click the tray icon to restore it, or right-click and choose Quit Loremaster.";
+  if (process.platform === "win32") {
+    try {
+      tray?.displayBalloon({ title, content: body, iconType: "info", noSound: true });
+    } catch {
+      // Some Windows notification policies suppress tray balloons.
+    }
+    return;
+  }
+  // Linux status-notifier trays have no balloon API; the desktop notification
+  // service is the equivalent surface and no-ops when none is running.
+  notifyUser(title, body);
+}
+
 function minimizeLoremasterWindow(): void {
   const window = mainWindow;
   if (!window || window.isDestroyed()) return;
@@ -786,18 +1030,9 @@ function minimizeLoremasterWindow(): void {
     alertWindow?.hide();
     controlWindow?.hide();
     window.hide();
-    if (process.platform === "win32" && !trayMinimizeNoticeShown) {
+    if (!trayMinimizeNoticeShown) {
       trayMinimizeNoticeShown = true;
-      try {
-        tray?.displayBalloon({
-          title: "Loremaster is still running",
-          content: "Click the tray icon to restore it, or right-click and choose Quit Loremaster.",
-          iconType: "info",
-          noSound: true,
-        });
-      } catch {
-        // Some Windows notification policies suppress tray balloons.
-      }
+      showTrayMinimizeNotice();
     }
     return;
   }
@@ -807,6 +1042,9 @@ function minimizeLoremasterWindow(): void {
 }
 
 function reinforceOverlayZOrder(enabled: boolean): void {
+  // Linux stays on "floating": Electron ignores the level argument on X11, where
+  // always-on-top is just _NET_WM_STATE_ABOVE, and that alone already keeps the
+  // overlays above EQ running under Wine.
   const level = process.platform === "win32" ? "screen-saver" : "floating";
   for (const window of overlayWindows()) {
     try {
@@ -1063,6 +1301,8 @@ function createAlertWindow(): void {
       backgroundThrottling: false,
     },
   });
+  // Electron implements this with the X11 input-shape extension on Linux, so no
+  // extra XFixes plumbing is needed; only the `forward` option is Windows/macOS.
   alertWindow.setIgnoreMouseEvents(true);
   applyAlwaysOnTop(settings.alwaysOnTop);
   const developmentUrl = process.env.VITE_DEV_SERVER_URL;
@@ -1339,6 +1579,23 @@ function createWindow(): void {
   });
 }
 
+function registerLockoutScanHotkey(): void {
+  let registered = false;
+  try {
+    registered = globalShortcut.register("CommandOrControl+Shift+Z", () => engine?.scanAltZLockouts());
+  } catch (error) {
+    // Some X11 setups reject the grab outright rather than returning false.
+    console.error("Could not register the Ctrl+Shift+Z Alt+Z lockout scan hotkey", error);
+  }
+  if (registered) return;
+  console.error("Could not register the Ctrl+Shift+Z Alt+Z lockout scan hotkey");
+  notifyUser(
+    "Loremaster hotkey unavailable",
+    "Ctrl+Shift+Z is already claimed by another app, so Alt+Z lockout scanning is off."
+      + " Free that shortcut and restart Loremaster, or tick raid lockouts by hand.",
+  );
+}
+
 ipcMain.handle("runtime:metrics", () => ({
   coldStartMs: Math.round(performance.now() - processStartedAt),
   residentMemoryMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
@@ -1506,9 +1763,7 @@ app.whenReady().then(() => {
   engine.start();
   createWindow();
   ensureTray();
-  if (!globalShortcut.register("CommandOrControl+Shift+Z", () => engine?.scanAltZLockouts())) {
-    console.error("Could not register the Ctrl+Shift+Z Alt+Z lockout scan hotkey");
-  }
+  registerLockoutScanHotkey();
   startTopmostHeartbeat();
   screen.on("display-metrics-changed", scheduleTopmostReassertion);
   const smokeExitMs = Number(process.env.LOREMASTER_SMOKE_EXIT_MS || 0);

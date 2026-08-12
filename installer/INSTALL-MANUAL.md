@@ -153,6 +153,49 @@ The waiting process remains hidden and uses a lightweight process check until
 `eqgame.exe` starts. After Loremaster has opened, its notification-area icon
 remains available whenever the HUD is hidden.
 
+## 5. Linux / Wine (Proton, Lutris, native Wine)
+
+EverQuest Legends runs under Wine or Proton on Linux; every path above is
+inside that prefix's `drive_c`, not your Linux home directory. For example,
+`C:\EQLegends` is `<prefix>/drive_c/EQLegends`, and a Steam Proton install is
+usually under `~/.local/share/Steam/steamapps/compatdata/<appid>/pfx/drive_c/...`
+or `~/.steam/steam/steamapps/compatdata/<appid>/pfx/drive_c/...`. A plain
+Wine prefix defaults to `~/.wine/drive_c/...` (or `$WINEPREFIX/drive_c/...`
+if you set one); Lutris prefixes are typically `~/Games/<title>/drive_c/...`.
+
+Rather than translating every path above by hand, `spinui_installer.py`
+supports a command-line mode that auto-detects these prefixes (including
+Proton compatdata and Flatpak Steam) the same way it auto-detects native
+Windows installs:
+
+```sh
+python3 installer/spinui_installer.py --install \
+    --eq-dir "/path/to/prefix/drive_c/EQLegends" \
+    --skin spinui_reloaded \
+    --layout combat-focus --resolution 3440x1440 \
+    --layout-target UI_Spin_qeynos_LO1.ini
+```
+
+Omit `--eq-dir` to let it search common Wine/Proton/Lutris locations
+automatically; omit `--layout` to install the skin and Loremaster without
+touching any character INI. Run `--list-presets` to see the available
+layout, resolution, and skin choices, or `--dry-run` (implies `--install`)
+to preview exactly what would change without writing anything. `--selftest`
+runs the installer's own test suite and is safe to run on Linux at any time.
+
+Loremaster itself is **not** run under Wine on Linux — it ships as a native
+build (an AppImage, matched in the release payload as `Loremaster-*.AppImage`)
+so it keeps the Linux OCR backend and stays fast. If that native build isn't
+in the payload (for example, a plain source checkout with no release
+artifacts), `--install` still installs the skin and reports the layout
+result normally; it just skips Loremaster with an explicit message telling
+you to grab the Linux build from the releases page, rather than silently
+doing nothing or falling back to the Windows exe under Wine. `Loremaster.exe`
+is only ever installed on Windows. When the native build is found,
+`--desktop-shortcut` and `--startup-shortcut` write a freedesktop `.desktop`
+entry (to your Desktop folder and `~/.config/autostart`, respectively) whose
+`Exec=` points straight at the installed AppImage, instead of a Windows `.lnk`.
+
 ## Updating or removing
 
 - Update the skin while EQ is closed by replacing the complete
@@ -160,4 +203,6 @@ remains available whenever the HUD is hidden.
 - Remove the skin by deleting only `uifiles\spinui_reloaded` while EQ is closed.
 - Restore your layout from the backup you made in step 3.
 - Loremaster stores its configuration and character records in
-  `%LOCALAPPDATA%\SpinsLoremaster`.
+  `%LOCALAPPDATA%\SpinsLoremaster` on Windows, or
+  `$XDG_DATA_HOME/SpinsLoremaster` (defaulting to `~/.local/share/SpinsLoremaster`)
+  on Linux.
