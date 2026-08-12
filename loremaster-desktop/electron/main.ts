@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, screen, shell, Tray } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, shell, Tray } from "electron";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -88,6 +88,7 @@ interface DesktopSettings {
   raidDifficulty: number | null;
   bisBuildPath: string;
   inventoryPath: string;
+  uiTheme: "vellum" | "glass";
   alwaysOnTop: boolean;
   fontScale: number;
   composition: string;
@@ -140,6 +141,7 @@ const defaultSettings: DesktopSettings = {
   raidDifficulty: null,
   bisBuildPath: "",
   inventoryPath: "",
+  uiTheme: "vellum",
   alwaysOnTop: true,
   fontScale: 1.15,
   composition: "",
@@ -178,6 +180,7 @@ function readSettings(): DesktopSettings {
       raidDifficulty,
       bisBuildPath: typeof value.bisBuildPath === "string" ? value.bisBuildPath : "",
       inventoryPath: typeof value.inventoryPath === "string" ? value.inventoryPath : "",
+      uiTheme: value.uiTheme === "glass" ? "glass" : "vellum",
       alwaysOnTop: boolean(value.alwaysOnTop, true),
       fontScale: clampInteger(value.fontScale === undefined ? 115 : Number(value.fontScale) * 100, 115, 90, 160) / 100,
       composition: typeof value.composition === "string" ? value.composition.slice(0, 48) : "",
@@ -445,7 +448,7 @@ class EngineSupervisor {
     this.send({ type: "engine.set-raid-difficulty", raidDifficulty });
   }
 
-  updateDesktopSettings(patch: Partial<Pick<DesktopSettings, "alwaysOnTop" | "fontScale" | "composition" | "splitCharmedPetDps" | "stanceAdvisorEnabled">> & {
+  updateDesktopSettings(patch: Partial<Pick<DesktopSettings, "uiTheme" | "alwaysOnTop" | "fontScale" | "composition" | "splitCharmedPetDps" | "stanceAdvisorEnabled">> & {
     alerts?: Partial<AlertSettings>;
   }): DesktopSettings {
     const nextAlerts = patch.alerts ? { ...this.settings.alerts, ...patch.alerts } : this.settings.alerts;
@@ -456,6 +459,7 @@ class EngineSupervisor {
       : this.settings.seedPosition;
     this.settings = {
       ...this.settings,
+      ...(patch.uiTheme === "vellum" || patch.uiTheme === "glass" ? { uiTheme: patch.uiTheme } : {}),
       ...(typeof patch.alwaysOnTop === "boolean" ? { alwaysOnTop: patch.alwaysOnTop } : {}),
       fontScale: nextScale,
       seedPosition: nextSeedPosition,
@@ -486,10 +490,6 @@ class EngineSupervisor {
 
   setRaidCompletion(target: string, difficulty: number, completed: boolean): void {
     this.send({ type: "engine.set-raid-completion", target, difficulty, completed });
-  }
-
-  scanAltZLockouts(): void {
-    this.send({ type: "engine.scan-alt-z-lockouts" });
   }
 
   private catalogCachePath(): string {
@@ -1041,6 +1041,12 @@ function setAnalysisMode(active: boolean, preserveAnchor = false): void {
   setImmediate(() => { movingWindowProgrammatically = false; });
 }
 
+function rendererUrl(base: string, query: Record<string, string>): string {
+  const url = new URL(base);
+  for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
+  return url.toString();
+}
+
 function createAlertWindow(): void {
   const settings = engine?.getState().settings ?? defaultSettings;
   const alertSize = scaledSize(ALERT_SIZE, settings.fontScale);
@@ -1066,9 +1072,10 @@ function createAlertWindow(): void {
   alertWindow.setIgnoreMouseEvents(true);
   applyAlwaysOnTop(settings.alwaysOnTop);
   const developmentUrl = process.env.VITE_DEV_SERVER_URL;
+  const rendererQuery = { alert: "1", theme: settings.uiTheme };
   const rendererReady = developmentUrl
-    ? alertWindow.loadURL(`${developmentUrl}?alert=1`)
-    : alertWindow.loadFile(path.join(app.getAppPath(), "dist", "index.html"), { query: { alert: "1" } });
+    ? alertWindow.loadURL(rendererUrl(developmentUrl, rendererQuery))
+    : alertWindow.loadFile(path.join(app.getAppPath(), "dist", "index.html"), { query: rendererQuery });
   void rendererReady.then(() => {
     alertWindow?.webContents.setZoomFactor(settings.fontScale);
     positionAlertWindow();
@@ -1117,9 +1124,10 @@ function createControlWindow(): void {
   controlWindow.setIgnoreMouseEvents(true);
   applyAlwaysOnTop(settings.alwaysOnTop);
   const developmentUrl = process.env.VITE_DEV_SERVER_URL;
+  const rendererQuery = { controls: "1", theme: settings.uiTheme };
   const rendererReady = developmentUrl
-    ? controlWindow.loadURL(`${developmentUrl}?controls=1`)
-    : controlWindow.loadFile(path.join(app.getAppPath(), "dist", "index.html"), { query: { controls: "1" } });
+    ? controlWindow.loadURL(rendererUrl(developmentUrl, rendererQuery))
+    : controlWindow.loadFile(path.join(app.getAppPath(), "dist", "index.html"), { query: rendererQuery });
   void rendererReady.then(() => {
     controlWindow?.webContents.setZoomFactor(settings.fontScale);
     syncControlWindow();
@@ -1202,9 +1210,10 @@ function createWindow(): void {
   });
 
   const developmentUrl = process.env.VITE_DEV_SERVER_URL;
+  const rendererQuery = { theme: settings.uiTheme };
   const rendererReady = developmentUrl
-    ? mainWindow.loadURL(developmentUrl)
-    : mainWindow.loadFile(path.join(app.getAppPath(), "dist", "index.html"));
+    ? mainWindow.loadURL(rendererUrl(developmentUrl, rendererQuery))
+    : mainWindow.loadFile(path.join(app.getAppPath(), "dist", "index.html"), { query: rendererQuery });
   void rendererReady.then(() => {
     mainWindow?.webContents.on("will-navigate", (event) => event.preventDefault());
     mainWindow?.webContents.setZoomFactor(settings.fontScale);
@@ -1291,7 +1300,7 @@ function createWindow(): void {
           : undefined)
         .then(() => screenshotView === "settings"
           ? mainWindow?.webContents.executeJavaScript(
-            "document.querySelector('.masthead-actions button')?.click()")
+            "document.querySelector('button[aria-label=\"Open settings\"]')?.click()")
           : screenshotView === "analysis"
             ? mainWindow?.webContents.executeJavaScript(
               "document.querySelector('button[aria-label=\"Open full combat breakdown\"]')?.click()")
@@ -1390,6 +1399,7 @@ ipcMain.handle("settings:update", (_event, value: unknown) => {
   if (!value || typeof value !== "object" || !engine) return null;
   const raw = value as Record<string, unknown>;
   const patch: Parameters<EngineSupervisor["updateDesktopSettings"]>[0] = {};
+  if (raw.uiTheme === "vellum" || raw.uiTheme === "glass") patch.uiTheme = raw.uiTheme;
   if (typeof raw.alwaysOnTop === "boolean") patch.alwaysOnTop = raw.alwaysOnTop;
   if (Number.isFinite(Number(raw.fontScale))) patch.fontScale = clamp(Number(raw.fontScale), 0.9, 1.6);
   if (typeof raw.composition === "string") patch.composition = raw.composition.slice(0, 48);
@@ -1506,9 +1516,6 @@ app.whenReady().then(() => {
   engine.start();
   createWindow();
   ensureTray();
-  if (!globalShortcut.register("CommandOrControl+Shift+Z", () => engine?.scanAltZLockouts())) {
-    console.error("Could not register the Ctrl+Shift+Z Alt+Z lockout scan hotkey");
-  }
   startTopmostHeartbeat();
   screen.on("display-metrics-changed", scheduleTopmostReassertion);
   const smokeExitMs = Number(process.env.LOREMASTER_SMOKE_EXIT_MS || 0);
@@ -1517,7 +1524,6 @@ app.whenReady().then(() => {
   }
 });
 app.on("before-quit", () => {
-  globalShortcut.unregisterAll();
   clearTopmostReassertions();
   if (topmostHeartbeatTimer) clearInterval(topmostHeartbeatTimer);
   topmostHeartbeatTimer = null;

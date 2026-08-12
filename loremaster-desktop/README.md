@@ -24,6 +24,27 @@ health. The parser engine remains authoritative for combat attribution,
 charmed pets, mez/lull evidence and D0–D4 weekly raid events. The narrow preload
 exposes only versioned state, folder selection, reset, and window commands.
 
+## Native Loremaster themes
+
+Loremaster includes two complete presentation systems using the same parser,
+layout and accessibility behavior:
+
+- **Vellum & Ember** is the default and matches `spinui_reloaded` with oiled
+  leather surfaces, parchment text, brass edges and restrained spirit-blue
+  selections.
+- **Midnight Frost Glass** matches `spinui_glass` with deep translucent panes,
+  ice-blue edges, mint actions and violet selections.
+
+The theme picker in Settings applies immediately to the Seed, expanded HUD,
+Settings, alerts, crowd-control timers and Combat Archive. The selection is
+stored with the other desktop settings and restored before windows are shown,
+so changing themes never restarts the parser or moves an overlay.
+
+Weekly D0–D4 progress comes from explicit raid difficulty plus combat-log boss
+evidence, with a confirmation prompt when the difficulty is not known and a
+manual correction grid. Loremaster deliberately does not scrape EverQuest's
+Instance Information window or reserve a global lockout-screen hotkey.
+
 The Gear Path surface imports EQ Legends Tools' version-1 character-sheet JSON
 and EverQuest's `/outputfile inventory` TXT locally. It identifies goal items
 already equipped or held in bags/bank and groups missing pieces by source zone.

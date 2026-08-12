@@ -12,6 +12,7 @@ import {
   type EngineHealth,
   type EngineSnapshotEvent,
   type GearPlanView,
+  type LoremasterTheme,
 } from "./protocol";
 import { CombatArchive } from "./CombatArchive";
 
@@ -21,8 +22,19 @@ const cogSource = "./loremaster-cog.png";
 const eqToolsUrl = "https://eqlegendstools.com/";
 const eqToolsCharSheetUrl = "https://eqlegendstools.com/char-sheet/";
 
+function normalizeTheme(value: unknown): LoremasterTheme {
+  return value === "glass" ? "glass" : "vellum";
+}
+
+function applyTheme(value: unknown): LoremasterTheme {
+  const theme = normalizeTheme(value);
+  document.documentElement.dataset.theme = theme;
+  return theme;
+}
+
 const defaultDesktopSettings: DesktopSettings = {
   logPath: "", raidDifficulty: null, bisBuildPath: "", inventoryPath: "",
+  uiTheme: "vellum",
   alwaysOnTop: true, fontScale: 1.15, composition: "", splitCharmedPetDps: false,
   stanceAdvisorEnabled: false, seedPosition: null,
   alerts: {
@@ -84,16 +96,6 @@ function formatDuration(value: number): string {
   const minutes = Math.floor(seconds / 60);
   const remainder = String(seconds % 60).padStart(2, "0");
   return minutes > 0 ? `${minutes}:${remainder}` : `${seconds}s`;
-}
-
-function formatLockout(value: number): string {
-  const seconds = Math.max(0, Math.floor(value));
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  return `${minutes}m ${seconds % 60}s`;
 }
 
 function spellLabel(control: ControlTimerView): string {
@@ -197,13 +199,18 @@ function SeedControlSurface() {
     if (!desktop) return () => document.body.classList.remove("control-window");
     void desktop.getEngineState().then((state) => {
       if (isEngineSnapshotEvent(state.snapshot)) setEvent(state.snapshot);
+      applyTheme(state.settings.uiTheme);
       setSettings(state.settings);
     });
     const removeSnapshot = desktop.onSnapshot((value) => {
       if (isEngineSnapshotEvent(value)) setEvent(value);
     });
     const removeSettings = desktop.onSettings((value) => {
-      if (value && typeof value === "object") setSettings(value as DesktopSettings);
+      if (value && typeof value === "object") {
+        const next = value as DesktopSettings;
+        applyTheme(next.uiTheme);
+        setSettings(next);
+      }
     });
     return () => {
       removeSnapshot();
@@ -288,6 +295,7 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
   }));
   const savePreferences = async () => {
     const saved = await window.loremasterDesktop?.updateSettings({
+      uiTheme: draft.uiTheme,
       alwaysOnTop: draft.alwaysOnTop,
       fontScale: draft.fontScale,
       composition: draft.composition,
@@ -296,6 +304,16 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
       alerts: draft.alerts,
     });
     if (saved) onSettings(saved);
+  };
+  const selectTheme = async (uiTheme: LoremasterTheme) => {
+    applyTheme(uiTheme);
+    patchDraft({ uiTheme });
+    const saved = await window.loremasterDesktop?.updateSettings({ uiTheme });
+    if (saved) {
+      setDraft(saved);
+      applyTheme(saved.uiTheme);
+      onSettings(saved);
+    }
   };
   const changeFontScale = async (delta: number) => {
     const fontScale = Math.max(0.9, Math.min(1.6, Math.round((draft.fontScale + delta) * 20) / 20));
@@ -306,6 +324,27 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
   return (
     <section className="settings-panel" aria-label="Loremaster settings">
       <header><div><small>CONFIGURATION</small><h2>ENGINE + LOGS</h2></div><button onClick={onClose}>DONE</button></header>
+      <article className="settings-card appearance-card">
+        <label>APPEARANCE</label>
+        <p>Match Loremaster to your active SpinUI skin. The choice applies immediately to the HUD, Rune Seed, timers, and alerts.</p>
+        <div className="theme-picker" role="radiogroup" aria-label="Loremaster visual theme">
+          {([
+            { id: "vellum", name: "VELLUM & EMBER", detail: "Matches SpinUI Reloaded" },
+            { id: "glass", name: "MIDNIGHT FROST GLASS", detail: "Matches SpinUI Glass" },
+          ] as const).map((option) => <button
+            className={`theme-option ${option.id} ${draft.uiTheme === option.id ? "selected" : ""}`}
+            type="button"
+            role="radio"
+            aria-checked={draft.uiTheme === option.id}
+            key={option.id}
+            onClick={() => void selectTheme(option.id)}
+          >
+            <span className="theme-preview" aria-hidden="true"><i /><i /><i /></span>
+            <span className="theme-option-copy"><b>{option.name}</b><small>{option.detail}</small></span>
+            <em>{draft.uiTheme === option.id ? "ACTIVE" : "SELECT"}</em>
+          </button>)}
+        </div>
+      </article>
       <article className="settings-card">
         <label htmlFor="eq-path">EVERQUEST DIRECTORY</label>
         <p>Choose the game folder or its Logs folder. Loremaster automatically follows the newest character log.</p>
@@ -459,13 +498,18 @@ function AlertSurface() {
     if (!desktop) return () => document.body.classList.remove("alert-window");
     void desktop.getEngineState().then((state) => {
       if (isEngineSnapshotEvent(state.snapshot)) setEvent(state.snapshot);
+      applyTheme(state.settings.uiTheme);
       setSettings(state.settings);
     });
     const removeSnapshot = desktop.onSnapshot((value) => {
       if (isEngineSnapshotEvent(value)) setEvent(value);
     });
     const removeSettings = desktop.onSettings((value) => {
-      if (value && typeof value === "object") setSettings(value as DesktopSettings);
+      if (value && typeof value === "object") {
+        const next = value as DesktopSettings;
+        applyTheme(next.uiTheme);
+        setSettings(next);
+      }
     });
     const removeTest = desktop.onTestAlert((value) => {
       if (!value || typeof value !== "object") return;
@@ -644,6 +688,7 @@ function MainApp() {
       if (isEngineHealth(state.health)) setHealth(state.health);
       if (isEngineSnapshotEvent(state.snapshot)) setEvent(state.snapshot);
       setRaidDifficulty(state.settings.raidDifficulty);
+      applyTheme(state.settings.uiTheme);
       setSettings(state.settings);
       if (isGearPlanView(state.gearPlan)) setGearPlan(state.gearPlan);
     });
@@ -657,7 +702,11 @@ function MainApp() {
       if (isGearPlanView(value)) setGearPlan(value);
     });
     const removeSettings = desktop.onSettings((value) => {
-      if (value && typeof value === "object") setSettings(value as DesktopSettings);
+      if (value && typeof value === "object") {
+        const next = value as DesktopSettings;
+        applyTheme(next.uiTheme);
+        setSettings(next);
+      }
     });
     return () => { removeSnapshot(); removeHealth(); removeGearPlan(); removeSettings(); };
   }, []);
@@ -845,17 +894,6 @@ function MainApp() {
             </span>
           </summary>
           {weekly.pendingRaidTarget && <p className="raid-pending"><b>{weekly.pendingRaidTarget}</b> is awaiting the D0–D4 confirmation shown above.</p>}
-          {weekly.altZScan && <section className={`altz-sync ${weekly.altZScan.status}`}>
-            <header><div><small>LIVE INSTANCE EVIDENCE</small><b>{weekly.altZScan.status === "scanning" ? "READING ALT+Z…" : weekly.altZLockouts?.length ? `${weekly.altZLockouts.length} ACTIVE RAID LOCKOUT${weekly.altZLockouts.length === 1 ? "" : "S"}` : "ALT+Z LOCKOUT SYNC"}</b></div><kbd>{weekly.altZScan.hotkey}</kbd></header>
-            <p>{weekly.altZScan.detail}</p>
-            {(weekly.altZLockouts?.length ?? 0) > 0 && <div className="altz-lockouts">
-              {weekly.altZLockouts?.map((lockout) => <article key={`${lockout.target}-${lockout.difficulty}`} title={`${lockout.instanceName} · ${lockout.eventName}`}>
-                <span><b>{lockout.target}</b><small>D{lockout.difficulty} · {lockout.instanceName}</small></span>
-                <strong>{formatLockout(lockout.remainingSeconds)}</strong>
-              </article>)}
-            </div>}
-            <footer>Open Instance Information with Alt+Z, point inside the timer table, then use the hotkey. Scroll and repeat to merge another visible page.</footer>
-          </section>}
           <div className="raid-grid" aria-label="Weekly D0 through D4 raid lockouts">
             <div className="raid-grid-head"><span>RAID TARGET</span>{raidDifficulties.map((difficulty) => <b key={difficulty}>D{difficulty}</b>)}</div>
             {weekly.raids.map((raid) => <div className="raid-grid-row" key={raid.target}>
