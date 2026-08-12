@@ -150,6 +150,28 @@ def _parse_row(parts: list[OcrLine]) -> ParsedRaidLockout | None:
     )
 
 
+# Headings that only appear on the Alt+Z panel. Recognising one proves the
+# panel was captured and read, which is what separates "the table is open and
+# empty" from "the table was never found". Matching is loose because this text
+# is OCR output, not a log line.
+_PANEL_MARKERS = (
+    "instance information",
+    "outstanding instance",
+    "instance name",
+    "lockout",
+)
+
+
+def instance_panel_detected(lines: Iterable[OcrLine]) -> bool:
+    """True when the capture clearly contains the Alt+Z panel itself."""
+    for line in lines:
+        collapsed = "".join(line.text.split()).casefold()
+        for marker in _PANEL_MARKERS:
+            if "".join(marker.split()) in collapsed:
+                return True
+    return False
+
+
 def parse_instance_lockouts(lines: Iterable[OcrLine]) -> list[ParsedRaidLockout]:
     """Return recognized raid rows, deduplicated by boss and difficulty."""
 

@@ -46,7 +46,8 @@ from lull_timer import LullTracker
 from mez_timer import MezTracker
 from hover_ocr import HoverOcrService, capture_game_window, scan_game_window
 from instance_lockout_ocr import (
-    ParsedRaidLockout, parse_instance_character, parse_instance_lockouts)
+    ParsedRaidLockout, instance_panel_detected, parse_instance_character,
+    parse_instance_lockouts)
 from weekly_tracker import DIFFICULTIES, WeeklyBossTracker
 
 
@@ -74,7 +75,7 @@ class HeadlessEngine:
         self.instance_lockouts: list[dict] = []
         self.lockout_scan = {
             "status": "idle",
-            "detail": "Open Alt+Z, point at Outstanding Instance Timers, then press Ctrl+Shift+Z.",
+            "detail": "Open the Alt+Z Instance Information window, then scan.",
             "scannedAt": "",
             "importedCount": 0,
             "timedCount": 0,
@@ -255,12 +256,24 @@ class HeadlessEngine:
                 continue
             rows = parse_instance_lockouts(result.lines)
             if not rows:
-                self.lockout_scan.update({
-                    "status": "error",
-                    "detail": ("No D0–D4 raid rows were recognized. Keep EverQuest focused, "
-                               "point inside the timer table, and scan the visible rows again."),
-                    "importedCount": 0,
-                })
+                # An empty table is not a failure. Saying so only when the
+                # panel itself was unmistakably read is what tells the player
+                # "you have no lockouts" apart from "the scan missed".
+                if instance_panel_detected(result.lines):
+                    self.lockout_scan.update({
+                        "status": "success",
+                        "detail": ("Read the Alt+Z Outstanding Instance Timers: "
+                                   "no raid lockouts are listed."),
+                        "importedCount": 0,
+                    })
+                else:
+                    self.lockout_scan.update({
+                        "status": "error",
+                        "detail": ("The Alt+Z Instance Information window was not "
+                                   "found on screen. Open it with Alt+Z while "
+                                   "EverQuest is running, then scan again."),
+                        "importedCount": 0,
+                    })
                 continue
             self.import_instance_lockouts(
                 rows, character_hint=parse_instance_character(result.lines))
