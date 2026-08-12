@@ -206,6 +206,16 @@ under the right difficulty and that ordinary trash is never promoted.
 These could not be tested during development at all. Input synthesis is
 unavailable on this machine, and there was no game window to sit above.
 
+**If you have a second monitor, most of this Part stops mattering.** Run EQ
+fullscreen on one screen and Loremaster on another, and overlay compositing,
+click-through and always-on-top ranking simply do not arise — Loremaster is an
+ordinary window on its own screen. Run Part 3 anyway if you *want* overlays on
+top of the game, but a failure here is not a blocker when a second screen is
+available. Record which layout you tested:
+
+☐ Overlays on top of the game (single screen)
+☐ Loremaster on a separate monitor (recommended)
+
 ### 3.0 Check gamescope first — read this before running Part 3
 
 **If you launch EQ through gamescope, do this check first; it changes the
@@ -289,10 +299,23 @@ Minimise Loremaster.
 
 ☐ Pass ☐ Fail — notes:
 
-### 3.6 Multi-monitor and resolution changes
+### 3.6 Multi-monitor placement
 
-If you have more than one display, move Loremaster between them and confirm
-overlays follow sanely. Change resolution once and confirm it re-asserts.
+**Raised in priority — this is the recommended way to run Loremaster, so it
+matters more than the overlay checks above.**
+
+Move Loremaster onto a different monitor from the game. Confirm it stays there
+across a restart, that its alert and control surfaces appear on the same screen
+as the main window rather than jumping to the game's, and that mouse-look in EQ
+does not drag the cursor out onto Loremaster's screen.
+
+Then change resolution or toggle a display once and confirm Loremaster
+re-asserts sanely rather than landing off-screen.
+
+**Fractional scaling is worth calling out.** If your screens run at different
+scale factors, check that Loremaster's window is not mis-sized or mis-placed on
+the non-primary screen — logical and device pixel geometry disagree under
+scaling, and that is where placement bugs hide.
 
 ☐ Pass ☐ Fail ☐ N/A — notes:
 

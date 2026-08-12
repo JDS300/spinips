@@ -121,6 +121,41 @@ across restarts, and is not a second-class fallback.
 Also make sure logging is on in the client: `/log on`. Loremaster cannot do
 anything without it.
 
+## Multi-monitor: the recommended layout
+
+If you have more than one screen, use it. Put **EverQuest fullscreen on one
+monitor and Loremaster on another.**
+
+This is not merely tidy — it removes the only genuinely uncertain part of
+running Loremaster on Linux. Overlay compositing above a fullscreen game,
+click-through, and always-on-top ranking against the window manager all exist
+solely because the overlay has to sit on top of the game. Move it to a second
+screen and none of them apply: Loremaster becomes an ordinary window, and every
+feature works the way it does on any desktop app.
+
+It also helps the game. EverQuest confines the mouse pointer during right-click
+mouse-look by asking Windows to clip the cursor to its window. Wine has to
+translate that into an X pointer confine, and on multi-monitor setups —
+especially with fractional scaling — that translation often fails, letting the
+cursor escape onto another screen mid-look or leaving the camera pitching. The
+supported fix is winecfg → Graphics → **"Automatically capture the mouse in
+full-screen windows"**, which keys off *fullscreen*, so run the game truly
+fullscreen rather than borderless.
+
+### A note on gamescope
+
+Launching EverQuest through gamescope appears to fix the cursor-escape problem,
+but it does so by collapsing your monitor layout: inside a nested session the
+game sees exactly one output, so there is nowhere for the cursor to escape to.
+That is a workaround for a Wine problem, not a gamescope feature, and it costs
+you overlays — gamescope is a nested compositor, so Loremaster's overlays are
+host-session windows that cannot composite inside it. `--force-grab-cursor`
+compounds this by holding the pointer.
+
+Prefer fixing the cursor confinement at the Wine level and keeping gamescope
+out of the picture. If you genuinely need gamescope, put Loremaster on a second
+monitor and do not rely on the overlay windows.
+
 ## Wayland and XWayland
 
 Loremaster forces Chromium's X11 backend on Linux. This is deliberate: EQ runs
