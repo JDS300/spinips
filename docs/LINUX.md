@@ -178,6 +178,48 @@ Prefer fixing the cursor confinement at the Wine level and keeping gamescope
 out of the picture. If you genuinely need gamescope, put Loremaster on a second
 monitor, and expect the overlay and OCR features to be unavailable.
 
+## Placing the windows on Wayland
+
+Wayland deliberately gives applications no way to read or set an absolute
+window position. Loremaster therefore cannot place its own windows there, and
+this is not something the application can work around:
+
+- The alert and control surfaces are anchored to the seed on X11. On Wayland
+  they neither follow it nor move.
+- A saved window position cannot be restored, because the app cannot discover
+  where the window is in the first place.
+- A window cannot raise itself above a fullscreen game.
+
+The compositor can do all of this, so let it. Loremaster gives each of its
+windows a distinct title precisely so a window rule can target them:
+
+| Window | Title |
+| --- | --- |
+| Seed and expanded HUD | `Loremaster` |
+| Alert popup | `Loremaster Alert` |
+| Control surface | `Loremaster Controls` |
+
+On KDE, open **System Settings → Window Management → Window Rules** and add one
+rule per window, matching on **Window title** with **Exact Match**, then set
+**Position → Force** to where you want it. Placement then survives every
+restart regardless of what the application is permitted to do.
+
+The same approach works on other compositors that support window rules; the
+titles are what matter.
+
+If you want the windows on a second monitor — which is the configuration this
+works best in — set each rule's forced position inside that monitor's area.
+Nothing else is required: no always-on-top, no click-through, no overlay
+behaviour of any kind.
+
+### If you want the overlay behaviour
+
+Use an X11 session. Anchored surfaces, always-on-top over the game,
+click-through and global hotkeys are all X11 capabilities, and Loremaster gets
+them automatically there. On a Wayland session none of them are available at
+any price, and forcing Chromium's X11 backend inside a Wayland session is not
+a workaround — see below.
+
 ## Wayland and XWayland
 
 Loremaster lets Chromium pick its own backend: a Wayland session gets Wayland,

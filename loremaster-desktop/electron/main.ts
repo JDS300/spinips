@@ -1298,6 +1298,17 @@ function setAnalysisMode(active: boolean, preserveAnchor = false): void {
   setImmediate(() => { movingWindowProgrammatically = false; });
 }
 
+// All three windows render the same document, so their captions would
+// otherwise be identical. A window manager rule is the only way to place these
+// on Wayland, and it needs something to match on.
+function nameWindow(window: BrowserWindow, title: string): void {
+  window.setTitle(title);
+  window.on("page-title-updated", (event) => {
+    event.preventDefault();
+    window.setTitle(title);
+  });
+}
+
 function createAlertWindow(): void {
   const settings = engine?.getState().settings ?? defaultSettings;
   const alertSize = scaledSize(ALERT_SIZE, settings.fontScale);
@@ -1320,6 +1331,7 @@ function createAlertWindow(): void {
       backgroundThrottling: false,
     },
   });
+  nameWindow(alertWindow, "Loremaster Alert");
   // Electron implements this with the X11 input-shape extension on Linux, so no
   // extra XFixes plumbing is needed; only the `forward` option is Windows/macOS.
   alertWindow.setIgnoreMouseEvents(true);
@@ -1373,6 +1385,7 @@ function createControlWindow(): void {
       backgroundThrottling: false,
     },
   });
+  nameWindow(controlWindow, "Loremaster Controls");
   controlWindow.setIgnoreMouseEvents(true);
   applyAlwaysOnTop(settings.alwaysOnTop);
   const developmentUrl = process.env.VITE_DEV_SERVER_URL;
@@ -1468,6 +1481,7 @@ function createWindow(): void {
       backgroundThrottling: false,
     },
   });
+  nameWindow(mainWindow, "Loremaster");
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("https://")) void shell.openExternal(url);
