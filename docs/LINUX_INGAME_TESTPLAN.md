@@ -323,6 +323,13 @@ scaling, and that is where placement bugs hide.
 
 ## Part 4 — Hotkey and OCR
 
+**Skip 4.2–4.4 if you launch EQ through gamescope.** The scan verifies the
+focused window belongs to `eqgame.exe`; under gamescope the focused window on
+your session is gamescope's, so the check refuses by design. Expect a message
+naming gamescope rather than a capture. That is a pass for the guard, not a
+failure of OCR — but it means the OCR features are unavailable in that setup,
+in either window mode. Test them without gamescope or not at all.
+
 ### 4.1 Global hotkey while EQ has focus
 
 With EQ focused, press **Ctrl+Shift+Z**.

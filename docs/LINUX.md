@@ -152,9 +152,31 @@ you overlays — gamescope is a nested compositor, so Loremaster's overlays are
 host-session windows that cannot composite inside it. `--force-grab-cursor`
 compounds this by holding the pointer.
 
+gamescope also disables the OCR features. Hover scan and the Alt+Z lockout scan
+verify that the focused window belongs to `eqgame.exe` before capturing
+anything. Under gamescope the game runs on gamescope's own nested display, so
+the focused window on your session is gamescope's, owned by the gamescope
+process — the check refuses, naming what it saw. That guard is a privacy
+guarantee and is not going to be relaxed, so treat OCR as unavailable whenever
+the game is launched through gamescope.
+
+Running the client windowed rather than fullscreen does not change either
+limitation. At a resolution matching gamescope's output it looks identical and
+usefully avoids Wine's exclusive-fullscreen mode set, but overlays and OCR stay
+unavailable, and windowed mode also stops winecfg's fullscreen mouse capture
+from ever engaging — which removes the very lever that would let you drop
+gamescope later.
+
+Summary of the trade:
+
+| Setup | Overlays | OCR | Mouse-look |
+| --- | --- | --- | --- |
+| gamescope, any window mode | no | no | fixed, by hiding your other monitors |
+| No gamescope, fullscreen + winecfg mouse capture | yes | yes | fixed at the Wine level |
+
 Prefer fixing the cursor confinement at the Wine level and keeping gamescope
 out of the picture. If you genuinely need gamescope, put Loremaster on a second
-monitor and do not rely on the overlay windows.
+monitor, and expect the overlay and OCR features to be unavailable.
 
 ## Wayland and XWayland
 
