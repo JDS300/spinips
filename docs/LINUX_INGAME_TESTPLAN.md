@@ -9,6 +9,29 @@ Work top to bottom. Each check states what to do, what should happen, and what
 it means if it does not. Record the result in the box. If a check fails, the
 note under it says whether to keep going or stop.
 
+## Already confirmed on real hardware
+
+Confirmed 2026-08-12 against a real Lutris EverQuest Legends install running
+Proton Experimental through umu, with the prefix on a separate mount and
+gamescope disabled. These are recorded so they are not re-litigated; re-run
+them only if something downstream looks wrong.
+
+| Check | Result |
+| --- | --- |
+| 1.1 / 1.2 discovery and dry run | EQ folder auto-identified from Lutris config; dry run wrote nothing |
+| 1.3 install | Both skins byte-identical to source (1667 and 1669 files, `diff -rq` clean) |
+| 1.4 running-client guard | `/proc/<pid>/comm` of a live Wine client is exactly `eqgame.exe`; the guard returns true for it and false for anything else |
+| 1.5 `/loadskin spinui_reloaded` | Loads; nothing missing or broken |
+| 1.6 `/loadskin spinui_glass` | Loads |
+| 2.3 log auto-discovery | Found the real `eqlog_*.txt` inside the Lutris prefix with nothing configured |
+| Parser on real data | Correct character and zone extracted from a 690,000-line log |
+
+1.5 mattered most: the skin is roughly 500 XML documents and 2,800 textures, and
+Linux filesystems are case-sensitive where Windows is not. Any reference whose
+capitalisation disagreed with its file would have failed here. None did.
+
+Still open: everything in Part 2 beyond discovery, and all of Parts 3, 4 and 5.
+
 Environment recorded for this run:
 
 | Field | Value |
