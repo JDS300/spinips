@@ -709,6 +709,22 @@ body {
   background: var(--lm-warning);
 }
 
+.sound-profile { border-color: rgba(var(--lm-line-rgb), .25); }
+.sound-profile > span b { color: var(--lm-text); }
+.sound-profile > span small,
+.sound-note { color: var(--lm-dim); }
+.sound-profile select {
+  color: var(--lm-text);
+  border-color: rgba(var(--lm-line-rgb), .52);
+  background: var(--lm-inset-bg);
+}
+.sound-profile select:focus-visible {
+  border-color: var(--lm-line-bright);
+  box-shadow: 0 0 0 2px rgba(var(--lm-primary-rgb), .12);
+}
+.sound-profile .sound-preview { color: var(--lm-primary); }
+.sound-profile .sound-file { color: var(--lm-secondary); }
+
 .settings-toggle > i {
   border-color: var(--lm-line);
   background: var(--lm-void);

@@ -62,6 +62,10 @@ const screenshotControls = [
   },
 ] as const;
 type AlertAnchor = "auto" | "above" | "below" | "left" | "right";
+type AlertSoundKind = "default" | "charmBreak" | "tell" | "summon" | "death" | "bigHit" | "nameCalled" | "mez" | "lull";
+type AlertSoundPreset = "rune" | "crystal" | "ember" | "bell" | "custom" | "silent";
+interface AlertSoundProfile { preset: AlertSoundPreset; customPath: string }
+type AlertSoundProfiles = Record<AlertSoundKind, AlertSoundProfile>;
 
 export interface AlertSettings {
   alertsEnabled: boolean;
@@ -81,6 +85,7 @@ export interface AlertSettings {
   lullTimersEnabled: boolean;
   lullTimerSound: boolean;
   lullWarningSeconds: number;
+  soundProfiles: AlertSoundProfiles;
 }
 
 interface DesktopSettings {
@@ -116,6 +121,35 @@ const defaultHealth: EngineHealth = {
   server: "?",
 };
 
+const ALERT_SOUND_KINDS: readonly AlertSoundKind[] = [
+  "default", "charmBreak", "tell", "summon", "death", "bigHit", "nameCalled", "mez", "lull",
+];
+const ALERT_SOUND_PRESETS: readonly AlertSoundPreset[] = ["rune", "crystal", "ember", "bell", "custom", "silent"];
+const defaultSoundProfiles: AlertSoundProfiles = {
+  default: { preset: "rune", customPath: "" },
+  charmBreak: { preset: "ember", customPath: "" },
+  tell: { preset: "crystal", customPath: "" },
+  summon: { preset: "ember", customPath: "" },
+  death: { preset: "ember", customPath: "" },
+  bigHit: { preset: "rune", customPath: "" },
+  nameCalled: { preset: "crystal", customPath: "" },
+  mez: { preset: "rune", customPath: "" },
+  lull: { preset: "bell", customPath: "" },
+};
+
+function normalizeSoundProfiles(value: unknown): AlertSoundProfiles {
+  const source = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return Object.fromEntries(ALERT_SOUND_KINDS.map((kind) => {
+    const candidate = source[kind] && typeof source[kind] === "object"
+      ? source[kind] as Partial<AlertSoundProfile> : {};
+    const preset = ALERT_SOUND_PRESETS.includes(candidate.preset as AlertSoundPreset)
+      ? candidate.preset as AlertSoundPreset : defaultSoundProfiles[kind].preset;
+    const customPath = typeof candidate.customPath === "string" && candidate.customPath.length <= 4096
+      ? candidate.customPath : "";
+    return [kind, { preset, customPath }];
+  })) as AlertSoundProfiles;
+}
+
 const defaultAlertSettings: AlertSettings = {
   alertsEnabled: true,
   alertSound: true,
@@ -134,6 +168,7 @@ const defaultAlertSettings: AlertSettings = {
   lullTimersEnabled: true,
   lullTimerSound: false,
   lullWarningSeconds: 12,
+  soundProfiles: defaultSoundProfiles,
 };
 
 const defaultSettings: DesktopSettings = {
@@ -205,10 +240,11 @@ function readSettings(): DesktopSettings {
         lullTimersEnabled: boolean(alertValue.lullTimersEnabled, true),
         lullTimerSound: boolean(alertValue.lullTimerSound, false),
         lullWarningSeconds: clampInteger(alertValue.lullWarningSeconds, 12, 3, 30),
+        soundProfiles: normalizeSoundProfiles(alertValue.soundProfiles),
       },
     };
   } catch {
-    return { ...defaultSettings, alerts: { ...defaultAlertSettings } };
+    return { ...defaultSettings, alerts: { ...defaultAlertSettings, soundProfiles: normalizeSoundProfiles(null) } };
   }
 }
 
@@ -451,7 +487,13 @@ class EngineSupervisor {
   updateDesktopSettings(patch: Partial<Pick<DesktopSettings, "uiTheme" | "alwaysOnTop" | "fontScale" | "composition" | "splitCharmedPetDps" | "stanceAdvisorEnabled">> & {
     alerts?: Partial<AlertSettings>;
   }): DesktopSettings {
-    const nextAlerts = patch.alerts ? { ...this.settings.alerts, ...patch.alerts } : this.settings.alerts;
+    const nextAlerts = patch.alerts ? {
+      ...this.settings.alerts,
+      ...patch.alerts,
+      soundProfiles: patch.alerts.soundProfiles
+        ? normalizeSoundProfiles(patch.alerts.soundProfiles)
+        : this.settings.alerts.soundProfiles,
+    } : this.settings.alerts;
     const previousScale = this.settings.fontScale;
     const nextScale = typeof patch.fontScale === "number" ? clamp(patch.fontScale, 0.9, 1.6) : previousScale;
     const nextSeedPosition = nextScale !== previousScale
@@ -1298,7 +1340,7 @@ function createWindow(): void {
           ? mainWindow?.webContents.executeJavaScript(
             "document.querySelector('.rune-seed')?.classList.add('attacking')")
           : undefined)
-        .then(() => screenshotView === "settings"
+        .then(() => screenshotView === "settings" || screenshotView === "sounds"
           ? mainWindow?.webContents.executeJavaScript(
             "document.querySelector('button[aria-label=\"Open settings\"]')?.click()")
           : screenshotView === "analysis"
@@ -1312,6 +1354,11 @@ function createWindow(): void {
             `)
           : undefined)
         .then(() => new Promise((resolve) => setTimeout(resolve, 250)))
+        .then(() => screenshotView === "sounds"
+          ? mainWindow?.webContents.executeJavaScript(
+            "document.querySelector('.sound-studio')?.scrollIntoView({ block: 'start' })")
+          : undefined)
+        .then(() => new Promise((resolve) => setTimeout(resolve, screenshotView === "sounds" ? 150 : 0)))
         .then(() => mainWindow?.webContents.capturePage())
         .then((image) => {
           if (image) writeFileSync(screenshotPath, image.toPNG());
@@ -1395,6 +1442,62 @@ ipcMain.on("alerts:test", () => {
   });
 });
 
+const CUSTOM_SOUND_EXTENSIONS = new Set([".wav", ".mp3", ".ogg", ".m4a"]);
+const CUSTOM_SOUND_MAX_BYTES = 8 * 1024 * 1024;
+
+function validatedCustomSoundPath(kind: AlertSoundKind): string | null {
+  const profile = engine?.getState().settings.alerts.soundProfiles[kind];
+  if (!profile?.customPath) return null;
+  const candidate = path.resolve(profile.customPath);
+  try {
+    const stats = statSync(candidate);
+    return stats.isFile()
+      && stats.size > 0
+      && stats.size <= CUSTOM_SOUND_MAX_BYTES
+      && CUSTOM_SOUND_EXTENSIONS.has(path.extname(candidate).toLowerCase())
+      ? candidate : null;
+  } catch {
+    return null;
+  }
+}
+
+ipcMain.handle("alerts:choose-sound", async (_event, value: unknown) => {
+  if (!mainWindow || !engine || !ALERT_SOUND_KINDS.includes(value as AlertSoundKind)) return null;
+  const kind = value as AlertSoundKind;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "Choose a Loremaster alert sound",
+    properties: ["openFile"],
+    filters: [{ name: "Audio", extensions: ["wav", "mp3", "ogg", "m4a"] }],
+  });
+  if (result.canceled || result.filePaths.length !== 1) return null;
+  const candidate = path.resolve(result.filePaths[0]);
+  try {
+    const stats = statSync(candidate);
+    if (!stats.isFile() || stats.size <= 0 || stats.size > CUSTOM_SOUND_MAX_BYTES
+        || !CUSTOM_SOUND_EXTENSIONS.has(path.extname(candidate).toLowerCase())) return null;
+  } catch {
+    return null;
+  }
+  const profiles = normalizeSoundProfiles(engine.getState().settings.alerts.soundProfiles);
+  profiles[kind] = { preset: "custom", customPath: candidate };
+  return engine.updateDesktopSettings({ alerts: { soundProfiles: profiles } });
+});
+
+ipcMain.handle("alerts:read-sound", (_event, value: unknown) => {
+  if (!ALERT_SOUND_KINDS.includes(value as AlertSoundKind)) return null;
+  const candidate = validatedCustomSoundPath(value as AlertSoundKind);
+  if (!candidate) return null;
+  try {
+    return {
+      bytes: readFileSync(candidate),
+      extension: path.extname(candidate).toLowerCase(),
+      name: path.basename(candidate),
+    };
+  } catch {
+    return null;
+  }
+});
+
 ipcMain.handle("settings:update", (_event, value: unknown) => {
   if (!value || typeof value !== "object" || !engine) return null;
   const raw = value as Record<string, unknown>;
@@ -1414,6 +1517,9 @@ ipcMain.handle("settings:update", (_event, value: unknown) => {
       "lullTimersEnabled", "lullTimerSound",
     ];
     for (const key of booleanKeys) if (typeof candidate[key] === "boolean") Object.assign(alerts, { [key]: candidate[key] });
+    if (candidate.soundProfiles && typeof candidate.soundProfiles === "object") {
+      alerts.soundProfiles = normalizeSoundProfiles(candidate.soundProfiles);
+    }
     if (["auto", "above", "below", "left", "right"].includes(String(candidate.alertAnchor))) {
       alerts.alertAnchor = candidate.alertAnchor as AlertAnchor;
     }

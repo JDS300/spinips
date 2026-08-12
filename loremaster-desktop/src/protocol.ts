@@ -227,6 +227,15 @@ export interface EngineHealth {
 
 export type AlertAnchor = "auto" | "above" | "below" | "left" | "right";
 export type LoremasterTheme = "vellum" | "glass";
+export type AlertSoundKind = "default" | "charmBreak" | "tell" | "summon" | "death" | "bigHit" | "nameCalled" | "mez" | "lull";
+export type AlertSoundPreset = "rune" | "crystal" | "ember" | "bell" | "custom" | "silent";
+
+export interface AlertSoundProfile {
+  preset: AlertSoundPreset;
+  customPath: string;
+}
+
+export type AlertSoundProfiles = Record<AlertSoundKind, AlertSoundProfile>;
 
 export interface AlertSettings {
   alertsEnabled: boolean;
@@ -246,6 +255,7 @@ export interface AlertSettings {
   lullTimersEnabled: boolean;
   lullTimerSound: boolean;
   lullWarningSeconds: number;
+  soundProfiles: AlertSoundProfiles;
 }
 
 export interface DesktopSettings {

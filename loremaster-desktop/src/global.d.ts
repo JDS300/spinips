@@ -1,4 +1,4 @@
-import type { DesktopSettings, EngineHealth, EngineSnapshotEvent, GearPlanView } from "./protocol";
+import type { AlertSoundKind, DesktopSettings, EngineHealth, EngineSnapshotEvent, GearPlanView } from "./protocol";
 
 export {};
 
@@ -35,6 +35,12 @@ declare global {
       }>;
       resetEngine: () => void;
       testAlert: () => void;
+      chooseAlertSound: (kind: AlertSoundKind) => Promise<DesktopSettings | null>;
+      readAlertSound: (kind: AlertSoundKind) => Promise<{
+        bytes: Uint8Array;
+        extension: string;
+        name: string;
+      } | null>;
       onSnapshot: (callback: (event: unknown) => void) => () => void;
       onHealth: (callback: (health: unknown) => void) => () => void;
       onGearPlan: (callback: (gearPlan: unknown) => void) => () => void;

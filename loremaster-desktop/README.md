@@ -40,6 +40,13 @@ Settings, alerts, crowd-control timers and Combat Archive. The selection is
 stored with the other desktop settings and restored before windows are shown,
 so changing themes never restarts the parser or moves an overlay.
 
+Alert Sound Studio includes four locally generated cues plus Silent, with a
+separate selection for charm breaks, tells, summons, deaths, big hits, name
+calls, mez warnings and lull warnings. Each event may instead use a local WAV,
+MP3, OGG or M4A file selected through the native file picker. Custom audio is
+validated and size-limited by Electron's main process; the sandboxed renderer
+never receives general filesystem access.
+
 Weekly D0–D4 progress comes from explicit raid difficulty plus combat-log boss
 evidence, with a confirmation prompt when the difficulty is not known and a
 manual correction grid. Loremaster deliberately does not scrape EverQuest's

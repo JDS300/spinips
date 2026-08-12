@@ -128,6 +128,54 @@ CANONICAL_VARIANTS = {
     "EQUI_CastSpellWnd.xml": tuple(f"EQUI_CastSpellWnd{i}.xml" for i in range(1, 3)),
 }
 
+PET_ILLUSION_BLOCK = """
+	<!-- Client-native activated-item selector for the current pet's illusion. -->
+	<Label item="IWM_PetIllusionLabel">
+		<Font>3</Font>
+		<RelativePosition>true</RelativePosition>
+		<Location>
+			<X>189</X>
+			<Y>112</Y>
+		</Location>
+		<Size>
+			<CX>120</CX>
+			<CY>14</CY>
+		</Size>
+		<TextColor>
+			<R>138</R>
+			<G>163</G>
+			<B>255</B>
+		</TextColor>
+		<Text>Pet Illusion:</Text>
+		<TooltipReference>Selects a pet illusion item from your activated items inventory.</TooltipReference>
+		<NoWrap>false</NoWrap>
+		<AlignCenter>false</AlignCenter>
+		<AlignLeft>true</AlignLeft>
+	</Label>
+
+	<Combobox item="IWM_PetIllusionComboBox">
+		<ScreenID>IWM_PetIllusionComboBox</ScreenID>
+		<DrawTemplate>WDT_InnerSolid</DrawTemplate>
+		<Location>
+			<X>187</X>
+			<Y>130</Y>
+		</Location>
+		<Size>
+			<CX>160</CX>
+			<CY>24</CY>
+		</Size>
+		<ListHeight>80</ListHeight>
+		<Button>BDT_Combo</Button>
+		<Style_Border>true</Style_Border>
+		<Choices>None</Choices>
+	</Combobox>
+
+"""
+
+PET_ILLUSION_COMPACT_BLOCK = (PET_ILLUSION_BLOCK
+    .replace("<X>189</X>\n\t\t\t<Y>112</Y>", "<X>175</X>\n\t\t\t<Y>14</Y>", 1)
+    .replace("<X>187</X>\n\t\t\t<Y>130</Y>", "<X>245</X>\n\t\t\t<Y>10</Y>", 1))
+
 
 def fail(message: str) -> None:
     raise RuntimeError(message)
@@ -1377,6 +1425,61 @@ def style_experience_gauges() -> None:
     write_ascii(path, text)
 
 
+def restore_pet_illusion_selector() -> None:
+    """Restore Legends' activated-item pet illusion binding on every layout.
+
+    The client populates this exact Combobox ScreenID from Activated Items and
+    applies the chosen clicky to newly summoned or charmed pets.  It needs no
+    EQType or injected behavior; preserving the native name is the behavior.
+    """
+    inventory_names = (
+        "EQUI_InventoryWindow.xml",
+        "EQUI_InventoryWindow1.xml",
+        "EQUI_InventoryWindow2.xml",
+        "EQUI_InventoryWindow3.xml",
+    )
+    for inventory_name in inventory_names:
+        path = SKIN / inventory_name
+        text = path.read_text(encoding="utf-8")
+        if 'item="IWM_PetIllusionComboBox"' not in text:
+            anchor = ('\t<Label item="IWM_PetInfoLabel">'
+                      if '\t<Label item="IWM_PetInfoLabel">' in text
+                      else '\t<Label item="IWM_NameLabel">')
+            if text.count(anchor) != 1:
+                fail(f"{inventory_name} has no unique pet page label anchor")
+            block = PET_ILLUSION_COMPACT_BLOCK if inventory_name == "EQUI_InventoryWindow2.xml" else PET_ILLUSION_BLOCK
+            text = text.replace(anchor, block + anchor, 1)
+
+        label_xy, combo_xy = ((175, 14), (245, 10)) if inventory_name == "EQUI_InventoryWindow2.xml" else ((189, 112), (187, 130))
+        text = change_item(
+            text, "Label", "IWM_PetIllusionLabel",
+            lambda b: set_container(b, "Location", X=label_xy[0], Y=label_xy[1]),
+        )
+        text = change_item(
+            text, "Combobox", "IWM_PetIllusionComboBox",
+            lambda b: set_container(b, "Location", X=combo_xy[0], Y=combo_xy[1]),
+        )
+
+        def include_native_selector(block: str) -> str:
+            pieces = (
+                "\t\t<Pieces>IWM_PetIllusionComboBox</Pieces>\n"
+                "\t\t<Pieces>IWM_PetIllusionLabel</Pieces>\n"
+            )
+            if "<Pieces>IWM_PetIllusionComboBox</Pieces>" in block:
+                return block
+            anchor = ("\t\t<Pieces>IWM_PetInfoLabel</Pieces>\n"
+                      if "\t\t<Pieces>IWM_PetInfoLabel</Pieces>\n" in block
+                      else "\t\t<Pieces>IWM_NameLabel</Pieces>\n")
+            if anchor not in block:
+                fail(f"{inventory_name} pet page lost its label pieces")
+            return block.replace(anchor, pieces + anchor, 1)
+
+        text = change_item(text, "Page", "IW_PetInvPage", include_native_selector)
+        # Inventory sources retain some stock whitespace deliberately. Avoid a
+        # file-wide formatting churn when adding this small client binding.
+        path.write_text(text, encoding="utf-8", newline="")
+
+
 def style_raid() -> None:
     path = SKIN / "EQUI_RaidWindow.xml"
     text = path.read_text(encoding="ascii")
@@ -1403,6 +1506,7 @@ def main() -> int:
     style_spell_gems()
     style_hotbuttons()
     style_stance()
+    restore_pet_illusion_selector()
     style_experience_gauges()
     style_raid()
     sync_canonical_variants()

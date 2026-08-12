@@ -44,6 +44,7 @@ def audit_theme_contract() -> None:
     app = read("loremaster-desktop/src/App.tsx")
     renderer = read("loremaster-desktop/src/main.tsx")
     electron = read("loremaster-desktop/electron/main.ts")
+    preload = read("loremaster-desktop/electron/preload.ts")
     base_styles = read("loremaster-desktop/src/styles.css")
     themes = read("loremaster-desktop/src/themes.css")
     readme = read("loremaster-desktop/README.md")
@@ -72,6 +73,39 @@ def audit_theme_contract() -> None:
             "uiTheme",
         ),
         "Settings theme picker",
+    )
+    require(
+        app,
+        (
+            "ALERT SOUND STUDIO",
+            "Rune Pulse",
+            "Crystal Chime",
+            "Ember Alarm",
+            "Temple Bell",
+            "previewConfiguredSound",
+            "soundKindForAlert",
+        ),
+        "per-alert sound studio",
+    )
+    require(
+        protocol,
+        ("AlertSoundKind", "AlertSoundPreset", "soundProfiles"),
+        "sound profile protocol",
+    )
+    require(
+        electron,
+        (
+            "alerts:choose-sound",
+            "alerts:read-sound",
+            "CUSTOM_SOUND_MAX_BYTES",
+            "normalizeSoundProfiles",
+        ),
+        "custom sound boundary",
+    )
+    require(
+        preload,
+        ("chooseAlertSound", "readAlertSound"),
+        "custom sound preload API",
     )
     if 'role="radio"' not in app and "aria-pressed" not in app:
         fail("theme choices need an accessible selected-state contract")
@@ -136,7 +170,7 @@ def audit_theme_contract() -> None:
         fail("transparent Electron windows must not depend on live blur")
     require(
         readme,
-        ("Vellum & Ember", "Midnight Frost Glass", "spinui_reloaded", "spinui_glass"),
+        ("Vellum & Ember", "Midnight Frost Glass", "spinui_reloaded", "spinui_glass", "Alert Sound Studio"),
         "Loremaster desktop documentation",
     )
 
