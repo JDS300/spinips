@@ -20,9 +20,19 @@ if (process.platform === "linux") {
   // EverQuest runs under Proton/XWayland, and only the X11 backend gives the
   // overlays working always-on-top, click-through, and global hotkeys; native
   // Wayland silently drops all three. LOREMASTER_OZONE is the escape hatch.
+  // Chromium's own detection is the default: a Wayland session gets Wayland,
+  // an X11 session gets X11. Forcing X11 everywhere looked attractive because
+  // EverQuest renders through XWayland and the X11 backend is what gives
+  // overlays always-on-top, click-through and global hotkeys -- but on a KDE
+  // Wayland session with the NVIDIA driver it makes the GPU process fail to
+  // dlopen the GBM driver and segfault, after which the window is never
+  // mapped at all: a tray icon and nothing else. A visible app without those
+  // overlay guarantees beats an invisible one that has them on paper.
+  // LOREMASTER_OZONE=x11 opts back in where the X11 backend does work.
   const requested = (process.env.LOREMASTER_OZONE ?? "").trim().toLowerCase();
-  const ozone = ["x11", "wayland", "auto"].includes(requested) ? requested : "x11";
-  app.commandLine.appendSwitch("ozone-platform", ozone);
+  if (requested === "x11" || requested === "wayland") {
+    app.commandLine.appendSwitch("ozone-platform", requested);
+  }
 }
 if (process.env.LOREMASTER_DESKTOP_DATA_DIR) {
   app.setPath("userData", path.resolve(process.env.LOREMASTER_DESKTOP_DATA_DIR));
@@ -1445,11 +1455,27 @@ function createWindow(): void {
   const rendererReady = developmentUrl
     ? mainWindow.loadURL(developmentUrl)
     : mainWindow.loadFile(path.join(app.getAppPath(), "dist", "index.html"));
-  void rendererReady.then(() => {
-    mainWindow?.webContents.on("will-navigate", (event) => event.preventDefault());
-    mainWindow?.webContents.setZoomFactor(settings.fontScale);
-    setWindowMode(false);
+  // The window is created hidden and only revealed here, so anything that
+  // rejects or throws on the way to showInactive() used to leave a tray icon
+  // and no window, with nothing logged -- indistinguishable from a hang. Load
+  // failures and setup failures are now reported, and the window is shown
+  // regardless, so a partially configured window still beats an invisible one.
+  void rendererReady.catch((error) => {
+    console.error("[Loremaster] renderer failed to load", error);
+  }).then(() => {
+    try {
+      mainWindow?.webContents.on("will-navigate", (event) => event.preventDefault());
+      mainWindow?.webContents.setZoomFactor(settings.fontScale);
+      setWindowMode(false);
+    } catch (error) {
+      console.error("[Loremaster] window setup failed; showing anyway", error);
+    }
     mainWindow?.showInactive();
+    console.log("[Loremaster] window shown",
+      JSON.stringify({
+        visible: mainWindow?.isVisible(),
+        bounds: mainWindow?.getBounds(),
+      }));
     createAlertWindow();
     createControlWindow();
     applyAlwaysOnTop(settings.alwaysOnTop);

@@ -180,18 +180,36 @@ monitor, and expect the overlay and OCR features to be unavailable.
 
 ## Wayland and XWayland
 
-Loremaster forces Chromium's X11 backend on Linux. This is deliberate: EQ runs
-under Wine or Proton and therefore renders through XWayland, and putting
-Loremaster on the same X server is what makes always-on-top, click-through
-overlays, global hotkeys, and screen capture work. Under a native Wayland
-backend, Wayland's security model blocks most of that.
+Loremaster lets Chromium pick its own backend: a Wayland session gets Wayland,
+an X11 session gets X11.
 
-To override:
+Forcing the X11 backend everywhere is tempting, because EverQuest renders
+through XWayland and the X11 backend is what gives overlays always-on-top,
+click-through and global hotkeys. It was tried and reverted. On a KDE Wayland
+session with the NVIDIA driver, forcing X11 makes Chromium's GPU process fail
+to load the GBM driver:
 
 ```
-LOREMASTER_OZONE=wayland ./loremaster   # native Wayland
-LOREMASTER_OZONE=auto ./loremaster      # let Chromium decide
+MESA-LOADER: failed to open dri: /usr/lib/gbm/dri_gbm.so: Permission denied
+GPU process exited unexpectedly: exit_code=139
 ```
+
+The GPU process then segfaults in a loop and the window is never mapped at
+all — you get a tray icon and nothing else, with no error to explain it. A
+visible application without the overlay guarantees beats an invisible one that
+has them on paper.
+
+To force a backend either way:
+
+```
+LOREMASTER_OZONE=x11 ./loremaster       # opt back in where X11 works
+LOREMASTER_OZONE=wayland ./loremaster   # force native Wayland
+```
+
+If you run an X11 session, or a Wayland session where the X11 backend works,
+`LOREMASTER_OZONE=x11` is worth trying — it is the backend with the strongest
+overlay behaviour. Check the tray icon appears *and* a window does before
+settling on it.
 
 One known cosmetic gap: Electron's mouse-move *forwarding* for click-through
 windows is Windows/macOS-only, so hover effects on overlays are inert on Linux.
@@ -202,7 +220,7 @@ Click-through itself works.
 | Variable | Effect |
 | --- | --- |
 | `LOREMASTER_PYTHON` | Interpreter used for the parser engine. Set this if your `python3` is too old or lives somewhere unusual. |
-| `LOREMASTER_OZONE` | `x11` (default), `wayland`, or `auto`. |
+| `LOREMASTER_OZONE` | Force a Chromium backend: `x11` or `wayland`. Unset lets Chromium detect, which is the default and the safe choice. |
 | `SPIN_LOREMASTER_TESSERACT_LANG` | OCR language, default `eng`. |
 | `SPIN_LOREMASTER_TESSERACT_PSM` | Tesseract page-segmentation mode. Try `11` if tooltip OCR returns nothing. |
 
