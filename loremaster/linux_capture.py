@@ -384,6 +384,54 @@ def _window_property(x11: ctypes.CDLL, display: int, window: int,
         x11.XFree(data)
 
 
+def _window_property_list(x11: ctypes.CDLL, display: int, window: int,
+                          name: str, limit: int = 256) -> list[int]:
+    """Read a 32-bit EWMH window-list property such as _NET_CLIENT_LIST."""
+    atom = x11.XInternAtom(display, name.encode("ascii"), 1)
+    if not atom:
+        return []
+    actual_type = ctypes.c_ulong()
+    actual_format = ctypes.c_int()
+    items = ctypes.c_ulong()
+    remaining = ctypes.c_ulong()
+    data = ctypes.POINTER(ctypes.c_ubyte)()
+    status = x11.XGetWindowProperty(
+        display, window, atom, 0, limit, 0, _ANY_PROPERTY_TYPE,
+        ctypes.byref(actual_type), ctypes.byref(actual_format),
+        ctypes.byref(items), ctypes.byref(remaining), ctypes.byref(data))
+    if status != _SUCCESS or not data:
+        return []
+    try:
+        if actual_format.value != 32:
+            return []
+        values = ctypes.cast(data, ctypes.POINTER(ctypes.c_ulong))
+        return [int(values[index]) for index in range(min(items.value, limit))]
+    finally:
+        x11.XFree(data)
+
+
+def _find_process_window(x11: ctypes.CDLL, display: int, root: int,
+                         expected_process: str) -> int | None:
+    """Find a managed window owned by ``expected_process``, or None.
+
+    The scan can be started from Loremaster's own window, which makes the game
+    the background window rather than the focused one. Searching the window
+    manager's client list finds it anyway, and every candidate is still checked
+    against /proc before any pixels are read, so this widens where the game may
+    be without widening what may be captured.
+    """
+    for window in _window_property_list(x11, display, root, "_NET_CLIENT_LIST"):
+        pid = _window_property(x11, display, window, "_NET_WM_PID")
+        if not pid:
+            continue
+        try:
+            if process_identity(int(pid)).matches(expected_process):
+                return window
+        except LinuxCaptureError:
+            continue
+    return None
+
+
 def process_identity(pid: int) -> ProcessIdentity:
     """Read the public names of a process from ``/proc``.
 
@@ -476,12 +524,24 @@ def capture_active_window_region(
         root = x11.XDefaultRootWindow(display)
         active = _window_property(x11, display, root, "_NET_ACTIVE_WINDOW")
         trap.check("The focused window could not be read")
-        if not active:
+        if active:
+            try:
+                return _capture_verified_region(
+                    x11, display, trap, int(active), expected_process, width,
+                    height, cursor)
+            except LinuxCaptureError:
+                # The focused window is not the game. That is the normal case
+                # when the scan is started from a button rather than a hotkey,
+                # so look for the game instead of giving up.
+                pass
+        target = _find_process_window(x11, display, root, expected_process)
+        if target is None:
             raise LinuxCaptureError(
-                "The window manager does not publish _NET_ACTIVE_WINDOW, so "
-                "the focused window cannot be verified before a scan.")
+                f"No {expected_process} window was found on this display. "
+                "Start EverQuest under Wine or Proton on X11 or XWayland, open "
+                "the Alt+Z window, and scan again.")
         return _capture_verified_region(
-            x11, display, trap, int(active), expected_process, width, height,
+            x11, display, trap, target, expected_process, width, height,
             cursor)
 
 
