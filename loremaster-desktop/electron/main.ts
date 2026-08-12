@@ -34,6 +34,15 @@ if (process.platform === "linux") {
     app.commandLine.appendSwitch("ozone-platform", requested);
   }
 }
+
+// Wayland deliberately gives clients no way to read or set an absolute window
+// position. getBounds() then reports (0,0) wherever the window actually is,
+// and the alert and control surfaces cannot be anchored to the seed at all.
+// Persisting those coordinates is actively harmful: it drags the window to the
+// top-left corner on the next launch. The anchored HUD needs an X11 session.
+const windowPositioningIsReliable =
+  (process.env.LOREMASTER_OZONE ?? "").trim().toLowerCase() === "x11"
+  || process.env.XDG_SESSION_TYPE !== "wayland";
 if (process.env.LOREMASTER_DESKTOP_DATA_DIR) {
   app.setPath("userData", path.resolve(process.env.LOREMASTER_DESKTOP_DATA_DIR));
 }
@@ -1418,12 +1427,26 @@ function createControlWindow(): void {
   controlWindow.on("closed", () => { controlWindow = null; });
 }
 
+// A saved seed position is only reusable while some display still covers it.
+// Monitors get unplugged and layouts change, and restoring a window onto
+// coordinates that no longer exist hides it as effectively as never showing
+// it. Falling back to the platform's own placement keeps it reachable.
+function usableSeedPosition(
+    position: { x: number; y: number } | null | undefined,
+): { x: number; y: number } | Record<string, never> {
+  if (!position || !Number.isFinite(position.x) || !Number.isFinite(position.y)) return {};
+  const covered = screen.getAllDisplays().some(({ workArea }) =>
+    position.x >= workArea.x && position.x < workArea.x + workArea.width
+    && position.y >= workArea.y && position.y < workArea.y + workArea.height);
+  return covered ? position : {};
+}
+
 function createWindow(): void {
   const settings = engine?.getState().settings ?? defaultSettings;
   const seedSize = scaledSize(SEED_SIZE, settings.fontScale);
   mainWindow = new BrowserWindow({
     ...seedSize,
-    ...(settings.seedPosition ?? {}),
+    ...usableSeedPosition(settings.seedPosition),
     minWidth: 118,
     minHeight: 64,
     maxWidth: 1800,
@@ -1598,7 +1621,8 @@ function createWindow(): void {
   mainWindow.on("move", () => {
     positionAlertWindow();
     syncControlWindow();
-    if (!windowExpanded && !movingWindowProgrammatically && mainWindow) {
+    if (windowPositioningIsReliable
+      && !windowExpanded && !movingWindowProgrammatically && mainWindow) {
       const bounds = mainWindow.getBounds();
       engine?.saveSeedPosition({ x: bounds.x, y: bounds.y });
     }
