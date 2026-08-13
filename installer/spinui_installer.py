@@ -2103,7 +2103,13 @@ def selftest() -> int:
     with tempfile.TemporaryDirectory() as td:
         original_environ = dict(os.environ)
         try:
+            # Path.home() reads USERPROFILE on Windows and has ignored HOME
+            # there since Python 3.8, so setting HOME alone left discovery
+            # pointed at the runner's real profile.  find_eq_roots() consults
+            # the Wine prefixes on every platform, so this has to hold on all
+            # of them.
             os.environ["HOME"] = td
+            os.environ["USERPROFILE"] = td
             os.environ.pop("WINEPREFIX", None)
             home = Path(td)
             assert wine_prefixes() == []
