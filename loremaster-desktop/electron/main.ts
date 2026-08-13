@@ -61,9 +61,26 @@ if (process.platform === "linux"
   }
 }
 
-const windowPositioningIsReliable =
-  (process.env.LOREMASTER_OZONE ?? "").trim().toLowerCase() === "x11"
-  || process.env.XDG_SESSION_TYPE !== "wayland";
+// Which backend is actually running, not which one was asked for. The flag
+// usually arrives on the command line -- the AppImage launcher supplies it --
+// so reading only LOREMASTER_OZONE concluded "Wayland" while X11 was running,
+// and the app then refused to save a position it was perfectly able to read.
+function activeOzonePlatform(): string {
+  const fromArgv = process.argv
+    .find((argument) => argument.startsWith("--ozone-platform="))
+    ?.split("=")[1];
+  return (fromArgv ?? process.env.LOREMASTER_OZONE ?? "").trim().toLowerCase();
+}
+
+// Wayland forbids a client from reading or setting its own position, so a
+// saved value would be meaningless there and persisting it overwrites a good
+// one with the origin.
+const windowPositioningIsReliable = (() => {
+  const platform = activeOzonePlatform();
+  if (platform === "x11") return true;
+  if (platform === "wayland") return false;
+  return process.env.XDG_SESSION_TYPE !== "wayland";
+})();
 if (process.env.LOREMASTER_DESKTOP_DATA_DIR) {
   app.setPath("userData", path.resolve(process.env.LOREMASTER_DESKTOP_DATA_DIR));
 }
