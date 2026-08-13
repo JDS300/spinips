@@ -120,6 +120,15 @@ mount.
 | Capture and OCR round trip | three strings drawn into a real X11 window returned exactly |
 | Lockout scan | reads the Alt+Z panel and its column headers from an unfocused fullscreen game |
 | Charm-break alert | fires on a proven break |
+| Mez timers | fire on landing; warning leads the safe floor; wake window shown after it |
+
+Mez timing was exercised across repeated casts of a rank-scaled spell. Observed
+expiries ranged 36–40s against a computed 36s safe floor, which is the
+`N*6..(N+1)*6` server-tick window the tracker models deliberately: it counts
+down to the guaranteed-safe floor, warns ahead of it, then shows a wake window
+rather than presenting the tail as guaranteed time. The spread is the model
+working, not drift. Focus and AA duration extensions are invisible in the log,
+so the computed floor sits below the true duration by design.
 
 The skin check matters most. The skin is roughly 500 XML documents referencing
 about 2,800 textures, and Linux filesystems are case-sensitive where Windows is
