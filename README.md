@@ -2,25 +2,26 @@
   <img src="docs/screenshots/spinui-logo-dual.jpg" alt="SPINUI logo divided between warm Vellum and Ember brass on the left and Midnight Frost Glass on the right" width="1000">
 </p>
 
-<h1 align="center">SpinUI + Spin's Loremaster</h1>
+<h1 align="center">SpinUI + Spin's Loremaster — on Linux</h1>
 
-<p align="center"><strong>See more of Norrath. Read every fight.</strong></p>
+<p align="center"><strong>See more of Norrath. Read every fight. Natively, on Linux.</strong></p>
 
 <p align="center">
-  Two complete native interfaces for EverQuest Legends—classic Vellum &amp; Ember and optional Midnight Frost Glass—built around a clear combat cockpit and paired with a log-driven encounter lab, adventure ledger, item companion, and alert system.
+  <a href="https://github.com/itsspin/spinips">itsspin's</a> EverQuest Legends interface and companion — two complete skins, a combat cockpit, and a log-driven encounter lab — running natively on Linux. This fork adds the platform support and nothing else.
 </p>
 
 <p align="center">
-  <a href="https://github.com/itsspin/spinips/releases/latest"><strong>Download the latest release</strong></a>
-  · <a href="#quick-start">Quick start</a>
-  · <a href="#spinui-glass--midnight-frost">Explore Glass</a>
-  · <a href="#spins-loremaster">Explore Loremaster</a>
-  · <a href="#layout-profiles">Choose a layout</a>
-  · <a href="#4k-readability-with-spinfourkayyy">4K scaling</a>
+  <a href="https://github.com/JDS300/spinips/releases/latest"><strong>Download the Linux release</strong></a>
+  · <a href="#running-on-linux">Running on Linux</a>
+  · <a href="#what-is-tested">What is tested</a>
+  · <a href="docs/LINUX.md">Linux notes</a>
+  · <a href="docs/LINUX_UPSTREAM.md">Full account</a>
+  <br>
+  <sub>On Windows? Use the original: <a href="https://github.com/itsspin/spinips"><strong>itsspin/spinips</strong></a></sub>
 </p>
 
 <p align="center">
-  Windows · 7 validated resolutions · 21 generated layout profiles · Packaged app needs no Python · No injection or game-memory access
+  Linux · AppImage &amp; tar.gz · Wine/Proton/Lutris log discovery · System Python, no pip packages · No injection or game-memory access
 </p>
 
 > [!IMPORTANT]
