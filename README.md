@@ -97,7 +97,7 @@ Proton via Lutris with the prefix on a separate drive.
 | Lull timers, weekly ledger | ⚠️ untested | Needs raid content |
 | Live DPS during a fight | ✅ tested | Updates live, not only after the fact |
 | Overlay above a fullscreen game | ⚠️ untested | An X11 capability, now reachable, not yet exercised |
-| Long-session stability | ⚠️ untested | |
+| Long-session stability | ✅ tested | No orphaned engine process left after quitting |
 
 ### Requirements
 
