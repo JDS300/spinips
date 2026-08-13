@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld("loremasterDesktop", {
   openExternal: (value: string) => ipcRenderer.invoke("external:open", value),
   checkForUpdates: () => ipcRenderer.invoke("updates:check"),
   resetEngine: () => ipcRenderer.send("engine:reset"),
+  scanLockouts: () => ipcRenderer.send("engine:scan-lockouts"),
   testAlert: () => ipcRenderer.send("alerts:test"),
   onSnapshot: (callback: (event: unknown) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, value: unknown) => callback(value);

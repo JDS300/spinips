@@ -44,9 +44,10 @@ except (ImportError, AttributeError):
     normalize_composition = runtime_module.normalize_composition
 from lull_timer import LullTracker
 from mez_timer import MezTracker
-from hover_ocr import HoverOcrService
+from hover_ocr import HoverOcrService, capture_game_window, scan_game_window
 from instance_lockout_ocr import (
-    ParsedRaidLockout, parse_instance_character, parse_instance_lockouts)
+    ParsedRaidLockout, instance_panel_detected, parse_instance_character,
+    parse_instance_lockouts)
 from weekly_tracker import DIFFICULTIES, WeeklyBossTracker
 
 
@@ -74,19 +75,24 @@ class HeadlessEngine:
         self.instance_lockouts: list[dict] = []
         self.lockout_scan = {
             "status": "idle",
-            "detail": "Open Alt+Z, point at Outstanding Instance Timers, then press Ctrl+Shift+Z.",
+            "detail": "Open the Alt+Z Instance Information window, then scan.",
             "scannedAt": "",
             "importedCount": 0,
             "timedCount": 0,
             "hotkey": "Ctrl+Shift+Z",
         }
         self._lockout_request_id = 0
-        self.lockout_ocr = HoverOcrService()
+        # The Alt+Z panel is wherever the player put it, so this scan reads the
+        # whole game window rather than a region framed on the cursor.
+        self.lockout_ocr = HoverOcrService(
+            scanner=scan_game_window, capture_factory=capture_game_window)
         self._load_instance_lockouts()
         self.raid_difficulty: int | None = None
         self.configured_composition = ""
-        self.pending_raid_target = ""
-        self.pending_raid_seconds = 0.0
+        # Ordered target -> fight seconds. A single slot silently discarded the
+        # first kill when two raid targets died before a difficulty was
+        # confirmed, which is exactly when a raid confirms several at once.
+        self.pending_raid_kills: dict[str, float] = {}
         self.sequence = 0
         self.stats = SessionStats()
         self.mez = MezTracker()
@@ -179,6 +185,10 @@ class HeadlessEngine:
         }
         timed_count = 0
         for lockout in rows:
+            # The scan is itself the confirmation for this target: recording a
+            # completion while still asking the player to confirm a difficulty
+            # for it leaves a prompt that can never be satisfied.
+            self.pending_raid_kills.pop(lockout.target, None)
             self.weekly.set_completion(
                 observed_at, lockout.target, lockout.difficulty,
                 character=character, completed=True)
@@ -252,12 +262,24 @@ class HeadlessEngine:
                 continue
             rows = parse_instance_lockouts(result.lines)
             if not rows:
-                self.lockout_scan.update({
-                    "status": "error",
-                    "detail": ("No D0–D4 raid rows were recognized. Keep EverQuest focused, "
-                               "point inside the timer table, and scan the visible rows again."),
-                    "importedCount": 0,
-                })
+                # An empty table is not a failure. Saying so only when the
+                # panel itself was unmistakably read is what tells the player
+                # "you have no lockouts" apart from "the scan missed".
+                if instance_panel_detected(result.lines):
+                    self.lockout_scan.update({
+                        "status": "success",
+                        "detail": ("Read the Alt+Z Outstanding Instance Timers: "
+                                   "no raid lockouts are listed."),
+                        "importedCount": 0,
+                    })
+                else:
+                    self.lockout_scan.update({
+                        "status": "error",
+                        "detail": ("The Alt+Z Instance Information window was not "
+                                   "found on screen. Open it with Alt+Z while "
+                                   "EverQuest is running, then scan again."),
+                        "importedCount": 0,
+                    })
                 continue
             self.import_instance_lockouts(
                 rows, character_hint=parse_instance_character(result.lines))
@@ -343,13 +365,13 @@ class HeadlessEngine:
         if value is not None and value not in DIFFICULTIES:
             return False
         self.raid_difficulty = value
-        if value is not None and self.pending_raid_target:
-            self.weekly.observe_kill(
-                self.last_observed_at, self.pending_raid_target,
-                zone=self.stats.zone, character=self.stats.character,
-                difficulty=value, duration_seconds=self.pending_raid_seconds)
-            self.pending_raid_target = ""
-            self.pending_raid_seconds = 0.0
+        if value is not None and self.pending_raid_kills:
+            for target, seconds in list(self.pending_raid_kills.items()):
+                self.weekly.observe_kill(
+                    self.last_observed_at, target,
+                    zone=self.stats.zone, character=self.stats.character,
+                    difficulty=value, duration_seconds=seconds)
+            self.pending_raid_kills.clear()
         return True
 
     def set_composition(self, value: str) -> bool:
@@ -439,8 +461,8 @@ class HeadlessEngine:
         if weekly_credit:
             if raid_target:
                 if self.raid_difficulty is None:
-                    self.pending_raid_target = raid_target.name
-                    self.pending_raid_seconds = (
+                    self.pending_raid_kills.setdefault(
+                        raid_target.name,
                         self.stats.fight.seconds if self.stats.fight else 0.0)
                 else:
                     self.weekly.observe_kill(
@@ -502,7 +524,11 @@ class HeadlessEngine:
             observed_at,
             character="" if weekly_character in ("", "?") else weekly_character)
         weekly["activeDifficulty"] = self.raid_difficulty
-        weekly["pendingRaidTarget"] = self.pending_raid_target
+        pending = list(self.pending_raid_kills)
+        # protocol v1 is append-only in optional fields, so the original
+        # single-target field keeps its meaning and the list is added beside it.
+        weekly["pendingRaidTarget"] = pending[0] if pending else ""
+        weekly["pendingRaidTargets"] = pending
         weekly["altZLockouts"] = self._instance_lockout_snapshot(observed_at)
         weekly["altZScan"] = dict(self.lockout_scan)
         event["snapshot"]["weekly"] = weekly

@@ -1,14 +1,22 @@
+import os
 import sys
 import unittest
+from difflib import SequenceMatcher
 from pathlib import Path
 
 
 LOREMASTER_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(LOREMASTER_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import hover_ocr  # noqa: E402
 from hover_ocr import OcrLine  # noqa: E402
 from instance_lockout_ocr import (  # noqa: E402
     parse_instance_character, parse_instance_lockouts)
+# The X11 window helper lives beside the backend it exercises; reusing it keeps
+# one definition of "a real window with known text".
+from test_linux_capture import (  # noqa: E402
+    ENGLISH_READY, X11_READY, _KnownTextWindow)
 
 
 class InstanceLockoutOcrTests(unittest.TestCase):
@@ -119,6 +127,62 @@ class InstanceLockoutOcrTests(unittest.TestCase):
             OcrLine("2d:01h:02m:03s The Hole - Solo 1 (Normal) Master Yae1", 10, 20, 500, 14),
         ])
         self.assertEqual([(row.target, row.difficulty) for row in rows], [("Master Yael", 1)])
+
+
+@unittest.skipUnless(
+    os.environ.get("LOREMASTER_X11_WINDOW_TESTS") == "1",
+    "set LOREMASTER_X11_WINDOW_TESTS=1 to run tests that open a window")
+@unittest.skipUnless(
+    X11_READY and ENGLISH_READY,
+    "the Alt+Z round trip requires X11 and tesseract's eng model: the parser "
+    "keys on the literal word Group, and a substitute Latin model reads it as "
+    "'Broup', which must not be taught to the parser")
+class LinuxBackendRoundTripTests(unittest.TestCase):
+    """Proof that the Linux capture/OCR backend feeds this parser real rows."""
+
+    # No timer column is drawn on purpose. The only core X font a test rig can
+    # rely on is 6x13, whose digits are genuinely ambiguous at that size in any
+    # upscale ("14m" recognizes as "idm", "54m" as "Sdm", ":5" as "tS"), and
+    # EverQuest does not use that font. Asserting around those confusions would
+    # teach the parser about the rig, and hunting for digits that happen to
+    # survive would be flaky, so this exercises the same missing-timer shape a
+    # real capture already produces and leaves the compact timer column to the
+    # in-game check.
+    ROW = ("Nagafen's Lair - Group 3 (Fused) Lord Nagafen", "Leader: Spin")
+
+    def test_a_rendered_lockout_row_survives_capture_ocr_and_parsing(self):
+        import linux_capture
+
+        with _KnownTextWindow(width=760, height=200, lines=self.ROW) as target:
+            region = linux_capture.capture_window_region(
+                target.window, hover_ocr.ROI_WIDTH, hover_ocr.ROI_HEIGHT,
+                expected_process=linux_capture.process_identity(
+                    os.getpid()).comm,
+                cursor=(0, 0))
+        recognized = linux_capture.recognize_lines(
+            region.pixels, region.region_width, region.region_height,
+            region.stride, scale=hover_ocr.OCR_SCALE)
+        lines = [OcrLine(text=row.text, x=row.x, y=row.y,
+                         width=row.width, height=row.height)
+                 for row in recognized]
+        rows = parse_instance_lockouts(lines)
+        self.assertEqual([(row.target, row.difficulty) for row in rows],
+                         [("Lord Nagafen", 3)],
+                         msg=f"OCR returned {[line.text for line in lines]!r}")
+        # No timer was drawn, so none may be invented from the rest of the row.
+        self.assertIsNone(rows[0].remaining_seconds)
+        # target/difficulty above are the values the ledger acts on, and they
+        # are resolved against the catalog with SequenceMatcher, so they are
+        # required to be exact. instance_name is raw recognized text with no
+        # such resolution behind it, and the 6x13 rig font confuses letters as
+        # readily as digits -- stock eng traineddata reads this row's "N" as
+        # "M". Requiring it exactly would assert which traineddata build is
+        # installed rather than anything about the parser.
+        self.assertGreaterEqual(
+            SequenceMatcher(None, rows[0].instance_name.casefold(),
+                            "nagafen's lair").ratio(), 0.8,
+            msg=f"instance name read as {rows[0].instance_name!r}")
+        self.assertEqual(parse_instance_character(lines), "Spin")
 
 
 if __name__ == "__main__":

@@ -187,6 +187,8 @@ export interface WeeklyProgressView {
   raids: readonly WeeklyRaidRowView[];
   activeDifficulty?: number | null;
   pendingRaidTarget?: string;
+  /** Every kill awaiting a difficulty. pendingRaidTarget names only the first. */
+  pendingRaidTargets?: string[];
   altZLockouts?: readonly AltZLockoutView[];
   altZScan?: AltZScanView;
 }

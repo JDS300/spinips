@@ -74,8 +74,9 @@ def _target_from_event(value: str) -> str:
     if not candidate:
         return ""
     # The compact red Cazic-Thule row in Legends is consistently mangled by
-    # Windows OCR even at high capture scale. Keep this deliberately narrow:
-    # a broad fuzzy threshold would risk crediting the wrong weekly boss.
+    # Windows OCR even at high capture scale; the Linux Tesseract backend has
+    # not been measured against that row. Keep this deliberately narrow: a
+    # broad fuzzy threshold would risk crediting the wrong weekly boss.
     if candidate in _OCR_EVENT_ALIASES:
         return _OCR_EVENT_ALIASES[candidate]
     direct: dict[str, str] = {}
@@ -147,6 +148,28 @@ def _parse_row(parts: list[OcrLine]) -> ParsedRaidLockout | None:
         event_name=tail,
         raw_text=raw,
     )
+
+
+# Headings that only appear on the Alt+Z panel. Recognising one proves the
+# panel was captured and read, which is what separates "the table is open and
+# empty" from "the table was never found". Matching is loose because this text
+# is OCR output, not a log line.
+_PANEL_MARKERS = (
+    "instance information",
+    "outstanding instance",
+    "instance name",
+    "lockout",
+)
+
+
+def instance_panel_detected(lines: Iterable[OcrLine]) -> bool:
+    """True when the capture clearly contains the Alt+Z panel itself."""
+    for line in lines:
+        collapsed = "".join(line.text.split()).casefold()
+        for marker in _PANEL_MARKERS:
+            if "".join(marker.split()) in collapsed:
+                return True
+    return False
 
 
 def parse_instance_lockouts(lines: Iterable[OcrLine]) -> list[ParsedRaidLockout]:

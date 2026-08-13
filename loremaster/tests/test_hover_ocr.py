@@ -7,6 +7,7 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 LOREMASTER_DIR = Path(__file__).resolve().parents[1]
@@ -168,6 +169,90 @@ class CaptureArtifactTests(unittest.TestCase):
             self.assertFalse(old.exists())
             self.assertTrue(recent.exists())
             self.assertTrue(unrelated.exists())
+
+
+class PlatformBackendDispatchTests(unittest.TestCase):
+    """The platform seam is exactly two functions: capture, then recognize."""
+
+    def test_windows_capture_still_goes_through_the_typed_win32_surface(self):
+        sentinel = hover_ocr.HoverCaptureError("win32 surface reached")
+        with mock.patch.object(hover_ocr.os, "name", "nt"), \
+                mock.patch.object(hover_ocr, "_typed_win32_libraries",
+                                  side_effect=sentinel) as libraries, \
+                mock.patch.object(hover_ocr, "_capture_hovered_tooltip_x11") as x11:
+            with self.assertRaises(hover_ocr.HoverCaptureError) as caught:
+                hover_ocr.capture_hovered_tooltip()
+        self.assertIs(caught.exception, sentinel)
+        libraries.assert_called_once_with()
+        x11.assert_not_called()
+
+    def test_other_platforms_capture_through_the_x11_backend(self):
+        capture = make_capture()
+        with mock.patch.object(hover_ocr.os, "name", "posix"), \
+                mock.patch.object(hover_ocr, "_capture_hovered_tooltip_x11",
+                                  return_value=capture) as x11, \
+                mock.patch.object(hover_ocr, "_typed_win32_libraries") as libraries:
+            self.assertIs(hover_ocr.capture_hovered_tooltip(), capture)
+        x11.assert_called_once_with()
+        libraries.assert_not_called()
+
+    def test_typed_win32_libraries_refuse_to_load_off_windows(self):
+        with mock.patch.object(hover_ocr.os, "name", "posix"):
+            with self.assertRaises(hover_ocr.HoverCaptureError) as caught:
+                hover_ocr._typed_win32_libraries()
+        self.assertIn("Windows only", str(caught.exception))
+
+    def test_other_platforms_recognize_through_the_tesseract_backend(self):
+        capture = make_capture()
+        cancel = threading.Event()
+        expected = (["Cloak of Flames"], [OcrLine("Cloak of Flames")])
+        with mock.patch.object(hover_ocr.os, "name", "posix"), \
+                mock.patch.object(hover_ocr, "_scan_hovered_tooltip_tesseract",
+                                  return_value=expected) as tesseract:
+            result = hover_ocr.scan_hovered_tooltip(capture, cancel, timeout=3.0)
+        self.assertIs(result, expected)
+        tesseract.assert_called_once_with(capture, cancel, 3.0)
+
+    def test_windows_reports_no_backend_problem_to_detect(self):
+        # Windows ships its OCR engine with the OS, so there is nothing to warn
+        # about and no subprocess may be spawned to find out.
+        with mock.patch.object(hover_ocr.os, "name", "nt"):
+            self.assertEqual(hover_ocr._backend_problem(), "")
+
+    def test_other_platforms_surface_the_backend_problem_at_startup(self):
+        import linux_capture
+
+        advice = "Tesseract has no eng language data, so screen text cannot be read."
+        with mock.patch.object(hover_ocr.os, "name", "posix"), \
+                mock.patch.object(linux_capture, "readiness_problem",
+                                  lambda: advice):
+            self.assertEqual(hover_ocr._backend_problem(), advice)
+            service = HoverOcrService(lambda *_: ([], []), make_capture)
+            self.addCleanup(service.close)
+        # A player learns the feature cannot work before pressing the hotkey.
+        self.assertEqual(service.backend_problem, advice)
+
+    def test_a_ready_backend_reports_no_problem(self):
+        import linux_capture
+
+        with mock.patch.object(hover_ocr.os, "name", "posix"), \
+                mock.patch.object(linux_capture, "readiness_problem", lambda: ""):
+            service = HoverOcrService(lambda *_: ([], []), make_capture)
+            self.addCleanup(service.close)
+        self.assertEqual(service.backend_problem, "")
+
+    def test_cancellation_reads_the_same_off_windows_as_on_windows(self):
+        capture = make_capture()
+        cancel = threading.Event()
+        cancel.set()
+        for platform in ("nt", "posix"):
+            with self.subTest(platform), mock.patch.object(
+                    hover_ocr.os, "name", platform):
+                with self.assertRaises(RuntimeError) as caught:
+                    hover_ocr.scan_hovered_tooltip(capture, cancel)
+            self.assertEqual(str(caught.exception), "Hover scan cancelled.")
+            # The old "Windows only" refusal must not resurface on Linux.
+            self.assertNotIn("Windows only", str(caught.exception))
 
 
 class HoverOcrServiceTests(unittest.TestCase):

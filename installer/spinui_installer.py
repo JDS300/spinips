@@ -15,7 +15,9 @@ import json
 import os
 import queue
 import re
+import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -27,10 +29,27 @@ from pathlib import Path
 
 APP_NAME = "SpinUI Installer"
 SKIN_NAME = "spinui_reloaded"
+# The only skin folders shipped in the release payload. Layout presets are
+# only audited against SKIN_NAME today (see _validate_source_value), so
+# selecting the other skin and a layout preset together fails closed instead
+# of silently writing a mismatched UISkin.
+AVAILABLE_SKINS: tuple[str, ...] = (SKIN_NAME, "spinui_glass")
 LAYOUT_NAME = "UI_Spin_qeynos_LO1.ini"
-LOREMASTER_NAME = "Loremaster.exe"
-STARTUP_LINK = "Spin's Loremaster.lnk"
-DESKTOP_LINK = "Spin's Loremaster.lnk"
+LOREMASTER_NAME = "Loremaster.exe"  # Windows only; loremaster-desktop's win target.
+# loremaster-desktop ships a native Linux build too, never run under Wine.
+# electron-builder names it Loremaster-<version>-<arch>.<ext>, and the
+# version/arch vary per release tag, so it is matched by glob rather than a
+# fixed filename. AppImage is preferred: it is one self-contained executable
+# file, so nothing needs to be extracted before a shortcut can launch it.
+LOREMASTER_LINUX_ARTIFACT_GLOB = "Loremaster-*.AppImage"
+LOREMASTER_LINUX_TARBALL_GLOB = "Loremaster-*.tar.gz"
+LOREMASTER_LINUX_DESTINATION_NAME = "Loremaster.AppImage"
+# loremaster-desktop/package.json's linux.executableName: the process name
+# the running AppImage reports in /proc, independent of its filename on disk.
+LOREMASTER_LINUX_PROCESS_NAME = "loremaster"
+# Windows uses a .lnk; freedesktop environments use a .desktop entry instead.
+STARTUP_LINK = "Spin's Loremaster.lnk" if os.name == "nt" else "Spin's Loremaster.desktop"
+DESKTOP_LINK = "Spin's Loremaster.lnk" if os.name == "nt" else "Spin's Loremaster.desktop"
 
 BG = "#120d08"
 PANEL = "#1a140d"
@@ -302,10 +321,11 @@ def _raw_value(line: str) -> str:
     return value
 
 
-def _validate_source_value(key: str, value: str, section: str) -> None:
+def _validate_source_value(key: str, value: str, section: str, *,
+                           expected_skin: str = SKIN_NAME) -> None:
     if key == "UISkin":
-        if section.casefold() != "main" or value != SKIN_NAME:
-            raise ValueError(f"Preset [Main] UISkin must be exactly {SKIN_NAME}.")
+        if section.casefold() != "main" or value != expected_skin:
+            raise ValueError(f"Preset [Main] UISkin must be exactly {expected_skin}.")
         return
     if key == "INIVersion":
         if not value.isdigit() or not 1 <= int(value) <= 99:
@@ -363,13 +383,13 @@ def _preset_chat_lines(source: IniDocument) -> tuple[str, ...]:
     return tuple(chat_lines)
 
 
-def _preset_patch(source: IniDocument) -> PresetLayout:
+def _preset_patch(source: IniDocument, *, expected_skin: str = SKIN_NAME) -> PresetLayout:
     sections: dict[str, dict[str, str]] = {}
     main = source.sections.get("main")
     if main is None or ("main", "uiskin") not in source.keys:
         raise ValueError("Preset is missing [Main] UISkin.")
     main_value = _raw_value(source.lines[source.keys[("main", "uiskin")]])
-    _validate_source_value("UISkin", main_value, "Main")
+    _validate_source_value("UISkin", main_value, "Main", expected_skin=expected_skin)
     sections["Main"] = {"UISkin": main_value}
     for section in sorted(LAYOUT_GEOMETRY_SECTIONS, key=str.casefold):
         folded = section.casefold()
@@ -379,14 +399,14 @@ def _preset_patch(source: IniDocument) -> PresetLayout:
         version_index = source.keys.get((folded, "iniversion"))
         if version_index is not None:
             version = _raw_value(source.lines[version_index])
-            _validate_source_value("INIVersion", version, section)
+            _validate_source_value("INIVersion", version, section, expected_skin=expected_skin)
             values["INIVersion"] = version
         for key in LAYOUT_KEYS:
             line_index = source.keys.get((folded, key.casefold()))
             if line_index is None:
                 continue
             value = _raw_value(source.lines[line_index])
-            _validate_source_value(key, value, section)
+            _validate_source_value(key, value, section, expected_skin=expected_skin)
             values[key] = value
         required = {"XRef", "YRef", "XPos", "YPos"}
         if not required.issubset(values):
@@ -495,10 +515,11 @@ def _minimal_ini_from_patch(preset: PresetLayout, *,
     return newline.join(blocks).encode("utf-8")
 
 
-def prepare_layout_update(source: Path, target: Path, *, allow_create: bool) -> LayoutUpdate:
+def prepare_layout_update(source: Path, target: Path, *, allow_create: bool,
+                          expected_skin: str = SKIN_NAME) -> LayoutUpdate:
     source_bytes = source.read_bytes()
     source_doc = _parse_ini(source_bytes, f"preset {source.name}")
-    patch = _preset_patch(source_doc)
+    patch = _preset_patch(source_doc, expected_skin=expected_skin)
     if target.exists():
         if target.is_symlink():
             raise ValueError("Symbolic-link character layouts are not supported.")
@@ -737,6 +758,38 @@ def is_eq_root(path: Path) -> bool:
     return path.is_dir() and (path / "eqgame.exe").is_file()
 
 
+def find_linux_loremaster_artifact(payload: Path) -> Path | None:
+    """Locate the native Linux Loremaster build in the release payload, if any.
+
+    Returns None when absent (a common case: the artifact is only produced by
+    CI, so a source checkout won't have one) rather than raising, since the
+    caller must still be able to install the skin on its own.
+    """
+    matches = sorted(payload.glob(LOREMASTER_LINUX_ARTIFACT_GLOB))
+    return matches[0] if matches else None
+
+
+def _linux_loremaster_skip_detail(payload: Path) -> str:
+    """Explain why no native Loremaster was installed, and what to do instead.
+
+    A tar.gz-only payload is a distinct and recoverable situation: the Linux
+    build is present, it just is not the single-file form the installer can
+    place. Saying so beats implying nothing was downloaded.
+    """
+    tarballs = sorted(payload.glob(LOREMASTER_LINUX_TARBALL_GLOB))
+    if tarballs:
+        return (
+            f"found {tarballs[0].name}, but only "
+            f"{LOREMASTER_LINUX_ARTIFACT_GLOB} can be installed automatically. "
+            "Extract that archive and run its ./loremaster binary directly."
+        )
+    return (
+        f"no native Linux build ({LOREMASTER_LINUX_ARTIFACT_GLOB}) was found in "
+        "the release payload. Download the Linux Loremaster build from the "
+        "releases page and run the installer again to install it."
+    )
+
+
 def detect_client_resolution(eq_root: Path) -> tuple[int, int] | None:
     """Best-effort read of the client's display resolution from eqclient.ini.
 
@@ -812,12 +865,7 @@ def resolution_note(resolution: tuple[int, int] | None) -> str:
     )
 
 
-def steam_libraries() -> list[Path]:
-    roots = [
-        Path(r"C:\Program Files (x86)\Steam"),
-        Path(r"C:\Program Files\Steam"),
-        Path(os.environ.get("LOCALAPPDATA", "")) / "Steam",
-    ]
+def _steam_libraries_from_roots(roots: list[Path]) -> list[Path]:
     libraries: list[Path] = []
     for steam in roots:
         if not steam.is_dir():
@@ -831,6 +879,109 @@ def steam_libraries() -> list[Path]:
         for raw in re.findall(r'"path"\s+"([^"]+)"', text):
             libraries.append(Path(raw.replace("\\\\", "\\")))
     return libraries
+
+
+def steam_libraries() -> list[Path]:
+    return _steam_libraries_from_roots([
+        Path(r"C:\Program Files (x86)\Steam"),
+        Path(r"C:\Program Files\Steam"),
+        Path(os.environ.get("LOCALAPPDATA", "")) / "Steam",
+    ])
+
+
+# Wine/Proton EQ folder shapes probed inside each detected prefix's drive_c,
+# mirroring the native Windows candidates in find_eq_roots() (minus the
+# drive letter, which drive_c stands in for).
+WINE_EQ_RELATIVE_ROOTS: tuple[tuple[str, ...], ...] = (
+    ("EQLegends",),
+    ("Users", "Public", "Daybreak Game Company", "Installed Games", "EverQuest Legends"),
+    ("Users", "Public", "Daybreak Game Company", "Installed Games", "EverQuest"),
+    ("Program Files (x86)", "Sony", "EverQuest"),
+)
+WINE_STEAM_ROOTS: tuple[tuple[str, ...], ...] = (
+    ("Program Files (x86)", "Steam"),
+    ("Program Files", "Steam"),
+)
+
+
+def wine_prefixes() -> list[Path]:
+    """Wine/Proton prefixes that might hold a Windows EverQuest install.
+
+    Every glob here is a single, fixed-depth listing (never recursive), and
+    every directory read is wrapped so an unreadable or half-provisioned
+    Steam/Lutris tree is skipped instead of raising during auto-detection.
+    """
+    home = Path.home()
+    candidates: list[Path] = []
+    env_prefix = os.environ.get("WINEPREFIX")
+    if env_prefix:
+        candidates.append(Path(env_prefix))
+    candidates.append(home / ".wine")
+
+    compatdata_roots = [
+        home / ".steam" / "steam" / "steamapps" / "compatdata",
+        home / ".local" / "share" / "Steam" / "steamapps" / "compatdata",
+        (home / ".var" / "app" / "com.valvesoftware.Steam" / "data"
+         / "Steam" / "steamapps" / "compatdata"),
+        (home / ".var" / "app" / "com.valvesoftware.Steam" / ".local"
+         / "share" / "Steam" / "steamapps" / "compatdata"),
+    ]
+    for compatdata in compatdata_roots:
+        try:
+            if not compatdata.is_dir():
+                continue
+            entries = sorted(compatdata.iterdir())
+        except OSError:
+            continue
+        candidates.extend(entry / "pfx" for entry in entries)
+
+    lutris_root = home / "Games"
+    try:
+        if lutris_root.is_dir():
+            candidates.extend(sorted(lutris_root.iterdir()))
+    except OSError:
+        pass
+
+    seen: set[str] = set()
+    prefixes: list[Path] = []
+    for candidate in candidates:
+        key = str(candidate).lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        try:
+            if (candidate / "drive_c").is_dir():
+                prefixes.append(candidate)
+        except OSError:
+            continue
+    return prefixes
+
+
+def find_wine_eq_roots() -> list[Path]:
+    """Probe every detected Wine/Proton prefix for an EQ install.
+
+    Uses the same eqgame.exe-presence check as native discovery, applied to
+    the same folder shapes plus the prefix's own Steam library, if any.
+    """
+    found: list[Path] = []
+    seen: set[str] = set()
+    for prefix in wine_prefixes():
+        drive_c = prefix / "drive_c"
+        candidates = [drive_c.joinpath(*parts) for parts in WINE_EQ_RELATIVE_ROOTS]
+        for steam_parts in WINE_STEAM_ROOTS:
+            for library in _steam_libraries_from_roots([drive_c.joinpath(*steam_parts)]):
+                candidates.extend([
+                    library / "steamapps" / "common" / "EverQuest",
+                    library / "steamapps" / "common" / "EverQuest Legends",
+                ])
+        for candidate in candidates:
+            key = str(candidate).lower()
+            if key in seen:
+                continue
+            if is_eq_root(candidate):
+                seen.add(key)
+                found.append(candidate)
+    return found
 
 
 def find_eq_roots() -> list[Path]:
@@ -854,6 +1005,13 @@ def find_eq_roots() -> list[Path]:
         if key not in seen and is_eq_root(path):
             seen.add(key)
             found.append(path)
+    # Wine/Proton prefixes are additive: they never replace or shadow a
+    # native Windows install found above.
+    for path in find_wine_eq_roots():
+        key = str(path).lower()
+        if key not in seen:
+            seen.add(key)
+            found.append(path)
     return found
 
 
@@ -864,14 +1022,25 @@ def character_layouts(eq_root: Path) -> list[Path]:
 def local_app_data(override: Path | None = None) -> Path:
     if override is not None:
         return override
-    return Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpinsLoremaster"
+    if os.name == "nt":
+        return Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpinsLoremaster"
+    # XDG Base Directory spec: $XDG_DATA_HOME, defaulting to ~/.local/share.
+    # Never fall back to an %APPDATA%-shaped path on Linux.
+    xdg_data_home = os.environ.get("XDG_DATA_HOME")
+    base = Path(xdg_data_home) if xdg_data_home else Path.home() / ".local" / "share"
+    return base / "SpinsLoremaster"
 
 
 def startup_folder(override: Path | None = None) -> Path:
     if override is not None:
         return override
-    appdata = Path(os.environ.get("APPDATA", Path.home()))
-    return appdata / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
+    if os.name == "nt":
+        appdata = Path(os.environ.get("APPDATA", Path.home()))
+        return appdata / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
+    # XDG Autostart spec: $XDG_CONFIG_HOME/autostart, defaulting to ~/.config.
+    xdg_config_home = os.environ.get("XDG_CONFIG_HOME")
+    base = Path(xdg_config_home) if xdg_config_home else Path.home() / ".config"
+    return base / "autostart"
 
 
 def desktop_folder(override: Path | None = None) -> Path:
@@ -919,16 +1088,61 @@ def _write_shortcut(executable: Path, shortcut: Path, *, arguments: str,
         raise RuntimeError(f"Could not create {shortcut.name}: {detail}")
 
 
+def _write_desktop_entry(executable: Path, shortcut: Path, *, arguments: str,
+                         description: str) -> None:
+    """Write a freedesktop .desktop entry that launches a native Linux binary.
+
+    ``executable`` must already be a directly runnable Linux executable (the
+    installed Loremaster AppImage, chmod +x'd by the caller) — never a
+    Windows PE. There is deliberately no interpreter/wine prefix here:
+    Loremaster is a native Linux (Electron) build on this platform, and is
+    never installed or launched under Wine.
+    """
+    shortcut.parent.mkdir(parents=True, exist_ok=True)
+    exec_command = shlex.quote(str(executable))
+    if arguments:
+        exec_command += f" {arguments}"
+    content = (
+        "[Desktop Entry]\n"
+        "Type=Application\n"
+        f"Name={description}\n"
+        f"Exec={exec_command}\n"
+        f"Path={shlex.quote(str(executable.parent))}\n"
+        "Terminal=false\n"
+        "Categories=Game;\n"
+    )
+    # Stage-then-rename so a reader never observes a half-written entry, and
+    # set the executable bit up front since most launchers require it before
+    # trusting a freshly dropped .desktop file.
+    descriptor, temp_name = tempfile.mkstemp(
+        prefix=".spinui-shortcut-", suffix=".desktop", dir=shortcut.parent)
+    temp_path = Path(temp_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(content)
+        temp_path.chmod(0o755)
+        os.replace(temp_path, shortcut)
+    except Exception:
+        temp_path.unlink(missing_ok=True)
+        raise
+
+
 def set_startup_shortcut(executable: Path, enabled: bool,
                          folder: Path | None = None) -> None:
     shortcut = startup_folder(folder) / STARTUP_LINK
     if not enabled:
         shortcut.unlink(missing_ok=True)
         return
-    _write_shortcut(
-        executable, shortcut, arguments="--wait-for-eq",
-        description="Wait for EverQuest, then open Spin's Loremaster",
-    )
+    if os.name == "nt":
+        _write_shortcut(
+            executable, shortcut, arguments="--wait-for-eq",
+            description="Wait for EverQuest, then open Spin's Loremaster",
+        )
+    else:
+        _write_desktop_entry(
+            executable, shortcut, arguments="--wait-for-eq",
+            description="Wait for EverQuest, then open Spin's Loremaster",
+        )
 
 
 def set_desktop_shortcut(executable: Path, enabled: bool,
@@ -937,15 +1151,83 @@ def set_desktop_shortcut(executable: Path, enabled: bool,
     if not enabled:
         shortcut.unlink(missing_ok=True)
         return
-    _write_shortcut(
-        executable, shortcut, arguments="",
-        description="Open Spin's Loremaster",
-    )
+    if os.name == "nt":
+        _write_shortcut(
+            executable, shortcut, arguments="",
+            description="Open Spin's Loremaster",
+        )
+    else:
+        _write_desktop_entry(
+            executable, shortcut, arguments="",
+            description="Open Spin's Loremaster",
+        )
+
+
+def _linux_process_pids(image_name: str, *, proc_root: Path = Path("/proc")) -> list[int]:
+    """Return the pids of every running process named image_name.
+
+    Under Wine, eqgame.exe runs as a real Linux process whose /proc/<pid>/comm
+    is set (via prctl) to the Windows executable's basename, so this needs no
+    Wine-specific API; the same scan also finds a native Linux process like
+    Loremaster's (comm "loremaster"). cmdline is checked too since comm
+    truncates at 15 bytes and some loaders leave comm as their own name.
+    """
+    target = image_name.casefold()
+    try:
+        entries = list(proc_root.iterdir())
+    except OSError:
+        return []
+    pids: list[int] = []
+    for entry in entries:
+        if not entry.name.isdigit():
+            continue
+        try:
+            comm = (entry / "comm").read_text(encoding="utf-8", errors="replace").strip()
+        except OSError:
+            continue
+        if comm.casefold() == target:
+            pids.append(int(entry.name))
+            continue
+        try:
+            cmdline = (entry / "cmdline").read_bytes()
+        except OSError:
+            continue
+        # Wine cmdline arguments may carry Windows-style backslash paths
+        # (e.g. Z:\EQLegends\eqgame.exe), which POSIX Path() would not split
+        # on, so both separators are checked explicitly.
+        for part in cmdline.split(b"\x00"):
+            if not part:
+                continue
+            basename = re.split(r"[\\/]", part.decode(errors="replace"))[-1]
+            if basename.casefold() == target:
+                pids.append(int(entry.name))
+                break
+    return pids
+
+
+def _linux_process_running(image_name: str, *, proc_root: Path = Path("/proc")) -> bool:
+    return bool(_linux_process_pids(image_name, proc_root=proc_root))
+
+
+def _linux_signal_processes(image_name: str, sig: int) -> bool:
+    """Send sig to every running process named image_name.
+
+    Returns whether any matching process existed. There is no tasklist/
+    taskkill equivalent on Linux, so /proc is scanned directly and each pid
+    is signaled with os.kill; a pid that exits mid-scan is not an error.
+    """
+    pids = _linux_process_pids(image_name)
+    for pid in pids:
+        try:
+            os.kill(pid, sig)
+        except OSError:
+            continue
+    return bool(pids)
 
 
 def process_is_running(image_name: str) -> bool:
     if os.name != "nt":
-        return False
+        return _linux_process_running(image_name)
     try:
         result = subprocess.run(
             ["tasklist.exe", "/FI", f"IMAGENAME eq {image_name}", "/NH"],
@@ -957,24 +1239,46 @@ def process_is_running(image_name: str) -> bool:
     return result.returncode == 0 and image_name.lower() in result.stdout.lower()
 
 
-def stop_running_loremaster() -> bool:
-    """Close an installed Loremaster so its executable can be updated."""
-    if not process_is_running(LOREMASTER_NAME):
+def stop_running_loremaster(image_name: str = LOREMASTER_NAME) -> bool:
+    """Close an installed Loremaster so its executable can be updated.
+
+    image_name is LOREMASTER_NAME ("Loremaster.exe") on Windows, or the
+    native Linux build's process name (LOREMASTER_LINUX_PROCESS_NAME,
+    "loremaster") on Linux -- the caller picks based on os.name since the
+    two platforms install entirely different artifacts under this app data
+    directory.
+    """
+    if not process_is_running(image_name):
         return False
-    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-    subprocess.run(["taskkill.exe", "/IM", LOREMASTER_NAME],
-                   capture_output=True, creationflags=flags)
+    if os.name == "nt":
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        subprocess.run(["taskkill.exe", "/IM", image_name],
+                       capture_output=True, creationflags=flags)
+        for _ in range(10):
+            if not process_is_running(image_name):
+                return True
+            time.sleep(0.1)
+        subprocess.run(["taskkill.exe", "/F", "/IM", image_name],
+                       capture_output=True, creationflags=flags)
+        for _ in range(10):
+            if not process_is_running(image_name):
+                return True
+            time.sleep(0.1)
+        raise RuntimeError(f"Close {image_name} and run the installer again so it can be updated.")
+    # Linux: there is no tasklist/taskkill equivalent, so /proc is scanned
+    # directly (see _linux_signal_processes) and each matching pid is
+    # signaled -- SIGTERM first, then SIGKILL if it ignores that.
+    _linux_signal_processes(image_name, signal.SIGTERM)
     for _ in range(10):
-        if not process_is_running(LOREMASTER_NAME):
+        if not process_is_running(image_name):
             return True
         time.sleep(0.1)
-    subprocess.run(["taskkill.exe", "/F", "/IM", LOREMASTER_NAME],
-                   capture_output=True, creationflags=flags)
+    _linux_signal_processes(image_name, signal.SIGKILL)
     for _ in range(10):
-        if not process_is_running(LOREMASTER_NAME):
+        if not process_is_running(image_name):
             return True
         time.sleep(0.1)
-    raise RuntimeError("Close Loremaster and run the installer again so it can be updated.")
+    raise RuntimeError(f"Close {image_name} and run the installer again so it can be updated.")
 
 
 def configure_loremaster(eq_root: Path, app_dir: Path) -> None:
@@ -1020,13 +1324,25 @@ def install_payload(payload: Path, eq_root: Path, *, install_layout: bool,
                     require_eq_closed: bool = False,
                     layout_preset: str | None = None,
                     resolution_profile: str = DEFAULT_RESOLUTION_PROFILE,
-                    create_layout_target: bool = False) -> list[str]:
+                    create_layout_target: bool = False,
+                    skin_name: str = SKIN_NAME) -> list[str]:
     payload = payload.resolve()
     eq_root = eq_root.resolve()
     if not is_eq_root(eq_root):
         raise ValueError("Choose the EverQuest folder that contains eqgame.exe.")
-    skin_source = payload / SKIN_NAME
-    lore_source = payload / LOREMASTER_NAME
+    if skin_name not in AVAILABLE_SKINS:
+        raise ValueError(f"Unknown skin: {skin_name!r}.")
+    skin_source = payload / skin_name
+    # Windows always requires Loremaster.exe (unchanged, existing behavior).
+    # Linux has no fixed filename -- the release version is embedded in it --
+    # and, unlike the skin, the native build is only produced by CI, so a
+    # source checkout commonly won't have one; that is not fatal, only the
+    # Loremaster step is skipped (see below).
+    lore_source: Path | None = (
+        payload / LOREMASTER_NAME if os.name == "nt"
+        else find_linux_loremaster_artifact(payload)
+    )
+    lore_process_name = LOREMASTER_NAME if os.name == "nt" else LOREMASTER_LINUX_PROCESS_NAME
     layout_source: Path | None = None
     target: Path | None = None
     layout_update: LayoutUpdate | None = None
@@ -1042,44 +1358,59 @@ def install_payload(payload: Path, eq_root: Path, *, install_layout: bool,
             eq_root, layout_target, allow_create=create_layout_target
         )
         layout_update = prepare_layout_update(
-            layout_source, target, allow_create=create_layout_target
+            layout_source, target, allow_create=create_layout_target,
+            expected_skin=skin_name,
         )
     if not skin_source.is_dir():
-        raise FileNotFoundError(f"Release payload is missing {SKIN_NAME}.")
-    if not lore_source.is_file():
+        raise FileNotFoundError(f"Release payload is missing {skin_name}.")
+    if os.name == "nt" and not lore_source.is_file():
         raise FileNotFoundError(f"Release payload is missing {LOREMASTER_NAME}.")
     if require_eq_closed and process_is_running("eqgame.exe"):
         raise RuntimeError(
             "EverQuest is running. Camp out and close eqgame.exe before updating "
             "SpinUI so the client cannot overwrite the installed files."
         )
-    stopped_loremaster = stop_running_loremaster() if replace_running else False
+    stopped_loremaster = (
+        stop_running_loremaster(lore_process_name)
+        if replace_running and lore_source is not None else False
+    )
 
     results: list[str] = []
-    skin_destination = eq_root / "uifiles" / SKIN_NAME
+    skin_destination = eq_root / "uifiles" / skin_name
     # Use a staged directory swap so removed/renamed files from an older build
-    # cannot survive the update and interfere with EQ's skin loader.
+    # cannot survive the update and interfere with EQ's skin loader. The skin
+    # is independent of Loremaster below, and must fully succeed even when
+    # Loremaster is skipped.
     updating_skin = replace_tree(skin_source, skin_destination)
     results.append(
-        f"{'Updated' if updating_skin else 'Installed'} {SKIN_NAME} at {skin_destination}"
+        f"{'Updated' if updating_skin else 'Installed'} {skin_name} at {skin_destination}"
     )
 
     lore_destination_dir = local_app_data(app_dir)
-    lore_destination_dir.mkdir(parents=True, exist_ok=True)
-    lore_destination = lore_destination_dir / LOREMASTER_NAME
-    updating_loremaster = lore_destination.exists()
-    staged_loremaster = lore_destination.with_suffix(".installing")
-    try:
-        shutil.copy2(lore_source, staged_loremaster)
-        os.replace(staged_loremaster, lore_destination)
-    finally:
-        staged_loremaster.unlink(missing_ok=True)
-    configure_loremaster(eq_root, lore_destination_dir)
-    results.append(
-        f"{'Updated' if updating_loremaster else 'Installed'} Loremaster at {lore_destination}"
-    )
-    if stopped_loremaster:
-        results.append("Closed the previous Loremaster build before updating")
+    lore_destination: Path | None = None
+    if lore_source is not None:
+        lore_destination_dir.mkdir(parents=True, exist_ok=True)
+        destination_name = LOREMASTER_NAME if os.name == "nt" else LOREMASTER_LINUX_DESTINATION_NAME
+        lore_destination = lore_destination_dir / destination_name
+        updating_loremaster = lore_destination.exists()
+        staged_loremaster = lore_destination.with_suffix(".installing")
+        try:
+            shutil.copy2(lore_source, staged_loremaster)
+            if os.name != "nt":
+                staged_loremaster.chmod(0o755)
+            os.replace(staged_loremaster, lore_destination)
+        finally:
+            staged_loremaster.unlink(missing_ok=True)
+        configure_loremaster(eq_root, lore_destination_dir)
+        results.append(
+            f"{'Updated' if updating_loremaster else 'Installed'} Loremaster at {lore_destination}"
+        )
+        if stopped_loremaster:
+            results.append("Closed the previous Loremaster build before updating")
+    else:
+        results.append(
+            "Skipped Loremaster: " + _linux_loremaster_skip_detail(payload)
+        )
 
     if install_layout:
         assert layout_source is not None and target is not None and layout_update is not None
@@ -1107,12 +1438,22 @@ def install_payload(payload: Path, eq_root: Path, *, install_layout: bool,
     else:
         results.append("Kept the existing character layout unchanged")
 
-    set_startup_shortcut(lore_destination, run_at_startup, startup_dir)
-    results.append("Loremaster startup enabled" if run_at_startup
-                   else "Loremaster startup disabled")
-    set_desktop_shortcut(lore_destination, desktop_shortcut, desktop_dir)
-    results.append("Loremaster desktop shortcut created" if desktop_shortcut
-                   else "Loremaster desktop shortcut skipped")
+    if lore_destination is not None:
+        set_startup_shortcut(lore_destination, run_at_startup, startup_dir)
+        results.append("Loremaster startup enabled" if run_at_startup
+                       else "Loremaster startup disabled")
+        set_desktop_shortcut(lore_destination, desktop_shortcut, desktop_dir)
+        results.append("Loremaster desktop shortcut created" if desktop_shortcut
+                       else "Loremaster desktop shortcut skipped")
+    else:
+        # Nothing was installed to point a shortcut at. Still clear any
+        # stale shortcut left over from a previous install where Loremaster
+        # was present, rather than leaving it dangling.
+        placeholder = lore_destination_dir / "Loremaster"
+        set_startup_shortcut(placeholder, False, startup_dir)
+        set_desktop_shortcut(placeholder, False, desktop_dir)
+        if run_at_startup or desktop_shortcut:
+            results.append("Loremaster shortcuts skipped: Loremaster was not installed")
     return results
 
 
@@ -1188,6 +1529,10 @@ def selftest() -> int:
         (payload / SKIN_NAME).mkdir(parents=True)
         (payload / SKIN_NAME / "EQUI.xml").write_text("<xml/>", encoding="utf-8")
         (payload / LOREMASTER_NAME).write_bytes(b"loremaster")
+        # Present regardless of OS: only os.name == "nt" ever reads LOREMASTER_NAME,
+        # and only non-nt ever globs for the AppImage, so each platform's
+        # selftest run exercises exactly the artifact it would really use.
+        (payload / "Loremaster-9.9.9-x64.AppImage").write_bytes(b"loremaster")
         (payload / LAYOUT_NAME).write_bytes(preset_bytes("combat-focus"))
         for preset_key in LAYOUT_PRESETS:
             preset_dir = payload / "layouts" / preset_key
@@ -1209,6 +1554,7 @@ def selftest() -> int:
         (installed_skin / "removed-in-new-build.tga").write_bytes(b"stale")
         app.mkdir()
         (app / LOREMASTER_NAME).write_bytes(b"old loremaster")
+        (app / LOREMASTER_LINUX_DESTINATION_NAME).write_bytes(b"old loremaster")
         (app / "loremaster_config.json").write_text(
             json.dumps({"mini_mode": False}), encoding="utf-8"
         )
@@ -1249,7 +1595,12 @@ def selftest() -> int:
         assert result
         assert (installed_skin / "EQUI.xml").read_text(encoding="utf-8") == "<xml/>"
         assert not (installed_skin / "removed-in-new-build.tga").exists()
-        assert (app / LOREMASTER_NAME).read_bytes() == b"loremaster"
+        if os.name == "nt":
+            assert (app / LOREMASTER_NAME).read_bytes() == b"loremaster"
+        else:
+            assert (app / LOREMASTER_LINUX_DESTINATION_NAME).read_bytes() == b"loremaster"
+            assert os.access(app / LOREMASTER_LINUX_DESTINATION_NAME, os.X_OK)
+            assert any("Skipped Loremaster" not in line for line in result)
         merged = target.read_bytes()
         assert merged.startswith(b"\xef\xbb\xbf")
         assert b"\n" not in merged.replace(b"\r\n", b"")
@@ -1642,7 +1993,405 @@ def selftest() -> int:
             assert (desktop / DESKTOP_LINK).is_file()
             set_desktop_shortcut(app / LOREMASTER_NAME, False, desktop)
             assert not (desktop / DESKTOP_LINK).exists()
+        else:
+            # A native Linux executable, never a Windows exe -- Loremaster is
+            # never wrapped with wine on this platform.
+            linux_executable = app / LOREMASTER_LINUX_DESTINATION_NAME
+            linux_executable.write_bytes(b"fake appimage")
+            set_desktop_shortcut(linux_executable, True, desktop)
+            entry = desktop / DESKTOP_LINK
+            assert entry.is_file()
+            entry_text = entry.read_text(encoding="utf-8")
+            assert "[Desktop Entry]" in entry_text
+            assert f"Exec={shlex.quote(str(linux_executable))}\n" in entry_text
+            assert "wine" not in entry_text
+            assert os.access(entry, os.X_OK)
+            set_desktop_shortcut(linux_executable, False, desktop)
+            assert not entry.exists()
+            set_startup_shortcut(linux_executable, True, startup)
+            startup_entry = startup / STARTUP_LINK
+            assert startup_entry.is_file()
+            startup_text = startup_entry.read_text(encoding="utf-8")
+            assert "--wait-for-eq" in startup_text
+            assert "wine" not in startup_text
+            set_startup_shortcut(linux_executable, False, startup)
+            assert not startup_entry.exists()
+
+    # Skins: the payload can ship more than one; install_payload copies
+    # whichever is selected, and a layout preset authored only for
+    # SKIN_NAME fails closed (no target write) against a different skin.
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        payload = root / "payload"
+        eq = root / "EverQuest Legends"
+        (payload / SKIN_NAME).mkdir(parents=True)
+        (payload / SKIN_NAME / "EQUI.xml").write_text("<xml/>", encoding="utf-8")
+        (payload / "spinui_glass").mkdir(parents=True)
+        (payload / "spinui_glass" / "EQUI.xml").write_text("<glass/>", encoding="utf-8")
+        # Deliberately only the Windows exe, no Loremaster-*.AppImage: on
+        # Linux this is the common "ran from a source checkout" case, and
+        # must not stop the skin from installing (see requirement below).
+        (payload / LOREMASTER_NAME).write_bytes(b"loremaster")
+        eq.mkdir()
+        (eq / "eqgame.exe").write_bytes(b"")
+        glass_result = install_payload(
+            payload, eq, install_layout=False, layout_target=None,
+            run_at_startup=False, desktop_shortcut=False,
+            app_dir=root / "app-glass", startup_dir=root / "startup-glass",
+            desktop_dir=root / "desktop-glass", skin_name="spinui_glass",
+        )
+        assert (eq / "uifiles" / "spinui_glass" / "EQUI.xml").read_text(encoding="utf-8") == "<glass/>"
+        assert not (eq / "uifiles" / SKIN_NAME).exists()
+        if os.name != "nt":
+            # No native artifact: the skin still installs cleanly (asserted
+            # above), and Loremaster is honestly skipped, not silently
+            # wrapped in wine or copied as the Windows exe.
+            assert any("Skipped Loremaster" in line and "AppImage" in line
+                      for line in glass_result)
+            assert not (root / "app-glass").exists()
+            assert not any("wine" in line.casefold() for line in glass_result)
+        expect_error(ValueError, lambda: install_payload(
+            payload, eq, install_layout=False, layout_target=None,
+            run_at_startup=False, desktop_shortcut=False,
+            app_dir=root / "app-badskin", startup_dir=root / "startup-badskin",
+            desktop_dir=root / "desktop-badskin", skin_name="not-a-real-skin",
+        ))
+
+        profile_dir = payload / "layouts" / "profiles" / DEFAULT_RESOLUTION_PROFILE / "combat-focus"
+        profile_dir.mkdir(parents=True)
+        (profile_dir / LAYOUT_NAME).write_bytes(preset_bytes("combat-focus"))
+        glass_target = eq / "UI_Glass_qeynos_LO1.ini"
+        glass_original = b"[Main]\nUISkin=old\n[ChatManager]\nChannelMap0=1\n"
+        glass_target.write_bytes(glass_original)
+        expect_error(ValueError, lambda: install_payload(
+            payload, eq, install_layout=True, layout_target=glass_target,
+            layout_preset="combat-focus", run_at_startup=False, desktop_shortcut=False,
+            app_dir=root / "app-glass-layout", startup_dir=root / "startup-glass-layout",
+            desktop_dir=root / "desktop-glass-layout", skin_name="spinui_glass",
+        ))
+        assert glass_target.read_bytes() == glass_original
+        assert not list(eq.glob(f"{glass_target.name}.spinui-backup-*"))
+
+    # local_app_data()/startup_folder() follow XDG on Linux instead of
+    # writing %APPDATA%-shaped paths; Windows keeps its existing env contract.
+    with tempfile.TemporaryDirectory() as td:
+        original_environ = dict(os.environ)
+        try:
+            if os.name == "nt":
+                os.environ["LOCALAPPDATA"] = str(Path(td) / "local")
+                os.environ["APPDATA"] = str(Path(td) / "roaming")
+                assert local_app_data() == Path(td) / "local" / "SpinsLoremaster"
+                assert startup_folder() == (
+                    Path(td) / "roaming" / "Microsoft" / "Windows"
+                    / "Start Menu" / "Programs" / "Startup")
+            else:
+                os.environ["HOME"] = td
+                os.environ.pop("XDG_DATA_HOME", None)
+                os.environ.pop("XDG_CONFIG_HOME", None)
+                assert local_app_data() == Path(td) / ".local" / "share" / "SpinsLoremaster"
+                assert startup_folder() == Path(td) / ".config" / "autostart"
+                os.environ["XDG_DATA_HOME"] = str(Path(td) / "xdg-data")
+                os.environ["XDG_CONFIG_HOME"] = str(Path(td) / "xdg-config")
+                assert local_app_data() == Path(td) / "xdg-data" / "SpinsLoremaster"
+                assert startup_folder() == Path(td) / "xdg-config" / "autostart"
+        finally:
+            os.environ.clear()
+            os.environ.update(original_environ)
+
+    # Wine/Proton prefix discovery: bounded, tolerant of missing/garbage
+    # entries, and additive to (never a replacement for) native discovery.
+    with tempfile.TemporaryDirectory() as td:
+        original_environ = dict(os.environ)
+        try:
+            os.environ["HOME"] = td
+            os.environ.pop("WINEPREFIX", None)
+            home = Path(td)
+            assert wine_prefixes() == []
+            assert find_wine_eq_roots() == []
+
+            eq_dir = home / ".wine" / "drive_c" / "Program Files (x86)" / "Sony" / "EverQuest"
+            eq_dir.mkdir(parents=True)
+            (eq_dir / "eqgame.exe").write_bytes(b"")
+            assert home / ".wine" in wine_prefixes()
+            assert eq_dir in find_wine_eq_roots()
+            assert eq_dir in find_eq_roots()
+
+            explicit_prefix = home / "custom-prefix"
+            (explicit_prefix / "drive_c").mkdir(parents=True)
+            os.environ["WINEPREFIX"] = str(explicit_prefix)
+            assert explicit_prefix in wine_prefixes()
+
+            steam_lib_eq = (
+                home / ".steam" / "steam" / "steamapps" / "compatdata" / "480" / "pfx"
+                / "drive_c" / "Program Files (x86)" / "Steam" / "steamapps" / "common"
+                / "EverQuest Legends")
+            steam_lib_eq.mkdir(parents=True)
+            (steam_lib_eq / "eqgame.exe").write_bytes(b"")
+            assert (home / ".steam" / "steam" / "steamapps" / "compatdata"
+                    / "480" / "pfx") in wine_prefixes()
+            assert steam_lib_eq in find_wine_eq_roots()
+
+            # A file where a directory is expected must not raise.
+            games_root = home / "Games"
+            games_root.mkdir()
+            (games_root / "not-a-prefix").write_bytes(b"file, not a wine prefix directory")
+            wine_prefixes()
+        finally:
+            os.environ.clear()
+            os.environ.update(original_environ)
+
+    # The running-client guard reads /proc directly on Linux so it still
+    # blocks an install over a live Wine-hosted eqgame.exe.
+    with tempfile.TemporaryDirectory() as td:
+        fake_proc = Path(td)
+        assert _linux_process_running("eqgame.exe", proc_root=fake_proc) is False
+        pid_dir = fake_proc / "4242"
+        pid_dir.mkdir()
+        (pid_dir / "comm").write_text("eqgame.exe\n", encoding="utf-8")
+        (pid_dir / "cmdline").write_bytes(b"Z:\\EQLegends\\eqgame.exe\x00")
+        assert _linux_process_running("eqgame.exe", proc_root=fake_proc) is True
+        assert _linux_process_running("Loremaster.exe", proc_root=fake_proc) is False
+        # comm truncates/varies under Wine; cmdline is the fallback match.
+        (pid_dir / "comm").write_text("wine-preloader\n", encoding="utf-8")
+        assert _linux_process_running("eqgame.exe", proc_root=fake_proc) is True
+        (fake_proc / "self").mkdir()  # non-numeric entries are skipped, not fatal
+        assert _linux_process_running("eqgame.exe", proc_root=fake_proc) is True
+
+    # Linux Loremaster artifact matching: prefer AppImage, matched by glob
+    # since electron-builder's filename embeds the release version and arch.
+    with tempfile.TemporaryDirectory() as td:
+        artifact_payload = Path(td)
+        assert find_linux_loremaster_artifact(artifact_payload) is None
+        (artifact_payload / "Loremaster-1.2.3-x64.AppImage").write_bytes(b"a")
+        assert find_linux_loremaster_artifact(artifact_payload) == (
+            artifact_payload / "Loremaster-1.2.3-x64.AppImage")
+        (artifact_payload / "Loremaster-1.2.3-x64.tar.gz").write_bytes(b"b")
+        # AppImage still wins even with a same-version tar.gz alongside it.
+        assert find_linux_loremaster_artifact(artifact_payload) == (
+            artifact_payload / "Loremaster-1.2.3-x64.AppImage")
+        (artifact_payload / "Loremaster-1.2.3-x64.AppImage").unlink()
+        # tar.gz support is intentionally not implemented yet: absent an
+        # AppImage this is the same "nothing usable" case as if the payload
+        # had no artifact at all, and install_payload() must skip cleanly.
+        assert find_linux_loremaster_artifact(artifact_payload) is None
+        (artifact_payload / SKIN_NAME).mkdir()
+        (artifact_payload / SKIN_NAME / "EQUI.xml").write_text("<xml/>", encoding="utf-8")
+        with tempfile.TemporaryDirectory() as eq_td:
+            artifact_eq = Path(eq_td)
+            (artifact_eq / "eqgame.exe").write_bytes(b"")
+            skip_result = install_payload(
+                artifact_payload, artifact_eq, install_layout=False, layout_target=None,
+                run_at_startup=False, desktop_shortcut=False,
+                app_dir=artifact_payload / "app", startup_dir=artifact_payload / "startup",
+                desktop_dir=artifact_payload / "desktop",
+            )
+            assert (artifact_eq / "uifiles" / SKIN_NAME / "EQUI.xml").is_file()
+            if os.name != "nt":
+                assert any("Skipped Loremaster" in line for line in skip_result)
+                # This payload still holds the tar.gz, so the skip names that
+                # archive and the binary to run instead of implying nothing was
+                # downloaded. The releases-page wording belongs to the
+                # nothing-usable-at-all case asserted below.
+                detail = [line for line in skip_result if "Skipped Loremaster" in line]
+                assert any("Loremaster-1.2.3-x64.tar.gz" in line for line in detail)
+                assert any("./loremaster" in line for line in detail)
+                assert not any("releases page" in line for line in detail)
+
+        if os.name != "nt":
+            assert "tar.gz" in _linux_loremaster_skip_detail(artifact_payload)
+            (artifact_payload / "Loremaster-1.2.3-x64.tar.gz").unlink()
+            empty_detail = _linux_loremaster_skip_detail(artifact_payload)
+            assert "releases page" in empty_detail
+            assert "tar.gz" not in empty_detail
+
+    # stop_running_loremaster() on Linux signals real processes directly
+    # (there is no tasklist/taskkill equivalent), verified against an actual
+    # spawned process named like the installed build's executableName.
+    if os.name != "nt":
+        with tempfile.TemporaryDirectory() as td:
+            script = Path(td) / LOREMASTER_LINUX_PROCESS_NAME
+            script.write_text("#!/bin/sh\nsleep 30\n", encoding="utf-8")
+            script.chmod(0o755)
+            proc = subprocess.Popen([str(script)])
+            # A terminated child stays a visible /proc zombie (comm and all)
+            # until this, its direct parent, reaps it -- unlike a real
+            # Loremaster process, which isn't parented by the installer. A
+            # background wait() reaps it the instant it exits so the test
+            # sees the same "gone from /proc" outcome a real launch would.
+            reaper = threading.Thread(target=proc.wait, daemon=True)
+            reaper.start()
+            try:
+                for _ in range(50):
+                    if process_is_running(LOREMASTER_LINUX_PROCESS_NAME):
+                        break
+                    time.sleep(0.05)
+                assert process_is_running(LOREMASTER_LINUX_PROCESS_NAME)
+                assert stop_running_loremaster(LOREMASTER_LINUX_PROCESS_NAME) is True
+                assert not process_is_running(LOREMASTER_LINUX_PROCESS_NAME)
+            finally:
+                if proc.poll() is None:
+                    proc.kill()
+                reaper.join(timeout=5)
+        assert stop_running_loremaster(LOREMASTER_LINUX_PROCESS_NAME) is False
+
     print("SpinUI installer selftest: ALL PASS")
+    return 0
+
+
+def _cli_layout_target(eq_root: Path, args: argparse.Namespace) -> tuple[Path | None, bool]:
+    """Resolve --layout-target or --character/--server into a target path.
+
+    Mirrors the GUI's two target modes (an existing detected character, or a
+    manual/new one) using the same validated helpers the GUI uses, so path
+    traversal and name checks are never duplicated here.
+    """
+    if args.layout_target:
+        return eq_root / args.layout_target, args.create_layout
+    if args.character or args.server:
+        if not (args.character and args.server):
+            raise ValueError("--character and --server must be used together.")
+        filename = manual_layout_filename(args.character, args.server)
+        return eq_root / filename, args.create_layout
+    existing = character_layouts(eq_root)
+    if len(existing) == 1:
+        return existing[0], args.create_layout
+    if not existing:
+        raise ValueError(
+            "No character layout INI was found in --eq-dir. Log into the character "
+            "once and close EverQuest, or pass --character/--server with --create-layout."
+        )
+    names = ", ".join(path.name for path in existing)
+    raise ValueError(
+        f"Multiple character layouts were found ({names}); choose one with --layout-target."
+    )
+
+
+def _dry_run_plan(payload: Path, eq_root: Path, *, install_layout: bool,
+                  layout_target: Path | None, layout_preset: str | None,
+                  resolution_profile: str, create_layout_target: bool,
+                  skin_name: str) -> list[str]:
+    """Validate an install exactly as install_payload() would, without writing.
+
+    Reuses the same pure validation/preparation helpers install_payload()
+    calls (is_eq_root, resolve_layout_source, validate_layout_target,
+    prepare_layout_update) so the reported plan can never silently diverge
+    from what a real install would do. prepare_layout_update only reads
+    bytes and builds an in-memory LayoutUpdate; committing it is a separate,
+    intentionally skipped step (commit_layout_update).
+    """
+    payload = payload.resolve()
+    eq_root = eq_root.resolve()
+    if not is_eq_root(eq_root):
+        raise ValueError("Choose the EverQuest folder that contains eqgame.exe.")
+    if skin_name not in AVAILABLE_SKINS:
+        raise ValueError(f"Unknown skin: {skin_name!r}.")
+    skin_source = payload / skin_name
+    lore_source: Path | None = (
+        payload / LOREMASTER_NAME if os.name == "nt"
+        else find_linux_loremaster_artifact(payload)
+    )
+    if not skin_source.is_dir():
+        raise FileNotFoundError(f"Release payload is missing {skin_name}.")
+    if os.name == "nt" and not lore_source.is_file():
+        raise FileNotFoundError(f"Release payload is missing {LOREMASTER_NAME}.")
+
+    lines = [f"Install {skin_name} to {eq_root / 'uifiles' / skin_name}"]
+    if lore_source is not None:
+        destination_name = LOREMASTER_NAME if os.name == "nt" else LOREMASTER_LINUX_DESTINATION_NAME
+        lines.append(f"Install Loremaster to {local_app_data() / destination_name}")
+    else:
+        lines.append(
+            "Skip Loremaster: " + _linux_loremaster_skip_detail(payload)
+        )
+    if install_layout:
+        if resolution_profile not in RESOLUTION_PROFILES:
+            raise ValueError(f"Unknown resolution profile: {resolution_profile!r}.")
+        layout_source = resolve_layout_source(payload, layout_preset, resolution_profile)
+        target = validate_layout_target(eq_root, layout_target, allow_create=create_layout_target)
+        update = prepare_layout_update(
+            layout_source, target, allow_create=create_layout_target, expected_skin=skin_name)
+        if not update.changed:
+            lines.append(f"{target.name} already matches this layout; no change")
+        elif update.created:
+            lines.append(f"Would create {target.name} with the {layout_preset} layout")
+        else:
+            lines.append(f"Would apply the {layout_preset} layout to {target.name} (backup created)")
+    else:
+        lines.append("Keep the existing character layout unchanged")
+    return lines
+
+
+def _print_presets() -> int:
+    print("Layout presets:")
+    for preset in LAYOUT_PRESETS.values():
+        print(f"  {preset.key:<14} {preset.title} - {preset.tagline}")
+    print()
+    print("Resolution profiles:")
+    for profile in RESOLUTION_PROFILES.values():
+        marker = " (default)" if profile.key == DEFAULT_RESOLUTION_PROFILE else ""
+        print(f"  {profile.key:<10} {profile.label}{marker}")
+    print()
+    print("Skins:")
+    for skin in AVAILABLE_SKINS:
+        marker = " (default)" if skin == SKIN_NAME else ""
+        print(f"  {skin}{marker}")
+    return 0
+
+
+def _cli_install(args: argparse.Namespace) -> int:
+    payload = release_root()
+    if args.eq_dir is not None:
+        eq_root = Path(args.eq_dir).expanduser()
+    else:
+        roots = find_eq_roots()
+        if not roots:
+            print("No EverQuest folder was auto-detected. Pass --eq-dir PATH.", file=sys.stderr)
+            return 2
+        eq_root = roots[0]
+    if not is_eq_root(eq_root):
+        print(f"{eq_root} does not contain eqgame.exe.", file=sys.stderr)
+        return 2
+
+    install_layout = args.layout is not None
+    target: Path | None = None
+    create_layout_target = False
+    try:
+        if install_layout:
+            target, create_layout_target = _cli_layout_target(eq_root, args)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
+    if args.dry_run:
+        try:
+            lines = _dry_run_plan(
+                payload, eq_root, install_layout=install_layout, layout_target=target,
+                layout_preset=args.layout, resolution_profile=args.resolution,
+                create_layout_target=create_layout_target, skin_name=args.skin,
+            )
+        except (ValueError, FileNotFoundError, OSError) as exc:
+            print(f"DRY RUN: would fail - {exc}", file=sys.stderr)
+            return 2
+        print(f"DRY RUN against {eq_root}: no files were written.")
+        for line in lines:
+            print(f"  - {line}")
+        return 0
+
+    try:
+        results = install_payload(
+            payload, eq_root, install_layout=install_layout, layout_target=target,
+            run_at_startup=args.startup_shortcut, desktop_shortcut=args.desktop_shortcut,
+            replace_running=args.replace_running,
+            require_eq_closed=not args.allow_running,
+            layout_preset=args.layout, resolution_profile=args.resolution,
+            create_layout_target=create_layout_target, skin_name=args.skin,
+        )
+    except (ValueError, FileNotFoundError, RuntimeError, OSError) as exc:
+        print(f"Install failed: {exc}", file=sys.stderr)
+        return 1
+    print(f"Installed to {eq_root}:")
+    for line in results:
+        print(f"  - {line}")
     return 0
 
 
@@ -2341,10 +3090,52 @@ def run_gui() -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=APP_NAME)
-    parser.add_argument("--selftest", action="store_true")
+    parser.add_argument("--selftest", action="store_true",
+                        help="Run the installer's internal test suite and exit.")
+    parser.add_argument("--install", action="store_true",
+                        help="Install SpinUI from the command line, without the GUI.")
+    parser.add_argument("--eq-dir", type=Path, default=None,
+                        help="EverQuest folder containing eqgame.exe. Auto-detected if omitted, "
+                             "including Wine/Proton prefixes on Linux.")
+    parser.add_argument("--skin", choices=AVAILABLE_SKINS, default=SKIN_NAME,
+                        help=f"Skin to install (default: {SKIN_NAME}).")
+    parser.add_argument("--layout", choices=sorted(LAYOUT_PRESETS), default=None,
+                        help="Apply a layout preset. Omit to keep the existing character layout.")
+    parser.add_argument("--resolution", choices=sorted(RESOLUTION_PROFILES),
+                        default=DEFAULT_RESOLUTION_PROFILE,
+                        help=f"Screen profile used with --layout (default: {DEFAULT_RESOLUTION_PROFILE}).")
+    parser.add_argument("--layout-target", default=None,
+                        help="Existing UI_<Character>_<Server>_LO#.ini filename inside --eq-dir.")
+    parser.add_argument("--character", default=None,
+                        help="Character name for a manual/new layout target (use with --server).")
+    parser.add_argument("--server", choices=[server.token for server in LEGENDS_SERVERS],
+                        default=None, help="Server token for --character.")
+    parser.add_argument("--create-layout", action="store_true",
+                        help="Create the --character/--server (or --layout-target) INI if missing.")
+    parser.add_argument("--startup-shortcut", action="store_true",
+                        help="Register Loremaster to start automatically "
+                             "(Windows Startup folder, or XDG autostart on Linux).")
+    parser.add_argument("--desktop-shortcut", action="store_true",
+                        help="Create a Loremaster desktop shortcut (.lnk on Windows, "
+                             ".desktop on Linux).")
+    parser.add_argument("--replace-running", action="store_true",
+                        help="Close a previously installed, currently running Loremaster first.")
+    parser.add_argument("--allow-running", action="store_true",
+                        help="Skip the safety check that refuses to install while eqgame.exe "
+                             "is running (installing over a live client can corrupt UI files).")
+    parser.add_argument("--list-presets", action="store_true",
+                        help="List available layout presets, resolution profiles, and skins, "
+                             "then exit.")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Validate and report the install plan without writing anything; "
+                             "implies --install.")
     args = parser.parse_args()
     if args.selftest:
         return selftest()
+    if args.list_presets:
+        return _print_presets()
+    if args.install or args.dry_run:
+        return _cli_install(args)
     return run_gui()
 
 

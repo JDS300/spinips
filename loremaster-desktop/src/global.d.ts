@@ -34,6 +34,7 @@ declare global {
         detail: string;
       }>;
       resetEngine: () => void;
+      scanLockouts: () => void;
       testAlert: () => void;
       onSnapshot: (callback: (event: unknown) => void) => () => void;
       onHealth: (callback: (health: unknown) => void) => () => void;

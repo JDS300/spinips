@@ -83,8 +83,13 @@ jobs:
   build-ui:
     name: Validate and package SpinUI skins
     needs: detect-changes
+    # Asset/XML/Glass audits and the pwsh package assembly are platform
+    # agnostic (pwsh ships on every GitHub-hosted runner, and Compress-Archive
+    # / Copy-Item produce identical output on Linux); ubuntu-latest is
+    # cheaper and faster than windows-latest for this job. detect-changes
+    # already proves pwsh-on-ubuntu works in this same workflow.
     if: needs.detect-changes.outputs.ui == 'true'
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
@@ -98,6 +103,15 @@ jobs:
 
       - name: Install UI validation tooling
         run: python -m pip install --disable-pip-version-check pillow tzdata==2026.3
+
+      - name: Fetch stock-layout reference commit
+        shell: bash
+        run: |
+          # The generated-layout drift check replays
+          # 0eac353:default_modern/*.ini, but that commit is unreachable from
+          # every ref, so no clone fetches it at any depth -- fetch-depth: 0 is
+          # necessary but not sufficient. GitHub still serves it by exact SHA.
+          git fetch --no-tags origin 0eac353de160346146fc8bd451fc60eb7b7a371a
 
       - name: Run release quality gate
         run: python tools/release_quality_gate.py
@@ -166,6 +180,15 @@ jobs:
           pnpm build
           pnpm test:gear
 
+      - name: Fetch stock-layout reference commit
+        shell: bash
+        run: |
+          # The generated-layout drift check replays
+          # 0eac353:default_modern/*.ini, but that commit is unreachable from
+          # every ref, so no clone fetches it at any depth -- fetch-depth: 0 is
+          # necessary but not sufficient. GitHub still serves it by exact SHA.
+          git fetch --no-tags origin 0eac353de160346146fc8bd451fc60eb7b7a371a
+
       - name: Run release quality gate
         run: python tools/release_quality_gate.py
 
@@ -219,6 +242,130 @@ jobs:
         with:
           name: Loremaster-Windows
           path: package/Loremaster-Windows/*
+          if-no-files-found: error
+
+  build-loremaster-linux:
+    name: Build portable Loremaster (Linux)
+    needs: detect-changes
+    if: needs.detect-changes.outputs.loremaster == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # release_quality_gate.py replays the generated-layout drift check
+          # against an early immutable commit; it needs full history exactly
+          # like the Windows build-loremaster job does.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: "11.16.0"
+          run_install: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: loremaster-desktop/pnpm-lock.yaml
+
+      - name: Install Loremaster validation tooling
+        run: python3 -m pip install --disable-pip-version-check pillow tzdata==2026.3
+
+      - name: Run Loremaster Python test suite
+        shell: bash
+        working-directory: loremaster/tests
+        # The capture tests open a real X11 window, which is why they are
+        # opt-in: on a developer desktop they appear over whatever the user is
+        # doing. A CI runner has no one to interrupt, so run the full set.
+        env:
+          LOREMASTER_X11_WINDOW_TESTS: "1"
+        run: python3 -m unittest discover -s . -p 'test_*.py'
+
+      - name: Smoke-test parser engine protocol (source)
+        shell: bash
+        run: |
+          # No PyInstaller binary is built on Linux (the engine ships as
+          # stdlib-only Python sources run by the system python3, see
+          # package.json's linux.extraResources). smoke_loremaster_engine.py
+          # only knows how to launch an executable, so hand it a tiny shim
+          # that execs the worker script through python3.
+          shim="$RUNNER_TEMP/loremaster_engine_shim.sh"
+          printf '%s\n' '#!/usr/bin/env bash' "exec python3 \"$GITHUB_WORKSPACE/loremaster/desktop_worker.py\" \"\$@\"" > "$shim"
+          chmod +x "$shim"
+          python3 tools/smoke_loremaster_engine.py "$shim"
+
+      - name: Fetch stock-layout reference commit
+        shell: bash
+        run: |
+          # The generated-layout drift check replays
+          # 0eac353:default_modern/*.ini, but that commit is unreachable from
+          # every ref, so no clone fetches it at any depth -- fetch-depth: 0 is
+          # necessary but not sufficient. GitHub still serves it by exact SHA.
+          git fetch --no-tags origin 0eac353de160346146fc8bd451fc60eb7b7a371a
+
+      - name: Run release quality gate
+        run: python3 tools/release_quality_gate.py
+
+      - name: Verify Loremaster desktop source
+        shell: bash
+        working-directory: loremaster-desktop
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm test:fixtures
+          pnpm build
+          pnpm test:gear
+
+      - name: Verify installer selftest
+        run: python3 installer/spinui_installer.py --selftest
+
+      - name: Build Linux Electron artifacts
+        shell: bash
+        working-directory: loremaster-desktop
+        # Mirrors the Windows job's version derivation so Linux artifacts carry
+        # the real release tag instead of package.json's static version. Calls
+        # electron-builder directly rather than `pnpm run dist:linux` because
+        # the version override has to reach electron-builder, not the chained
+        # `pnpm build` in front of it.
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          if ! printf '%s' "$version" \
+            | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'; then
+            version="$(node -p "require('./package.json').version")"
+          fi
+          pnpm build
+          pnpm exec electron-builder --linux AppImage tar.gz --x64 \
+            --publish never "-c.extraMetadata.version=$version"
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+
+      - name: Publish Loremaster Linux component checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          component="$PWD/package/Loremaster-Linux"
+          mkdir -p "$component"
+          shopt -s nullglob
+          appimages=(dist-electron-release/*.AppImage)
+          tarballs=(dist-electron-release/*.tar.gz)
+          if [ "${#appimages[@]}" -eq 0 ] || [ "${#tarballs[@]}" -eq 0 ]; then
+            echo "expected at least one .AppImage and one .tar.gz in dist-electron-release/" >&2
+            ls -la dist-electron-release/ >&2 || true
+            exit 1
+          fi
+          cp -f "${appimages[@]}" "${tarballs[@]}" "$component/"
+          (cd "$component" && sha256sum -- *.AppImage *.tar.gz > Loremaster-Linux-SHA256SUMS.txt)
+          cat "$component/Loremaster-Linux-SHA256SUMS.txt"
+
+      - name: Upload Loremaster Linux test build
+        uses: actions/upload-artifact@v6
+        with:
+          name: Loremaster-Linux
+          path: package/Loremaster-Linux/*
           if-no-files-found: error
 
   package-windows-release:
@@ -335,3 +482,62 @@ jobs:
           package/SHA256SUMS.txt
           dist-electron-release/Loremaster.exe
           --clobber
+
+  package-linux-release:
+    name: Assemble complete Linux release
+    # Linux artifacts are attached to the release standalone (mirroring how
+    # Loremaster.exe is published as its own release asset) rather than
+    # folded into SpinUI-Manual.zip, which is the Windows-specific manual
+    # install bundle referenced by that package's own release notes text.
+    # This job never touches package-windows-release's steps or outputs.
+    #
+    # needs: package-windows-release is a sequencing dependency, not a
+    # component dependency: it guarantees that when a release is meant to be
+    # published (workflow_dispatch with publish_release=true), the Windows
+    # job's "Publish workflow-dispatch release" step has already run
+    # gh release create for the tag before this job's gh release upload
+    # runs, avoiding a create/upload race between two parallel jobs writing
+    # to the same release. For the `release` event the release already
+    # exists before the workflow starts, so this ordering is a no-op there.
+    needs: [detect-changes, build-loremaster-linux, package-windows-release]
+    if: github.event_name != 'push' && needs.detect-changes.outputs.loremaster == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download verified Loremaster Linux component
+        uses: actions/download-artifact@v6
+        with:
+          name: Loremaster-Linux
+          path: package/loremaster-linux-component
+
+      - name: Upload complete Linux tools and checksums
+        uses: actions/upload-artifact@v6
+        with:
+          name: SpinUI-Linux-tools
+          path: package/loremaster-linux-component/*
+          if-no-files-found: error
+
+      - name: Publish workflow-dispatch release (Linux assets)
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          if [ -z "$RELEASE_TAG" ]; then
+            echo 'release_tag cannot be empty' >&2
+            exit 1
+          fi
+          gh release upload "$RELEASE_TAG" package/loremaster-linux-component/* \
+            --repo "${{ github.repository }}" --clobber
+
+      - name: Attach Linux assets to release
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          gh release upload "$RELEASE_TAG" package/loremaster-linux-component/* \
+            --repo "${{ github.repository }}" --clobber
