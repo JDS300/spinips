@@ -89,8 +89,10 @@ class HeadlessEngine:
         self._load_instance_lockouts()
         self.raid_difficulty: int | None = None
         self.configured_composition = ""
-        self.pending_raid_target = ""
-        self.pending_raid_seconds = 0.0
+        # Ordered target -> fight seconds. A single slot silently discarded the
+        # first kill when two raid targets died before a difficulty was
+        # confirmed, which is exactly when a raid confirms several at once.
+        self.pending_raid_kills: dict[str, float] = {}
         self.sequence = 0
         self.stats = SessionStats()
         self.mez = MezTracker()
@@ -183,6 +185,10 @@ class HeadlessEngine:
         }
         timed_count = 0
         for lockout in rows:
+            # The scan is itself the confirmation for this target: recording a
+            # completion while still asking the player to confirm a difficulty
+            # for it leaves a prompt that can never be satisfied.
+            self.pending_raid_kills.pop(lockout.target, None)
             self.weekly.set_completion(
                 observed_at, lockout.target, lockout.difficulty,
                 character=character, completed=True)
@@ -359,13 +365,13 @@ class HeadlessEngine:
         if value is not None and value not in DIFFICULTIES:
             return False
         self.raid_difficulty = value
-        if value is not None and self.pending_raid_target:
-            self.weekly.observe_kill(
-                self.last_observed_at, self.pending_raid_target,
-                zone=self.stats.zone, character=self.stats.character,
-                difficulty=value, duration_seconds=self.pending_raid_seconds)
-            self.pending_raid_target = ""
-            self.pending_raid_seconds = 0.0
+        if value is not None and self.pending_raid_kills:
+            for target, seconds in list(self.pending_raid_kills.items()):
+                self.weekly.observe_kill(
+                    self.last_observed_at, target,
+                    zone=self.stats.zone, character=self.stats.character,
+                    difficulty=value, duration_seconds=seconds)
+            self.pending_raid_kills.clear()
         return True
 
     def set_composition(self, value: str) -> bool:
@@ -455,8 +461,8 @@ class HeadlessEngine:
         if weekly_credit:
             if raid_target:
                 if self.raid_difficulty is None:
-                    self.pending_raid_target = raid_target.name
-                    self.pending_raid_seconds = (
+                    self.pending_raid_kills.setdefault(
+                        raid_target.name,
                         self.stats.fight.seconds if self.stats.fight else 0.0)
                 else:
                     self.weekly.observe_kill(
@@ -518,7 +524,11 @@ class HeadlessEngine:
             observed_at,
             character="" if weekly_character in ("", "?") else weekly_character)
         weekly["activeDifficulty"] = self.raid_difficulty
-        weekly["pendingRaidTarget"] = self.pending_raid_target
+        pending = list(self.pending_raid_kills)
+        # protocol v1 is append-only in optional fields, so the original
+        # single-target field keeps its meaning and the list is added beside it.
+        weekly["pendingRaidTarget"] = pending[0] if pending else ""
+        weekly["pendingRaidTargets"] = pending
         weekly["altZLockouts"] = self._instance_lockout_snapshot(observed_at)
         weekly["altZScan"] = dict(self.lockout_scan)
         event["snapshot"]["weekly"] = weekly

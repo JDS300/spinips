@@ -1644,11 +1644,14 @@ function createWindow(): void {
 }
 
 function registerLockoutScanHotkey(): void {
-  // Off unless asked for. A global shortcut is claimed system-wide, and the
-  // previous default of Ctrl+Shift+Z is Redo nearly everywhere -- on Wayland it
-  // also raises a desktop portal prompt reporting the conflict. The scan is
-  // reachable from the lockout panel, so nothing is lost by not grabbing a key.
-  const accelerator = (process.env.LOREMASTER_LOCKOUT_HOTKEY ?? "").trim();
+  // Windows keeps the shortcut it has always registered. Linux does not take
+  // one by default: Ctrl+Shift+Z is Redo across the desktop, and on Wayland
+  // claiming it raises a portal prompt announcing the conflict before the user
+  // has done anything. The scan is reachable from the lockout panel either
+  // way, so on Linux the key is opt-in through LOREMASTER_LOCKOUT_HOTKEY.
+  const configured = (process.env.LOREMASTER_LOCKOUT_HOTKEY ?? "").trim();
+  const accelerator = configured
+    || (process.platform === "win32" ? "CommandOrControl+Shift+Z" : "");
   if (!accelerator) return;
   let registered = false;
   try {

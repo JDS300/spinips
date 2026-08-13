@@ -171,7 +171,11 @@ without the overlay guarantees beats an invisible one that has them on paper.
 
 Honest gaps, all requiring game time rather than code:
 
-- A populated lockout table. Only the empty case has been read end to end.
+- The compact timer column of the Alt+Z panel. A real scan marked two raid
+  completions correctly but reported the timer text unreadable and refused to
+  guess an expiry, which is the honest outcome. A second OCR pass now re-reads
+  the located panel at 2x for that column; it is written but unverified,
+  because it needs a scan while a lockout with a timer is on screen.
 - Lull timers and the weekly raid ledger.
 - Live DPS during a fight, as opposed to parsing after the fact.
 - A long session: stability, memory, and no orphaned engine process on quit.
@@ -191,6 +195,28 @@ The language pack is worth calling out. Installing `tesseract` is not enough —
 most distributions ship it without language data, so OCR fails while the binary
 looks correctly installed. The application detects this at startup and names the
 package (`tesseract-data-eng`, `tesseract-ocr-eng`, `tesseract-langpack-eng`).
+
+## Two engine bugs found while testing, and fixed here
+
+Both are cross-platform and predate this branch. They are included because
+Linux testing is what surfaced them and the fixes are small and covered by
+tests; split them out if you would rather take them separately.
+
+- **A scanned completion left a confirmation prompt that could never be
+  satisfied.** `import_instance_lockouts` recorded the completion but never
+  cleared `pending_raid_target`, so after an Alt+Z scan marked Lady Vox
+  complete the UI still asked for her difficulty. The scan is itself the
+  confirmation, so it now clears the prompt for each target it records.
+- **A second raid kill silently discarded the first.** `pending_raid_target`
+  was a single string assigned on each qualifying kill, so killing two targets
+  before confirming a difficulty overwrote the first — no prompt, no ledger
+  entry, no message. That is most likely to happen on a raid night, which is
+  when it matters. Pending kills are now an ordered queue, and confirming a
+  difficulty resolves all of them.
+
+The snapshot keeps `pendingRaidTarget` with its original meaning and adds
+`pendingRaidTargets` beside it, so protocol v1 stays append-only and an older
+renderer sees exactly what it saw before.
 
 ## Separate issues, not part of this branch
 

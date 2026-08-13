@@ -446,15 +446,79 @@ def capture_game_window() -> HoverCapture:
     return _hover_capture_from_region(region)
 
 
+# Text that only appears on the Alt+Z panel, used to locate it within a
+# whole-window capture. Matching is loose because this is OCR output.
+_PANEL_ANCHORS = ("instanceinformation", "outstandinginstance", "instancename",
+                  "lockout", "eventname", "numberofplayers")
+
+
+def _panel_crop_box(lines, width: int, height: int):
+    """Bounds of the Alt+Z panel within a full-window capture, or None."""
+    found = [line for line in lines
+             if any(a in "".join(line.text.split()).casefold()
+                    for a in _PANEL_ANCHORS)]
+    if not found:
+        return None
+    left = min(line.x for line in found)
+    top = min(line.y for line in found)
+    right = max(line.x + line.width for line in found)
+    bottom = max(line.y + line.height for line in found)
+    # The rows sit below the headings that matched, and the timer column sits
+    # to their right, so the matched text is the panel's top-left corner rather
+    # than its extent. Pad generously and let the clamp handle the edges.
+    pad_x, pad_y = 0.35 * width, 0.30 * height
+    return (int(left - 0.05 * width), int(top - 0.03 * height),
+            int(right - left + pad_x), int(bottom - top + pad_y))
+
+
 def scan_game_window(capture: HoverCapture,
                      cancel_event: threading.Event | None = None,
                      timeout: float = OCR_TIMEOUT_SECONDS
                      ) -> tuple[list[str], list[OcrLine]]:
-    """OCR a whole-window capture at 1:1."""
+    """Read the Alt+Z panel out of a whole-window capture.
+
+    Two passes over one capture. The first reads the whole window at 1:1,
+    which is the only way to find a panel the player may have put anywhere,
+    but leaves the compact timer column unreadable -- EverQuest draws it small
+    enough that Tesseract needs the same upscale the tooltip path uses. The
+    second crops to the located panel and re-reads it at :data:`OCR_SCALE`,
+    which is affordable because the panel is a fraction of the window.
+    """
     if os.name == "nt":
         return scan_hovered_tooltip(capture, cancel_event, timeout)
-    return _scan_hovered_tooltip_tesseract(
-        capture, cancel_event, max(timeout, GAME_WINDOW_TIMEOUT_SECONDS), scale=1)
+    import linux_capture  # Imported lazily so Windows never loads this path.
+
+    budget = max(timeout, GAME_WINDOW_TIMEOUT_SECONDS)
+    candidates, lines = _scan_hovered_tooltip_tesseract(
+        capture, cancel_event, budget, scale=1)
+    pixels, width, height, stride = linux_capture.bgr_from_bmp(capture.bmp_bytes)
+    box = _panel_crop_box(lines, width, height)
+    if box is None:
+        return candidates, lines
+    try:
+        cropped, crop_w, crop_h, crop_stride = linux_capture.crop_bgr(
+            pixels, width, height, stride, *box)
+        rows = linux_capture.recognize_lines(
+            cropped, crop_w, crop_h, crop_stride, scale=OCR_SCALE,
+            cancel_event=cancel_event, timeout=budget)
+    except (linux_capture.LinuxCaptureError, OSError, ValueError):
+        # The wide pass already produced usable names; a failed detail pass
+        # must not lose them.
+        return candidates, lines
+    # An anchor can match stray chat text, which crops to the wrong place. The
+    # detail pass only replaces the wide one when it still shows the panel, so
+    # a bad crop costs a little time rather than the result.
+    if not rows or not any(
+            a in "".join(row.text.split()).casefold()
+            for row in rows for a in _PANEL_ANCHORS):
+        return candidates, lines
+    left, top = max(0, box[0]), max(0, box[1])
+    detailed = [OcrLine(text=row.text,
+                        x=left + row.x / OCR_SCALE, y=top + row.y / OCR_SCALE,
+                        width=row.width / OCR_SCALE,
+                        height=row.height / OCR_SCALE)
+                for row in rows]
+    return [line.text for line in detailed], detailed
 
 
 def capture_hovered_tooltip() -> HoverCapture:

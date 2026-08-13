@@ -144,6 +144,63 @@ class DesktopWorkerTests(unittest.TestCase):
             self.assertTrue(enabled["snapshot"]["combat"]["autoAttack"])
             self.assertFalse(disabled["snapshot"]["combat"]["autoAttack"])
 
+    def test_every_raid_kill_awaiting_a_difficulty_is_kept(self):
+        """A second kill before confirmation must not displace the first."""
+        with tempfile.TemporaryDirectory() as root:
+            engine = HeadlessEngine(data_dir=root)
+            try:
+                for line in (
+                        "[Fri Aug 07 20:00:00 2026] You slash Lord Nagafen for 10 points of damage.",
+                        "[Fri Aug 07 20:00:01 2026] You have slain Lord Nagafen!",
+                        "[Fri Aug 07 20:10:00 2026] You slash Lady Vox for 10 points of damage.",
+                        "[Fri Aug 07 20:10:01 2026] You have slain Lady Vox!"):
+                    engine.process_line(line)
+                pending = engine.snapshot_event(
+                    datetime(2026, 8, 7, 20, 10, 2))["snapshot"]["weekly"]
+                self.assertEqual(pending["pendingRaidTargets"],
+                                 ["Lord Nagafen", "Lady Vox"])
+                # The v1 field still names one target, so older renderers see
+                # what they always saw.
+                self.assertEqual(pending["pendingRaidTarget"], "Lord Nagafen")
+                self.assertTrue(engine.set_raid_difficulty(3))
+                weekly = engine.snapshot_event(
+                    datetime(2026, 8, 7, 20, 10, 3))["snapshot"]["weekly"]
+            finally:
+                engine.close()
+            self.assertEqual(weekly["pendingRaidTargets"], [])
+            recorded = {row["target"]: row["difficulties"]
+                        for row in weekly["raids"]}
+            self.assertTrue(recorded["Lord Nagafen"][3])
+            self.assertTrue(recorded["Lady Vox"][3])
+
+    def test_a_scanned_completion_clears_its_own_confirmation_prompt(self):
+        """The scan is the confirmation; it must not leave a stale prompt."""
+        with tempfile.TemporaryDirectory() as root:
+            engine = HeadlessEngine(data_dir=root)
+            try:
+                for line in (
+                        "[Fri Aug 07 20:00:00 2026] You slash Lady Vox for 10 points of damage.",
+                        "[Fri Aug 07 20:00:01 2026] You have slain Lady Vox!"):
+                    engine.process_line(line)
+                self.assertEqual(
+                    engine.snapshot_event(datetime(2026, 8, 7, 20, 0, 2))
+                    ["snapshot"]["weekly"]["pendingRaidTargets"], ["Lady Vox"])
+                engine.import_instance_lockouts(
+                    [ParsedRaidLockout(
+                        target="Lady Vox", difficulty=4, remaining_seconds=None,
+                        instance_name="Permafrost Keep - Group 4",
+                        event_name="Lady Vox", raw_text="fixture")],
+                    scanned_at=datetime(2026, 8, 7, 20, 0, 3))
+                weekly = engine.snapshot_event(
+                    datetime(2026, 8, 7, 20, 0, 4))["snapshot"]["weekly"]
+            finally:
+                engine.close()
+            self.assertEqual(weekly["pendingRaidTargets"], [])
+            self.assertEqual(weekly["pendingRaidTarget"], "")
+            vox = next(row for row in weekly["raids"]
+                       if row["target"] == "Lady Vox")
+            self.assertTrue(vox["difficulties"][4])
+
     def test_live_snapshot_preserves_damage_and_control_parity(self):
         with tempfile.TemporaryDirectory() as root:
             engine = HeadlessEngine(data_dir=root)

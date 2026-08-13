@@ -816,6 +816,23 @@ def ocr_page_segmentation() -> str:
     return value
 
 
+def crop_bgr(pixels: bytes, width: int, height: int, stride: int,
+             left: int, top: int, crop_width: int, crop_height: int
+             ) -> tuple[bytes, int, int, int]:
+    """Return a sub-rectangle of packed BGR rows, clamped to the source."""
+    left = max(0, min(int(left), width))
+    top = max(0, min(int(top), height))
+    crop_width = max(1, min(int(crop_width), width - left))
+    crop_height = max(1, min(int(crop_height), height - top))
+    out_stride = (crop_width * 3 + 3) & ~3
+    out = bytearray(out_stride * crop_height)
+    for row in range(crop_height):
+        start = (top + row) * stride + left * 3
+        out[row * out_stride:row * out_stride + crop_width * 3] = (
+            pixels[start:start + crop_width * 3])
+    return bytes(out), crop_width, crop_height, out_stride
+
+
 def recognize_lines(pixels: bytes, width: int, height: int, stride: int, *,
                     scale: int = 2,
                     cancel_event: threading.Event | None = None,

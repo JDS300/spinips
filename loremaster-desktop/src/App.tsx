@@ -756,7 +756,7 @@ function MainApp() {
 
         {weekly?.pendingRaidTarget && <section className="raid-confirmation" role="alertdialog" aria-label="Confirm raid difficulty">
           <span className="raid-confirmation-glyph">✓</span>
-          <div><small>RAID BOSS DEFEATED</small><strong>{weekly.pendingRaidTarget}</strong><p>Confirm the completed tier to mark this week’s lockout and preserve the clear time.</p></div>
+          <div><small>RAID BOSS DEFEATED</small><strong>{(weekly.pendingRaidTargets?.length ? weekly.pendingRaidTargets : [weekly.pendingRaidTarget]).join(" · ")}</strong><p>Confirm the completed tier to mark {(weekly.pendingRaidTargets?.length ?? 1) > 1 ? "these lockouts" : "this week’s lockout"} and preserve the clear time.</p></div>
           <div className="raid-confirmation-tiers">{raidDifficulties.map((difficulty) => <button key={difficulty} type="button"
             onClick={() => changeRaidDifficulty(difficulty)}>D{difficulty}</button>)}</div>
         </section>}
@@ -844,7 +844,7 @@ function MainApp() {
               {weekly.activeDifficulty == null ? "SET TIER" : `D${weekly.activeDifficulty}`}
             </span>
           </summary>
-          {weekly.pendingRaidTarget && <p className="raid-pending"><b>{weekly.pendingRaidTarget}</b> is awaiting the D0–D4 confirmation shown above.</p>}
+          {weekly.pendingRaidTarget && <p className="raid-pending"><b>{(weekly.pendingRaidTargets?.length ? weekly.pendingRaidTargets : [weekly.pendingRaidTarget]).join(" · ")}</b> {(weekly.pendingRaidTargets?.length ?? 1) > 1 ? "are" : "is"} awaiting the D0–D4 confirmation shown above.</p>}
           {weekly.altZScan && <section className={`altz-sync ${weekly.altZScan.status}`}>
             <header><div><small>LIVE INSTANCE EVIDENCE</small><b>{weekly.altZScan.status === "scanning" ? "READING ALT+Z…" : weekly.altZLockouts?.length ? `${weekly.altZLockouts.length} ACTIVE RAID LOCKOUT${weekly.altZLockouts.length === 1 ? "" : "S"}` : "ALT+Z LOCKOUT SYNC"}</b></div><button type="button" className="altz-scan"
               onClick={() => window.loremasterDesktop?.scanLockouts()}
