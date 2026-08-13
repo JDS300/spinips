@@ -35,9 +35,16 @@ if (process.platform === "linux"
       // one produced a tray icon and no window, with nothing logged.
       : (process.env.DISPLAY ? "x11" : "");
   if (platform) {
-    app.relaunch({
-      args: process.argv.slice(1).concat([`--ozone-platform=${platform}`]),
-    });
+    // Inside an AppImage, process.execPath points into /tmp/.mount_*, which is
+    // unmounted the moment this process exits -- relaunching it targets a path
+    // that no longer exists and the app simply never comes back. The runtime
+    // exports APPIMAGE holding the real file, so relaunch that instead. Its
+    // argv also carries the internal app path, which the AppImage supplies for
+    // itself, so only the user's own arguments are forwarded.
+    const appImage = process.env.APPIMAGE;
+    const args = (appImage ? process.argv.slice(2) : process.argv.slice(1))
+      .concat([`--ozone-platform=${platform}`]);
+    app.relaunch(appImage ? { execPath: appImage, args } : { args });
     app.exit(0);
   }
 }
