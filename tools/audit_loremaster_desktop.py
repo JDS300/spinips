@@ -48,6 +48,8 @@ def audit_theme_contract() -> None:
     base_styles = read("loremaster-desktop/src/styles.css")
     themes = read("loremaster-desktop/src/themes.css")
     readme = read("loremaster-desktop/README.md")
+    portable_updater = read("loremaster-desktop/electron/portable-updater.ts")
+    skin_updater = read("loremaster-desktop/electron/spinui-updater.ts")
 
     if not re.search(
         r'type\s+LoremasterTheme\s*=\s*["\']vellum["\']\s*\|\s*["\']glass["\']',
@@ -176,6 +178,36 @@ def audit_theme_contract() -> None:
         ("Vellum & Ember", "Midnight Frost Glass", "spinui_reloaded", "spinui_glass", "Alert Sound Studio"),
         "Loremaster desktop documentation",
     )
+    require(
+        protocol,
+        ("UpdateCenterState", "UpdateComponentId", "eqRoot: string", "autoCheckUpdates: boolean"),
+        "update-center protocol",
+    )
+    require(
+        app,
+        ("SPINUI UPDATE CENTER", "CHECK ALL", "UPDATE ALL", "YOUR DATA STAYS YOURS"),
+        "Settings update center",
+    )
+    require(
+        preload,
+        ("getUpdateState", "chooseUpdateEqRoot", "installUpdates", "onUpdateState"),
+        "update-center preload API",
+    )
+    require(
+        electron,
+        ("PortableUpdateService", "SpinUISkinUpdateService", "acknowledgePortableUpdateRelaunch"),
+        "update-center main integration",
+    )
+    require(
+        portable_updater,
+        ("SHA256SUMS.txt", "PORTABLE_EXECUTABLE_FILE", "expectedSha256", "previous"),
+        "portable update verification and rollback",
+    )
+    require(
+        skin_updater,
+        ("SpinUI-Update.json", "SpinUI-UI.zip", "eqgame.exe", "treeSha256", "backups"),
+        "skin update verification and rollback",
+    )
 
 
 def audit_retired_lockout_ocr() -> None:
@@ -215,6 +247,7 @@ def main() -> int:
         return 1
     print("Loremaster desktop audit: ALL PASS")
     print("  Vellum & Ember + Midnight Frost Glass | persistent cross-window themes")
+    print("  verified portable + isolated skin updates | rollback-safe settings workflow")
     print("  no Instance Information OCR or reserved Ctrl+Shift+Z shortcut")
     return 0
 

@@ -12,6 +12,7 @@ from control_snapshot import merge_control_snapshots  # noqa: E402
 from engine_protocol import (  # noqa: E402
     PROTOCOL_VERSION,
     build_engine_snapshot,
+    classify_combat_ability_category,
     snapshot_event,
 )
 from lull_timer import LullTracker  # noqa: E402
@@ -69,14 +70,31 @@ class EngineProtocolTests(unittest.TestCase):
             },
         }]
         runtime["timeline_bucket_seconds"] = 2
+        recent_loot = [{
+            "event_id": "loot-1", "occurred_at": NOW.isoformat(),
+            "item": "Cloak of Flames +4", "item_key": "cloak of flames",
+            "quantity": 1, "looter": "Spin", "source": "Lord Nagafen",
+            "zone": "Solusek B", "character": "Spin", "server": "qeynos",
+            "encounter_id": "enc-1", "acquisition_type": "corpse",
+            "raid_tier": 3, "raid_mode": "solo", "item_info": {
+                "title": "Cloak of Flames", "url": "https://eqlwiki.com/x",
+                "stats": {"AC": 10}, "notes": "Magic item",
+                "sections": {"Drops From": ["Lord Nagafen"]},
+                "fresh_until": "2026-08-14T00:00:00Z",
+            },
+        }]
         snapshot = build_engine_snapshot(
             sequence=7, observed_at=NOW,
-            stats_snapshot=runtime, control_snapshot=controls)
+            stats_snapshot=runtime, control_snapshot=controls,
+            recent_loot=recent_loot,
+            loot_summary={"events": 2, "quantity": 4, "unique_items": 1})
         event = snapshot_event(snapshot)
         first = event.to_json()
         second = snapshot_event(build_engine_snapshot(
-            sequence=7, observed_at=NOW,
-            stats_snapshot=dict(runtime), control_snapshot=controls)).to_json()
+            sequence=7, observed_at=NOW, stats_snapshot=dict(runtime),
+            control_snapshot=controls, recent_loot=recent_loot,
+            loot_summary={"events": 2, "quantity": 4,
+                          "unique_items": 1})).to_json()
         self.assertEqual(first, second)
         decoded = json.loads(first)
         self.assertEqual(decoded["protocolVersion"], PROTOCOL_VERSION)
@@ -89,6 +107,15 @@ class EngineProtocolTests(unittest.TestCase):
                          1000)
         self.assertEqual(decoded["snapshot"]["breakdown"]["sources"][0]["name"],
                          "Melee")
+        self.assertEqual(
+            decoded["snapshot"]["breakdown"]["sources"][0]["category"],
+            "melee")
+        self.assertEqual(
+            decoded["snapshot"]["breakdown"]["sources"][1]["category"],
+            "pet")
+        self.assertEqual(
+            decoded["snapshot"]["breakdown"]["targets"][0]["category"],
+            "unknown")
         encounter = decoded["snapshot"]["encounters"][0]
         self.assertEqual(encounter["personalDamage"], 1000)
         pet = next(row for row in encounter["actors"]
@@ -97,10 +124,16 @@ class EngineProtocolTests(unittest.TestCase):
         self.assertEqual(pet["sessionDamage"], 700)
         self.assertEqual(encounter["healsReceived"], 320)
         self.assertEqual(encounter["healingSources"][0]["overheal"], 55)
+        self.assertEqual(encounter["healingSources"][0]["category"],
+                         "healing")
         self.assertEqual(encounter["timeline"][1], {
             "second": 2, "outgoing": 1200, "incoming": 300,
             "healing": 250, "kills": 1,
         })
+        self.assertEqual(decoded["snapshot"]["lootTotalCount"], 4)
+        self.assertEqual(decoded["snapshot"]["loot"][0]["raidTier"], 3)
+        self.assertEqual(decoded["snapshot"]["loot"][0]["itemInfo"]["stats"],
+                         ["AC: 10"])
 
     def test_desktop_boundary_retains_sixty_fights(self):
         controls = merge_control_snapshots(
@@ -157,6 +190,68 @@ class EngineProtocolTests(unittest.TestCase):
         runtime["fight"]["dps"] = 999
         self.assertEqual(snapshot.character.name, "Spin")
         self.assertEqual(snapshot.combat.fight_dps, 50)
+
+    def test_ability_categories_use_only_direct_label_evidence(self):
+        cases = {
+            "Melee": "melee",
+            "Spells": "spell",
+            "Spell: Draught of Fire": "spell",
+            "DoT: Splurt": "dot",
+            "Proc: Strike of the Chosen": "proc",
+            "Damage shield": "damage_shield",
+            "Pet (A rock golem)": "pet",
+            "Superior Healing": "unknown",
+            "Fire proc imitation": "unknown",
+            "Pet rock": "unknown",
+            "": "unknown",
+        }
+        for label, expected in cases.items():
+            with self.subTest(label=label):
+                self.assertEqual(
+                    classify_combat_ability_category(label), expected)
+
+        self.assertEqual(classify_combat_ability_category(
+            "unstructured label", "dot"), "dot")
+        self.assertEqual(classify_combat_ability_category(
+            "unstructured label", "not-a-category"), "unknown")
+        self.assertEqual(classify_combat_ability_category(
+            "Superior Healing", healing=True), "healing")
+
+    def test_encounter_sources_carry_categories_and_entities_remain_unknown(self):
+        controls = merge_control_snapshots(
+            MezTracker().snapshot(NOW), LullTracker().snapshot(NOW))
+        fight = {
+            "name": "category fight", "damage": 90, "seconds": 1,
+            "start": NOW, "end": NOW,
+            "sources": {
+                "DoT: Splurt": {"t": 40, "h": 2, "max": 20},
+                "Mystery Burst": {"t": 30, "h": 1, "max": 30},
+                "Future Label": {
+                    "t": 20, "h": 1, "max": 20, "category": "proc",
+                },
+            },
+            "targets": {"an abhorrent": 90},
+            "actor_damage": {
+                "Spin": {"t": 90, "h": 4, "max": 30},
+            },
+            "healing_sources": {
+                "Superior Healing": {"t": 50, "h": 1, "max": 50},
+            },
+        }
+        snapshot = build_engine_snapshot(
+            sequence=1, observed_at=NOW,
+            stats_snapshot={"character": "Spin", "fights": [fight]},
+            control_snapshot=controls)
+        encounter = snapshot.encounters[0]
+
+        self.assertEqual(
+            {row.name: row.category for row in encounter.sources}, {
+                "DoT: Splurt": "dot",
+                "Mystery Burst": "unknown",
+                "Future Label": "proc",
+            })
+        self.assertEqual(encounter.targets[0].category, "unknown")
+        self.assertEqual(encounter.healing_sources[0].category, "healing")
 
 
 if __name__ == "__main__":

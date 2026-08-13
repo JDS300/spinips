@@ -703,6 +703,121 @@ body {
   box-shadow: 0 0 12px rgba(var(--lm-success-rgb), .18);
 }
 
+.masthead-version {
+  color: var(--lm-primary);
+  border-color: rgba(var(--lm-primary-rgb), .32);
+  background: rgba(var(--lm-primary-rgb), .06);
+}
+
+.update-center-heading,
+.update-component,
+.update-install-path,
+.update-version-line {
+  border-color: rgba(var(--lm-line-rgb), .38);
+}
+
+.update-center-heading > span > b,
+.update-component > header b {
+  color: var(--lm-text-strong);
+}
+
+.update-center-heading > small,
+.update-install-path small,
+.update-component > header small,
+.update-version-line small,
+.update-component > p,
+.update-safety-note small {
+  color: var(--lm-dim);
+}
+
+.update-install-path {
+  background: var(--lm-inset-bg);
+}
+
+.update-install-path b,
+.update-version-line b {
+  color: var(--lm-text);
+}
+
+.update-component {
+  background: var(--lm-card-raised-bg);
+  box-shadow: inset 0 1px rgba(var(--lm-text-rgb), .04);
+}
+
+.update-component.phase-current > header em,
+.update-component.phase-current .update-version-line b {
+  color: var(--lm-success);
+}
+
+.update-component.phase-current > header em i {
+  background: var(--lm-success);
+  box-shadow: 0 0 8px rgba(var(--lm-success-rgb), .68);
+}
+
+.update-component:is(.phase-available,.phase-ready,.phase-restart-required) > header em {
+  color: var(--lm-warning);
+}
+
+.update-component:is(.phase-available,.phase-ready,.phase-restart-required) > header em i {
+  background: var(--lm-warning);
+  box-shadow: 0 0 8px rgba(var(--lm-warning-rgb), .62);
+}
+
+.update-component:is(.phase-error,.phase-waiting-for-eq,.phase-modified) > header em {
+  color: var(--lm-danger);
+}
+
+.update-component:is(.phase-error,.phase-waiting-for-eq,.phase-modified) > header em i {
+  background: var(--lm-danger);
+  box-shadow: 0 0 8px rgba(var(--lm-danger-rgb), .62);
+}
+
+.update-component:is(.phase-checking,.phase-downloading,.phase-verifying,.phase-installing) > header em {
+  color: var(--lm-primary);
+}
+
+.update-component:is(.phase-checking,.phase-downloading,.phase-verifying,.phase-installing) > header em i {
+  background: var(--lm-primary);
+  box-shadow: 0 0 8px rgba(var(--lm-primary-rgb), .65);
+}
+
+.update-progress {
+  border-color: rgba(var(--lm-line-rgb), .45);
+  background: var(--lm-void);
+}
+
+.update-progress > i {
+  background: linear-gradient(90deg, var(--lm-primary), var(--lm-success));
+}
+
+.update-component .component-update-action {
+  color: var(--lm-warning);
+  border-color: rgba(var(--lm-warning-rgb), .42);
+  background: rgba(var(--lm-warning-rgb), .08);
+}
+
+.update-component .component-update-action:hover {
+  background: rgba(var(--lm-warning-rgb), .16);
+}
+
+.update-center-toolbar .update-all:not(:disabled) {
+  color: var(--lm-void);
+  border-color: var(--lm-success);
+  background: linear-gradient(135deg, var(--lm-success), var(--lm-action));
+  box-shadow: 0 5px 15px rgba(var(--lm-success-rgb), .14);
+}
+
+.update-safety-note {
+  border-color: rgba(var(--lm-success-rgb), .3);
+  background: rgba(var(--lm-success-rgb), .08);
+}
+
+.update-safety-note > i,
+.update-safety-note b {
+  color: var(--lm-success);
+  border-color: rgba(var(--lm-success-rgb), .5);
+}
+
 .difficulty-picker button.unset.selected {
   color: var(--lm-void);
   border-color: var(--lm-warning);
@@ -1156,6 +1271,20 @@ body {
 @media (max-width: 520px) {
   .theme-picker {
     grid-template-columns: 1fr;
+  }
+
+  .update-component-grid,
+  .update-center-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .update-component.loremaster {
+    grid-column: auto;
+  }
+
+  .update-center-heading {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 

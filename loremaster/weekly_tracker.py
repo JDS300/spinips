@@ -1,9 +1,9 @@
 """Durable D0-D4 raid lockout progress for the headless engine.
 
 EverQuest Legends gives each raid boss five independent weekly loot-lockout
-tracks.  The EQ text log identifies the defeated boss but does not reliably
-state the selected difficulty, so difficulty is explicit caller evidence and
-the tracker never guesses it from loot quality or combat strength.
+tracks. Difficulty is accepted only from direct instance-entry log evidence or
+an explicit manual correction; the tracker never guesses it from loot quality
+or combat strength.
 """
 
 from __future__ import annotations
@@ -57,6 +57,12 @@ class BossKill:
     killed_at: str
     difficulty: int = 0
     duration_seconds: float = 0.0
+    difficulty_source: str = "manual"
+    instance_name: str = ""
+    instance_mode: str = ""
+    instance_label: str = ""
+    context_observed_at: str = ""
+    evidence: str = ""
 
 
 def _pacific_zone():
@@ -130,7 +136,7 @@ class WeeklyBossTracker:
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
         temporary = self.storage_path.with_suffix(self.storage_path.suffix + ".tmp")
         temporary.write_text(json.dumps(
-            {"schemaVersion": 2, "kills": [asdict(kill) for kill in self._kills]},
+            {"schemaVersion": 3, "kills": [asdict(kill) for kill in self._kills]},
             indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         os.replace(temporary, self.storage_path)
 
@@ -162,7 +168,11 @@ class WeeklyBossTracker:
 
     def observe_kill(self, occurred_at: datetime, target: str, *, zone: str,
                      character: str, difficulty: int,
-                     duration_seconds: float = 0.0) -> bool:
+                     duration_seconds: float = 0.0,
+                     difficulty_source: str = "manual",
+                     instance_name: str = "", instance_mode: str = "",
+                     instance_label: str = "", context_observed_at: str = "",
+                     evidence: str = "") -> bool:
         if difficulty not in DIFFICULTIES:
             raise ValueError("difficulty must be D0 through D4")
         definition = self.match_target(target)
@@ -185,6 +195,12 @@ class WeeklyBossTracker:
             killed_at=stamp,
             difficulty=difficulty,
             duration_seconds=max(0.0, round(float(duration_seconds), 3)),
+            difficulty_source=str(difficulty_source or "manual"),
+            instance_name=str(instance_name or ""),
+            instance_mode=str(instance_mode or ""),
+            instance_label=str(instance_label or ""),
+            context_observed_at=str(context_observed_at or ""),
+            evidence=str(evidence or ""),
         ))
         self._save()
         return True

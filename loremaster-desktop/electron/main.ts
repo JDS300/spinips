@@ -13,6 +13,22 @@ import {
   type GearPlanView,
   type InventoryEntry,
 } from "./gear-plan";
+import { ItemIntelligenceService } from "./item-intelligence";
+import {
+  acknowledgePortableUpdateRelaunch,
+  PortableUpdateService,
+  type StagedPortableUpdate,
+  type UpdateCheckResult,
+  type UpdateProgress,
+} from "./portable-updater";
+import {
+  EverQuestRunningError,
+  SPINUI_SKINS,
+  SpinUISkinUpdateService,
+  type SpinUISkinName,
+  type SpinUISkinStatus,
+  type SpinUIUpdateState,
+} from "./spinui-updater";
 
 const processStartedAt = performance.now();
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
@@ -33,6 +49,16 @@ let tray: Tray | null = null;
 let trayMinimizeNoticeShown = false;
 let topmostReassertTimers: NodeJS.Timeout[] = [];
 let topmostHeartbeatTimer: NodeJS.Timeout | null = null;
+let itemIntelligence: ItemIntelligenceService | null = null;
+let portableUpdater: PortableUpdateService | null = null;
+let spinUISkinUpdater: SpinUISkinUpdateService | null = null;
+let stagedPortableUpdate: StagedPortableUpdate | null = null;
+let portableInstallHandoff = false;
+let portableRelaunchAcknowledged = false;
+let portableRelaunchAcknowledgeInFlight = false;
+let rendererHealthyForUpdate = false;
+let engineHealthyForUpdate = false;
+let updateCenterState: UpdateCenterState | null = null;
 
 const SEED_SIZE = { width: 128, height: 74 } as const;
 const EXPANDED_SIZE = { width: 470, height: 580 } as const;
@@ -90,6 +116,8 @@ export interface AlertSettings {
 
 interface DesktopSettings {
   logPath: string;
+  eqRoot: string;
+  autoCheckUpdates: boolean;
   raidDifficulty: number | null;
   bisBuildPath: string;
   inventoryPath: string;
@@ -99,8 +127,31 @@ interface DesktopSettings {
   composition: string;
   splitCharmedPetDps: boolean;
   stanceAdvisorEnabled: boolean;
+  itemNetworkLookups: boolean;
   seedPosition: { x: number; y: number } | null;
   alerts: AlertSettings;
+}
+
+type UpdateComponentId = "loremaster" | "spinui_reloaded" | "spinui_glass";
+type UpdateComponentPhase =
+  | "idle" | "checking" | "current" | "available" | "not-installed" | "modified"
+  | "downloading" | "verifying" | "ready" | "waiting-for-eq" | "installing"
+  | "restart-required" | "error";
+interface UpdateComponentState {
+  id: UpdateComponentId;
+  phase: UpdateComponentPhase;
+  currentVersion: string;
+  latestVersion: string;
+  progress: number | null;
+  detail: string;
+}
+interface UpdateCenterState {
+  currentVersion: string;
+  latestVersion: string;
+  lastCheckedAt: string;
+  eqRoot: string;
+  busy: boolean;
+  components: Record<UpdateComponentId, UpdateComponentState>;
 }
 
 interface EngineHealth {
@@ -173,6 +224,8 @@ const defaultAlertSettings: AlertSettings = {
 
 const defaultSettings: DesktopSettings = {
   logPath: "",
+  eqRoot: "",
+  autoCheckUpdates: true,
   raidDifficulty: null,
   bisBuildPath: "",
   inventoryPath: "",
@@ -182,6 +235,7 @@ const defaultSettings: DesktopSettings = {
   composition: "",
   splitCharmedPetDps: false,
   stanceAdvisorEnabled: false,
+  itemNetworkLookups: true,
   seedPosition: null,
   alerts: defaultAlertSettings,
 };
@@ -210,8 +264,13 @@ function readSettings(): DesktopSettings {
       return Number.isFinite(numeric) ? Math.max(low, Math.min(high, Math.round(numeric))) : fallback;
     };
     const boolean = (candidate: unknown, fallback: boolean) => typeof candidate === "boolean" ? candidate : fallback;
+    const logPath = typeof value.logPath === "string" ? value.logPath : "";
+    const eqRoot = resolveEqRoot(typeof value.eqRoot === "string" ? value.eqRoot : "")
+      || resolveEqRoot(logPath);
     return {
-      logPath: typeof value.logPath === "string" ? value.logPath : "",
+      logPath,
+      eqRoot,
+      autoCheckUpdates: boolean(value.autoCheckUpdates, true),
       raidDifficulty,
       bisBuildPath: typeof value.bisBuildPath === "string" ? value.bisBuildPath : "",
       inventoryPath: typeof value.inventoryPath === "string" ? value.inventoryPath : "",
@@ -221,6 +280,7 @@ function readSettings(): DesktopSettings {
       composition: typeof value.composition === "string" ? value.composition.slice(0, 48) : "",
       splitCharmedPetDps: boolean(value.splitCharmedPetDps, false),
       stanceAdvisorEnabled: boolean(value.stanceAdvisorEnabled, false),
+      itemNetworkLookups: boolean(value.itemNetworkLookups, true),
       seedPosition,
       alerts: {
         alertsEnabled: boolean(alertValue.alertsEnabled, defaultAlertSettings.alertsEnabled),
@@ -248,11 +308,206 @@ function readSettings(): DesktopSettings {
   }
 }
 
+function resolveEqRoot(value: string): string {
+  const raw = value.trim().replace(/^"|"$/g, "");
+  if (!raw) return "";
+  let candidate = path.resolve(raw);
+  try {
+    if (statSync(candidate).isFile()) candidate = path.dirname(candidate);
+  } catch {
+    if (path.extname(candidate)) candidate = path.dirname(candidate);
+  }
+  for (let depth = 0; depth < 5; depth += 1) {
+    if (existsSync(path.join(candidate, "eqgame.exe"))) return candidate;
+    const parent = path.dirname(candidate);
+    if (parent === candidate) break;
+    candidate = parent;
+  }
+  return "";
+}
+
 function saveSettings(settings: DesktopSettings): void {
   const target = settingsPath();
   const temporary = `${target}.tmp`;
   writeFileSync(temporary, `${JSON.stringify(settings, null, 2)}\n`, "utf8");
   renameSync(temporary, target);
+}
+
+function maybeAcknowledgePortableRelaunch(): void {
+  if (portableRelaunchAcknowledged || portableRelaunchAcknowledgeInFlight
+      || !rendererHealthyForUpdate || !engineHealthyForUpdate) return;
+  portableRelaunchAcknowledgeInFlight = true;
+  void acknowledgePortableUpdateRelaunch(app.getPath("userData")).then((acknowledged) => {
+    portableRelaunchAcknowledged = acknowledged;
+  }).catch((error: unknown) => {
+    console.error("Could not acknowledge the verified Loremaster update relaunch", error);
+  }).finally(() => {
+    portableRelaunchAcknowledgeInFlight = false;
+  });
+}
+
+function updateMetadataPath(): string {
+  return path.join(app.getPath("userData"), "update-center.json");
+}
+
+function readUpdateMetadata(): { lastCheckedAt: string; lastNotifiedVersion: string } {
+  try {
+    const value = JSON.parse(readFileSync(updateMetadataPath(), "utf8")) as Record<string, unknown>;
+    return {
+      lastCheckedAt: typeof value.lastCheckedAt === "string" ? value.lastCheckedAt : "",
+      lastNotifiedVersion: typeof value.lastNotifiedVersion === "string" ? value.lastNotifiedVersion : "",
+    };
+  } catch {
+    return { lastCheckedAt: "", lastNotifiedVersion: "" };
+  }
+}
+
+function saveUpdateMetadata(value: { lastCheckedAt: string; lastNotifiedVersion: string }): void {
+  const target = updateMetadataPath();
+  const temporary = `${target}.tmp`;
+  writeFileSync(temporary, `${JSON.stringify({ schemaVersion: 1, ...value }, null, 2)}\n`, "utf8");
+  renameSync(temporary, target);
+}
+
+function initialUpdateCenterState(settings = readSettings()): UpdateCenterState {
+  const currentVersion = app.getVersion();
+  const metadata = readUpdateMetadata();
+  const component = (id: UpdateComponentId, detail: string): UpdateComponentState => ({
+    id, phase: "idle", currentVersion: id === "loremaster" ? currentVersion : "",
+    latestVersion: "", progress: null, detail,
+  });
+  return {
+    currentVersion,
+    latestVersion: "",
+    lastCheckedAt: metadata.lastCheckedAt,
+    eqRoot: settings.eqRoot,
+    busy: false,
+    components: {
+      loremaster: component("loremaster", "Ready to check the official SpinUI release."),
+      spinui_reloaded: component("spinui_reloaded", settings.eqRoot ? "Ready to verify SpinUI Reloaded." : "Select your EverQuest folder to check this skin."),
+      spinui_glass: component("spinui_glass", settings.eqRoot ? "Ready to verify SpinUI Glass." : "Select your EverQuest folder to check this skin."),
+    },
+  };
+}
+
+function publishUpdateCenter(): UpdateCenterState {
+  updateCenterState ??= initialUpdateCenterState();
+  const snapshot = structuredClone(updateCenterState);
+  mainWindow?.webContents.send("updates:state", snapshot);
+  return snapshot;
+}
+
+function portablePhase(value: UpdateProgress["phase"]): UpdateComponentPhase {
+  return value;
+}
+
+function skinPhase(value: SpinUISkinStatus["phase"]): UpdateComponentPhase {
+  if (value === "missing") return "not-installed";
+  if (value === "installed") return "current";
+  return value;
+}
+
+function mergePortableUpdate(progress: UpdateProgress, check?: UpdateCheckResult): void {
+  updateCenterState ??= initialUpdateCenterState();
+  const current = updateCenterState.components.loremaster;
+  updateCenterState.components.loremaster = {
+    ...current,
+    phase: portablePhase(progress.phase),
+    currentVersion: check?.currentVersion || current.currentVersion || app.getVersion(),
+    latestVersion: check?.latestVersion || progress.version || current.latestVersion,
+    progress: ["downloading", "verifying", "installing"].includes(progress.phase) ? progress.percent : null,
+    detail: progress.detail,
+  };
+  if (check) {
+    updateCenterState.latestVersion = check.latestVersion || updateCenterState.latestVersion;
+  }
+  updateCenterState.busy = ["downloading", "verifying", "installing"].includes(progress.phase)
+    || Boolean(spinUISkinUpdater?.getState().busy);
+  publishUpdateCenter();
+}
+
+function mergeSkinUpdate(state: SpinUIUpdateState): void {
+  updateCenterState ??= initialUpdateCenterState();
+  updateCenterState.eqRoot = state.eqRoot || updateCenterState.eqRoot;
+  updateCenterState.latestVersion = state.latestVersion || updateCenterState.latestVersion;
+  updateCenterState.lastCheckedAt = state.lastCheckedAt || updateCenterState.lastCheckedAt;
+  for (const theme of SPINUI_SKINS) {
+    const skin = state.themes[theme];
+    updateCenterState.components[theme] = {
+      id: theme,
+      phase: skinPhase(skin.phase),
+      currentVersion: skin.installedVersion || "",
+      latestVersion: skin.latestVersion || "",
+      progress: ["downloading", "verifying", "installing"].includes(skin.phase) ? skin.percent : null,
+      detail: skin.detail,
+    };
+  }
+  updateCenterState.busy = state.busy
+    || ["downloading", "verifying", "installing"].includes(portableUpdater?.getProgress().phase ?? "idle");
+  publishUpdateCenter();
+}
+
+function initializeUpdateServices(): void {
+  updateCenterState = initialUpdateCenterState(engine?.getState().settings ?? readSettings());
+  portableUpdater = new PortableUpdateService({
+    currentVersion: app.getVersion(),
+    userDataDir: app.getPath("userData"),
+    ...(app.isPackaged ? {} : { executablePath: null }),
+  });
+  portableUpdater.subscribe((progress) => mergePortableUpdate(progress));
+  spinUISkinUpdater = new SpinUISkinUpdateService({
+    userDataDir: app.getPath("userData"),
+    eqRoot: updateCenterState.eqRoot || null,
+  });
+  spinUISkinUpdater.subscribe(mergeSkinUpdate);
+}
+
+async function checkAllUpdates(): Promise<UpdateCenterState> {
+  updateCenterState ??= initialUpdateCenterState();
+  if (!portableUpdater || !spinUISkinUpdater) initializeUpdateServices();
+  updateCenterState.busy = true;
+  publishUpdateCenter();
+  const eqRoot = engine?.getState().settings.eqRoot || updateCenterState.eqRoot || undefined;
+  let portable: UpdateCheckResult | null = null;
+  try {
+    [portable] = await Promise.all([
+      portableUpdater!.check(),
+      spinUISkinUpdater!.check(eqRoot),
+    ]);
+    mergePortableUpdate(portableUpdater!.getProgress(), portable);
+    mergeSkinUpdate(spinUISkinUpdater!.getState());
+  } finally {
+    updateCenterState.busy = false;
+  }
+  const checkedAt = new Date().toISOString();
+  updateCenterState.lastCheckedAt = checkedAt;
+  const metadata = readUpdateMetadata();
+  const availableVersion = updateCenterState.components.loremaster.phase === "available"
+    ? updateCenterState.components.loremaster.latestVersion
+    : SPINUI_SKINS.some((theme) => ["available", "modified"].includes(updateCenterState!.components[theme].phase))
+      ? updateCenterState.latestVersion : "";
+  if (availableVersion && availableVersion !== metadata.lastNotifiedVersion) {
+    const changedComponents = (Object.values(updateCenterState.components) as UpdateComponentState[])
+      .filter((component) => ["available", "modified"].includes(component.phase))
+      .map((component) => component.id === "loremaster" ? "Loremaster"
+        : component.id === "spinui_reloaded" ? "SpinUI Reloaded" : "SpinUI Glass");
+    alertWindow?.webContents.send("alerts:test", {
+      id: `update-${availableVersion}`,
+      severity: "info",
+      title: `UPDATE ${availableVersion} READY`,
+      target: `${changedComponents.join(" + ")} can be updated from Settings.`,
+    });
+    if (tray && process.platform === "win32") {
+      tray.displayBalloon({
+        title: `Loremaster ${availableVersion} update ready`,
+        content: `${changedComponents.join(" + ")} can be updated in one click from Settings.`,
+        iconType: "info",
+      });
+    }
+    metadata.lastNotifiedVersion = availableVersion;
+  }
+  saveUpdateMetadata({ ...metadata, lastCheckedAt: checkedAt });
+  return publishUpdateCenter();
 }
 
 function newestEqLog(selectedPath: string): string {
@@ -261,6 +516,8 @@ function newestEqLog(selectedPath: string): string {
     ? [cleaned, path.join(cleaned, "Logs")]
     : [
         "C:\\EQLegends\\Logs", "C:\\EQLegends",
+        "D:\\EQLegends\\Logs", "D:\\EQLegends",
+        "E:\\EQLegends\\Logs", "E:\\EQLegends",
         "C:\\Users\\Public\\Daybreak Game Company\\Installed Games\\EverQuest Legends\\Logs",
         "C:\\Users\\Public\\Daybreak Game Company\\Installed Games\\EverQuest Legends",
         "C:\\Users\\Public\\Daybreak Game Company\\Installed Games\\EverQuest\\Logs",
@@ -293,6 +550,11 @@ class EngineSupervisor {
   private restartCount = 0;
   private restartTimer: NodeJS.Timeout | null = null;
   private attachmentRetryTimer: NodeJS.Timeout | null = null;
+  private journalRequestSequence = 0;
+  private readonly journalRequests = new Map<string, {
+    resolve: (value: unknown) => void;
+    timer: NodeJS.Timeout;
+  }>();
   private health: EngineHealth = { ...defaultHealth };
   private snapshot: unknown = null;
   private settings = readSettings();
@@ -329,6 +591,8 @@ class EngineSupervisor {
   private publishHealth(health: EngineHealth): void {
     this.health = health;
     mainWindow?.webContents.send("engine:health", health);
+    if (health.state === "searching" || health.state === "live") engineHealthyForUpdate = true;
+    maybeAcknowledgePortableRelaunch();
   }
 
   private spawnWorker(): void {
@@ -382,6 +646,7 @@ class EngineSupervisor {
     child.once("error", (error) => this.handleSpawnFailure(error));
     child.once("exit", (code) => {
       this.child = null;
+      this.settleJournalRequests();
       if (this.stopping) return;
       this.publishHealth({
         ...this.health,
@@ -415,7 +680,14 @@ class EngineSupervisor {
       return;
     }
     if (event.protocolVersion !== 1 || typeof event.eventType !== "string") return;
-    if (event.eventType === "engine.snapshot" && event.snapshot) {
+    if (event.eventType === "engine.loot-query" && typeof event.requestId === "string") {
+      const pending = this.journalRequests.get(event.requestId);
+      if (pending) {
+        clearTimeout(pending.timer);
+        this.journalRequests.delete(event.requestId);
+        pending.resolve(event.result);
+      }
+    } else if (event.eventType === "engine.snapshot" && event.snapshot) {
       this.snapshot = event;
       mainWindow?.webContents.send("engine:snapshot", event);
       alertWindow?.webContents.send("engine:snapshot", event);
@@ -443,12 +715,62 @@ class EngineSupervisor {
     this.child.stdin.write(`${JSON.stringify(command)}\n`);
   }
 
+  private settleJournalRequests(): void {
+    for (const pending of this.journalRequests.values()) {
+      clearTimeout(pending.timer);
+      pending.resolve({ rows: [], total: 0, offset: 0, hasMore: false });
+    }
+    this.journalRequests.clear();
+  }
+
+  queryLoot(value: unknown): Promise<unknown> {
+    const request = value && typeof value === "object"
+      ? value as Record<string, unknown> : {};
+    const scope = ["all", "mine", "others", "known"].includes(String(request.scope))
+      ? String(request.scope) : "all";
+    const rawTier = request.raidTier;
+    const raidTier = rawTier === "open" || rawTier === "all"
+      ? rawTier
+      : typeof rawTier === "number" && Number.isInteger(rawTier) && rawTier >= 0 && rawTier <= 4
+        ? Number(rawTier) : "all";
+    const filters = {
+      query: String(request.query ?? "").trim().slice(0, 160),
+      zone: String(request.zone ?? "").trim().slice(0, 160),
+      raidTier,
+      scope,
+      offset: Math.floor(clamp(Number(request.offset) || 0, 0, 1_000_000)),
+      limit: Math.floor(clamp(Number(request.limit) || 100, 1, 250)),
+    };
+    if (!this.child?.stdin.writable) {
+      return Promise.resolve({ rows: [], total: 0, offset: filters.offset, hasMore: false });
+    }
+    const requestId = `loot-${process.pid}-${++this.journalRequestSequence}`;
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        this.journalRequests.delete(requestId);
+        resolve({ rows: [], total: 0, offset: filters.offset, hasMore: false });
+      }, 5_000);
+      this.journalRequests.set(requestId, { resolve, timer });
+      this.send({ type: "engine.query-loot", requestId, filters });
+    });
+  }
+
+  cacheItem(value: unknown): void {
+    if (!value || typeof value !== "object") return;
+    this.send({ type: "engine.cache-item", item: value });
+  }
+
   getState(): { health: EngineHealth; snapshot: unknown; settings: DesktopSettings; gearPlan: GearPlanView } {
     return { health: this.health, snapshot: this.snapshot, settings: this.settings, gearPlan: this.gearPlan };
   }
 
   setLogPath(logPath: string): void {
-    this.settings = { ...this.settings, logPath };
+    const detectedEqRoot = resolveEqRoot(logPath);
+    this.settings = {
+      ...this.settings,
+      logPath,
+      ...(detectedEqRoot && !this.settings.eqRoot ? { eqRoot: detectedEqRoot } : {}),
+    };
     saveSettings(this.settings);
     const parserLogPath = newestEqLog(logPath);
     this.send({ type: "engine.set-log-path", logPath: parserLogPath || logPath });
@@ -484,7 +806,7 @@ class EngineSupervisor {
     this.send({ type: "engine.set-raid-difficulty", raidDifficulty });
   }
 
-  updateDesktopSettings(patch: Partial<Pick<DesktopSettings, "uiTheme" | "alwaysOnTop" | "fontScale" | "composition" | "splitCharmedPetDps" | "stanceAdvisorEnabled">> & {
+  updateDesktopSettings(patch: Partial<Pick<DesktopSettings, "uiTheme" | "alwaysOnTop" | "fontScale" | "composition" | "splitCharmedPetDps" | "stanceAdvisorEnabled" | "itemNetworkLookups" | "eqRoot" | "autoCheckUpdates">> & {
     alerts?: Partial<AlertSettings>;
   }): DesktopSettings {
     const nextAlerts = patch.alerts ? {
@@ -508,6 +830,9 @@ class EngineSupervisor {
       ...(typeof patch.composition === "string" ? { composition: patch.composition.trim().slice(0, 48) } : {}),
       ...(typeof patch.splitCharmedPetDps === "boolean" ? { splitCharmedPetDps: patch.splitCharmedPetDps } : {}),
       ...(typeof patch.stanceAdvisorEnabled === "boolean" ? { stanceAdvisorEnabled: patch.stanceAdvisorEnabled } : {}),
+      ...(typeof patch.itemNetworkLookups === "boolean" ? { itemNetworkLookups: patch.itemNetworkLookups } : {}),
+      ...(typeof patch.autoCheckUpdates === "boolean" ? { autoCheckUpdates: patch.autoCheckUpdates } : {}),
+      ...(typeof patch.eqRoot === "string" ? { eqRoot: resolveEqRoot(patch.eqRoot) } : {}),
       alerts: nextAlerts,
     };
     saveSettings(this.settings);
@@ -645,6 +970,7 @@ class EngineSupervisor {
     this.stopping = true;
     if (this.restartTimer) clearTimeout(this.restartTimer);
     if (this.attachmentRetryTimer) clearTimeout(this.attachmentRetryTimer);
+    this.settleJournalRequests();
     this.send({ type: "engine.shutdown" });
     const child = this.child;
     if (child) setTimeout(() => {
@@ -1257,6 +1583,8 @@ function createWindow(): void {
     ? mainWindow.loadURL(rendererUrl(developmentUrl, rendererQuery))
     : mainWindow.loadFile(path.join(app.getAppPath(), "dist", "index.html"), { query: rendererQuery });
   void rendererReady.then(() => {
+    rendererHealthyForUpdate = true;
+    maybeAcknowledgePortableRelaunch();
     mainWindow?.webContents.on("will-navigate", (event) => event.preventDefault());
     mainWindow?.webContents.setZoomFactor(settings.fontScale);
     setWindowMode(false);
@@ -1340,9 +1668,12 @@ function createWindow(): void {
           ? mainWindow?.webContents.executeJavaScript(
             "document.querySelector('.rune-seed')?.classList.add('attacking')")
           : undefined)
-        .then(() => screenshotView === "settings" || screenshotView?.startsWith("sounds")
+        .then(() => screenshotView === "settings" || screenshotView === "updates" || screenshotView?.startsWith("sounds")
           ? mainWindow?.webContents.executeJavaScript(
             "document.querySelector('button[aria-label=\"Open settings\"]')?.click()")
+          : screenshotView === "loot"
+            ? mainWindow?.webContents.executeJavaScript(
+              "document.querySelector('button[aria-label=\"Open observed loot chronicle\"]')?.click()")
           : screenshotView === "analysis"
             ? mainWindow?.webContents.executeJavaScript(
               "document.querySelector('button[aria-label=\"Open full combat breakdown\"]')?.click()")
@@ -1357,6 +1688,9 @@ function createWindow(): void {
         .then(() => screenshotView?.startsWith("sounds")
           ? mainWindow?.webContents.executeJavaScript(
             "document.querySelector('.sound-studio')?.scrollIntoView({ block: 'start' })")
+          : screenshotView === "updates"
+            ? mainWindow?.webContents.executeJavaScript(
+              "document.querySelector('.update-center-card')?.scrollIntoView({ block: 'start' })")
           : undefined)
         .then(() => screenshotView === "sounds-menu"
           ? mainWindow?.webContents.executeJavaScript(
@@ -1400,6 +1734,7 @@ function createWindow(): void {
 }
 
 ipcMain.handle("runtime:metrics", () => ({
+  version: app.getVersion(),
   coldStartMs: Math.round(performance.now() - processStartedAt),
   residentMemoryMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
   platform: process.platform,
@@ -1512,6 +1847,9 @@ ipcMain.handle("settings:update", (_event, value: unknown) => {
   if (typeof raw.composition === "string") patch.composition = raw.composition.slice(0, 48);
   if (typeof raw.splitCharmedPetDps === "boolean") patch.splitCharmedPetDps = raw.splitCharmedPetDps;
   if (typeof raw.stanceAdvisorEnabled === "boolean") patch.stanceAdvisorEnabled = raw.stanceAdvisorEnabled;
+  if (typeof raw.itemNetworkLookups === "boolean") patch.itemNetworkLookups = raw.itemNetworkLookups;
+  if (typeof raw.autoCheckUpdates === "boolean") patch.autoCheckUpdates = raw.autoCheckUpdates;
+  if (typeof raw.eqRoot === "string" && raw.eqRoot.length <= 4096) patch.eqRoot = raw.eqRoot;
   if (raw.alerts && typeof raw.alerts === "object") {
     const candidate = raw.alerts as Record<string, unknown>;
     const alerts: Partial<AlertSettings> = {};
@@ -1562,11 +1900,39 @@ ipcMain.handle("gear:choose-inventory", async () => {
   return result.filePaths[0];
 });
 ipcMain.handle("gear:refresh", () => engine?.refreshGearCatalog() ?? false);
+ipcMain.handle("journal:query-loot", (_event, value: unknown) => (
+  engine?.queryLoot(value) ?? Promise.resolve({
+    rows: [], total: 0, offset: 0, hasMore: false,
+  })
+));
+ipcMain.handle("items:lookup", async (_event, value: unknown) => {
+  if (typeof value !== "string") {
+    return {
+      status: "not-found",
+      requestedName: "",
+      title: "",
+      url: "https://eqlwiki.com/",
+      stats: [],
+      notes: [],
+      sections: {},
+      freshness: "live",
+      detail: "Select a valid item name.",
+    };
+  }
+  itemIntelligence ??= new ItemIntelligenceService(app.getPath("userData"));
+  const result = await itemIntelligence.lookup(
+    value, engine?.getState().settings.itemNetworkLookups ?? true);
+  if (result.status === "ready") engine?.cacheItem(result);
+  return result;
+});
 ipcMain.handle("external:open", async (_event, value: unknown) => {
   if (typeof value !== "string") return false;
   try {
     const url = new URL(value);
-    const allowedHosts = new Set(["eqlegendstools.com", "www.eqlegendstools.com", "github.com"]);
+    const allowedHosts = new Set([
+      "eqlegendstools.com", "www.eqlegendstools.com", "eqlwiki.com",
+      "www.eqlwiki.com", "github.com",
+    ]);
     if (url.protocol !== "https:" || !allowedHosts.has(url.hostname)) return false;
     await shell.openExternal(url.toString());
     return true;
@@ -1574,40 +1940,99 @@ ipcMain.handle("external:open", async (_event, value: unknown) => {
     return false;
   }
 });
-ipcMain.handle("updates:check", async () => {
-  const currentVersion = app.getVersion();
+ipcMain.handle("updates:get-state", () => publishUpdateCenter());
+ipcMain.handle("updates:check", () => checkAllUpdates());
+ipcMain.handle("updates:choose-eq-root", async () => {
+  if (!mainWindow || !engine) return null;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "Choose your EverQuest Legends folder",
+    defaultPath: engine.getState().settings.eqRoot || engine.getState().settings.logPath || undefined,
+    properties: ["openDirectory"],
+  });
+  if (result.canceled || result.filePaths.length !== 1) return null;
   try {
-    const response = await fetch("https://api.github.com/repos/itsspin/spinips/releases/latest", {
-      headers: {
-        Accept: "application/vnd.github+json",
-        "User-Agent": `Loremaster/${currentVersion}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-    });
-    if (!response.ok) throw new Error(`GitHub returned HTTP ${response.status}`);
-    const value = await response.json() as Record<string, unknown>;
-    const latestVersion = String(value.tag_name ?? "").replace(/^v/i, "");
-    const releaseUrl = String(value.html_url ?? "https://github.com/itsspin/spinips/releases/latest");
-    return {
-      ok: true,
-      currentVersion,
-      latestVersion,
-      updateAvailable: Boolean(latestVersion && latestVersion !== currentVersion),
-      releaseUrl,
-      detail: latestVersion === currentVersion
-        ? "Loremaster is up to date."
-        : `Release ${latestVersion || "latest"} is available on GitHub.`,
-    };
+    if (!spinUISkinUpdater) initializeUpdateServices();
+    const eqRoot = await spinUISkinUpdater!.setEqRoot(result.filePaths[0]);
+    engine.updateDesktopSettings({ eqRoot });
+    updateCenterState ??= initialUpdateCenterState();
+    updateCenterState.eqRoot = eqRoot;
+    return await checkAllUpdates();
   } catch (error) {
-    return {
-      ok: false,
-      currentVersion,
-      latestVersion: "",
-      updateAvailable: false,
-      releaseUrl: "https://github.com/itsspin/spinips/releases/latest",
-      detail: error instanceof Error ? error.message : String(error),
-    };
+    await dialog.showMessageBox(mainWindow, {
+      type: "warning",
+      title: "EverQuest folder not recognized",
+      message: error instanceof Error ? error.message : String(error),
+      detail: "Choose the folder that directly contains eqgame.exe and the uifiles folder.",
+    });
+    return publishUpdateCenter();
   }
+});
+ipcMain.handle("updates:install", async (_event, value: unknown) => {
+  const allowed: readonly UpdateComponentId[] = ["loremaster", "spinui_reloaded", "spinui_glass"];
+  if (!Array.isArray(value) || value.length < 1 || value.length > allowed.length) return publishUpdateCenter();
+  const ids = [...new Set(value)].filter((id): id is UpdateComponentId => allowed.includes(id as UpdateComponentId));
+  if (!ids.length || ids.length !== new Set(value).size) return publishUpdateCenter();
+  if (!portableUpdater || !spinUISkinUpdater) initializeUpdateServices();
+  updateCenterState ??= initialUpdateCenterState();
+  const skins = ids.filter((id): id is SpinUISkinName => id !== "loremaster");
+  try {
+    updateCenterState.busy = true;
+    publishUpdateCenter();
+    if (skins.length) {
+      const eqRoot = engine?.getState().settings.eqRoot || updateCenterState.eqRoot;
+      await spinUISkinUpdater!.installAll(skins, eqRoot || undefined);
+      mergeSkinUpdate(spinUISkinUpdater!.getState());
+    }
+    if (ids.includes("loremaster")) {
+      if (portableUpdater!.getProgress().phase !== "available" && !stagedPortableUpdate) {
+        const check = await portableUpdater!.check();
+        mergePortableUpdate(portableUpdater!.getProgress(), check);
+        if (!check.updateAvailable) return publishUpdateCenter();
+      }
+      stagedPortableUpdate ??= await portableUpdater!.stage();
+      mergePortableUpdate(portableUpdater!.getProgress());
+      const confirmation = mainWindow ? await dialog.showMessageBox(mainWindow, {
+        type: "info",
+        title: `Install Loremaster ${stagedPortableUpdate.version}`,
+        message: "The verified update is ready. Restart Loremaster now?",
+        detail: "Settings, combat and loot history, EQ logs, and UI layouts are preserved. If the new build cannot start its window and parser, the previous executable is restored automatically.",
+        buttons: ["INSTALL & RESTART", "LATER"],
+        defaultId: 0,
+        cancelId: 1,
+      }) : { response: 0 };
+      if (confirmation.response !== 0) {
+        updateCenterState.components.loremaster = {
+          ...updateCenterState.components.loremaster,
+          phase: "ready",
+          progress: null,
+          detail: `Loremaster ${stagedPortableUpdate.version} is verified and ready.`,
+        };
+        updateCenterState.busy = false;
+        return publishUpdateCenter();
+      }
+      portableUpdater!.installAndRelaunch(stagedPortableUpdate);
+      portableInstallHandoff = true;
+      updateCenterState.busy = true;
+      publishUpdateCenter();
+      setTimeout(() => app.quit(), 350);
+    }
+  } catch (error) {
+    if (!(error instanceof EverQuestRunningError) && mainWindow) {
+      await dialog.showMessageBox(mainWindow, {
+        type: "error",
+        title: "Update could not be completed",
+        message: error instanceof Error ? error.message : String(error),
+        detail: "Nothing outside the selected Loremaster or SpinUI component was changed.",
+      });
+    }
+    mergeSkinUpdate(spinUISkinUpdater!.getState());
+    mergePortableUpdate(portableUpdater!.getProgress());
+  } finally {
+    if (!ids.includes("loremaster") || portableUpdater!.getProgress().phase === "error") {
+      updateCenterState.busy = false;
+    }
+  }
+  return publishUpdateCenter();
 });
 
 ipcMain.on("window:set-mode", (_event, expanded: boolean) => {
@@ -1624,10 +2049,20 @@ app.whenReady().then(() => {
   if (!ownsSingleInstance) return;
   engine = new EngineSupervisor();
   engine.start();
+  initializeUpdateServices();
   createWindow();
   ensureTray();
   startTopmostHeartbeat();
   screen.on("display-metrics-changed", scheduleTopmostReassertion);
+  const updateSettings = engine.getState().settings;
+  const lastCheck = readUpdateMetadata().lastCheckedAt;
+  const lastCheckMs = Date.parse(lastCheck);
+  const autoCheckDue = !Number.isFinite(lastCheckMs) || Date.now() - lastCheckMs >= 24 * 60 * 60 * 1000;
+  if (app.isPackaged && updateSettings.autoCheckUpdates && autoCheckDue
+      && !process.env.LOREMASTER_SCREENSHOT_PATH && !process.env.LOREMASTER_SMOKE_EXIT_MS) {
+    const timer = setTimeout(() => void checkAllUpdates(), 8_000 + Math.floor(Math.random() * 5_000));
+    timer.unref?.();
+  }
   const smokeExitMs = Number(process.env.LOREMASTER_SMOKE_EXIT_MS || 0);
   if (Number.isFinite(smokeExitMs) && smokeExitMs >= 250) {
     setTimeout(() => app.quit(), smokeExitMs);
@@ -1641,7 +2076,9 @@ app.on("before-quit", () => {
   tray = null;
   engine?.stop();
 });
-app.on("window-all-closed", () => app.quit());
+app.on("window-all-closed", () => {
+  if (!portableInstallHandoff) app.quit();
+});
 app.on("second-instance", restoreLoremasterWindow);
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
