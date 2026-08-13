@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 """Paint SpinUI's client-native auto-attack indicator texture.
 
-EverQuest owns the visibility and flashing cadence of the four
-``A_AttackIndicatorAnim*`` edge widgets in ``EQUI_PlayerWindow.xml``.  The
-texture therefore remains a single, fully opaque neutral frame like the
-working Modern UI contract.  EverQuest modulates that neutral source from
-white/gray to red; pre-coloring the source red destroys the visible flash
-because every tint phase remains red.  Only narrow edge slices are drawn by
-the XML, and the fill widget is intentionally unbound.
+EverQuest owns the visibility and flashing cadence of the five recognized
+``A_AttackIndicatorAnim*`` widgets in ``EQUI_PlayerWindow.xml``. Narrow edge
+slices use a fully opaque neutral-white rail; the required Fill widget uses a
+transparent-center white perimeter. The client owns attack-on visibility,
+red tint, and flashing cadence.
 
 Run from the repository root:
     python tools/paint_attack_indicator.py
@@ -15,32 +13,45 @@ Run from the repository root:
 
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 REPO = Path(__file__).resolve().parent.parent
 OUTPUT = REPO / "spinui_reloaded" / "AttackIndicator.tga"
+RAIL_OUTPUT = REPO / "spinui_reloaded" / "SpinAttackRail.tga"
+PERIMETER_OUTPUT = REPO / "spinui_reloaded" / "SpinAttackPerimeter.tga"
 FRAME_SIZE = (128, 32)
 SIZE = FRAME_SIZE
-EDGE_WIDTH = 8
-# Keep the source neutral so EverQuest can still modulate it between its native
-# white and red attack phases, but raise the luminance to health-bar intensity.
-# The sub-white RLE envelope remains friendly to the legacy renderer while its
-# red phase is vivid enough to remain unmistakable over either SpinUI theme.
-COLOR = (245, 245, 245, 255)
+EDGE_WIDTH = 3
+COLOR = (255, 255, 255, 255)
 
 
 def render() -> Image.Image:
     return Image.new("RGBA", SIZE, COLOR)
 
 
+def render_perimeter() -> Image.Image:
+    image = Image.new("RGBA", SIZE, (255, 255, 255, 0))
+    draw = ImageDraw.Draw(image)
+    draw.line((0, 0, 0, SIZE[1] - 1), fill=COLOR, width=1)
+    draw.line((SIZE[0] - 1, 0, SIZE[0] - 1, SIZE[1] - 1),
+              fill=COLOR, width=1)
+    draw.line((0, SIZE[1] - 1, SIZE[0] - 1, SIZE[1] - 1),
+              fill=COLOR, width=1)
+    return image
+
+
 def main() -> int:
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    # RLE 32-bit is the known-working Modern TGA envelope.  For this solid
-    # source Pillow emits a deterministic 204-byte file (type 10, alpha 8).
-    render().save(OUTPUT, format="TGA", compression="tga_rle")
+    # Retain the proven 32-bit RLE envelope used by the legacy renderer.
+    rail = render()
+    rail.save(OUTPUT, format="TGA", compression="tga_rle")
+    rail.save(RAIL_OUTPUT, format="TGA", compression="tga_rle")
+    render_perimeter().save(
+        PERIMETER_OUTPUT, format="TGA", compression="tga_rle",
+    )
     print(
-        "AttackIndicator.tga: native neutral RLE attack rail painted | "
-        "8px high-luminance EverQuest tint-driven pulse | no fill wash"
+        "Spin attack textures: native white rail + transparent-center "
+        "foreground perimeter | client red flash | no fill wash"
     )
     return 0
 

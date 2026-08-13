@@ -65,13 +65,15 @@ EFFECT_NAME_WIDTH = EFFECT_ROW_WIDTH - EFFECT_NAME_X - EFFECT_NAME_TAIL
 PLAYER_MIN_SIZE = (280, 193)
 TARGET_MIN_SIZE = (260, 174)
 # EverQuest recognizes the attack indicator by exact animation and ScreenID
-# names, then owns its attack-on visibility and pulse.  Keep the proven stock
-# source slices byte-for-byte compatible and make only the destination rails
-# bolder.  Eight screen pixels remains clear at high resolutions without
-# washing over the command-frame contents.
-ATTACK_EDGE_WIDTH = 8
+# names, then owns its attack-on visibility, red tint, and flashing cadence.
+# Preserve that native one-frame contract.  The rail occupies a crisp exposed
+# outer seam around the compact subwindow, where opaque themed chrome cannot
+# bury it. Three pixels stays resolution-visible without becoming a fill.
+ATTACK_EDGE_WIDTH = 3
 ATTACK_FRAME_SIZE = (128, 32)
 ATTACK_TEXTURE_SIZE = ATTACK_FRAME_SIZE
+ATTACK_RAIL_TEXTURE = "SpinAttackRail.tga"
+ATTACK_PERIMETER_TEXTURE = "SpinAttackPerimeter.tga"
 ATTACK_SOURCE_SIZES = {
     "A_AttackIndicator": ATTACK_FRAME_SIZE,
     "A_AttackIndicatorTop": (128, 2),
@@ -499,16 +501,47 @@ def style_player() -> None:
     text = change_item(text, "Label", "PW_StanceLabel", stance_rail)
     text = change_item(text, "Label", "PW_InvocationInfo", invocation_rail)
 
+    # Preserve the stock declaration for schema parity, while animations use
+    # Spin-specific filenames that cannot collide with an already cached skin.
+    stock_info = item_pattern("TextureInfo", "AttackIndicator.tga").search(text)
+    rail_info = item_pattern("TextureInfo", ATTACK_RAIL_TEXTURE).search(text)
+    if stock_info is None and rail_info is not None:
+        compatibility_info = rail_info.group(0).replace(
+            ATTACK_RAIL_TEXTURE, "AttackIndicator.tga", 1,
+        )
+        text = (text[:rail_info.start()] + compatibility_info + "\n\n\t"
+                + text[rail_info.start():])
+        stock_info = item_pattern(
+            "TextureInfo", "AttackIndicator.tga"
+        ).search(text)
+    if stock_info is None:
+        fail("stock attack TextureInfo disappeared")
+    if f'<TextureInfo item="{ATTACK_RAIL_TEXTURE}">' not in text:
+        rail_block = stock_info.group(0).replace(
+            "AttackIndicator.tga", ATTACK_RAIL_TEXTURE, 1,
+        )
+        text = (text[:stock_info.end()] + "\n\n\t" + rail_block
+                + text[stock_info.end():])
     text = change_item(
-        text, "TextureInfo", "AttackIndicator.tga",
+        text, "TextureInfo", ATTACK_RAIL_TEXTURE,
         lambda b: set_container(
             b, "Size", CX=ATTACK_TEXTURE_SIZE[0], CY=ATTACK_TEXTURE_SIZE[1]),
     )
+    rail_info = item_pattern("TextureInfo", ATTACK_RAIL_TEXTURE).search(text)
+    if rail_info is None:
+        fail("attack rail TextureInfo disappeared")
+    if f'<TextureInfo item="{ATTACK_PERIMETER_TEXTURE}">' not in text:
+        perimeter_info = rail_info.group(0).replace(
+            ATTACK_RAIL_TEXTURE, ATTACK_PERIMETER_TEXTURE, 1,
+        )
+        text = (text[:rail_info.end()] + "\n\n\t" + perimeter_info
+                + text[rail_info.end():])
 
-    def attack_animation(block: str, size: tuple[int, int]) -> str:
-        # Match the working native source contract exactly: EverQuest toggles,
-        # tints, and flashes these stock-named widgets itself.  A custom Cycle
-        # can look correct in static audits while never advancing in game.
+    def attack_animation(block: str, size: tuple[int, int],
+                         texture: str) -> str:
+        # Match the client-owned attack state contract exactly. Custom cycles
+        # do not advance reliably while these AutoDraw=false widgets are under
+        # state control and suppress the game's native flash.
         block = set_value(block, "Cycle", "false")
         block = re.sub(r"\n\t\t<Frames>.*?</Frames>", "", block,
                        flags=re.DOTALL)
@@ -519,7 +552,7 @@ def style_player() -> None:
         cycle_end += len(cycle_marker)
         frames = (
             "\n\t\t<Frames>\n"
-            "\t\t\t<Texture>AttackIndicator.tga</Texture>\n"
+            f"\t\t\t<Texture>{texture}</Texture>\n"
             "\t\t\t<Location>\n"
             "\t\t\t\t<X>0</X>\n"
             "\t\t\t\t<Y>0</Y>\n"
@@ -533,16 +566,24 @@ def style_player() -> None:
         return block[:cycle_end] + frames + block[cycle_end:]
 
     for name, size in ATTACK_SOURCE_SIZES.items():
+        texture = (ATTACK_PERIMETER_TEXTURE
+                   if name == "A_AttackIndicatorFill"
+                   else ATTACK_RAIL_TEXTURE)
         text = change_item(
             text, "Ui2DAnimation", name,
-            lambda b, s=size: attack_animation(b, s),
+            lambda b, s=size, t=texture: attack_animation(b, s, t),
         )
 
+    # Root-relative seam around PlayerSubWindow (root y=70..188). The client
+    # requires these recognized controls as direct PlayerWindow children.
     attack_edges = {
-        "A_AttackIndicatorAnimTop": (70, 70 + ATTACK_EDGE_WIDTH, 0, 0),
-        "A_AttackIndicatorAnimBottom": (2 + ATTACK_EDGE_WIDTH, 2, 0, 0),
-        "A_AttackIndicatorAnimLeft": (70, 2, 0, ATTACK_EDGE_WIDTH),
-        "A_AttackIndicatorAnimRight": (70, 2, ATTACK_EDGE_WIDTH, 0),
+        # Sit immediately above the subwindow so this foreground rail cannot
+        # cross PAL/MNK/ENC. Side rails overlap the top corners so the pulse is
+        # one continuous square rather than four disconnected strokes.
+        "A_AttackIndicatorAnimTop": (67, 70, 0, 0),
+        "A_AttackIndicatorAnimBottom": (5, 2, 0, 0),
+        "A_AttackIndicatorAnimLeft": (67, 2, 0, 3),
+        "A_AttackIndicatorAnimRight": (67, 2, 3, 0),
     }
     for name, offsets in attack_edges.items():
         def attack_edge(block: str, values=offsets) -> str:
@@ -556,11 +597,24 @@ def style_player() -> None:
         text = change_item(text, "StaticAnimation", name, attack_edge)
 
     def attack_fill(_block: str) -> str:
-        # Keep the stock symbol because the client expects it, but leave it
-        # deliberately unbound.  Only the four edge widgets may be drawn.
+        # The client requires this direct child. Its transparent-center art
+        # creates a final topmost perimeter without covering any HUD content.
         return (
             '<StaticAnimation item="A_AttackIndicatorAnimFill">\n'
             '\t\t<ScreenID>A_AttackIndicatorAnimFill</ScreenID>\n'
+            '\t\t<Animation>A_AttackIndicatorFill</Animation>\n'
+            '\t\t<RelativePosition>true</RelativePosition>\n'
+            '\t\t<AutoDraw>false</AutoDraw>\n'
+            '\t\t<AutoStretch>true</AutoStretch>\n'
+            '\t\t<Style_Transparent>true</Style_Transparent>\n'
+            '\t\t<TopAnchorOffset>70</TopAnchorOffset>\n'
+            '\t\t<BottomAnchorOffset>2</BottomAnchorOffset>\n'
+            '\t\t<LeftAnchorOffset>0</LeftAnchorOffset>\n'
+            '\t\t<RightAnchorOffset>0</RightAnchorOffset>\n'
+            '\t\t<TopAnchorToTop>true</TopAnchorToTop>\n'
+            '\t\t<BottomAnchorToTop>false</BottomAnchorToTop>\n'
+            '\t\t<LeftAnchorToLeft>true</LeftAnchorToLeft>\n'
+            '\t\t<RightAnchorToLeft>false</RightAnchorToLeft>\n'
             '\t</StaticAnimation>'
         )
 
@@ -584,6 +638,44 @@ def style_player() -> None:
         text,
     )
 
+    attack_pieces = tuple(
+        f"A_AttackIndicatorAnim{edge}"
+        for edge in ("Top", "Bottom", "Left", "Right", "Fill")
+    )
+
+    def clean_subwindow(block: str) -> str:
+        for piece in attack_pieces:
+            block = re.sub(
+                rf"\n[ \t]*<Pieces>{piece}</Pieces>", "", block,
+            )
+        return block
+
+    def expose_attack_perimeter(block: str) -> str:
+        block = clean_subwindow(block)
+        # The themed subwindow previously overhung the root by one pixel and
+        # ended on the bottom rail.  A three-pixel inset leaves the native
+        # attack pulse physically exposed on every side while keeping all HUD
+        # bindings and the authored 360x193 PlayerWindow footprint unchanged.
+        block = set_value(block, "TopAnchorOffset", "70")
+        block = set_value(block, "BottomAnchorOffset", "5")
+        block = set_value(block, "LeftAnchorOffset", "3")
+        block = set_value(block, "RightAnchorOffset", "3")
+        return block
+
+    text = change_item(
+        text, "Screen", "PlayerSubWindow", expose_attack_perimeter,
+    )
+
+    def lift_buff_strip(block: str) -> str:
+        # Preserve the 70px host height and full buff capacity; translate it
+        # upward by two pixels so bottom-anchored 23px icons cannot touch the
+        # flashing top seam.
+        block = set_value(block, "TopAnchorOffset", "0")
+        block = set_value(block, "BottomAnchorOffset", "70")
+        return block
+
+    text = change_item(text, "Screen", "PW_BuffWindow", lift_buff_strip)
+
     def root_style(block: str) -> str:
         block = set_container(block, "Size", CX=360, CY=193)
         block = set_or_add_value(
@@ -598,15 +690,9 @@ def style_player() -> None:
         # live client; the compact PlayerSubWindow remains the visible frame.
         block = set_value(block, "Style_Border", "false")
         block = set_value(block, "Style_Sizable", "true")
-        # EverQuest paints SIDL siblings foreground-first. Put the state-owned
-        # rails immediately before PlayerSubWindow so its themed template
-        # cannot cover the pulse. Keeping them at the end or after the
-        # subwindow leaves the native red/white modulation behind the Vellum
-        # or Glass chrome in the live client.
-        attack_pieces = tuple(
-            f"A_AttackIndicatorAnim{edge}"
-            for edge in ("Top", "Bottom", "Left", "Right", "Fill")
-        )
+        # These exact controls must be direct children of PlayerWindow: the
+        # client resolves them by name when attack state changes. Keep them as
+        # the final children so no root chrome or interaction surface follows.
         for piece in attack_pieces:
             block = re.sub(
                 rf"\n[ \t]*<Pieces>{piece}</Pieces>", "", block,
@@ -615,13 +701,10 @@ def style_player() -> None:
             f"\n\t\t<Pieces>{piece}</Pieces>" for piece in attack_pieces
         )
         block, count = re.subn(
-            r"(\n[ \t]*<Pieces>Screen:PlayerSubWindow</Pieces>)",
-            pieces + r"\1",
-            block,
-            count=1,
+            r"\n\t</Screen>$", pieces + "\n\t</Screen>", block, count=1,
         )
         if count != 1:
-            fail("PlayerWindow root has no PlayerSubWindow piece")
+            fail("PlayerWindow root has no closing Screen tag")
         return block
 
     text = change_item(text, "Screen", "PlayerWindow", root_style)
