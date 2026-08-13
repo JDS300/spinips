@@ -1,7 +1,7 @@
 {
   "name": "spins-loremaster",
   "private": true,
-  "version": "0.3.2",
+  "version": "0.3.3",
   "author": "SpinUI",
   "description": "Live EverQuest Legends combat, mez, lull, and weekly progress companion",
   "desktopName": "loremaster.desktop",
@@ -63,7 +63,11 @@
     },
     "linux": {
       "publish": [
-        { "provider": "github", "owner": "itsspin", "repo": "spinips" }
+        {
+          "provider": "github",
+          "owner": "itsspin",
+          "repo": "spinips"
+        }
       ],
       "target": [
         {
@@ -97,6 +101,9 @@
           "from": "../loremaster/assets/plane_of_sky_quests.json",
           "to": "engine/assets/plane_of_sky_quests.json"
         }
+      ],
+      "executableArgs": [
+        "--ozone-platform=x11"
       ]
     }
   }
