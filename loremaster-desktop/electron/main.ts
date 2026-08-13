@@ -16,30 +16,32 @@ import {
 
 const processStartedAt = performance.now();
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
-if (process.platform === "linux") {
-  // EverQuest runs under Proton/XWayland, and only the X11 backend gives the
-  // overlays working always-on-top, click-through, and global hotkeys; native
-  // Wayland silently drops all three. LOREMASTER_OZONE is the escape hatch.
-  // Chromium's own detection is the default: a Wayland session gets Wayland,
-  // an X11 session gets X11. Forcing X11 everywhere looked attractive because
-  // EverQuest renders through XWayland and the X11 backend is what gives
-  // overlays always-on-top, click-through and global hotkeys -- but on a KDE
-  // Wayland session with the NVIDIA driver it makes the GPU process fail to
-  // dlopen the GBM driver and segfault, after which the window is never
-  // mapped at all: a tray icon and nothing else. A visible app without those
-  // overlay guarantees beats an invisible one that has them on paper.
-  // LOREMASTER_OZONE=x11 opts back in where the X11 backend does work.
+// Chromium picks its ozone platform before any application code runs, so
+// app.commandLine.appendSwitch("ozone-platform", ...) is read too late and does
+// nothing. The flag has to be on the command line the process was started with,
+// which means re-executing once with it appended. argv is its own guard: the
+// relaunched process already carries the switch and falls straight through.
+//
+// X11 is the default where an X server is reachable, because it is the only
+// backend on which a client may place and remember its own windows. Wayland
+// forbids that outright, which leaves window placement to per-compositor rules.
+// LOREMASTER_OZONE=wayland opts out; LOREMASTER_OZONE=x11 forces it on.
+if (process.platform === "linux"
+    && !process.argv.some((argument) => argument.startsWith("--ozone-platform"))) {
   const requested = (process.env.LOREMASTER_OZONE ?? "").trim().toLowerCase();
-  if (requested === "x11" || requested === "wayland") {
-    app.commandLine.appendSwitch("ozone-platform", requested);
+  const platform = requested === "wayland" ? "wayland"
+    : requested === "x11" ? "x11"
+      // Only claim X11 when there is an X server to claim: forcing it without
+      // one produced a tray icon and no window, with nothing logged.
+      : (process.env.DISPLAY ? "x11" : "");
+  if (platform) {
+    app.relaunch({
+      args: process.argv.slice(1).concat([`--ozone-platform=${platform}`]),
+    });
+    app.exit(0);
   }
 }
 
-// Wayland deliberately gives clients no way to read or set an absolute window
-// position. getBounds() then reports (0,0) wherever the window actually is,
-// and the alert and control surfaces cannot be anchored to the seed at all.
-// Persisting those coordinates is actively harmful: it drags the window to the
-// top-left corner on the next launch. The anchored HUD needs an X11 session.
 const windowPositioningIsReliable =
   (process.env.LOREMASTER_OZONE ?? "").trim().toLowerCase() === "x11"
   || process.env.XDG_SESSION_TYPE !== "wayland";

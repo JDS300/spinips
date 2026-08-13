@@ -14,7 +14,7 @@ Before trusting a fresh install in a real session, work through
 | Requirement | Why | Notes |
 | --- | --- | --- |
 | Python 3.10 or newer | Runs the parser engine | Almost certainly already installed. The engine is stdlib-only — no pip packages. |
-| An X11 session, or Wayland with XWayland | Overlays, always-on-top, screen capture | Loremaster forces the X11 backend by default. See below. |
+| An X11 session, or Wayland with XWayland | Window placement, overlays, screen capture | Loremaster selects X11 automatically. Without one it runs on Wayland with reduced window control. |
 | `tesseract` **and its English language data** | Hover OCR and instance-lockout scan only | Optional. Everything else works without it. |
 
 Loremaster deliberately does **not** ship a bundled Python. The engine is
@@ -178,91 +178,78 @@ Prefer fixing the cursor confinement at the Wine level and keeping gamescope
 out of the picture. If you genuinely need gamescope, put Loremaster on a second
 monitor, and expect the overlay and OCR features to be unavailable.
 
-## Placing the windows on Wayland
+## Window placement
 
-Wayland deliberately gives applications no way to read or set an absolute
-window position. Loremaster therefore cannot place its own windows there, and
-this is not something the application can work around:
+Loremaster places and remembers its own windows. Drag one where you want it,
+and it returns there next time. If the display it was on no longer exists, it
+falls back to a position the platform chooses rather than opening off-screen.
 
-- The alert and control surfaces are anchored to the seed on X11. On Wayland
-  they neither follow it nor move.
-- A saved window position cannot be restored, because the app cannot discover
-  where the window is in the first place.
-- A window cannot raise itself above a fullscreen game.
+**No window rules are required, on any desktop.** Earlier revisions of this
+document asked KDE users to create per-window rules; that advice is obsolete
+and should be removed if you followed it.
 
-The compositor can do all of this, so let it. Loremaster gives each of its
-windows a distinct title precisely so a window rule can target them:
+This works because the application runs on Chromium's X11 backend, which it
+selects automatically wherever an X server is reachable — including XWayland on
+a Wayland session, which is also how EverQuest itself renders. X11 is the only
+backend on which a client may position itself: Wayland deliberately gives
+applications no way to read or set an absolute window position, and no
+application can work around that.
 
-| Window | Title |
-| --- | --- |
-| Seed and expanded HUD | `Loremaster` |
-| Alert popup | `Loremaster Alert` |
-| Control surface | `Loremaster Controls` |
+If you deliberately run the Wayland backend with `LOREMASTER_OZONE=wayland`,
+expect the limitations that come with it:
 
-On KDE, open **System Settings → Window Management → Window Rules** and add one
-rule per window, matching on **Window title** with **Exact Match**, then set
-**Position → Force** to where you want it. Placement then survives every
-restart regardless of what the application is permitted to do.
+- Windows cannot be positioned or restored by the application.
+- The alert and control surfaces cannot anchor to the seed.
+- No window can raise itself above a fullscreen game.
 
-The same approach works on other compositors that support window rules; the
-titles are what matter.
-
-If you want the windows on a second monitor — which is the configuration this
-works best in — set each rule's forced position inside that monitor's area.
-Nothing else is required: no always-on-top, no click-through, no overlay
-behaviour of any kind.
-
-### If you want the overlay behaviour
-
-Use an X11 session. Anchored surfaces, always-on-top over the game,
-click-through and global hotkeys are all X11 capabilities, and Loremaster gets
-them automatically there. On a Wayland session none of them are available at
-any price, and forcing Chromium's X11 backend inside a Wayland session is not
-a workaround — see below.
+Those are properties of the display protocol, not of Loremaster. On that path
+the compositor has to place the windows, which is why each one carries a
+distinct title — `Loremaster`, `Loremaster Alert`, `Loremaster Controls` — so a
+window rule can target it. Prefer the default.
 
 ## Wayland and XWayland
 
-Loremaster lets Chromium pick its own backend: a Wayland session gets Wayland,
-an X11 session gets X11.
+Loremaster runs on Chromium's **X11 backend** wherever an X server is reachable,
+including XWayland on a Wayland session. That is the same path EverQuest itself
+takes under Wine or Proton.
 
-Forcing the X11 backend everywhere is tempting, because EverQuest renders
-through XWayland and the X11 backend is what gives overlays always-on-top,
-click-through and global hotkeys. It was tried and reverted. On a KDE Wayland
-session with the NVIDIA driver, forcing X11 makes Chromium's GPU process fail
-to load the GBM driver:
+This is not a preference. X11 is the only backend on which an application may
+position and remember its own windows; Wayland deliberately forbids it. Running
+X11 is what makes placement, anchored alert surfaces, always-on-top and global
+hotkeys work without asking you to configure your compositor.
+
+Selecting it needs care, and this is worth knowing if you are reading the code:
+Chromium chooses its ozone platform **before application code runs**, so setting
+the switch with `app.commandLine.appendSwitch` has no effect at all. The flag
+must be on the command line the process started with, so Loremaster re-executes
+itself once with `--ozone-platform` appended. The relaunched process already
+carries the switch, so it starts normally.
+
+If no X server is reachable — `DISPLAY` unset, a pure Wayland session without
+XWayland — Loremaster does not force X11 and runs on Wayland instead. Forcing it
+with no X server produces a tray icon and no window, which is worse than the
+limitations of the Wayland backend.
+
+To override:
 
 ```
-MESA-LOADER: failed to open dri: /usr/lib/gbm/dri_gbm.so: Permission denied
-GPU process exited unexpectedly: exit_code=139
+LOREMASTER_OZONE=wayland ./loremaster   # force the Wayland backend
+LOREMASTER_OZONE=x11 ./loremaster       # force X11 even without DISPLAY set
 ```
 
-The GPU process then segfaults in a loop and the window is never mapped at
-all — you get a tray icon and nothing else, with no error to explain it. A
-visible application without the overlay guarantees beats an invisible one that
-has them on paper.
+Expect the Wayland backend to cost you window placement, anchored surfaces and
+raising above a fullscreen game, as described under *Window placement*.
 
-To force a backend either way:
-
-```
-LOREMASTER_OZONE=x11 ./loremaster       # opt back in where X11 works
-LOREMASTER_OZONE=wayland ./loremaster   # force native Wayland
-```
-
-If you run an X11 session, or a Wayland session where the X11 backend works,
-`LOREMASTER_OZONE=x11` is worth trying — it is the backend with the strongest
-overlay behaviour. Check the tray icon appears *and* a window does before
-settling on it.
-
-One known cosmetic gap: Electron's mouse-move *forwarding* for click-through
-windows is Windows/macOS-only, so hover effects on overlays are inert on Linux.
-Click-through itself works.
+One cosmetic consequence of the re-exec: the relaunched process detaches from
+the terminal it was started from, so diagnostic output on stdout is not visible
+when launching from a shell.
 
 ## Environment variables
 
 | Variable | Effect |
 | --- | --- |
 | `LOREMASTER_PYTHON` | Interpreter used for the parser engine. Set this if your `python3` is too old or lives somewhere unusual. |
-| `LOREMASTER_OZONE` | Force a Chromium backend: `x11` or `wayland`. Unset lets Chromium detect, which is the default and the safe choice. |
+| `LOREMASTER_OZONE` | Force a Chromium backend: `x11` or `wayland`. Unset selects X11 wherever an X server is reachable, which is the default and what makes window placement work. |
 | `SPIN_LOREMASTER_TESSERACT_LANG` | OCR language, default `eng`. |
 | `SPIN_LOREMASTER_TESSERACT_PSM` | Tesseract page-segmentation mode. Try `11` if tooltip OCR returns nothing. |
 
