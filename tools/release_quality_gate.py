@@ -315,7 +315,10 @@ def check_loremaster_release_pipeline() -> None:
         "python tools/ci_change_scope.py",
         "needs.detect-changes.outputs.ui == 'true'",
         "needs.detect-changes.outputs.loremaster == 'true'",
-        "if: github.event_name != 'push'",
+        # Release assembly stays gated to the two events that publish a
+        # release. Named events rather than "not push" so that adding a
+        # trigger (pull_request) cannot quietly enrol the assembly jobs.
+        "if: github.event_name == 'workflow_dispatch' || github.event_name == 'release'",
         "SpinUI-UI.zip",
         "Loremaster-Windows",
         "actions/checkout@v6",

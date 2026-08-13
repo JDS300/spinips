@@ -272,9 +272,20 @@ class _BitmapInfo(ctypes.Structure):
     _fields_ = [("bmiHeader", _BitmapInfoHeader), ("bmiColors", _RgbQuad * 1)]
 
 
+def _on_windows() -> bool:
+    """Whether this process takes the Win32 capture and OCR path.
+
+    A function rather than a bare ``os.name`` test at each branch so tests can
+    exercise the other platform's path without patching ``os.name`` itself:
+    that attribute is process-global, and pathlib reads it when joining paths,
+    so faking it made unrelated Path work blow up on the other platform.
+    """
+    return os.name == "nt"
+
+
 def _typed_win32_libraries():
     """Load the exact small Win32 surface needed by synchronous capture."""
-    if os.name != "nt":
+    if not _on_windows():
         raise HoverCaptureError("Hover scan is available on Windows only.")
     from ctypes import wintypes
 
@@ -433,7 +444,7 @@ GAME_WINDOW_LIMIT = 4096
 
 def capture_game_window() -> HoverCapture:
     """Freeze the whole verified EverQuest window, not a cursor region."""
-    if os.name == "nt":
+    if _on_windows():
         # Unchanged on Windows, where this scan already works from its hotkey.
         return capture_hovered_tooltip()
     import linux_capture  # Imported lazily so Windows never loads libX11.
@@ -484,7 +495,7 @@ def scan_game_window(capture: HoverCapture,
     second crops to the located panel and re-reads it at :data:`OCR_SCALE`,
     which is affordable because the panel is a fraction of the window.
     """
-    if os.name == "nt":
+    if _on_windows():
         return scan_hovered_tooltip(capture, cancel_event, timeout)
     import linux_capture  # Imported lazily so Windows never loads this path.
 
@@ -523,7 +534,7 @@ def scan_game_window(capture: HoverCapture,
 
 def capture_hovered_tooltip() -> HoverCapture:
     """Synchronously freeze the cursor ROI from the exact foreground EQ HWND."""
-    if os.name != "nt":
+    if not _on_windows():
         return _capture_hovered_tooltip_x11()
     user32, gdi32, kernel32 = _typed_win32_libraries()
     from ctypes import wintypes
@@ -788,7 +799,7 @@ def scan_hovered_tooltip(capture: HoverCapture,
                          cancel_event: threading.Event | None = None,
                          timeout: float = OCR_TIMEOUT_SECONDS) -> tuple[list[str], list[OcrLine]]:
     """Decode and OCR an already-frozen capture in one hidden worker process."""
-    if os.name != "nt":
+    if not _on_windows():
         return _scan_hovered_tooltip_tesseract(capture, cancel_event, timeout)
     if cancel_event is not None and cancel_event.is_set():
         raise RuntimeError("Hover scan cancelled.")
@@ -868,7 +879,7 @@ def _backend_problem() -> str:
     Windows ships its OCR engine with the operating system, so there is nothing
     to check there and this stays empty.
     """
-    if os.name == "nt":
+    if _on_windows():
         return ""
     try:
         import linux_capture

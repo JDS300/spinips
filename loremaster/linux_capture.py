@@ -30,6 +30,7 @@ import ctypes.util
 import os
 import re
 import shutil
+import signal
 import subprocess
 import threading
 import time
@@ -44,6 +45,8 @@ OCR_LANGUAGE_ENV = "SPIN_LOREMASTER_TESSERACT_LANG"
 OCR_PSM_ENV = "SPIN_LOREMASTER_TESSERACT_PSM"
 DEFAULT_OCR_LANGUAGE = "eng"
 TESSERACT_TIMEOUT_SECONDS = 8.0
+# How long a killed recogniser gets to be reaped before its pipes are dropped.
+KILL_REAP_SECONDS = 2.0
 MAX_TESSERACT_STDOUT_BYTES = 256 * 1024
 MAX_TESSERACT_LINES = 200
 MAX_TESSERACT_LINE_CHARS = 160
@@ -905,6 +908,34 @@ def readiness_problem() -> str:
     return ""
 
 
+def _abandon(process: subprocess.Popen) -> None:
+    """Kill the recogniser, anything it spawned, and reap it promptly.
+
+    ``Popen.kill()`` signals only the direct child.  A child that spawned its
+    own -- a shell wrapper, a distribution's tesseract shim -- leaves a
+    grandchild holding the inherited stdout pipe open, so the ``communicate()``
+    that follows blocks until that grandchild finishes: the timeout guardrail
+    ends up waiting out the very process it just gave up on.  Signalling the
+    process group closes every copy of the pipe at once.
+    """
+    try:
+        # The child leads its own session, so its pid is its process group.
+        os.killpg(process.pid, signal.SIGKILL)
+    except (AttributeError, OSError):
+        # Windows has no process groups, and a child that already exited has no
+        # group left to signal; the direct kill covers both.
+        try:
+            process.kill()
+        except OSError:
+            pass
+    try:
+        process.communicate(timeout=KILL_REAP_SECONDS)
+    except subprocess.TimeoutExpired:
+        # Something is unkillable (uninterruptible I/O). Abandoning the pipes
+        # still beats blocking the caller that asked us to stop waiting.
+        pass
+
+
 def _run_tesseract(image: bytes, *, cancel_event: threading.Event | None,
                    timeout: float) -> str:
     """Feed one image through tesseract with the PowerShell path's guardrails."""
@@ -914,7 +945,10 @@ def _run_tesseract(image: bytes, *, cancel_event: threading.Event | None,
     try:
         process = subprocess.Popen(
             arguments, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+            stderr=subprocess.PIPE,
+            # Its own session, so a wedged recogniser and its children can be
+            # killed as one group without ever signalling Loremaster itself.
+            start_new_session=True)
     except OSError as exc:
         raise LinuxCaptureError(
             "Tesseract could not be started, so screen text cannot be read."
@@ -924,13 +958,11 @@ def _run_tesseract(image: bytes, *, cancel_event: threading.Event | None,
     try:
         while True:
             if cancel_event is not None and cancel_event.is_set():
-                process.kill()
-                process.communicate()
+                _abandon(process)
                 raise LinuxOcrCancelled("Screen text recognition was cancelled.")
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                process.kill()
-                process.communicate()
+                _abandon(process)
                 raise LinuxCaptureError(
                     "Tesseract timed out reading the captured region; type or "
                     "copy the text instead.")
@@ -948,8 +980,7 @@ def _run_tesseract(image: bytes, *, cancel_event: threading.Event | None,
     except LinuxOcrCancelled:
         raise
     except (OSError, ValueError) as exc:
-        process.kill()
-        process.communicate()
+        _abandon(process)
         raise LinuxCaptureError(
             "Tesseract could not read the captured region.") from exc
     if process.returncode:

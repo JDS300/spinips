@@ -176,7 +176,7 @@ class PlatformBackendDispatchTests(unittest.TestCase):
 
     def test_windows_capture_still_goes_through_the_typed_win32_surface(self):
         sentinel = hover_ocr.HoverCaptureError("win32 surface reached")
-        with mock.patch.object(hover_ocr.os, "name", "nt"), \
+        with mock.patch.object(hover_ocr, "_on_windows", lambda: True), \
                 mock.patch.object(hover_ocr, "_typed_win32_libraries",
                                   side_effect=sentinel) as libraries, \
                 mock.patch.object(hover_ocr, "_capture_hovered_tooltip_x11") as x11:
@@ -188,7 +188,7 @@ class PlatformBackendDispatchTests(unittest.TestCase):
 
     def test_other_platforms_capture_through_the_x11_backend(self):
         capture = make_capture()
-        with mock.patch.object(hover_ocr.os, "name", "posix"), \
+        with mock.patch.object(hover_ocr, "_on_windows", lambda: False), \
                 mock.patch.object(hover_ocr, "_capture_hovered_tooltip_x11",
                                   return_value=capture) as x11, \
                 mock.patch.object(hover_ocr, "_typed_win32_libraries") as libraries:
@@ -197,7 +197,7 @@ class PlatformBackendDispatchTests(unittest.TestCase):
         libraries.assert_not_called()
 
     def test_typed_win32_libraries_refuse_to_load_off_windows(self):
-        with mock.patch.object(hover_ocr.os, "name", "posix"):
+        with mock.patch.object(hover_ocr, "_on_windows", lambda: False):
             with self.assertRaises(hover_ocr.HoverCaptureError) as caught:
                 hover_ocr._typed_win32_libraries()
         self.assertIn("Windows only", str(caught.exception))
@@ -206,7 +206,7 @@ class PlatformBackendDispatchTests(unittest.TestCase):
         capture = make_capture()
         cancel = threading.Event()
         expected = (["Cloak of Flames"], [OcrLine("Cloak of Flames")])
-        with mock.patch.object(hover_ocr.os, "name", "posix"), \
+        with mock.patch.object(hover_ocr, "_on_windows", lambda: False), \
                 mock.patch.object(hover_ocr, "_scan_hovered_tooltip_tesseract",
                                   return_value=expected) as tesseract:
             result = hover_ocr.scan_hovered_tooltip(capture, cancel, timeout=3.0)
@@ -216,14 +216,14 @@ class PlatformBackendDispatchTests(unittest.TestCase):
     def test_windows_reports_no_backend_problem_to_detect(self):
         # Windows ships its OCR engine with the OS, so there is nothing to warn
         # about and no subprocess may be spawned to find out.
-        with mock.patch.object(hover_ocr.os, "name", "nt"):
+        with mock.patch.object(hover_ocr, "_on_windows", lambda: True):
             self.assertEqual(hover_ocr._backend_problem(), "")
 
     def test_other_platforms_surface_the_backend_problem_at_startup(self):
         import linux_capture
 
         advice = "Tesseract has no eng language data, so screen text cannot be read."
-        with mock.patch.object(hover_ocr.os, "name", "posix"), \
+        with mock.patch.object(hover_ocr, "_on_windows", lambda: False), \
                 mock.patch.object(linux_capture, "readiness_problem",
                                   lambda: advice):
             self.assertEqual(hover_ocr._backend_problem(), advice)
@@ -235,7 +235,7 @@ class PlatformBackendDispatchTests(unittest.TestCase):
     def test_a_ready_backend_reports_no_problem(self):
         import linux_capture
 
-        with mock.patch.object(hover_ocr.os, "name", "posix"), \
+        with mock.patch.object(hover_ocr, "_on_windows", lambda: False), \
                 mock.patch.object(linux_capture, "readiness_problem", lambda: ""):
             service = HoverOcrService(lambda *_: ([], []), make_capture)
             self.addCleanup(service.close)
@@ -245,9 +245,9 @@ class PlatformBackendDispatchTests(unittest.TestCase):
         capture = make_capture()
         cancel = threading.Event()
         cancel.set()
-        for platform in ("nt", "posix"):
-            with self.subTest(platform), mock.patch.object(
-                    hover_ocr.os, "name", platform):
+        for on_windows in (True, False):
+            with self.subTest(windows=on_windows), mock.patch.object(
+                    hover_ocr, "_on_windows", lambda: on_windows):
                 with self.assertRaises(RuntimeError) as caught:
                     hover_ocr.scan_hovered_tooltip(capture, cancel)
             self.assertEqual(str(caught.exception), "Hover scan cancelled.")

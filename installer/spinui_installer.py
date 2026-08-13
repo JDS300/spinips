@@ -2103,7 +2103,13 @@ def selftest() -> int:
     with tempfile.TemporaryDirectory() as td:
         original_environ = dict(os.environ)
         try:
+            # Path.home() reads USERPROFILE on Windows and has ignored HOME
+            # there since Python 3.8, so setting HOME alone left discovery
+            # pointed at the runner's real profile.  find_eq_roots() consults
+            # the Wine prefixes on every platform, so this has to hold on all
+            # of them.
             os.environ["HOME"] = td
+            os.environ["USERPROFILE"] = td
             os.environ.pop("WINEPREFIX", None)
             home = Path(td)
             assert wine_prefixes() == []
@@ -2176,17 +2182,23 @@ def selftest() -> int:
         assert find_linux_loremaster_artifact(artifact_payload) is None
         (artifact_payload / SKIN_NAME).mkdir()
         (artifact_payload / SKIN_NAME / "EQUI.xml").write_text("<xml/>", encoding="utf-8")
-        with tempfile.TemporaryDirectory() as eq_td:
-            artifact_eq = Path(eq_td)
-            (artifact_eq / "eqgame.exe").write_bytes(b"")
-            skip_result = install_payload(
-                artifact_payload, artifact_eq, install_layout=False, layout_target=None,
-                run_at_startup=False, desktop_shortcut=False,
-                app_dir=artifact_payload / "app", startup_dir=artifact_payload / "startup",
-                desktop_dir=artifact_payload / "desktop",
-            )
-            assert (artifact_eq / "uifiles" / SKIN_NAME / "EQUI.xml").is_file()
-            if os.name != "nt":
+        # Installing from a payload that holds no usable Loremaster is a Linux
+        # shape: the skin lands and Loremaster is skipped with an explanation.
+        # On Windows a payload without Loremaster.exe is a hard error by
+        # design, so install_payload() itself raises and there is nothing here
+        # to assert -- which is why the whole block, not just its assertions,
+        # belongs behind the platform check.
+        if os.name != "nt":
+            with tempfile.TemporaryDirectory() as eq_td:
+                artifact_eq = Path(eq_td)
+                (artifact_eq / "eqgame.exe").write_bytes(b"")
+                skip_result = install_payload(
+                    artifact_payload, artifact_eq, install_layout=False, layout_target=None,
+                    run_at_startup=False, desktop_shortcut=False,
+                    app_dir=artifact_payload / "app", startup_dir=artifact_payload / "startup",
+                    desktop_dir=artifact_payload / "desktop",
+                )
+                assert (artifact_eq / "uifiles" / SKIN_NAME / "EQUI.xml").is_file()
                 assert any("Skipped Loremaster" in line for line in skip_result)
                 # This payload still holds the tar.gz, so the skip names that
                 # archive and the binary to run instead of implying nothing was

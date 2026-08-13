@@ -293,18 +293,34 @@ class OcrConfigurationTests(unittest.TestCase):
                 ocr_page_segmentation()
 
     def test_page_segmentation_defaults_to_tesseracts_own_choice(self):
-        with mock.patch.dict(os.environ, {}, clear=False):
+        # What is under test is how the arguments are assembled, so the
+        # executable is pinned: whether this machine has tesseract installed
+        # is a different fact, covered by the readiness tests.
+        installed = mock.patch.object(
+            linux_capture, "tesseract_executable", lambda: "/usr/bin/tesseract")
+        with installed, mock.patch.dict(os.environ, {}, clear=False):
             os.environ.pop(linux_capture.OCR_PSM_ENV, None)
             self.assertEqual(ocr_page_segmentation(), "")
             self.assertNotIn("--psm", linux_capture._tesseract_arguments())
-        with mock.patch.dict(os.environ, {linux_capture.OCR_PSM_ENV: "11"}):
+        with installed, mock.patch.dict(os.environ, {linux_capture.OCR_PSM_ENV: "11"}):
             arguments = linux_capture._tesseract_arguments()
         self.assertEqual(arguments[-2:], ["-c", "tessedit_create_tsv=1"])
         self.assertIn("--psm", arguments)
         self.assertIn("11", arguments)
 
 
+def _x11_library_loads() -> bool:
+    """Whether libX11 is present, independent of any display being open."""
+    try:
+        linux_capture._load_x11()
+    except LinuxCaptureError:
+        return False
+    return True
+
+
 class FailureShapeTests(unittest.TestCase):
+    @unittest.skipUnless(_x11_library_loads(),
+                         "the DISPLAY check is only reached once libX11 loads")
     def test_missing_display_is_reported_not_crashed(self):
         with mock.patch.dict(os.environ, {}, clear=False):
             os.environ.pop("DISPLAY", None)
@@ -378,7 +394,11 @@ class FailureShapeTests(unittest.TestCase):
     def test_a_wedged_recogniser_is_killed_at_the_deadline(self):
         # Stand in for tesseract with a process that consumes the image and then
         # hangs, so the timeout guardrail is exercised rather than assumed.
-        stalling = ["/bin/sh", "-c", "cat >/dev/null; sleep 30"]
+        # The sleeper is backgrounded so the shell keeps a child alive whatever
+        # /bin/sh is: bash exec-replaces itself with a trailing simple command,
+        # dash forks for it, and the fork is the case that used to wedge the
+        # cleanup.  Hard-coding the fork keeps this test honest on both.
+        stalling = ["/bin/sh", "-c", "cat >/dev/null; sleep 30 & wait"]
         with mock.patch.object(linux_capture, "_tesseract_arguments",
                                lambda: stalling):
             started = time.monotonic()
