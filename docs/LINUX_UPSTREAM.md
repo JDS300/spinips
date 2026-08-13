@@ -12,11 +12,26 @@ EverQuest itself runs under Wine or Proton. Loremaster runs natively.
 
 - Branch: [`agent/linux-native`](https://github.com/JDS300/spinips/tree/agent/linux-native)
 - Pull request: [JDS300/spinips#1](https://github.com/JDS300/spinips/pull/1)
-- 19 commits, 21 files, +4,615 / −158
+- Releases: [v0.3.4](https://github.com/JDS300/spinips/releases/tag/v0.3.4) and earlier, Linux only
 
 Commits are scoped one change per commit, and each message states what was
-observed rather than only what was altered — the history is meant to be read
-as the argument for the change.
+observed rather than only what was altered — the history is meant to be read as
+the argument for the change.
+
+### Defects found during the port, and where they were resolved
+
+Everything below was found by running the software rather than by reading it.
+Issues are on the fork so the trail is public; the fixes are in this branch.
+
+| | Defect | Resolution |
+| --- | --- | --- |
+| [#2](https://github.com/JDS300/spinips/issues/2) | Analysis view clamps to the display but its content does not scroll, so data is unreachable on a short screen | [#4](https://github.com/JDS300/spinips/pull/4) — grid items lacked `min-height:0`, so their existing `overflow` rules never engaged. Cross-platform. |
+| [#3](https://github.com/JDS300/spinips/issues/3) | Collapsing to the seed after Analyze leaves the window oversized | **Open.** The obvious cause is disproven; two candidates recorded. |
+| [#5](https://github.com/JDS300/spinips/issues/5) | NVIDIA GPU crash believed to block the X11 backend | **Closed as misdiagnosed** — every measurement came from runs silently on Wayland. |
+| [#6](https://github.com/JDS300/spinips/issues/6) | `ozone-platform` set through `app.commandLine`, which Chromium reads too late, so the X11 backend was never used | [#7](https://github.com/JDS300/spinips/pull/7) and [#8](https://github.com/JDS300/spinips/pull/8) |
+
+Two engine defects were also found and fixed here; both are cross-platform and
+predate this branch. They are described under their own heading below.
 
 ## Principle
 
@@ -116,29 +131,24 @@ mount.
 
 | Check | Result |
 | --- | --- |
-| Python test suite | 329 pass, from a 281 baseline |
-| Suite with no display, and with no English Tesseract model | 329 pass in both |
+| Python test suite | 331 pass, from a 281 baseline |
+| Suite headless, and with no English Tesseract model | passes in both |
 | `release_quality_gate.py` | ALL PASS on Linux |
 | Electron build, fixtures, gear audit | pass |
 | `dist:linux` | AppImage and tar.gz produced |
-| Skin install | 1667 and 1669 files, byte-identical to source (`diff -rq` clean) |
-| `/loadskin spinui_reloaded` and `spinui_glass` | both load, nothing missing |
-| Log auto-discovery | found the real log inside a Lutris prefix with nothing configured |
-| Parser on a real 690,174-line log | correct character and zone |
-| Parser on live combat | 5 kills, 33 melee damage over 9 hits, 1 crit, 4 healing, 20 taken |
-| Running-client guard | a live Wine client reports `comm` = `eqgame.exe`; guard true for it, false otherwise |
-| Capture and OCR round trip | three strings drawn into a real X11 window returned exactly |
-| Lockout scan | reads the Alt+Z panel and its column headers from an unfocused fullscreen game |
+| Skin install | 1667 and 1669 files, byte-identical to source |
+| `/loadskin` both skins | load, nothing missing or broken |
+| Log auto-discovery | found the real log in a Lutris prefix with nothing configured |
+| Parser on a 690,174-line log | correct character and zone |
+| Parser on live combat | kills, damage, crits, healing, damage taken |
+| Running-client guard | a live Wine client reports `comm` = `eqgame.exe` |
+| Capture and OCR round trip | three strings in a real X11 window returned exactly |
+| Alt+Z scan, empty table | reads the panel, reports success rather than an error |
+| Alt+Z scan, populated table | read a real panel and marked two raid completions |
 | Charm-break alert | fires on a proven break |
-| Mez timers | fire on landing; warning leads the safe floor; wake window shown after it |
-
-Mez timing was exercised across repeated casts of a rank-scaled spell. Observed
-expiries ranged 36–40s against a computed 36s safe floor, which is the
-`N*6..(N+1)*6` server-tick window the tracker models deliberately: it counts
-down to the guaranteed-safe floor, warns ahead of it, then shows a wake window
-rather than presenting the tail as guaranteed time. The spread is the model
-working, not drift. Focus and AA duration extensions are invisible in the log,
-so the computed floor sits below the true duration by design.
+| Mez timers | warning leads the safe floor; wake window shown after it |
+| Window placement | dragged, quit, restored — no compositor rules, on a Wayland session |
+| AppImage self-update | an AppImage manager saw v0.3.2 and applied it |
 
 The skin check matters most. The skin is roughly 500 XML documents referencing
 about 2,800 textures, and Linux filesystems are case-sensitive where Windows is
@@ -173,13 +183,15 @@ Honest gaps, all requiring game time rather than code:
 
 - The compact timer column of the Alt+Z panel. A real scan marked two raid
   completions correctly but reported the timer text unreadable and refused to
-  guess an expiry, which is the honest outcome. A second OCR pass now re-reads
-  the located panel at 2x for that column; it is written but unverified,
-  because it needs a scan while a lockout with a timer is on screen.
-- Lull timers and the weekly raid ledger.
+  guess an expiry. A second OCR pass now re-reads the located panel at 2x; it
+  is written but unconfirmed, because it needs a scan while a lockout with a
+  live timer is on screen.
+- Lull timers and the weekly raid ledger from a live raid kill.
 - Live DPS during a fight, as opposed to parsing after the fact.
 - A long session: stability, memory, and no orphaned engine process on quit.
-- Anything overlay-related on an X11 session.
+- Overlay behaviour above a fullscreen game, and click-through. Both are X11
+  capabilities and the application now runs on X11, so they are reachable —
+  they simply have not been exercised.
 
 `docs/LINUX_INGAME_TESTPLAN.md` covers these as a 30-check plan.
 

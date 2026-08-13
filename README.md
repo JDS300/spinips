@@ -43,6 +43,79 @@
 > [!NOTE]
 > SpinUI is an independent community project for EverQuest Legends and is not affiliated with or endorsed by Daybreak Game Company.
 
+## Running on Linux
+
+Loremaster runs **natively** on Linux. Only EverQuest itself runs under Wine or
+Proton. There is no injection and no game-memory access — it reads ordinary EQ
+log files, and for the Alt+Z lockout scan it performs one user-triggered screen
+capture of the verified game window.
+
+**[Download the latest Linux release](https://github.com/JDS300/spinips/releases/latest)** —
+AppImage or tar.gz.
+
+```bash
+# Loremaster: make it executable and run it. No arguments needed.
+chmod +x Loremaster-*-x86_64.AppImage
+./Loremaster-*-x86_64.AppImage --ozone-platform=x11
+
+# The skin: close EverQuest first, then
+python3 installer/spinui_installer.py --install --layout combat-focus
+```
+
+Then in game: `/loadskin spinui_reloaded 1` or `/loadskin spinui_glass 1`.
+
+The AppImage's own launcher already carries `--ozone-platform=x11`, so starting
+it from an application menu or an AppImage manager needs no arguments. The flag
+above is only for running the binary straight from a shell, which bypasses the
+desktop entry. The tar.gz selects X11 on its own.
+
+### What is tested
+
+Verified against a real EverQuest Legends install on Arch (CachyOS), KDE Plasma
+on Wayland, NVIDIA, three displays with fractional scaling, EverQuest under
+Proton via Lutris with the prefix on a separate drive.
+
+| Feature | Linux | Notes |
+| --- | --- | --- |
+| Both skins, all layout profiles | ✅ tested | `/loadskin` renders clean; ~500 XML and ~2,800 textures survive a case-sensitive filesystem |
+| Skin installer | ✅ tested | Headless CLI; finds EverQuest inside Wine, Proton, Lutris and Steam prefixes |
+| Log auto-discovery | ✅ tested | Reads Lutris's own config, so prefixes outside `$HOME` are found |
+| Combat parsing, DPS, pet attribution | ✅ tested | Against a 690,000-line log and live combat |
+| Charm-break alert | ✅ tested | |
+| Mez timers | ✅ tested | Warning, countdown and wake window all behave |
+| Alt+Z lockout scan | ✅ tested | Reads the panel and marks raid completions |
+| Window placement | ✅ tested | Drag it, quit, it returns. No compositor rules needed |
+| Self-update | ✅ tested | AppImage carries update information |
+| Compact lockout timer column | ⚠️ untested | Needs a live lockout timer on screen |
+| Lull timers, weekly ledger | ⚠️ untested | Needs raid content |
+| Live DPS mid-fight | ⚠️ untested | Parsing verified after the fact |
+| Overlay above a fullscreen game | ⚠️ untested | An X11 capability, now reachable, not yet exercised |
+| Long-session stability | ⚠️ untested | |
+
+### Requirements
+
+| Requirement | For |
+| --- | --- |
+| Python 3.10+ | The parser engine — standard library only, no pip packages |
+| X11 or XWayland | Window placement and screen capture |
+| `tesseract` **and its English data** | The Alt+Z lockout scan only |
+
+Installing `tesseract` is not enough on most distributions — the language pack
+is separate (`tesseract-data-eng`, `tesseract-ocr-eng`,
+`tesseract-langpack-eng`). Loremaster names the package at startup.
+
+### Keeping it updated
+
+Optional: the AppImage carries update information, so a manager such as
+[Gear Lever](https://github.com/mijorus/gearlever) will offer new releases and
+apply them. Point it at this repository if it asks; the asset pattern is
+`Loremaster-*-x86_64.AppImage.zsync`. Downloading each release by hand works
+just as well.
+
+Full detail: **[docs/LINUX.md](docs/LINUX.md)** · what is and is not verified,
+written for upstream review: **[docs/LINUX_UPSTREAM.md](docs/LINUX_UPSTREAM.md)**
+· in-game test plan: **[docs/LINUX_INGAME_TESTPLAN.md](docs/LINUX_INGAME_TESTPLAN.md)**
+
 ## The complete system, live
 
 [![Ultrawide EverQuest Legends gameplay using SpinUI, with companion, player, target and action controls centered along the lower screen, chat at the bottom, map and effects at upper right, and Loremaster at right](docs/screenshots/spinui-gameplay-overview.jpg)](docs/screenshots/spinui-gameplay-overview.jpg)
