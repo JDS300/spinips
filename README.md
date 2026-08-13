@@ -23,6 +23,23 @@
   Windows · 7 validated resolutions · 21 generated layout profiles · Packaged app needs no Python · No injection or game-memory access
 </p>
 
+> [!IMPORTANT]
+> **This is a Linux fork, not a separate project.** SpinUI and Spin's Loremaster
+> are created and maintained by [**itsspin**](https://github.com/itsspin/spinips)
+> — the interface design, the skins, the parser engine and the desktop
+> application are all their work.
+>
+> This fork exists for one purpose: to add native Linux support and offer it
+> back upstream. It adds platform plumbing — process launch, log discovery
+> inside Wine and Proton prefixes, X11 screen capture, packaging — and changes
+> no Windows behaviour.
+>
+> **On Windows, use [the original project](https://github.com/itsspin/spinips)
+> and its releases.** Nothing here improves on it for you.
+>
+> Linux notes: [docs/LINUX.md](docs/LINUX.md) ·
+> what is and is not verified: [docs/LINUX_UPSTREAM.md](docs/LINUX_UPSTREAM.md)
+
 > [!NOTE]
 > SpinUI is an independent community project for EverQuest Legends and is not affiliated with or endorsed by Daybreak Game Company.
 
