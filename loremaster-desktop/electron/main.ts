@@ -41,11 +41,23 @@ if (process.platform === "linux"
     // exports APPIMAGE holding the real file, so relaunch that instead. Its
     // argv also carries the internal app path, which the AppImage supplies for
     // itself, so only the user's own arguments are forwarded.
-    const appImage = process.env.APPIMAGE;
-    const args = (appImage ? process.argv.slice(2) : process.argv.slice(1))
-      .concat([`--ozone-platform=${platform}`]);
-    app.relaunch(appImage ? { execPath: appImage, args } : { args });
-    app.exit(0);
+    // Not attempted from an AppImage. Relaunching means exiting first, and the
+    // relaunch does not survive the runtime unmounting /tmp/.mount_* -- both
+    // process.execPath and $APPIMAGE were tried and neither came back, leaving
+    // no application at all. Running on Wayland costs window placement; exiting
+    // costs everything, so the AppImage keeps whatever backend Chromium picks
+    // until this can be delivered without a re-exec.
+    if (process.env.APPIMAGE) {
+      console.warn(
+        "[Loremaster] AppImage build: staying on the default backend."
+        + " Window placement needs X11 -- run the tar.gz or set"
+        + " LOREMASTER_OZONE=x11 with a launcher argument.");
+    } else {
+      app.relaunch({
+        args: process.argv.slice(1).concat([`--ozone-platform=${platform}`]),
+      });
+      app.exit(0);
+    }
   }
 }
 
