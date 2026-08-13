@@ -130,6 +130,9 @@ class InstanceLockoutOcrTests(unittest.TestCase):
 
 
 @unittest.skipUnless(
+    os.environ.get("LOREMASTER_X11_WINDOW_TESTS") == "1",
+    "set LOREMASTER_X11_WINDOW_TESTS=1 to run tests that open a window")
+@unittest.skipUnless(
     X11_READY and ENGLISH_READY,
     "the Alt+Z round trip requires X11 and tesseract's eng model: the parser "
     "keys on the literal word Group, and a substitute Latin model reads it as "

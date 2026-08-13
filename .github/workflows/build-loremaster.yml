@@ -278,6 +278,11 @@ jobs:
       - name: Run Loremaster Python test suite
         shell: bash
         working-directory: loremaster/tests
+        # The capture tests open a real X11 window, which is why they are
+        # opt-in: on a developer desktop they appear over whatever the user is
+        # doing. A CI runner has no one to interrupt, so run the full set.
+        env:
+          LOREMASTER_X11_WINDOW_TESTS: "1"
         run: python3 -m unittest discover -s . -p 'test_*.py'
 
       - name: Smoke-test parser engine protocol (source)

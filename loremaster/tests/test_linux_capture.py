@@ -59,6 +59,13 @@ def _usable_ocr_language() -> str:
     return next((code for code in LATIN_SCRIPT_LANGUAGES if code in installed), "")
 
 
+# These tests create a real, mapped X11 window. That is unavoidable -- XGetImage
+# needs one -- but it means running the suite on a desktop pops windows onto
+# whatever the user is doing, and the sample text ends in "Group 4", which
+# looks alarmingly like a real overlay. They are therefore opt-in: CI and
+# anyone deliberately verifying the capture path set LOREMASTER_X11_WINDOW_TESTS=1.
+WINDOW_TESTS_ALLOWED = os.environ.get("LOREMASTER_X11_WINDOW_TESTS") == "1"
+
 X11_READY = os.name != "nt" and linux_capture.x11_available()
 OCR_LANGUAGE = _usable_ocr_language()
 TESSERACT_READY = bool(OCR_LANGUAGE)
@@ -560,7 +567,9 @@ class _KnownTextWindow:
         x11.XDrawString.argtypes = [void_p, ulong, void_p, int_, int_, char_p, int_]
 
 
-@unittest.skipUnless(X11_READY, "X11 capture smoke test requires a live X display")
+@unittest.skipUnless(
+    X11_READY and WINDOW_TESTS_ALLOWED,
+    "set LOREMASTER_X11_WINDOW_TESTS=1 to run tests that open a window")
 class X11CaptureSmokeTests(unittest.TestCase):
     def test_region_is_clamped_to_the_verified_window_and_pixels_are_real(self):
         with _KnownTextWindow() as target:
@@ -601,7 +610,7 @@ class X11CaptureSmokeTests(unittest.TestCase):
         self.assertEqual(region.pid, os.getpid())
 
 
-@unittest.skipUnless(X11_READY and TESSERACT_READY,
+@unittest.skipUnless(X11_READY and TESSERACT_READY and WINDOW_TESTS_ALLOWED,
                      "capture-and-OCR round trip requires X11 and tesseract "
                      "with at least one Latin-script language model")
 class X11OcrRoundTripTests(unittest.TestCase):
