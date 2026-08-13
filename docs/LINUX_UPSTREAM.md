@@ -153,8 +153,7 @@ without the overlay guarantees beats an invisible one that has them on paper.
 Honest gaps, all requiring game time rather than code:
 
 - A populated lockout table. Only the empty case has been read end to end.
-- Lull timers and the weekly raid ledger. Mez timers fire correctly but their
-  duration is wrong; see below.
+- Lull timers and the weekly raid ledger.
 - Live DPS during a fight, as opposed to parsing after the fact.
 - A long session: stability, memory, and no orphaned engine process on quit.
 - Anything overlay-related on an X11 session.
@@ -186,16 +185,6 @@ product decisions:
   still advertises an item companion and user-triggered screen OCR. The Linux
   backend already implements the hover capture path, so if that feature returns
   to the Electron app it will work on Linux without further porting.
-- **Rank-scaled mez durations are one tick short.** `Mesmerization VI` (base 4
-  ticks, rank 6) resolves to 6 ticks / 36s. Five natural expiries in a real log
-  measured 38, 39, 40, 38 and 42 seconds — every one longer than the computed
-  duration, with the maximum landing exactly on 7 ticks. `scaled_duration_ticks`
-  rounds half-up, so `floor(4 × 1.6 + 0.5)` gives 6; a ceiling gives 7 and
-  matches. The two rules differ only at ranks 1, 3, 6 and 8, so this observation
-  sits on a divergence but is a single rank of a single spell — worth more
-  samples before changing the formula. Deliberately not changed here: it is game
-  data rather than platform code, and the error runs in the safe direction, so a
-  player re-mezzes early rather than trusting a mez that has already broken.
 - **Nothing enforces `Log=1` in `eqclient.ini`.** Loremaster is inert if the
   player has not enabled logging, and nothing says so.
 
