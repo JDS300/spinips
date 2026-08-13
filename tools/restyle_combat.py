@@ -467,6 +467,17 @@ def style_player() -> None:
             text, "Gauge", name,
             show_total_progression_ticks,
         )
+
+    def match_aa_gauge_weight(block: str) -> str:
+        # At fractional UI scales the lower AA row loses one rasterized pixel
+        # even with the same authored height as EXP. Give its top edge one
+        # extra source pixel so both progression tracks read at equal weight
+        # in game, without changing the horizontal percentage calculation.
+        return set_value(block, "TopAnchorOffset", 83)
+
+    text = change_item(
+        text, "Gauge", "PW_AltAdvGauge", match_aa_gauge_weight,
+    )
     for name, color in (("PW_Level", GOLD_BRIGHT), ("PW_Class", TEXT),
                         ("PW_StanceLabel", GOLD_BRIGHT),
                         ("PW_InvocationInfo", CYAN)):
@@ -574,16 +585,16 @@ def style_player() -> None:
             lambda b, s=size, t=texture: attack_animation(b, s, t),
         )
 
-    # Root-relative seam around PlayerSubWindow (root y=70..188). The client
+    # Root-relative seam around PlayerSubWindow (root y=70..184). The client
     # requires these recognized controls as direct PlayerWindow children.
     attack_edges = {
         # Sit immediately above the subwindow so this foreground rail cannot
         # cross PAL/MNK/ENC. Side rails overlap the top corners so the pulse is
         # one continuous square rather than four disconnected strokes.
         "A_AttackIndicatorAnimTop": (67, 70, 0, 0),
-        "A_AttackIndicatorAnimBottom": (5, 2, 0, 0),
-        "A_AttackIndicatorAnimLeft": (67, 2, 0, 3),
-        "A_AttackIndicatorAnimRight": (67, 2, 3, 0),
+        "A_AttackIndicatorAnimBottom": (9, 6, 0, 0),
+        "A_AttackIndicatorAnimLeft": (67, 6, 0, 3),
+        "A_AttackIndicatorAnimRight": (67, 6, 3, 0),
     }
     for name, offsets in attack_edges.items():
         def attack_edge(block: str, values=offsets) -> str:
@@ -608,7 +619,7 @@ def style_player() -> None:
             '\t\t<AutoStretch>true</AutoStretch>\n'
             '\t\t<Style_Transparent>true</Style_Transparent>\n'
             '\t\t<TopAnchorOffset>70</TopAnchorOffset>\n'
-            '\t\t<BottomAnchorOffset>2</BottomAnchorOffset>\n'
+            '\t\t<BottomAnchorOffset>6</BottomAnchorOffset>\n'
             '\t\t<LeftAnchorOffset>0</LeftAnchorOffset>\n'
             '\t\t<RightAnchorOffset>0</RightAnchorOffset>\n'
             '\t\t<TopAnchorToTop>true</TopAnchorToTop>\n'
@@ -653,11 +664,12 @@ def style_player() -> None:
     def expose_attack_perimeter(block: str) -> str:
         block = clean_subwindow(block)
         # The themed subwindow previously overhung the root by one pixel and
-        # ended on the bottom rail.  A three-pixel inset leaves the native
-        # attack pulse physically exposed on every side while keeping all HUD
-        # bindings and the authored 360x193 PlayerWindow footprint unchanged.
+        # ended on the bottom rail.  A three-pixel horizontal inset leaves the
+        # native attack pulse physically exposed; the nine-pixel bottom inset
+        # removes the unused strip beneath stance/invocation while keeping the
+        # authored 360x193 interaction and buff canvas unchanged.
         block = set_value(block, "TopAnchorOffset", "70")
-        block = set_value(block, "BottomAnchorOffset", "5")
+        block = set_value(block, "BottomAnchorOffset", "9")
         block = set_value(block, "LeftAnchorOffset", "3")
         block = set_value(block, "RightAnchorOffset", "3")
         return block

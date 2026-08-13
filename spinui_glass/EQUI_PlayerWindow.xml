@@ -134,8 +134,8 @@
 		<Animation>A_AttackIndicatorBottom</Animation>
 		<AutoDraw>false</AutoDraw>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>5</TopAnchorOffset>
-		<BottomAnchorOffset>2</BottomAnchorOffset>
+		<TopAnchorOffset>9</TopAnchorOffset>
+		<BottomAnchorOffset>6</BottomAnchorOffset>
 		<LeftAnchorOffset>0</LeftAnchorOffset>
 		<RightAnchorOffset>0</RightAnchorOffset>
 		<TopAnchorToTop>false</TopAnchorToTop>
@@ -150,7 +150,7 @@
 		<AutoDraw>false</AutoDraw>
 		<AutoStretch>true</AutoStretch>
 		<TopAnchorOffset>67</TopAnchorOffset>
-		<BottomAnchorOffset>2</BottomAnchorOffset>
+		<BottomAnchorOffset>6</BottomAnchorOffset>
 		<LeftAnchorOffset>0</LeftAnchorOffset>
 		<RightAnchorOffset>3</RightAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
@@ -165,7 +165,7 @@
 		<AutoDraw>false</AutoDraw>
 		<AutoStretch>true</AutoStretch>
 		<TopAnchorOffset>67</TopAnchorOffset>
-		<BottomAnchorOffset>2</BottomAnchorOffset>
+		<BottomAnchorOffset>6</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>0</RightAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
@@ -182,7 +182,7 @@
 		<AutoStretch>true</AutoStretch>
 		<Style_Transparent>true</Style_Transparent>
 		<TopAnchorOffset>70</TopAnchorOffset>
-		<BottomAnchorOffset>2</BottomAnchorOffset>
+		<BottomAnchorOffset>6</BottomAnchorOffset>
 		<LeftAnchorOffset>0</LeftAnchorOffset>
 		<RightAnchorOffset>0</RightAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
@@ -872,7 +872,7 @@
 			<LinesFill>A_GaugeLinesFill</LinesFill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>84</TopAnchorOffset>
+		<TopAnchorOffset>83</TopAnchorOffset>
 		<BottomAnchorOffset>94</BottomAnchorOffset>
 		<LeftAnchorOffset>1</LeftAnchorOffset>
 		<RightAnchorOffset>1</RightAnchorOffset>
@@ -1303,7 +1303,7 @@
 		<BottomAnchorToTop>false</BottomAnchorToTop>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<TopAnchorOffset>70</TopAnchorOffset>
-		<BottomAnchorOffset>5</BottomAnchorOffset>
+		<BottomAnchorOffset>9</BottomAnchorOffset>
 		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>3</RightAnchorOffset>
 		<Pieces>Player_HP</Pieces>

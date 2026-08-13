@@ -56,9 +56,9 @@ ATTACK_SOURCE_SIZES = {
 }
 ATTACK_GEOMETRY = {
     "A_AttackIndicatorAnimTop": (67, 70, 0, 0),
-    "A_AttackIndicatorAnimBottom": (5, 2, 0, 0),
-    "A_AttackIndicatorAnimLeft": (67, 2, 0, 3),
-    "A_AttackIndicatorAnimRight": (67, 2, 3, 0),
+    "A_AttackIndicatorAnimBottom": (9, 6, 0, 0),
+    "A_AttackIndicatorAnimLeft": (67, 6, 0, 3),
+    "A_AttackIndicatorAnimRight": (67, 6, 3, 0),
 }
 ATTACK_ANCHORS = {
     "A_AttackIndicatorAnimTop": ("true", "true", "true", "false"),
@@ -283,7 +283,7 @@ def audit_attack_indicator_contract() -> None:
                     or tuple(child_int(fill, tag) for tag in (
                         "TopAnchorOffset", "BottomAnchorOffset",
                         "LeftAnchorOffset", "RightAnchorOffset",
-                    )) != (70, 2, 0, 0)):
+                    )) != (70, 6, 0, 0)):
                 fail(f"{label} attack fill lost its topmost perimeter binding")
 
             window = item(root, "Screen", "PlayerWindow")
@@ -317,7 +317,7 @@ def audit_attack_indicator_contract() -> None:
                 "TopAnchorOffset", "BottomAnchorOffset",
                 "LeftAnchorOffset", "RightAnchorOffset",
             ))
-            if subwindow_offsets != (70, 5, 3, 3):
+            if subwindow_offsets != (70, 9, 3, 3):
                 fail(
                     f"{label} themed player frame can cover the native "
                     f"attack perimeter: {subwindow_offsets}"
@@ -347,13 +347,13 @@ def audit_attack_indicator_contract() -> None:
                     "A_AttackIndicatorAnimTop":
                         (0, 67, frame_width, 70),
                     "A_AttackIndicatorAnimBottom":
-                        (0, frame_height - 5, frame_width,
-                         frame_height - 2),
+                        (0, frame_height - 9, frame_width,
+                         frame_height - 6),
                     "A_AttackIndicatorAnimLeft":
-                        (0, 67, 3, frame_height - 2),
+                        (0, 67, 3, frame_height - 6),
                     "A_AttackIndicatorAnimRight":
                         (frame_width - 3, 67, frame_width,
-                         frame_height - 2),
+                         frame_height - 6),
                 }
                 actual_rects = {
                     name: anchored_rect(node, frame_width, frame_height)
@@ -396,6 +396,15 @@ def audit_player_and_target() -> None:
     for path in shared_progression_paths:
         if child_text(exp, path) != child_text(alt_adv, path):
             fail(f"player EXP and AA horizontal rendering differs at {path}")
+    exp_height = (child_int(exp, "BottomAnchorOffset")
+                  - child_int(exp, "TopAnchorOffset"))
+    aa_height = (child_int(alt_adv, "BottomAnchorOffset")
+                 - child_int(alt_adv, "TopAnchorOffset"))
+    if (exp_height, aa_height) != (10, 11):
+        fail(
+            "player AA gauge must retain its one-pixel fractional-scale "
+            f"weight correction: EXP {exp_height}, AA {aa_height}"
+        )
     require_binding(player, "Gauge", "PW_Castspell_Gauge", "PW_Castspell_Gauge", 7)
     require_binding(player, "Label", "Player_ManaLabel", "ManaLabel", 1009)
     require_binding(player, "Label", "PW_MPNumbers", "PW_MPNumbers", 128)
