@@ -53,6 +53,13 @@ capture of the verified game window.
 **[Download the latest Linux release](https://github.com/JDS300/spinips/releases/latest)** —
 AppImage or tar.gz.
 
+> **New here?** [**docs/LINUX_UPSTREAM.md**](docs/LINUX_UPSTREAM.md) is the
+> fullest account of this work: what changed and why, every claim marked
+> verified or unverified with the evidence behind it, the defects found along
+> the way and where each was resolved, and the limits that no amount of code
+> will remove. It is written for review, so it is the honest version rather
+> than the promotional one.
+
 ```bash
 # Loremaster: make it executable and run it. No arguments needed.
 chmod +x Loremaster-*-x86_64.AppImage
@@ -88,7 +95,7 @@ Proton via Lutris with the prefix on a separate drive.
 | Self-update | ✅ tested | AppImage carries update information |
 | Compact lockout timer column | ⚠️ untested | Needs a live lockout timer on screen |
 | Lull timers, weekly ledger | ⚠️ untested | Needs raid content |
-| Live DPS mid-fight | ⚠️ untested | Parsing verified after the fact |
+| Live DPS during a fight | ✅ tested | Updates live, not only after the fact |
 | Overlay above a fullscreen game | ⚠️ untested | An X11 capability, now reachable, not yet exercised |
 | Long-session stability | ⚠️ untested | |
 

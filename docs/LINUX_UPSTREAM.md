@@ -149,6 +149,7 @@ mount.
 | Mez timers | warning leads the safe floor; wake window shown after it |
 | Window placement | dragged, quit, restored — no compositor rules, on a Wayland session |
 | AppImage self-update | an AppImage manager saw v0.3.2 and applied it |
+| Live DPS during a fight | updates during combat, not only afterwards |
 
 The skin check matters most. The skin is roughly 500 XML documents referencing
 about 2,800 textures, and Linux filesystems are case-sensitive where Windows is
@@ -187,7 +188,6 @@ Honest gaps, all requiring game time rather than code:
   is written but unconfirmed, because it needs a scan while a lockout with a
   live timer is on screen.
 - Lull timers and the weekly raid ledger from a live raid kill.
-- Live DPS during a fight, as opposed to parsing after the fact.
 - A long session: stability, memory, and no orphaned engine process on quit.
 - Overlay behaviour above a fullscreen game, and click-through. Both are X11
   capabilities and the application now runs on X11, so they are reachable —
