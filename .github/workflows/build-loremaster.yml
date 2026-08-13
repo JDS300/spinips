@@ -390,7 +390,10 @@ jobs:
   package-windows-release:
     name: Assemble complete Windows release
     needs: [detect-changes, build-ui, build-loremaster]
-    if: github.event_name != 'push'
+    # Named events rather than "not push": these jobs stage and publish a
+    # release, so they belong to the two events that produce one. Pull
+    # requests build and verify without assembling anything to publish.
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'release'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
@@ -519,7 +522,9 @@ jobs:
     # to the same release. For the `release` event the release already
     # exists before the workflow starts, so this ordering is a no-op there.
     needs: [detect-changes, build-loremaster-linux, package-windows-release]
-    if: github.event_name != 'push' && needs.detect-changes.outputs.loremaster == 'true'
+    if: >-
+      (github.event_name == 'workflow_dispatch' || github.event_name == 'release')
+      && needs.detect-changes.outputs.loremaster == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Download verified Loremaster Linux component
