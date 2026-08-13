@@ -15,6 +15,23 @@ on:
       - "UI_Spin_qeynos_LO1.ini"
       - "README.md"
       - ".github/workflows/build-loremaster.yml"
+  # Branch names outside the push list above -- fix/**, and anything else --
+  # used to reach main without a single check having run on them, so the first
+  # signal arrived after the merge. Proposed changes are verified here instead.
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "spinui_reloaded/**"
+      - "spinui_glass/**"
+      - "layouts/**"
+      - "loremaster/**"
+      - "loremaster-desktop/**"
+      - "installer/**"
+      - "tools/**"
+      - "docs/**"
+      - "UI_Spin_qeynos_LO1.ini"
+      - "README.md"
+      - ".github/workflows/build-loremaster.yml"
   workflow_dispatch:
     inputs:
       publish_release:
@@ -35,8 +52,10 @@ permissions:
 
 concurrency:
   group: spinui-build-${{ github.workflow }}-${{ github.ref }}
-  # A newer test push supersedes an older one; release assembly is never cancelled.
-  cancel-in-progress: ${{ github.event_name == 'push' }}
+  # A newer test push or PR revision supersedes an older one; release assembly
+  # is never cancelled.
+  cancel-in-progress: >-
+    ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
 
 jobs:
   detect-changes:
