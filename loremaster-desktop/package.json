@@ -1,7 +1,7 @@
 {
   "name": "spins-loremaster",
   "private": true,
-  "version": "0.2.2",
+  "version": "0.2.4",
   "author": "SpinUI",
   "description": "Live EverQuest Legends combat, mez, lull, and weekly progress companion",
   "desktopName": "loremaster.desktop",
@@ -62,6 +62,9 @@
       ]
     },
     "linux": {
+      "publish": [
+        { "provider": "github", "owner": "itsspin", "repo": "spinips" }
+      ],
       "target": [
         {
           "target": "AppImage",
