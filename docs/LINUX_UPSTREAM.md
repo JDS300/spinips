@@ -8,6 +8,16 @@ marked verified with the evidence that supports it, or marked unverified.
 **Nothing here asks Linux users to run the Windows build under Wine.** Only
 EverQuest itself runs under Wine or Proton. Loremaster runs natively.
 
+## Where the code is
+
+- Branch: [`agent/linux-native`](https://github.com/JDS300/spinips/tree/agent/linux-native)
+- Pull request: [JDS300/spinips#1](https://github.com/JDS300/spinips/pull/1)
+- 19 commits, 21 files, +4,615 / −158
+
+Commits are scoped one change per commit, and each message states what was
+observed rather than only what was altered — the history is meant to be read
+as the argument for the change.
+
 ## Principle
 
 Strictly additive. No Windows code path changes behaviour. Where a platform
