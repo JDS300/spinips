@@ -419,10 +419,40 @@ class _KnownTextWindow:
     XA_CARDINAL = 6
     PROP_MODE_REPLACE = 0
 
-    def __init__(self, width=700, height=260, lines=KNOWN_LINES):
+    # Xlib's XSetWindowAttributes, needed only for override_redirect. The
+    # preceding members must be declared so the field lands at the right
+    # offset; CWOverrideRedirect tells the server to read only that one.
+    class _XSetWindowAttributes(ctypes.Structure):
+        _fields_ = [
+            ("background_pixmap", ctypes.c_ulong),
+            ("background_pixel", ctypes.c_ulong),
+            ("border_pixmap", ctypes.c_ulong),
+            ("border_pixel", ctypes.c_ulong),
+            ("bit_gravity", ctypes.c_int),
+            ("win_gravity", ctypes.c_int),
+            ("backing_store", ctypes.c_int),
+            ("backing_planes", ctypes.c_ulong),
+            ("backing_pixel", ctypes.c_ulong),
+            ("save_under", ctypes.c_int),
+            ("event_mask", ctypes.c_long),
+            ("do_not_propagate_mask", ctypes.c_long),
+            ("override_redirect", ctypes.c_int),
+            ("colormap", ctypes.c_ulong),
+            ("cursor", ctypes.c_ulong),
+        ]
+
+    CW_OVERRIDE_REDIRECT = 1 << 9
+
+    def __init__(self, width=700, height=260, lines=KNOWN_LINES,
+                 override_redirect=True):
         self.width = width
         self.height = height
         self.lines = lines
+        # Managed by default would mean the window manager raises this window
+        # and can hand it focus, which on a desktop that is also running the
+        # game pulls focus out of it mid-fight. Only the test that needs this
+        # window to *be* the active window asks for a managed one.
+        self.override_redirect = override_redirect
         self.window = 0
         self._display = 0
 
@@ -438,6 +468,11 @@ class _KnownTextWindow:
         self.window = x11.XCreateSimpleWindow(
             self._display, root, 60, 60, self.width, self.height, 0, 0,
             0x00101018)
+        if self.override_redirect:
+            attributes = self._XSetWindowAttributes(override_redirect=1)
+            x11.XChangeWindowAttributes(
+                self._display, self.window, self.CW_OVERRIDE_REDIRECT,
+                ctypes.byref(attributes))
         x11.XStoreName(self._display, self.window, b"SpinLoremasterCaptureTest")
         # The capture path verifies _NET_WM_PID, so the window must publish it
         # exactly as Wine does for eqgame.exe.
@@ -511,6 +546,7 @@ class _KnownTextWindow:
         x11.XStoreName.argtypes = [void_p, ulong, char_p]
         x11.XChangeProperty.argtypes = [
             void_p, ulong, ulong, ulong, int_, int_, void_p, int_]
+        x11.XChangeWindowAttributes.argtypes = [void_p, ulong, ulong, void_p]
         x11.XMapRaised.argtypes = [void_p, ulong]
         x11.XDestroyWindow.argtypes = [void_p, ulong]
         x11.XCreateGC.restype = void_p
@@ -555,7 +591,7 @@ class X11CaptureSmokeTests(unittest.TestCase):
         self.assertIn(process_identity(os.getpid()).comm, message)
 
     def test_active_window_capture_agrees_with_the_window_manager(self):
-        with _KnownTextWindow(width=320, height=200) as target:
+        with _KnownTextWindow(override_redirect=False, width=320, height=200) as target:
             if not target.is_active():
                 raise unittest.SkipTest(
                     "the window manager did not focus the test window")
