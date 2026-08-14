@@ -156,8 +156,47 @@ async function testFailureNeverThrows() {
     assert.equal(result.status, "failed");
     assert.equal(typeof result.error, "string");
     assert.ok(result.error.length > 0);
+    assert.equal(
+      existsSync(path.join(dir, "blocked", "0.4.0-rc.1")),
+      false,
+      "a failed attempt must not leave the final snapshot directory behind",
+    );
   });
   console.log("  an unwritable destination never throws: PASS");
+}
+
+async function testStalePartialDoesNotBlockRetry() {
+  await withTempDir(async (dir) => {
+    const userDataDir = path.join(dir, "userdata");
+    const backupRoot = path.join(dir, "backups");
+    seedUserData(userDataDir);
+
+    // Simulate a crashed earlier attempt that left a partial staging
+    // directory behind, with junk in it.
+    const staging = path.join(backupRoot, "0.4.0-rc.1.partial");
+    mkdirSync(staging, { recursive: true });
+    writeFileSync(path.join(staging, "junk.txt"), "leftover from a crash");
+
+    const result = backupBeforeReleaseCandidate({
+      version: "0.4.0-rc.1",
+      userDataDir,
+      backupRoot,
+    });
+
+    assert.equal(result.status, "created");
+    assert.equal(result.directory, path.join(backupRoot, "0.4.0-rc.1"));
+    assert.deepEqual(result.files, ["desktop-settings.json", "update-center.json"]);
+    assert.equal(
+      readFileSync(path.join(result.directory, "desktop-settings.json"), "utf8"),
+      '{"live":true}',
+    );
+    assert.equal(
+      existsSync(path.join(result.directory, "junk.txt")),
+      false,
+      "a stale partial's leftovers must not survive into the completed snapshot",
+    );
+  });
+  console.log("  a stale partial does not block or corrupt a retry: PASS");
 }
 
 async function testBackupFileListIsTheStateFiles() {
@@ -179,6 +218,7 @@ async function main() {
   await testSnapshotIsTakenOnce();
   await testEachCandidateGetsItsOwnSnapshot();
   await testFailureNeverThrows();
+  await testStalePartialDoesNotBlockRetry();
   console.log("rc backup: ALL PASS");
 }
 

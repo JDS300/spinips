@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
 import path from "node:path";
 
 // The files holding state a candidate can damage. Regenerable data
@@ -43,13 +43,21 @@ export function backupBeforeReleaseCandidate(request: RcBackupRequest): RcBackup
   }
 
   const directory = path.join(request.backupRoot, version);
+  // Copies land here first and only become the marker directory once every
+  // file has been copied, via an atomic rename. If a copy fails partway,
+  // `directory` never comes into existence, so a later launch retries
+  // instead of trusting an incomplete snapshot.
+  const staging = path.join(request.backupRoot, `${version}.partial`);
   try {
     // The directory's presence is the marker, so a later launch cannot
     // overwrite the pre-candidate snapshot with already-damaged state.
     if (existsSync(directory)) {
       return { status: "skipped", reason: "already-backed-up" };
     }
-    mkdirSync(directory, { recursive: true });
+    // A crashed earlier attempt may have left a partial staging directory
+    // behind; it must not poison this retry.
+    rmSync(staging, { recursive: true, force: true });
+    mkdirSync(staging, { recursive: true });
 
     const files: string[] = [];
     for (const name of RC_BACKUP_FILES) {
@@ -58,9 +66,10 @@ export function backupBeforeReleaseCandidate(request: RcBackupRequest): RcBackup
       if (!existsSync(source)) {
         continue;
       }
-      copyFileSync(source, path.join(directory, name));
+      copyFileSync(source, path.join(staging, name));
       files.push(name);
     }
+    renameSync(staging, directory);
     return { status: "created", directory, files };
   } catch (error) {
     return {
