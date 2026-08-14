@@ -547,11 +547,17 @@ jobs:
               gh release edit $tag --repo $env:GITHUB_REPOSITORY --prerelease=false --latest
             }
           } else {
-            $flags = if ($prerelease) { @('--prerelease') } else { @('--latest') }
-            gh release create $tag @assets --repo $env:GITHUB_REPOSITORY @flags `
-              --target $env:GITHUB_SHA `
-              --title "SpinUI $tag — Vellum & Ember + Glass" `
-              --notes "Complete SpinUI Windows release. Extract SpinUI-Manual.zip for both the classic spinui_reloaded skin and optional spinui_glass skin, layout profiles, manual guide, and the portable TypeScript/Electron Loremaster. Verify downloads against SHA256SUMS.txt; the unsigned Loremaster executable can trip antivirus machine-learning heuristics (see the README's Troubleshooting section).$candidateNote"
+            # Built as one array rather than splatting a conditional: an if
+            # expression returning a single-element array unrolls to a bare
+            # string, and splatting that string fed gh a lone "-" which it
+            # tried to read as an asset filename.
+            $options = @(
+              '--target', $env:GITHUB_SHA,
+              '--title', "SpinUI $tag — Vellum & Ember + Glass",
+              '--notes', "Complete SpinUI Windows release. Extract SpinUI-Manual.zip for both the classic spinui_reloaded skin and optional spinui_glass skin, layout profiles, manual guide, and the portable TypeScript/Electron Loremaster. Verify downloads against SHA256SUMS.txt; the unsigned Loremaster executable can trip antivirus machine-learning heuristics (see the README's Troubleshooting section).$candidateNote"
+            )
+            if ($prerelease) { $options += '--prerelease' } else { $options += '--latest' }
+            gh release create $tag @assets --repo $env:GITHUB_REPOSITORY @options
           }
 
       - name: Attach package to release
