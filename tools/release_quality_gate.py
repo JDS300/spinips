@@ -765,6 +765,10 @@ def run_source_selftests() -> None:
         ],
     )
     run_command(
+        "release notes extractor --self-test",
+        [sys.executable, str(REPO / "tools" / "release_notes.py"), "--self-test"],
+    )
+    run_command(
         "SpinUI installer --selftest",
         [
             sys.executable,
