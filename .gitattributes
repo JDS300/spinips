@@ -1,0 +1,8 @@
+# Every file here ships byte-for-byte: the release packages are verified
+# against this tree by size and SHA-256, and the skin updater checks the same
+# checksums on a player's machine. Git's end-of-line translation would rewrite
+# every XML and INI on a Windows checkout, so the same commit would produce
+# different bytes depending on which platform packaged it -- which is exactly
+# what happened when the UI package moved to a Linux runner while the release
+# is still assembled and verified on Windows.
+* -text
