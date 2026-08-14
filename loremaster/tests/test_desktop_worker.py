@@ -9,7 +9,6 @@ LOREMASTER_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(LOREMASTER_DIR))
 
 from desktop_worker import HeadlessEngine  # noqa: E402
-from instance_lockout_ocr import ParsedRaidLockout  # noqa: E402
 
 
 class DesktopWorkerTests(unittest.TestCase):
@@ -69,64 +68,6 @@ class DesktopWorkerTests(unittest.TestCase):
             self.assertEqual(event["snapshot"]["character"]["composition"],
                              "PAL / MNK / ENC")
 
-    def test_alt_z_lockouts_credit_weekly_ledger_and_survive_restart(self):
-        scanned_at = datetime(2026, 8, 7, 20, 0, 0)
-        with tempfile.TemporaryDirectory() as root:
-            engine = HeadlessEngine(data_dir=root)
-            try:
-                engine.stats.character = "Spin"
-                count = engine.import_instance_lockouts([
-                    ParsedRaidLockout(
-                        target="Lord Nagafen", difficulty=3,
-                        remaining_seconds=2 * 86400,
-                        instance_name="Nagafen's Lair - Group 3 (Fused)",
-                        event_name="Lord Nagafen", raw_text="fixture"),
-                ], scanned_at=scanned_at)
-                event = engine.snapshot_event(datetime(2026, 8, 7, 21, 0, 0))
-            finally:
-                engine.close()
-            self.assertEqual(count, 1)
-            weekly = event["snapshot"]["weekly"]
-            nagafen = next(row for row in weekly["raids"]
-                           if row["target"] == "Lord Nagafen")
-            self.assertTrue(nagafen["difficulties"][3])
-            self.assertEqual(weekly["altZLockouts"][0]["remainingSeconds"], 47 * 3600)
-
-            restored = HeadlessEngine(data_dir=root)
-            try:
-                restored.stats.character = "Spin"
-                snapshot = restored.snapshot_event(datetime(2026, 8, 7, 22, 0, 0))
-            finally:
-                restored.close()
-            self.assertEqual(
-                snapshot["snapshot"]["weekly"]["altZLockouts"][0]["target"],
-                "Lord Nagafen")
-
-    def test_alt_z_timerless_row_checks_weekly_without_inventing_expiry(self):
-        scanned_at = datetime(2026, 8, 7, 20, 0, 0)
-        with tempfile.TemporaryDirectory() as root:
-            engine = HeadlessEngine(data_dir=root)
-            try:
-                engine.stats.character = "Spin"
-                count = engine.import_instance_lockouts([
-                    ParsedRaidLockout(
-                        target="Cazic-Thule", difficulty=1,
-                        remaining_seconds=None,
-                        instance_name="The Plane of Fear",
-                        event_name="cauc- I nule", raw_text="fixture"),
-                ], scanned_at=scanned_at)
-                event = engine.snapshot_event(datetime(2026, 8, 7, 21, 0, 0))
-            finally:
-                engine.close()
-            self.assertEqual(count, 1)
-            weekly = event["snapshot"]["weekly"]
-            cazic = next(row for row in weekly["raids"]
-                         if row["target"] == "Cazic-Thule")
-            self.assertTrue(cazic["difficulties"][1])
-            self.assertEqual(weekly["altZLockouts"], [])
-            self.assertEqual(weekly["altZScan"]["timedCount"], 0)
-            self.assertIn("no expiry was guessed", weekly["altZScan"]["detail"])
-
     def test_auto_attack_state_crosses_desktop_boundary_exactly(self):
         with tempfile.TemporaryDirectory() as root:
             engine = HeadlessEngine(data_dir=root)
@@ -173,34 +114,6 @@ class DesktopWorkerTests(unittest.TestCase):
             self.assertTrue(recorded["Lord Nagafen"][3])
             self.assertTrue(recorded["Lady Vox"][3])
 
-    def test_a_scanned_completion_clears_its_own_confirmation_prompt(self):
-        """The scan is the confirmation; it must not leave a stale prompt."""
-        with tempfile.TemporaryDirectory() as root:
-            engine = HeadlessEngine(data_dir=root)
-            try:
-                for line in (
-                        "[Fri Aug 07 20:00:00 2026] You slash Lady Vox for 10 points of damage.",
-                        "[Fri Aug 07 20:00:01 2026] You have slain Lady Vox!"):
-                    engine.process_line(line)
-                self.assertEqual(
-                    engine.snapshot_event(datetime(2026, 8, 7, 20, 0, 2))
-                    ["snapshot"]["weekly"]["pendingRaidTargets"], ["Lady Vox"])
-                engine.import_instance_lockouts(
-                    [ParsedRaidLockout(
-                        target="Lady Vox", difficulty=4, remaining_seconds=None,
-                        instance_name="Permafrost Keep - Group 4",
-                        event_name="Lady Vox", raw_text="fixture")],
-                    scanned_at=datetime(2026, 8, 7, 20, 0, 3))
-                weekly = engine.snapshot_event(
-                    datetime(2026, 8, 7, 20, 0, 4))["snapshot"]["weekly"]
-            finally:
-                engine.close()
-            self.assertEqual(weekly["pendingRaidTargets"], [])
-            self.assertEqual(weekly["pendingRaidTarget"], "")
-            vox = next(row for row in weekly["raids"]
-                       if row["target"] == "Lady Vox")
-            self.assertTrue(vox["difficulties"][4])
-
     def test_live_snapshot_preserves_damage_and_control_parity(self):
         with tempfile.TemporaryDirectory() as root:
             engine = HeadlessEngine(data_dir=root)
@@ -222,6 +135,8 @@ class DesktopWorkerTests(unittest.TestCase):
             self.assertEqual(event["snapshot"]["controls"][0]["kind"], "mez")
             weekly = event["snapshot"]["weekly"]
             self.assertEqual(weekly["completedCount"], 1)
+            self.assertNotIn("altZLockouts", weekly)
+            self.assertNotIn("altZScan", weekly)
             nagafen = next(row for row in weekly["raids"]
                            if row["target"] == "Lord Nagafen")
             self.assertTrue(nagafen["difficulties"][2])

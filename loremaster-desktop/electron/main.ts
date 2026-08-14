@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, shell, Tray } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, screen, shell, Tray } from "electron";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -127,6 +127,10 @@ const screenshotControls = [
   },
 ] as const;
 type AlertAnchor = "auto" | "above" | "below" | "left" | "right";
+type AlertSoundKind = "default" | "charmBreak" | "tell" | "summon" | "death" | "bigHit" | "nameCalled" | "mez" | "lull";
+type AlertSoundPreset = "rune" | "crystal" | "ember" | "bell" | "custom" | "silent";
+interface AlertSoundProfile { preset: AlertSoundPreset; customPath: string }
+type AlertSoundProfiles = Record<AlertSoundKind, AlertSoundProfile>;
 
 export interface AlertSettings {
   alertsEnabled: boolean;
@@ -146,6 +150,7 @@ export interface AlertSettings {
   lullTimersEnabled: boolean;
   lullTimerSound: boolean;
   lullWarningSeconds: number;
+  soundProfiles: AlertSoundProfiles;
 }
 
 interface DesktopSettings {
@@ -153,6 +158,7 @@ interface DesktopSettings {
   raidDifficulty: number | null;
   bisBuildPath: string;
   inventoryPath: string;
+  uiTheme: "vellum" | "glass";
   alwaysOnTop: boolean;
   fontScale: number;
   composition: string;
@@ -180,6 +186,35 @@ const defaultHealth: EngineHealth = {
   server: "?",
 };
 
+const ALERT_SOUND_KINDS: readonly AlertSoundKind[] = [
+  "default", "charmBreak", "tell", "summon", "death", "bigHit", "nameCalled", "mez", "lull",
+];
+const ALERT_SOUND_PRESETS: readonly AlertSoundPreset[] = ["rune", "crystal", "ember", "bell", "custom", "silent"];
+const defaultSoundProfiles: AlertSoundProfiles = {
+  default: { preset: "rune", customPath: "" },
+  charmBreak: { preset: "ember", customPath: "" },
+  tell: { preset: "crystal", customPath: "" },
+  summon: { preset: "ember", customPath: "" },
+  death: { preset: "ember", customPath: "" },
+  bigHit: { preset: "rune", customPath: "" },
+  nameCalled: { preset: "crystal", customPath: "" },
+  mez: { preset: "rune", customPath: "" },
+  lull: { preset: "bell", customPath: "" },
+};
+
+function normalizeSoundProfiles(value: unknown): AlertSoundProfiles {
+  const source = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return Object.fromEntries(ALERT_SOUND_KINDS.map((kind) => {
+    const candidate = source[kind] && typeof source[kind] === "object"
+      ? source[kind] as Partial<AlertSoundProfile> : {};
+    const preset = ALERT_SOUND_PRESETS.includes(candidate.preset as AlertSoundPreset)
+      ? candidate.preset as AlertSoundPreset : defaultSoundProfiles[kind].preset;
+    const customPath = typeof candidate.customPath === "string" && candidate.customPath.length <= 4096
+      ? candidate.customPath : "";
+    return [kind, { preset, customPath }];
+  })) as AlertSoundProfiles;
+}
+
 const defaultAlertSettings: AlertSettings = {
   alertsEnabled: true,
   alertSound: true,
@@ -198,6 +233,7 @@ const defaultAlertSettings: AlertSettings = {
   lullTimersEnabled: true,
   lullTimerSound: false,
   lullWarningSeconds: 12,
+  soundProfiles: defaultSoundProfiles,
 };
 
 const defaultSettings: DesktopSettings = {
@@ -205,6 +241,7 @@ const defaultSettings: DesktopSettings = {
   raidDifficulty: null,
   bisBuildPath: "",
   inventoryPath: "",
+  uiTheme: "vellum",
   alwaysOnTop: true,
   fontScale: 1.15,
   composition: "",
@@ -243,6 +280,7 @@ function readSettings(): DesktopSettings {
       raidDifficulty,
       bisBuildPath: typeof value.bisBuildPath === "string" ? value.bisBuildPath : "",
       inventoryPath: typeof value.inventoryPath === "string" ? value.inventoryPath : "",
+      uiTheme: value.uiTheme === "glass" ? "glass" : "vellum",
       alwaysOnTop: boolean(value.alwaysOnTop, true),
       fontScale: clampInteger(value.fontScale === undefined ? 115 : Number(value.fontScale) * 100, 115, 90, 160) / 100,
       composition: typeof value.composition === "string" ? value.composition.slice(0, 48) : "",
@@ -267,10 +305,11 @@ function readSettings(): DesktopSettings {
         lullTimersEnabled: boolean(alertValue.lullTimersEnabled, true),
         lullTimerSound: boolean(alertValue.lullTimerSound, false),
         lullWarningSeconds: clampInteger(alertValue.lullWarningSeconds, 12, 3, 30),
+        soundProfiles: normalizeSoundProfiles(alertValue.soundProfiles),
       },
     };
   } catch {
-    return { ...defaultSettings, alerts: { ...defaultAlertSettings } };
+    return { ...defaultSettings, alerts: { ...defaultAlertSettings, soundProfiles: normalizeSoundProfiles(null) } };
   }
 }
 
@@ -720,10 +759,16 @@ class EngineSupervisor {
     this.send({ type: "engine.set-raid-difficulty", raidDifficulty });
   }
 
-  updateDesktopSettings(patch: Partial<Pick<DesktopSettings, "alwaysOnTop" | "fontScale" | "composition" | "splitCharmedPetDps" | "stanceAdvisorEnabled">> & {
+  updateDesktopSettings(patch: Partial<Pick<DesktopSettings, "uiTheme" | "alwaysOnTop" | "fontScale" | "composition" | "splitCharmedPetDps" | "stanceAdvisorEnabled">> & {
     alerts?: Partial<AlertSettings>;
   }): DesktopSettings {
-    const nextAlerts = patch.alerts ? { ...this.settings.alerts, ...patch.alerts } : this.settings.alerts;
+    const nextAlerts = patch.alerts ? {
+      ...this.settings.alerts,
+      ...patch.alerts,
+      soundProfiles: patch.alerts.soundProfiles
+        ? normalizeSoundProfiles(patch.alerts.soundProfiles)
+        : this.settings.alerts.soundProfiles,
+    } : this.settings.alerts;
     const previousScale = this.settings.fontScale;
     const nextScale = typeof patch.fontScale === "number" ? clamp(patch.fontScale, 0.9, 1.6) : previousScale;
     const nextSeedPosition = nextScale !== previousScale
@@ -731,6 +776,7 @@ class EngineSupervisor {
       : this.settings.seedPosition;
     this.settings = {
       ...this.settings,
+      ...(patch.uiTheme === "vellum" || patch.uiTheme === "glass" ? { uiTheme: patch.uiTheme } : {}),
       ...(typeof patch.alwaysOnTop === "boolean" ? { alwaysOnTop: patch.alwaysOnTop } : {}),
       fontScale: nextScale,
       seedPosition: nextSeedPosition,
@@ -761,10 +807,6 @@ class EngineSupervisor {
 
   setRaidCompletion(target: string, difficulty: number, completed: boolean): void {
     this.send({ type: "engine.set-raid-completion", target, difficulty, completed });
-  }
-
-  scanAltZLockouts(): void {
-    this.send({ type: "engine.scan-alt-z-lockouts" });
   }
 
   private catalogCachePath(): string {
@@ -1347,6 +1389,12 @@ function nameWindow(window: BrowserWindow, title: string): void {
   });
 }
 
+function rendererUrl(base: string, query: Record<string, string>): string {
+  const url = new URL(base);
+  for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
+  return url.toString();
+}
+
 function createAlertWindow(): void {
   const settings = engine?.getState().settings ?? defaultSettings;
   const alertSize = scaledSize(ALERT_SIZE, settings.fontScale);
@@ -1375,9 +1423,10 @@ function createAlertWindow(): void {
   alertWindow.setIgnoreMouseEvents(true);
   applyAlwaysOnTop(settings.alwaysOnTop);
   const developmentUrl = process.env.VITE_DEV_SERVER_URL;
+  const rendererQuery = { alert: "1", theme: settings.uiTheme };
   const rendererReady = developmentUrl
-    ? alertWindow.loadURL(`${developmentUrl}?alert=1`)
-    : alertWindow.loadFile(path.join(app.getAppPath(), "dist", "index.html"), { query: { alert: "1" } });
+    ? alertWindow.loadURL(rendererUrl(developmentUrl, rendererQuery))
+    : alertWindow.loadFile(path.join(app.getAppPath(), "dist", "index.html"), { query: rendererQuery });
   void rendererReady.then(() => {
     alertWindow?.webContents.setZoomFactor(settings.fontScale);
     positionAlertWindow();
@@ -1427,9 +1476,10 @@ function createControlWindow(): void {
   controlWindow.setIgnoreMouseEvents(true);
   applyAlwaysOnTop(settings.alwaysOnTop);
   const developmentUrl = process.env.VITE_DEV_SERVER_URL;
+  const rendererQuery = { controls: "1", theme: settings.uiTheme };
   const rendererReady = developmentUrl
-    ? controlWindow.loadURL(`${developmentUrl}?controls=1`)
-    : controlWindow.loadFile(path.join(app.getAppPath(), "dist", "index.html"), { query: { controls: "1" } });
+    ? controlWindow.loadURL(rendererUrl(developmentUrl, rendererQuery))
+    : controlWindow.loadFile(path.join(app.getAppPath(), "dist", "index.html"), { query: rendererQuery });
   void rendererReady.then(() => {
     controlWindow?.webContents.setZoomFactor(settings.fontScale);
     syncControlWindow();
@@ -1527,9 +1577,10 @@ function createWindow(): void {
   });
 
   const developmentUrl = process.env.VITE_DEV_SERVER_URL;
+  const rendererQuery = { theme: settings.uiTheme };
   const rendererReady = developmentUrl
-    ? mainWindow.loadURL(developmentUrl)
-    : mainWindow.loadFile(path.join(app.getAppPath(), "dist", "index.html"));
+    ? mainWindow.loadURL(rendererUrl(developmentUrl, rendererQuery))
+    : mainWindow.loadFile(path.join(app.getAppPath(), "dist", "index.html"), { query: rendererQuery });
   // The window is created hidden and only revealed here, so anything that
   // rejects or throws on the way to showInactive() used to leave a tray icon
   // and no window, with nothing logged -- indistinguishable from a hang. Load
@@ -1630,9 +1681,9 @@ function createWindow(): void {
           ? mainWindow?.webContents.executeJavaScript(
             "document.querySelector('.rune-seed')?.classList.add('attacking')")
           : undefined)
-        .then(() => screenshotView === "settings"
+        .then(() => screenshotView === "settings" || screenshotView?.startsWith("sounds")
           ? mainWindow?.webContents.executeJavaScript(
-            "document.querySelector('.masthead-actions button')?.click()")
+            "document.querySelector('button[aria-label=\"Open settings\"]')?.click()")
           : screenshotView === "analysis"
             ? mainWindow?.webContents.executeJavaScript(
               "document.querySelector('button[aria-label=\"Open full combat breakdown\"]')?.click()")
@@ -1644,6 +1695,15 @@ function createWindow(): void {
             `)
           : undefined)
         .then(() => new Promise((resolve) => setTimeout(resolve, 250)))
+        .then(() => screenshotView?.startsWith("sounds")
+          ? mainWindow?.webContents.executeJavaScript(
+            "document.querySelector('.sound-studio')?.scrollIntoView({ block: 'start' })")
+          : undefined)
+        .then(() => screenshotView === "sounds-menu"
+          ? mainWindow?.webContents.executeJavaScript(
+            "document.querySelector('.sound-preset-trigger')?.click()")
+          : undefined)
+        .then(() => new Promise((resolve) => setTimeout(resolve, screenshotView?.startsWith("sounds") ? 180 : 0)))
         .then(() => mainWindow?.webContents.capturePage())
         .then((image) => {
           if (image) writeFileSync(screenshotPath, image.toPNG());
@@ -1679,32 +1739,6 @@ function createWindow(): void {
       engine?.saveSeedPosition({ x: bounds.x, y: bounds.y });
     }
   });
-}
-
-function registerLockoutScanHotkey(): void {
-  // Windows keeps the shortcut it has always registered. Linux does not take
-  // one by default: Ctrl+Shift+Z is Redo across the desktop, and on Wayland
-  // claiming it raises a portal prompt announcing the conflict before the user
-  // has done anything. The scan is reachable from the lockout panel either
-  // way, so on Linux the key is opt-in through LOREMASTER_LOCKOUT_HOTKEY.
-  const configured = (process.env.LOREMASTER_LOCKOUT_HOTKEY ?? "").trim();
-  const accelerator = configured
-    || (process.platform === "win32" ? "CommandOrControl+Shift+Z" : "");
-  if (!accelerator) return;
-  let registered = false;
-  try {
-    registered = globalShortcut.register(accelerator, () => engine?.scanAltZLockouts());
-  } catch (error) {
-    // Some X11 setups reject the grab outright rather than returning false.
-    console.error(`Could not register the ${accelerator} lockout scan hotkey`, error);
-  }
-  if (registered) return;
-  console.error(`Could not register the ${accelerator} lockout scan hotkey`);
-  notifyUser(
-    "Loremaster hotkey unavailable",
-    `${accelerator} is already claimed by another application.`
-      + " Use the scan button in the lockout panel, or pick a free shortcut.",
-  );
 }
 
 ipcMain.handle("runtime:metrics", () => ({
@@ -1744,7 +1778,6 @@ ipcMain.handle("engine:set-raid-completion", (_event, target: unknown, difficult
   return true;
 });
 ipcMain.on("engine:reset", () => engine?.reset());
-ipcMain.on("engine:scan-lockouts", () => engine?.scanAltZLockouts());
 ipcMain.on("alerts:test", () => {
   positionAlertWindow();
   alertWindow?.webContents.send("alerts:test", {
@@ -1755,10 +1788,67 @@ ipcMain.on("alerts:test", () => {
   });
 });
 
+const CUSTOM_SOUND_EXTENSIONS = new Set([".wav", ".mp3", ".ogg", ".m4a"]);
+const CUSTOM_SOUND_MAX_BYTES = 8 * 1024 * 1024;
+
+function validatedCustomSoundPath(kind: AlertSoundKind): string | null {
+  const profile = engine?.getState().settings.alerts.soundProfiles[kind];
+  if (!profile?.customPath) return null;
+  const candidate = path.resolve(profile.customPath);
+  try {
+    const stats = statSync(candidate);
+    return stats.isFile()
+      && stats.size > 0
+      && stats.size <= CUSTOM_SOUND_MAX_BYTES
+      && CUSTOM_SOUND_EXTENSIONS.has(path.extname(candidate).toLowerCase())
+      ? candidate : null;
+  } catch {
+    return null;
+  }
+}
+
+ipcMain.handle("alerts:choose-sound", async (_event, value: unknown) => {
+  if (!mainWindow || !engine || !ALERT_SOUND_KINDS.includes(value as AlertSoundKind)) return null;
+  const kind = value as AlertSoundKind;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "Choose a Loremaster alert sound",
+    properties: ["openFile"],
+    filters: [{ name: "Audio", extensions: ["wav", "mp3", "ogg", "m4a"] }],
+  });
+  if (result.canceled || result.filePaths.length !== 1) return null;
+  const candidate = path.resolve(result.filePaths[0]);
+  try {
+    const stats = statSync(candidate);
+    if (!stats.isFile() || stats.size <= 0 || stats.size > CUSTOM_SOUND_MAX_BYTES
+        || !CUSTOM_SOUND_EXTENSIONS.has(path.extname(candidate).toLowerCase())) return null;
+  } catch {
+    return null;
+  }
+  const profiles = normalizeSoundProfiles(engine.getState().settings.alerts.soundProfiles);
+  profiles[kind] = { preset: "custom", customPath: candidate };
+  return engine.updateDesktopSettings({ alerts: { soundProfiles: profiles } });
+});
+
+ipcMain.handle("alerts:read-sound", (_event, value: unknown) => {
+  if (!ALERT_SOUND_KINDS.includes(value as AlertSoundKind)) return null;
+  const candidate = validatedCustomSoundPath(value as AlertSoundKind);
+  if (!candidate) return null;
+  try {
+    return {
+      bytes: readFileSync(candidate),
+      extension: path.extname(candidate).toLowerCase(),
+      name: path.basename(candidate),
+    };
+  } catch {
+    return null;
+  }
+});
+
 ipcMain.handle("settings:update", (_event, value: unknown) => {
   if (!value || typeof value !== "object" || !engine) return null;
   const raw = value as Record<string, unknown>;
   const patch: Parameters<EngineSupervisor["updateDesktopSettings"]>[0] = {};
+  if (raw.uiTheme === "vellum" || raw.uiTheme === "glass") patch.uiTheme = raw.uiTheme;
   if (typeof raw.alwaysOnTop === "boolean") patch.alwaysOnTop = raw.alwaysOnTop;
   if (Number.isFinite(Number(raw.fontScale))) patch.fontScale = clamp(Number(raw.fontScale), 0.9, 1.6);
   if (typeof raw.composition === "string") patch.composition = raw.composition.slice(0, 48);
@@ -1773,6 +1863,9 @@ ipcMain.handle("settings:update", (_event, value: unknown) => {
       "lullTimersEnabled", "lullTimerSound",
     ];
     for (const key of booleanKeys) if (typeof candidate[key] === "boolean") Object.assign(alerts, { [key]: candidate[key] });
+    if (candidate.soundProfiles && typeof candidate.soundProfiles === "object") {
+      alerts.soundProfiles = normalizeSoundProfiles(candidate.soundProfiles);
+    }
     if (["auto", "above", "below", "left", "right"].includes(String(candidate.alertAnchor))) {
       alerts.alertAnchor = candidate.alertAnchor as AlertAnchor;
     }
@@ -1875,7 +1968,6 @@ app.whenReady().then(() => {
   engine.start();
   createWindow();
   ensureTray();
-  registerLockoutScanHotkey();
   startTopmostHeartbeat();
   screen.on("display-metrics-changed", scheduleTopmostReassertion);
   const smokeExitMs = Number(process.env.LOREMASTER_SMOKE_EXIT_MS || 0);
@@ -1884,7 +1976,6 @@ app.whenReady().then(() => {
   }
 });
 app.on("before-quit", () => {
-  globalShortcut.unregisterAll();
   clearTopmostReassertions();
   if (topmostHeartbeatTimer) clearInterval(topmostHeartbeatTimer);
   topmostHeartbeatTimer = null;

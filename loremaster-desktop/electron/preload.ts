@@ -15,8 +15,9 @@ contextBridge.exposeInMainWorld("loremasterDesktop", {
   openExternal: (value: string) => ipcRenderer.invoke("external:open", value),
   checkForUpdates: () => ipcRenderer.invoke("updates:check"),
   resetEngine: () => ipcRenderer.send("engine:reset"),
-  scanLockouts: () => ipcRenderer.send("engine:scan-lockouts"),
   testAlert: () => ipcRenderer.send("alerts:test"),
+  chooseAlertSound: (kind: string) => ipcRenderer.invoke("alerts:choose-sound", kind),
+  readAlertSound: (kind: string) => ipcRenderer.invoke("alerts:read-sound", kind),
   onSnapshot: (callback: (event: unknown) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, value: unknown) => callback(value);
     ipcRenderer.on("engine:snapshot", listener);

@@ -12,6 +12,9 @@ import {
   type EngineHealth,
   type EngineSnapshotEvent,
   type GearPlanView,
+  type LoremasterTheme,
+  type AlertSoundKind,
+  type AlertSoundPreset,
 } from "./protocol";
 import { CombatArchive } from "./CombatArchive";
 
@@ -20,9 +23,46 @@ const raidDifficulties = [0, 1, 2, 3, 4] as const;
 const cogSource = "./loremaster-cog.png";
 const eqToolsUrl = "https://eqlegendstools.com/";
 const eqToolsCharSheetUrl = "https://eqlegendstools.com/char-sheet/";
+const soundKinds: readonly { id: AlertSoundKind; label: string; detail: string }[] = [
+  { id: "default", label: "General alerts", detail: "Raid prompts and alert previews" },
+  { id: "charmBreak", label: "Charm breaks", detail: "Urgent recharm warning" },
+  { id: "tell", label: "Incoming tells", detail: "Direct player messages" },
+  { id: "summon", label: "Summoned", detail: "Boss summon warning" },
+  { id: "death", label: "Death", detail: "Character death" },
+  { id: "bigHit", label: "Big hits", detail: "Damage threshold warning" },
+  { id: "nameCalled", label: "Name called", detail: "Group, raid, or guild mention" },
+  { id: "mez", label: "Mez urgent", detail: "Safe window closing" },
+  { id: "lull", label: "Lull urgent", detail: "Safe window closing" },
+];
+const soundPresets: readonly { id: AlertSoundPreset; label: string }[] = [
+  { id: "rune", label: "Rune Pulse" },
+  { id: "crystal", label: "Crystal Chime" },
+  { id: "ember", label: "Ember Alarm" },
+  { id: "bell", label: "Temple Bell" },
+  { id: "custom", label: "Custom File" },
+  { id: "silent", label: "Silent" },
+];
+const defaultSoundProfiles: DesktopSettings["alerts"]["soundProfiles"] = {
+  default: { preset: "rune", customPath: "" }, charmBreak: { preset: "ember", customPath: "" },
+  tell: { preset: "crystal", customPath: "" }, summon: { preset: "ember", customPath: "" },
+  death: { preset: "ember", customPath: "" }, bigHit: { preset: "rune", customPath: "" },
+  nameCalled: { preset: "crystal", customPath: "" }, mez: { preset: "rune", customPath: "" },
+  lull: { preset: "bell", customPath: "" },
+};
+
+function normalizeTheme(value: unknown): LoremasterTheme {
+  return value === "glass" ? "glass" : "vellum";
+}
+
+function applyTheme(value: unknown): LoremasterTheme {
+  const theme = normalizeTheme(value);
+  document.documentElement.dataset.theme = theme;
+  return theme;
+}
 
 const defaultDesktopSettings: DesktopSettings = {
   logPath: "", raidDifficulty: null, bisBuildPath: "", inventoryPath: "",
+  uiTheme: "vellum",
   alwaysOnTop: true, fontScale: 1.15, composition: "", splitCharmedPetDps: false,
   stanceAdvisorEnabled: false, seedPosition: null,
   alerts: {
@@ -31,6 +71,7 @@ const defaultDesktopSettings: DesktopSettings = {
     alertBigHit: true, alertNameCalled: true, bigHitThreshold: 800,
     mezTimersEnabled: true, mezTimerSound: false, mezWarningSeconds: 10,
     lullTimersEnabled: true, lullTimerSound: false, lullWarningSeconds: 12,
+    soundProfiles: defaultSoundProfiles,
   },
 };
 
@@ -84,16 +125,6 @@ function formatDuration(value: number): string {
   const minutes = Math.floor(seconds / 60);
   const remainder = String(seconds % 60).padStart(2, "0");
   return minutes > 0 ? `${minutes}:${remainder}` : `${seconds}s`;
-}
-
-function formatLockout(value: number): string {
-  const seconds = Math.max(0, Math.floor(value));
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  return `${minutes}m ${seconds % 60}s`;
 }
 
 function spellLabel(control: ControlTimerView): string {
@@ -197,13 +228,18 @@ function SeedControlSurface() {
     if (!desktop) return () => document.body.classList.remove("control-window");
     void desktop.getEngineState().then((state) => {
       if (isEngineSnapshotEvent(state.snapshot)) setEvent(state.snapshot);
+      applyTheme(state.settings.uiTheme);
       setSettings(state.settings);
     });
     const removeSnapshot = desktop.onSnapshot((value) => {
       if (isEngineSnapshotEvent(value)) setEvent(value);
     });
     const removeSettings = desktop.onSettings((value) => {
-      if (value && typeof value === "object") setSettings(value as DesktopSettings);
+      if (value && typeof value === "object") {
+        const next = value as DesktopSettings;
+        applyTheme(next.uiTheme);
+        setSettings(next);
+      }
     });
     return () => {
       removeSnapshot();
@@ -263,8 +299,17 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
 }) {
   const [manualPath, setManualPath] = useState(health.configuredPath);
   const [draft, setDraft] = useState(settings);
+  const [activeSoundMenu, setActiveSoundMenu] = useState<AlertSoundKind | null>(null);
   const [updateInfo, setUpdateInfo] = useState<Awaited<ReturnType<NonNullable<typeof window.loremasterDesktop>["checkForUpdates"]>> | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  useEffect(() => {
+    if (!activeSoundMenu) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setActiveSoundMenu(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [activeSoundMenu]);
   const chooseFolder = async () => {
     const selected = await window.loremasterDesktop?.chooseLogFolder();
     if (selected) setManualPath(selected);
@@ -286,8 +331,37 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
   const patchAlerts = (value: Partial<DesktopSettings["alerts"]>) => setDraft((current) => ({
     ...current, alerts: { ...current.alerts, ...value },
   }));
+  const patchSoundProfile = (kind: AlertSoundKind, preset: AlertSoundPreset) => {
+    setDraft((current) => ({
+      ...current,
+      alerts: {
+        ...current.alerts,
+        soundProfiles: {
+          ...current.alerts.soundProfiles,
+          [kind]: { ...current.alerts.soundProfiles[kind], preset },
+        },
+      },
+    }));
+  };
+  const chooseCustomSound = async (kind: AlertSoundKind) => {
+    const synchronized = await window.loremasterDesktop?.updateSettings({ alerts: draft.alerts });
+    if (synchronized) setDraft(synchronized);
+    const saved = await window.loremasterDesktop?.chooseAlertSound(kind);
+    if (!saved) return;
+    setDraft(saved);
+    onSettings(saved);
+  };
+  const selectSoundPreset = async (kind: AlertSoundKind, preset: AlertSoundPreset) => {
+    setActiveSoundMenu(null);
+    if (preset === "custom" && !draft.alerts.soundProfiles[kind].customPath) {
+      await chooseCustomSound(kind);
+      return;
+    }
+    patchSoundProfile(kind, preset);
+  };
   const savePreferences = async () => {
     const saved = await window.loremasterDesktop?.updateSettings({
+      uiTheme: draft.uiTheme,
       alwaysOnTop: draft.alwaysOnTop,
       fontScale: draft.fontScale,
       composition: draft.composition,
@@ -296,6 +370,16 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
       alerts: draft.alerts,
     });
     if (saved) onSettings(saved);
+  };
+  const selectTheme = async (uiTheme: LoremasterTheme) => {
+    applyTheme(uiTheme);
+    patchDraft({ uiTheme });
+    const saved = await window.loremasterDesktop?.updateSettings({ uiTheme });
+    if (saved) {
+      setDraft(saved);
+      applyTheme(saved.uiTheme);
+      onSettings(saved);
+    }
   };
   const changeFontScale = async (delta: number) => {
     const fontScale = Math.max(0.9, Math.min(1.6, Math.round((draft.fontScale + delta) * 20) / 20));
@@ -306,6 +390,27 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
   return (
     <section className="settings-panel" aria-label="Loremaster settings">
       <header><div><small>CONFIGURATION</small><h2>ENGINE + LOGS</h2></div><button onClick={onClose}>DONE</button></header>
+      <article className="settings-card appearance-card">
+        <label>APPEARANCE</label>
+        <p>Match Loremaster to your active SpinUI skin. The choice applies immediately to the HUD, Rune Seed, timers, and alerts.</p>
+        <div className="theme-picker" role="radiogroup" aria-label="Loremaster visual theme">
+          {([
+            { id: "vellum", name: "VELLUM & EMBER", detail: "Matches SpinUI Reloaded" },
+            { id: "glass", name: "MIDNIGHT FROST GLASS", detail: "Matches SpinUI Glass" },
+          ] as const).map((option) => <button
+            className={`theme-option ${option.id} ${draft.uiTheme === option.id ? "selected" : ""}`}
+            type="button"
+            role="radio"
+            aria-checked={draft.uiTheme === option.id}
+            key={option.id}
+            onClick={() => void selectTheme(option.id)}
+          >
+            <span className="theme-preview" aria-hidden="true"><i /><i /><i /></span>
+            <span className="theme-option-copy"><b>{option.name}</b><small>{option.detail}</small></span>
+            <em>{draft.uiTheme === option.id ? "ACTIVE" : "SELECT"}</em>
+          </button>)}
+        </div>
+      </article>
       <article className="settings-card">
         <label htmlFor="eq-path">EVERQUEST DIRECTORY</label>
         <p>Choose the game folder or its Logs folder. Loremaster automatically follows the newest character log.</p>
@@ -387,6 +492,41 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
         <button type="button" onClick={() => window.loremasterDesktop?.testAlert()}>TEST ALERT</button>
         <button className="save-preferences" type="button" onClick={() => void savePreferences()}>SAVE HUD + ALERT SETTINGS</button>
       </article>
+      <article className="settings-card sound-studio">
+        <label>ALERT SOUND STUDIO</label>
+        <p>Give each alert a distinct cue. Presets are generated locally; custom WAV, MP3, OGG, or M4A files stay on this computer.</p>
+        <div className="sound-profile-list">
+          {soundKinds.map((kind) => {
+            const profile = draft.alerts.soundProfiles[kind.id];
+            const customName = profile.customPath.split(/[\\/]/).pop() || "Choose an audio file";
+            const presetLabel = soundPresets.find((preset) => preset.id === profile.preset)?.label ?? "Rune Pulse";
+            const menuOpen = activeSoundMenu === kind.id;
+            return <section className="sound-profile" key={kind.id}>
+              <span><b>{kind.label}</b><small>{kind.detail}</small></span>
+              <button className={`sound-preset-trigger ${menuOpen ? "open" : ""}`} type="button"
+                aria-label={`${kind.label} sound preset`}
+                aria-haspopup="listbox" aria-expanded={menuOpen}
+                onClick={() => setActiveSoundMenu((current) => current === kind.id ? null : kind.id)}>
+                <span>{presetLabel}</span><i aria-hidden="true" />
+              </button>
+              {profile.preset === "custom" && <button className="sound-file" type="button"
+                title={profile.customPath || "No custom sound selected"}
+                onClick={() => void chooseCustomSound(kind.id)}>{customName}</button>}
+              <button className="sound-preview" type="button" aria-label={`Preview ${kind.label} sound`}
+                onClick={() => void previewConfiguredSound(kind.id, profile, kind.id === "tell" || kind.id === "nameCalled" ? "info" : kind.id === "bigHit" || kind.id === "mez" || kind.id === "lull" ? "warn" : "danger")}>▶</button>
+              {menuOpen && <div className="sound-preset-menu" role="listbox" aria-label={`${kind.label} sound choices`}>
+                {soundPresets.map((preset) => <button type="button" role="option"
+                  aria-selected={profile.preset === preset.id}
+                  className={profile.preset === preset.id ? "selected" : ""}
+                  key={preset.id} onClick={() => void selectSoundPreset(kind.id, preset.id)}>
+                  <i aria-hidden="true" /><span>{preset.label}</span>
+                </button>)}
+              </div>}
+            </section>;
+          })}
+        </div>
+        <small className="sound-note">Custom files are validated at playback and limited to 8 MB. If a file moves or cannot be decoded, Loremaster falls back to the matching preset cue.</small>
+      </article>
       <article className="settings-card">
         <label>ACTIVE RAID DIFFICULTY</label>
         <p>The EQ text log names the defeated boss but not its D0–D4 tier. Select the tier before a raid so automatic lockouts stay accurate.</p>
@@ -429,23 +569,82 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
   );
 }
 
-function playSignal(severity: "danger" | "warn" | "info") {
+function presetFallback(severity: "danger" | "warn" | "info"): "rune" | "crystal" | "ember" {
+  return severity === "danger" ? "ember" : severity === "warn" ? "rune" : "crystal";
+}
+
+function playPresetSignal(preset: "rune" | "crystal" | "ember" | "bell", severity: "danger" | "warn" | "info") {
   try {
     const context = new AudioContext();
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = "sine";
-    oscillator.frequency.value = severity === "danger" ? 740 : severity === "warn" ? 560 : 440;
-    gain.gain.setValueAtTime(0.0001, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.16, context.currentTime + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.28);
-    oscillator.connect(gain).connect(context.destination);
-    oscillator.start();
-    oscillator.stop(context.currentTime + 0.3);
-    oscillator.addEventListener("ended", () => void context.close());
+    const master = context.createGain();
+    master.gain.value = .72;
+    master.connect(context.destination);
+    const notes = preset === "crystal"
+      ? [{ at: 0, hz: 880, length: .32, type: "triangle" as OscillatorType, volume: .11 }, { at: .08, hz: 1320, length: .44, type: "sine" as OscillatorType, volume: .08 }]
+      : preset === "ember"
+        ? [{ at: 0, hz: 760, length: .18, type: "sawtooth" as OscillatorType, volume: .12 }, { at: .19, hz: 520, length: .24, type: "square" as OscillatorType, volume: .08 }]
+        : preset === "bell"
+          ? [{ at: 0, hz: 523.25, length: .7, type: "sine" as OscillatorType, volume: .11 }, { at: 0, hz: 1046.5, length: .5, type: "sine" as OscillatorType, volume: .05 }]
+          : [{ at: 0, hz: severity === "danger" ? 620 : 440, length: .25, type: "sine" as OscillatorType, volume: .12 }, { at: .13, hz: severity === "danger" ? 820 : 660, length: .3, type: "triangle" as OscillatorType, volume: .09 }];
+    let endAt = context.currentTime;
+    for (const note of notes) {
+      const starts = context.currentTime + note.at;
+      const ends = starts + note.length;
+      endAt = Math.max(endAt, ends);
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = note.type;
+      oscillator.frequency.value = note.hz;
+      gain.gain.setValueAtTime(.0001, starts);
+      gain.gain.exponentialRampToValueAtTime(note.volume, starts + .012);
+      gain.gain.exponentialRampToValueAtTime(.0001, ends);
+      oscillator.connect(gain).connect(master);
+      oscillator.start(starts);
+      oscillator.stop(ends);
+    }
+    setTimeout(() => void context.close(), Math.ceil((endAt - context.currentTime + .08) * 1000));
   } catch {
     // The visual alert remains authoritative if an audio device is absent.
   }
+}
+
+async function previewConfiguredSound(kind: AlertSoundKind, profile: DesktopSettings["alerts"]["soundProfiles"][AlertSoundKind], severity: "danger" | "warn" | "info") {
+  if (profile.preset === "silent") return;
+  if (profile.preset === "custom") {
+    try {
+      const custom = await window.loremasterDesktop?.readAlertSound(kind);
+      if (custom?.bytes?.byteLength) {
+        const mime = custom.extension === ".wav" ? "audio/wav"
+          : custom.extension === ".mp3" ? "audio/mpeg"
+            : custom.extension === ".ogg" ? "audio/ogg" : "audio/mp4";
+        const blob = new Blob([new Uint8Array(custom.bytes)], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audio.volume = .82;
+        const release = () => URL.revokeObjectURL(url);
+        audio.addEventListener("ended", release, { once: true });
+        audio.addEventListener("error", release, { once: true });
+        await audio.play();
+        return;
+      }
+    } catch {
+      // Moved or unsupported custom files fall back to a clear preset cue.
+    }
+    playPresetSignal(presetFallback(severity), severity);
+    return;
+  }
+  playPresetSignal(profile.preset, severity);
+}
+
+function soundKindForAlert(kind: string, title = ""): AlertSoundKind {
+  if (kind === "charmBreak") return "charmBreak";
+  if (title.includes("CALLED YOU")) return "nameCalled";
+  if (kind === "tell_in" || kind.startsWith("tell")) return "tell";
+  if (kind === "summoned") return "summon";
+  if (kind === "death_you") return "death";
+  if (["melee_in", "nuke_in", "dot_in", "nonmelee_in"].includes(kind)) return "bigHit";
+  if (kind === "mez" || kind === "lull") return kind;
+  return "default";
 }
 
 function AlertSurface() {
@@ -459,13 +658,18 @@ function AlertSurface() {
     if (!desktop) return () => document.body.classList.remove("alert-window");
     void desktop.getEngineState().then((state) => {
       if (isEngineSnapshotEvent(state.snapshot)) setEvent(state.snapshot);
+      applyTheme(state.settings.uiTheme);
       setSettings(state.settings);
     });
     const removeSnapshot = desktop.onSnapshot((value) => {
       if (isEngineSnapshotEvent(value)) setEvent(value);
     });
     const removeSettings = desktop.onSettings((value) => {
-      if (value && typeof value === "object") setSettings(value as DesktopSettings);
+      if (value && typeof value === "object") {
+        const next = value as DesktopSettings;
+        applyTheme(next.uiTheme);
+        setSettings(next);
+      }
     });
     const removeTest = desktop.onTestAlert((value) => {
       if (!value || typeof value !== "object") return;
@@ -487,6 +691,7 @@ function AlertSurface() {
   const signal = testAlert ? {
     id: testAlert.id, severity: testAlert.severity, eyebrow: "ALERT PREVIEW",
     title: testAlert.title, detail: testAlert.target, kind: "test",
+    soundKind: "default" as AlertSoundKind,
     shouldSound: settings.alerts.alertSound,
   } : explicit ? {
     id: explicit.id,
@@ -495,6 +700,7 @@ function AlertSurface() {
     title: explicit.title,
     detail: explicit.target,
     kind: explicit.kind,
+    soundKind: soundKindForAlert(explicit.kind, explicit.title),
     shouldSound: settings.alerts.alertSound,
   } : pendingRaid ? {
     id: `raid-${pendingRaid}`,
@@ -503,6 +709,7 @@ function AlertSurface() {
     title: pendingRaid,
     detail: "Open Loremaster and confirm D0–D4 to record this lockout.",
     kind: "raid",
+    soundKind: "default" as AlertSoundKind,
     shouldSound: settings.alerts.alertSound,
   } : urgentControl ? {
     id: `${urgentControl.kind}-${urgentControl.landedAt}-${urgentControl.urgency}`,
@@ -511,14 +718,16 @@ function AlertSurface() {
     title: urgentControl.target,
     detail: `${Math.ceil(urgentControl.safeRemainingSeconds)}s safe · ${spellLabel(urgentControl)}`,
     kind: urgentControl.kind,
+    soundKind: urgentControl.kind as AlertSoundKind,
     shouldSound: urgentControl.kind === "mez" ? settings.alerts.mezTimerSound : settings.alerts.lullTimerSound,
   } : null;
 
   useEffect(() => {
     if (!signal || !signal.shouldSound || sounded.current.has(signal.id)) return;
     sounded.current.add(signal.id);
-    playSignal(signal.severity);
-  }, [signal]);
+    const profile = settings.alerts.soundProfiles?.[signal.soundKind] ?? defaultSoundProfiles[signal.soundKind];
+    void previewConfiguredSound(signal.soundKind, profile, signal.severity);
+  }, [signal, settings.alerts.soundProfiles]);
 
   if (!signal) return <div className="alert-surface empty" />;
   return <div className={`alert-surface ${signal.severity} ${signal.kind.startsWith("tell") ? "tell-alert" : ""}`} role="alert">
@@ -644,6 +853,7 @@ function MainApp() {
       if (isEngineHealth(state.health)) setHealth(state.health);
       if (isEngineSnapshotEvent(state.snapshot)) setEvent(state.snapshot);
       setRaidDifficulty(state.settings.raidDifficulty);
+      applyTheme(state.settings.uiTheme);
       setSettings(state.settings);
       if (isGearPlanView(state.gearPlan)) setGearPlan(state.gearPlan);
     });
@@ -657,7 +867,11 @@ function MainApp() {
       if (isGearPlanView(value)) setGearPlan(value);
     });
     const removeSettings = desktop.onSettings((value) => {
-      if (value && typeof value === "object") setSettings(value as DesktopSettings);
+      if (value && typeof value === "object") {
+        const next = value as DesktopSettings;
+        applyTheme(next.uiTheme);
+        setSettings(next);
+      }
     });
     return () => { removeSnapshot(); removeHealth(); removeGearPlan(); removeSettings(); };
   }, []);
@@ -844,25 +1058,7 @@ function MainApp() {
               {weekly.activeDifficulty == null ? "SET TIER" : `D${weekly.activeDifficulty}`}
             </span>
           </summary>
-          {weekly.pendingRaidTarget && <p className="raid-pending"><b>{(weekly.pendingRaidTargets?.length ? weekly.pendingRaidTargets : [weekly.pendingRaidTarget]).join(" · ")}</b> {(weekly.pendingRaidTargets?.length ?? 1) > 1 ? "are" : "is"} awaiting the D0–D4 confirmation shown above.</p>}
-          {weekly.altZScan && <section className={`altz-sync ${weekly.altZScan.status}`}>
-            <header><div><small>LIVE INSTANCE EVIDENCE</small><b>{weekly.altZScan.status === "scanning" ? "READING ALT+Z…" : weekly.altZLockouts?.length ? `${weekly.altZLockouts.length} ACTIVE RAID LOCKOUT${weekly.altZLockouts.length === 1 ? "" : "S"}` : "ALT+Z LOCKOUT SYNC"}</b></div><button type="button" className="altz-scan"
-              onClick={() => window.loremasterDesktop?.scanLockouts()}
-              disabled={weekly.altZScan.status === "scanning"}
-              title={weekly.altZScan.hotkey
-                ? `Scan the Alt+Z window now (${weekly.altZScan.hotkey})`
-                : "Scan the Alt+Z window now"}>
-              {weekly.altZScan.status === "scanning" ? "SCANNING…" : "SCAN"}
-            </button></header>
-            <p>{weekly.altZScan.detail}</p>
-            {(weekly.altZLockouts?.length ?? 0) > 0 && <div className="altz-lockouts">
-              {weekly.altZLockouts?.map((lockout) => <article key={`${lockout.target}-${lockout.difficulty}`} title={`${lockout.instanceName} · ${lockout.eventName}`}>
-                <span><b>{lockout.target}</b><small>D{lockout.difficulty} · {lockout.instanceName}</small></span>
-                <strong>{formatLockout(lockout.remainingSeconds)}</strong>
-              </article>)}
-            </div>}
-            <footer>Open Instance Information with Alt+Z, point inside the timer table, then use the hotkey. Scroll and repeat to merge another visible page.</footer>
-          </section>}
+          {weekly.pendingRaidTarget && <p className="raid-pending"><b>{weekly.pendingRaidTarget}</b> is awaiting the D0–D4 confirmation shown above.</p>}
           <div className="raid-grid" aria-label="Weekly D0 through D4 raid lockouts">
             <div className="raid-grid-head"><span>RAID TARGET</span>{raidDifficulties.map((difficulty) => <b key={difficulty}>D{difficulty}</b>)}</div>
             {weekly.raids.map((raid) => <div className="raid-grid-row" key={raid.target}>
