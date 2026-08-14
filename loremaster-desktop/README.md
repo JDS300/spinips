@@ -47,10 +47,32 @@ MP3, OGG or M4A file selected through the native file picker. Custom audio is
 validated and size-limited by Electron's main process; the sandboxed renderer
 never receives general filesystem access.
 
-Weekly D0–D4 progress comes from explicit raid difficulty plus combat-log boss
-evidence, with a confirmation prompt when the difficulty is not known and a
-manual correction grid. Loremaster deliberately does not scrape EverQuest's
+Weekly D0–D4 progress now comes directly from the logged instance-entry line
+and the later boss-kill evidence. Loremaster records the exact Solo/Group mode,
+difficulty label, zone, timestamp, and evidence with the clear. A confirmation
+prompt and manual grid remain as conservative fallbacks when the log truly does
+not identify a tier. Loremaster deliberately does not scrape EverQuest's
 Instance Information window or reserve a global lockout-screen hotkey.
+
+## Adventure memory and Spoils Chronicle
+
+Completed encounters and observed loot survive restarts in a local SQLite
+journal using WAL mode, bounded live snapshots, and paged searches. The combat
+Archive clearly distinguishes a durable summary from a current fight: totals,
+duration, kills, zone, and raid context persist, while actor or timeline detail
+is never invented for older summaries.
+
+The **Spoils Chronicle** recognizes ordinary corpse loot, stacks, auto-sales,
+Dragon Hoard/depot and currency storage, inventory placement, item merges, and
+automatic ranked-item upgrades. Search and filter the complete local history by
+item, source, zone, owner, and D0–D4 context. Selecting an item can show cached
+EQL Wiki stats, drops, quests, and notes alongside the original log evidence;
+network lookup is optional and can be disabled while cached cards remain usable.
+All network parsing runs in Electron's main process, never in the renderer.
+
+Combat actors retain stable, accessible colors across the Seed, HUD, and
+Archive. Ability evidence is categorized as melee, spell, DoT, proc, pet,
+damage shield, or healing, with unknown evidence kept explicitly unknown.
 
 The Gear Path surface imports EQ Legends Tools' version-1 character-sheet JSON
 and EverQuest's `/outputfile inventory` TXT locally. It identifies goal items
@@ -58,9 +80,21 @@ already equipped or held in bags/bank and groups missing pieces by source zone.
 Item/source metadata is refreshed on explicit user action and cached locally.
 Credit: [EQ Legends Tools](https://eqlegendstools.com/) by **FlammHammer**.
 
-Because releases remain portable (no installer), Settings includes a safe
-GitHub release check and opens the official release page when an update exists;
-the app never silently replaces its running executable.
+Because releases remain portable (no installer), Settings includes a complete
+SpinUI Update Center. It checks the official release at most once per day,
+shows the running Loremaster version, and downloads a newer portable build only
+after the user chooses Update. The executable is authenticated against both
+GitHub's asset digest and `SHA256SUMS.txt`, staged beside app data, then replaced
+by a rollback-capable helper; the new build must report a healthy renderer and
+parser start or the previous executable is restored.
+
+The same surface verifies `spinui_reloaded` and `spinui_glass` against the
+release's exact file manifest. A skin install is blocked while `eqgame.exe` is
+running, staged and verified before replacement, and limited to the selected
+`uifiles` child with a rollback copy. Character layout INIs, EQ logs, other
+skins, Loremaster settings, and the combat/loot journal are never update
+targets. Automatic checks are enabled by default; downloads and installs always
+remain explicit.
 
 See [milestone 2](../docs/LOREMASTER_MILESTONE_2.md) for the live scope and
 release validation gates.

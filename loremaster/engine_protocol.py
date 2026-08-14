@@ -12,10 +12,67 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 import json
 import math
-from typing import Any
+from typing import Any, Literal, TypeAlias
 
 
 PROTOCOL_VERSION = 1
+
+CombatAbilityCategory: TypeAlias = Literal[
+    "melee",
+    "spell",
+    "dot",
+    "proc",
+    "damage_shield",
+    "pet",
+    "healing",
+    "unknown",
+]
+_COMBAT_ABILITY_CATEGORIES = frozenset({
+    "melee",
+    "spell",
+    "dot",
+    "proc",
+    "damage_shield",
+    "pet",
+    "healing",
+    "unknown",
+})
+
+
+def classify_combat_ability_category(
+        name: str, explicit_category: object = None,
+        *, healing: bool = False) -> CombatAbilityCategory:
+    """Return only categories supported by direct protocol evidence.
+
+    Healing metrics have an unambiguous context. Damage metrics use the
+    structured labels produced by the parser rather than guessing from an
+    arbitrary spell or actor name. A canonical category supplied by a future
+    parser is preserved, while malformed or unsupported values fail closed.
+    """
+    if healing:
+        return "healing"
+    if isinstance(explicit_category, str):
+        normalized_category = explicit_category.strip().casefold()
+        if normalized_category in _COMBAT_ABILITY_CATEGORIES:
+            return normalized_category  # type: ignore[return-value]
+
+    label = str(name or "").strip()
+    normalized_label = label.casefold()
+    if normalized_label == "melee":
+        return "melee"
+    if normalized_label == "spells" or normalized_label.startswith("spell: "):
+        return "spell"
+    if normalized_label.startswith("dot: "):
+        return "dot"
+    if normalized_label == "proc" or normalized_label.startswith("proc: "):
+        return "proc"
+    if normalized_label == "damage shield":
+        return "damage_shield"
+    if (normalized_label.startswith("pet (")
+            and normalized_label.endswith(")")
+            and len(label) > len("Pet ()")):
+        return "pet"
+    return "unknown"
 
 
 def _timestamp(value: datetime) -> str:
@@ -61,6 +118,7 @@ class CombatMetricView:
     total: int
     hits: int
     maximum: int
+    category: CombatAbilityCategory = "unknown"
 
 
 @dataclass(frozen=True)
@@ -70,6 +128,7 @@ class CombatHealingMetricView:
     hits: int
     maximum: int
     overheal: int
+    category: CombatAbilityCategory = "healing"
 
 
 @dataclass(frozen=True)
@@ -126,6 +185,56 @@ class EncounterView:
     actors: tuple[CombatActorView, ...]
     healing_sources: tuple[CombatHealingMetricView, ...]
     timeline: tuple[EncounterTimelinePointView, ...]
+    zone: str = ""
+    raid_tier: int | None = None
+    raid_mode: str = ""
+    summary_only: bool = False
+
+
+@dataclass(frozen=True)
+class ItemInfoView:
+    title: str
+    url: str
+    stats: tuple[str, ...]
+    notes: tuple[str, ...]
+    sections: dict[str, tuple[str, ...]]
+    freshness: str
+
+
+@dataclass(frozen=True)
+class LootEventView:
+    event_id: str
+    occurred_at: str
+    item: str
+    item_key: str
+    quantity: int
+    looter: str
+    source: str
+    zone: str
+    character: str
+    server: str
+    encounter_id: str
+    acquisition_type: str
+    raid_tier: int | None
+    raid_mode: str
+    item_info: ItemInfoView | None
+
+
+@dataclass(frozen=True)
+class JournalEncounterView:
+    encounter_id: str
+    started_at: str
+    ended_at: str
+    character: str
+    server: str
+    name: str
+    zone: str
+    raid_tier: int | None
+    raid_mode: str
+    seconds: float
+    damage: int
+    dps: int
+    kills: int
 
 
 @dataclass(frozen=True)
@@ -158,6 +267,11 @@ class EngineSnapshot:
     combat: CombatView
     breakdown: CombatBreakdownView
     encounters: tuple[EncounterView, ...]
+    loot: tuple[LootEventView, ...]
+    loot_event_count: int
+    loot_total_count: int
+    loot_unique_count: int
+    journal_encounters: tuple[JournalEncounterView, ...]
     controls: tuple[ControlTimerView, ...]
     hidden_control_rows: int
     control_notice_count: int
@@ -194,6 +308,29 @@ class EngineEvent:
         snapshot["controlNoticeCount"] = snapshot.pop("control_notice_count")
         snapshot["controlAmbiguityCount"] = snapshot.pop(
             "control_ambiguity_count")
+        snapshot["lootEventCount"] = snapshot.pop("loot_event_count")
+        snapshot["lootTotalCount"] = snapshot.pop("loot_total_count")
+        snapshot["lootUniqueCount"] = snapshot.pop("loot_unique_count")
+        snapshot["journalEncounters"] = snapshot.pop("journal_encounters")
+        for loot in snapshot["loot"]:
+            for old, new in (
+                    ("event_id", "eventId"),
+                    ("occurred_at", "occurredAt"),
+                    ("item_key", "itemKey"),
+                    ("encounter_id", "encounterId"),
+                    ("acquisition_type", "acquisitionType"),
+                    ("raid_tier", "raidTier"),
+                    ("raid_mode", "raidMode"),
+                    ("item_info", "itemInfo")):
+                loot[new] = loot.pop(old)
+        for encounter in snapshot["journalEncounters"]:
+            for old, new in (
+                    ("encounter_id", "encounterId"),
+                    ("started_at", "startedAt"),
+                    ("ended_at", "endedAt"),
+                    ("raid_tier", "raidTier"),
+                    ("raid_mode", "raidMode")):
+                encounter[new] = encounter.pop(old)
         for control in snapshot["controls"]:
             control["landedAt"] = control.pop("landed_at")
             control["safeExpiresAt"] = control.pop("safe_expires_at")
@@ -213,8 +350,11 @@ class EngineEvent:
                     ("summoned_pet_damage", "summonedPetDamage"),
                     ("damage_taken", "damageTaken"),
                     ("healing_done", "healingDone"),
-                    ("heals_received", "healsReceived"),
-                    ("healing_sources", "healingSources")):
+                     ("heals_received", "healsReceived"),
+                    ("healing_sources", "healingSources"),
+                    ("raid_tier", "raidTier"),
+                    ("raid_mode", "raidMode"),
+                    ("summary_only", "summaryOnly")):
                 encounter[new] = encounter.pop(old)
             for actor in encounter["actors"]:
                 for old, new in (
@@ -256,7 +396,9 @@ class EngineEvent:
 
 def build_engine_snapshot(*, sequence: int, observed_at: datetime,
                           stats_snapshot: dict,
-                          control_snapshot) -> EngineSnapshot:
+                          control_snapshot, recent_loot=(),
+                          journal_encounters=(), loot_summary=None
+                          ) -> EngineSnapshot:
     """Copy mutable runtime dictionaries into one frozen boundary snapshot."""
 
     controls = tuple(ControlTimerView(
@@ -303,7 +445,8 @@ def build_engine_snapshot(*, sequence: int, observed_at: datetime,
         crits = int(getattr(fight, "crits", 0) or 0)
         misses = int(getattr(fight, "misses", 0) or 0)
 
-    def metric_rows(values, *, plain_totals=False,
+    def metric_rows(values, *, plain_totals=False, abilities=False,
+                    categories=None,
                     limit=48) -> tuple[CombatMetricView, ...]:
         rows = []
         for name, value in (values or {}).items():
@@ -313,7 +456,14 @@ def build_engine_snapshot(*, sequence: int, observed_at: datetime,
                 total = int(value.get("t") or 0) if isinstance(value, dict) else int(value or 0)
                 hits = int(value.get("h") or 0) if isinstance(value, dict) else 0
                 maximum = int(value.get("max") or 0) if isinstance(value, dict) else 0
-            rows.append(CombatMetricView(str(name), total, hits, maximum))
+            explicit_category = (value.get("category")
+                                 if isinstance(value, dict) else None)
+            if explicit_category is None and isinstance(categories, dict):
+                explicit_category = categories.get(name)
+            category = (classify_combat_ability_category(
+                str(name), explicit_category) if abilities else "unknown")
+            rows.append(CombatMetricView(
+                str(name), total, hits, maximum, category))
         return tuple(sorted(
             rows, key=lambda row: (-row.total, row.name.casefold()))[:limit])
 
@@ -324,7 +474,9 @@ def build_engine_snapshot(*, sequence: int, observed_at: datetime,
                 rows.append(CombatHealingMetricView(
                     str(name), int(value.get("t") or 0),
                     int(value.get("h") or 0), int(value.get("max") or 0),
-                    int(value.get("over") or 0)))
+                    int(value.get("over") or 0),
+                    classify_combat_ability_category(
+                        str(name), value.get("category"), healing=True)))
         return tuple(sorted(
             rows, key=lambda row: (-row.total, row.name.casefold()))[:limit])
 
@@ -437,7 +589,9 @@ def build_engine_snapshot(*, sequence: int, observed_at: datetime,
             kills=int(value_from(value, "kills", 0) or 0),
             crits=int(value_from(value, "crits", 0) or 0),
             misses=int(value_from(value, "misses", 0) or 0),
-            sources=metric_rows(value_from(value, "sources", {})),
+            sources=metric_rows(
+                value_from(value, "sources", {}), abilities=True,
+                categories=value_from(value, "source_categories", {})),
             targets=metric_rows(
                 value_from(value, "targets", {}), plain_totals=True,
                 limit=32),
@@ -445,6 +599,11 @@ def build_engine_snapshot(*, sequence: int, observed_at: datetime,
             healing_sources=healing_rows(
                 value_from(value, "healing_sources", {})),
             timeline=timeline,
+            zone=str(value_from(value, "zone", "") or ""),
+            raid_tier=(int(tier) if (tier := value_from(
+                value, "journal_raid_tier", None)) in range(5) else None),
+            raid_mode=str(value_from(
+                value, "journal_raid_mode", "") or ""),
         )
 
     fight_history = tuple(stats_snapshot.get("fights") or ())[-60:]
@@ -453,8 +612,84 @@ def build_engine_snapshot(*, sequence: int, observed_at: datetime,
         for index, row in enumerate(fight_history)
     )
 
+    def item_info_view(value) -> ItemInfoView | None:
+        if not isinstance(value, dict):
+            return None
+        stats = value.get("stats")
+        if isinstance(stats, dict):
+            stat_rows = tuple(
+                f"{key}: {entry}" for key, entry in stats.items())
+        elif isinstance(stats, (list, tuple)):
+            stat_rows = tuple(str(entry) for entry in stats)
+        else:
+            stat_rows = ()
+        notes = value.get("notes")
+        if isinstance(notes, (list, tuple)):
+            note_rows = tuple(str(entry) for entry in notes)
+        elif notes:
+            note_rows = tuple(
+                row.strip() for row in str(notes).splitlines() if row.strip())
+        else:
+            note_rows = ()
+        sections = value.get("sections")
+        section_rows: dict[str, tuple[str, ...]] = {}
+        if isinstance(sections, dict):
+            for heading, entries in sections.items():
+                if isinstance(entries, (list, tuple)):
+                    section_rows[str(heading)] = tuple(
+                        str(entry) for entry in entries)
+                elif entries:
+                    section_rows[str(heading)] = (str(entries),)
+        freshness = str(value.get("freshness") or "cached")
+        return ItemInfoView(
+            title=str(value.get("title") or ""),
+            url=str(value.get("url") or ""),
+            stats=stat_rows,
+            notes=note_rows,
+            sections=section_rows,
+            freshness=freshness,
+        )
+
+    loot = tuple(LootEventView(
+        event_id=str(row.get("event_id") or ""),
+        occurred_at=str(row.get("occurred_at") or ""),
+        item=str(row.get("item") or ""),
+        item_key=str(row.get("item_key") or ""),
+        quantity=max(1, int(row.get("quantity") or 1)),
+        looter=str(row.get("looter") or ""),
+        source=str(row.get("source") or ""),
+        zone=str(row.get("zone") or ""),
+        character=str(row.get("character") or ""),
+        server=str(row.get("server") or ""),
+        encounter_id=str(row.get("encounter_id") or ""),
+        acquisition_type=str(row.get("acquisition_type") or "loot"),
+        raid_tier=(int(row["raid_tier"])
+                   if row.get("raid_tier") in range(5) else None),
+        raid_mode=str(row.get("raid_mode") or ""),
+        item_info=item_info_view(row.get("item_info")),
+    ) for row in tuple(recent_loot or ())[:100] if isinstance(row, dict))
+    journal = tuple(JournalEncounterView(
+        encounter_id=str(row.get("encounter_id") or ""),
+        started_at=str(row.get("started_at") or ""),
+        ended_at=str(row.get("ended_at") or ""),
+        character=str(row.get("character") or ""),
+        server=str(row.get("server") or ""),
+        name=str(row.get("name") or "fight"),
+        zone=str(row.get("zone") or ""),
+        raid_tier=(int(row["raid_tier"])
+                   if row.get("raid_tier") in range(5) else None),
+        raid_mode=str(row.get("raid_mode") or ""),
+        seconds=round(max(0.0, float(row.get("seconds") or 0.0)), 3),
+        damage=max(0, int(row.get("damage") or 0)),
+        dps=max(0, int(row.get("dps") or 0)),
+        kills=max(0, int(row.get("kills") or 0)),
+    ) for row in tuple(journal_encounters or ())[:60]
+      if isinstance(row, dict))
+    summary = loot_summary if isinstance(loot_summary, dict) else {}
+
     breakdown = CombatBreakdownView(
-        sources=metric_rows(stats_snapshot.get("fight_sources")),
+        sources=metric_rows(
+            stats_snapshot.get("fight_sources"), abilities=True),
         targets=metric_rows(stats_snapshot.get("fight_targets"), plain_totals=True),
         actors=metric_rows(stats_snapshot.get("fight_actor_damage")),
     )
@@ -501,6 +736,13 @@ def build_engine_snapshot(*, sequence: int, observed_at: datetime,
         ),
         breakdown=breakdown,
         encounters=encounters,
+        loot=loot,
+        loot_event_count=max(0, int(summary.get("events") or len(loot))),
+        loot_total_count=max(0, int(summary.get("quantity") or sum(
+            row.quantity for row in loot))),
+        loot_unique_count=max(0, int(summary.get("unique_items") or len({
+            row.item_key for row in loot}))),
+        journal_encounters=journal,
         controls=controls,
         hidden_control_rows=int(control_snapshot.hidden_rows),
         control_notice_count=int(control_snapshot.notice_count),
@@ -520,6 +762,8 @@ def snapshot_event(snapshot: EngineSnapshot) -> EngineEvent:
 
 __all__ = [
     "PROTOCOL_VERSION",
+    "CombatAbilityCategory",
+    "classify_combat_ability_category",
     "CharacterView",
     "CombatView",
     "CombatMetricView",
@@ -528,6 +772,9 @@ __all__ = [
     "CombatBreakdownView",
     "CombatActorView",
     "EncounterView",
+    "ItemInfoView",
+    "LootEventView",
+    "JournalEncounterView",
     "ControlTimerView",
     "EngineEvent",
     "EngineSnapshot",

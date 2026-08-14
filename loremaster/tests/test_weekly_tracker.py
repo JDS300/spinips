@@ -53,7 +53,41 @@ class WeeklyTrackerTests(unittest.TestCase):
             self.assertEqual(snapshot["trackedLockoutCount"], 30)
             self.assertEqual(nagafen["difficulties"], [True, False, False, False, True])
             self.assertEqual(nagafen["bestSeconds"], [95.0, None, None, None, 140.0])
-            self.assertEqual(json.loads(path.read_text())["schemaVersion"], 2)
+            self.assertEqual(json.loads(path.read_text())["schemaVersion"], 3)
+
+    def test_log_instance_evidence_round_trips_and_schema_two_remains_readable(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / "weekly.json"
+            now = datetime(2026, 8, 7, 20, 0, tzinfo=timezone.utc)
+            tracker = WeeklyBossTracker(storage_path=path)
+            self.assertTrue(tracker.observe_kill(
+                now, "Lord Nagafen", zone="Nagafen's Lair",
+                character="Spin", difficulty=4,
+                difficulty_source="log-zone",
+                instance_name="Nagafen's Lair - Solo 4 (Refined)",
+                instance_mode="Solo", instance_label="Refined",
+                context_observed_at="2026-08-07T19:55:00Z",
+                evidence="You have entered Nagafen's Lair - Solo 4 (Refined)."))
+            restored = WeeklyBossTracker(storage_path=path)
+            kill = restored.snapshot(now, character="Spin")["kills"][0]
+            self.assertEqual(kill["difficulty_source"], "log-zone")
+            self.assertEqual(kill["instance_name"],
+                             "Nagafen's Lair - Solo 4 (Refined)")
+            self.assertEqual(kill["instance_label"], "Refined")
+
+            legacy_path = Path(root) / "weekly-v2.json"
+            legacy_path.write_text(json.dumps({
+                "schemaVersion": 2,
+                "kills": [{
+                    "target": "Lady Vox", "zone": "Permafrost Keep",
+                    "character": "Spin", "killed_at": "2026-08-07T20:00:00Z",
+                    "difficulty": 2, "duration_seconds": 90.0,
+                }],
+            }), encoding="utf-8")
+            legacy = WeeklyBossTracker(storage_path=legacy_path)
+            legacy_kill = legacy.snapshot(now, character="Spin")["kills"][0]
+            self.assertEqual(legacy_kill["difficulty"], 2)
+            self.assertEqual(legacy_kill["difficulty_source"], "manual")
 
     def test_character_filter_and_manual_correction(self):
         tracker = WeeklyBossTracker()

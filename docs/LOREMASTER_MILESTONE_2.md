@@ -21,9 +21,13 @@ versioned UTF-8 JSONL and is the portable desktop shipped with UI releases.
 - Proven charm-break events crossing the process boundary into a short danger
   banner; unrelated fades still remain silent.
 - A conservative D0–D4 raid-reset ledger for Master Yael, Phinigel Autropos,
-  Lord Nagafen, Lady Vox, Innoruuk, and Cazic-Thule. Only local-player or
-  proven-pet kills count. Difficulty is explicit because the EQ log does not
-  reliably announce the selected tier.
+  Lord Nagafen, Lady Vox, Innoruuk, and Cazic-Thule. Evidenced self, pet, and
+  group participation can count. Difficulty and Solo/Group mode come from the
+  logged instance-entry line, with an explicit fallback only for unknown tiers.
+- A Settings Update Center that displays the running version, checks the
+  official release, verifies portable and skin downloads, and can update
+  Loremaster, Reloaded, and Glass independently. App relaunch has automatic
+  rollback; skin replacement is isolated and blocked while EverQuest runs.
 - A single portable Windows test build containing the React application and
   its hidden parser engine. No installer target is produced.
 
@@ -35,6 +39,11 @@ TypeScript build, production renderer, bundled engine, and portable executable
 before the same binary is copied into the manual ZIP and attached to the UI
 release. The legacy Python GUI remains source/reference code and is not
 published as a competing executable.
+
+The release also publishes `SpinUI-UI.zip`, `SpinUI-Update.json`, and
+`SHA256SUMS.txt`. The manifest inventories every file in Reloaded and Glass so
+Loremaster can reject partial, stale, modified, or unexpectedly expanded update
+payloads before touching an installed skin.
 
 ## Weekly tracker boundary
 
@@ -52,3 +61,7 @@ manually correctable. Plane of Sky is intentionally outside this weekly ledger.
 - The packaged engine passes a real subprocess JSONL handshake.
 - The unpacked Electron production application launches its bundled engine and
   exits cleanly through the smoke-only shutdown hook.
+- Dedicated updater suites cover digest disagreement, download bounds,
+  traversal/path rejection, portable relaunch rollback, exact skin-tree
+  verification, EQ-running protection, and preservation of unrelated skins and
+  character layout INIs.
