@@ -21,6 +21,7 @@ import {
   type UpdateCheckResult,
   type UpdateProgress,
 } from "./portable-updater";
+import { backupBeforeReleaseCandidate } from "./rc-backup";
 import {
   EverQuestRunningError,
   SPINUI_SKINS,
@@ -74,6 +75,27 @@ if (process.platform === "linux"
       });
       app.exit(0);
     }
+  }
+}
+
+// A candidate shares the live settings directory on purpose -- bugs surface
+// against real data that way -- so it snapshots the state files before any
+// code can write to them. Runs before app.whenReady on purpose: both paths
+// resolve this early, and nothing has opened a settings file yet.
+{
+  const backup = backupBeforeReleaseCandidate({
+    version: app.getVersion(),
+    userDataDir: app.getPath("userData"),
+    backupRoot: path.join(app.getPath("appData"), "spins-loremaster-rc-backups"),
+  });
+  if (backup.status === "created") {
+    console.info(
+      `[Loremaster] release candidate: backed up ${backup.files.length}`
+      + ` settings file(s) to ${backup.directory}`);
+  } else if (backup.status === "failed") {
+    // Logged, never fatal: a backup that cannot be written must not stop the
+    // application from starting.
+    console.warn(`[Loremaster] release candidate backup failed: ${backup.error}`);
   }
 }
 
