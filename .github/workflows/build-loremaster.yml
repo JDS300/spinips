@@ -14,6 +14,7 @@ on:
       - "docs/**"
       - "UI_Spin_qeynos_LO1.ini"
       - "README.md"
+      - "CHANGELOG.md"
       # Governs the bytes every other path is checked out with, so a change
       # here can alter what gets packaged without touching a packaged file.
       - ".gitattributes"
@@ -34,6 +35,7 @@ on:
       - "docs/**"
       - "UI_Spin_qeynos_LO1.ini"
       - "README.md"
+      - "CHANGELOG.md"
       # Governs the bytes every other path is checked out with, so a change
       # here can alter what gets packaged without touching a packaged file.
       - ".gitattributes"
@@ -86,6 +88,16 @@ jobs:
 
       - name: Verify change classifier
         run: python tools/ci_change_scope.py --self-test
+
+      - name: Verify release notes tooling
+        run: python tools/release_notes.py --self-test
+
+      - name: Require a changelog entry for the release being published
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release
+        # Checked here rather than at the publish step, which is twenty
+        # minutes of building away: a release with nothing to say about
+        # itself should cost seconds to find out.
+        run: python tools/release_notes.py --version '${{ inputs.release_tag }}' --check
 
       - name: Classify changed paths
         id: scope
@@ -537,12 +549,16 @@ jobs:
           # marker has to sit at column zero and so cannot be indented inside
           # this step.
           $version = $tag -replace '^v', ''
+          $changelog = python tools/release_notes.py --version $tag
+          if ($LASTEXITCODE -ne 0) { throw "no changelog entry for $tag" }
           $notes = @()
           if ($prerelease) {
             $notes += "> **Release candidate.** Install it by hand and run it. The in-app updaters ignore prereleases, so nobody is offered this build and the current release stays where it is."
             $notes += ""
           }
           $notes += @(
+            $changelog,
+            "",
             "## Installing",
             "",
             "**Linux** -- download ``Loremaster-$version-x86_64.AppImage``, ``chmod +x`` it, and run it. There is no self-update on Linux, so new builds always come from this page.",
