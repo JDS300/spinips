@@ -1,7 +1,7 @@
 import sys
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -180,6 +180,48 @@ class DesktopWorkerTests(unittest.TestCase):
                 engine.close()
             self.assertTrue(enabled["snapshot"]["combat"]["autoAttack"])
             self.assertFalse(disabled["snapshot"]["combat"]["autoAttack"])
+
+    def test_every_raid_kill_awaiting_a_difficulty_is_kept(self):
+        """A second kill before confirmation must not displace the first."""
+        with tempfile.TemporaryDirectory() as root:
+            engine = HeadlessEngine(data_dir=root)
+            try:
+                for line in (
+                        "[Fri Aug 07 20:00:00 2026] You slash Lord Nagafen for 10 points of damage.",
+                        "[Fri Aug 07 20:00:01 2026] You have slain Lord Nagafen!",
+                        "[Fri Aug 07 20:10:00 2026] You slash Lady Vox for 10 points of damage.",
+                        "[Fri Aug 07 20:10:01 2026] You have slain Lady Vox!"):
+                    engine.process_line(line)
+                pending = engine.snapshot_event(
+                    datetime(2026, 8, 7, 20, 10, 2))["snapshot"]["weekly"]
+                self.assertEqual(pending["pendingRaidTargets"],
+                                 ["Lord Nagafen", "Lady Vox"])
+                # The v1 field still names one target, so older renderers see
+                # what they always saw.
+                self.assertEqual(pending["pendingRaidTarget"], "Lord Nagafen")
+                self.assertTrue(engine.set_raid_difficulty(3))
+                weekly = engine.snapshot_event(
+                    datetime(2026, 8, 7, 20, 10, 3))["snapshot"]["weekly"]
+            finally:
+                engine.close()
+            self.assertEqual(weekly["pendingRaidTargets"], [])
+            recorded = {row["target"]: row["difficulties"]
+                        for row in weekly["raids"]}
+            self.assertTrue(recorded["Lord Nagafen"][3])
+            # Each kill keeps its own context. The confirmation arrives once,
+            # after both are dead, so a shared slot would credit both with
+            # whichever fight and zone happened to be current at the end.
+            kills = {kill.target: kill for kill in engine.weekly._kills}
+            # Asserted as the interval between the two kills rather than two
+            # absolute stamps: the log lines carry no zone, so the stored UTC
+            # instant depends on the timezone of whatever machine runs this.
+            stamps = {target: datetime.fromisoformat(kill.killed_at)
+                      for target, kill in kills.items()}
+            self.assertEqual(stamps["Lady Vox"] - stamps["Lord Nagafen"],
+                             timedelta(minutes=10))
+            self.assertIn("Lord Nagafen", kills["Lord Nagafen"].evidence)
+            self.assertIn("Lady Vox", kills["Lady Vox"].evidence)
+            self.assertTrue(recorded["Lady Vox"][3])
 
     def test_live_snapshot_preserves_damage_and_control_parity(self):
         with tempfile.TemporaryDirectory() as root:

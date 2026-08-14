@@ -1148,7 +1148,7 @@ function MainApp() {
 
         {weekly?.pendingRaidTarget && <section className="raid-confirmation" role="alertdialog" aria-label="Confirm raid difficulty">
           <span className="raid-confirmation-glyph">✓</span>
-          <div><small>RAID BOSS DEFEATED</small><strong>{weekly.pendingRaidTarget}</strong><p>Confirm the completed tier to mark this week’s lockout and preserve the clear time.</p></div>
+          <div><small>RAID BOSS DEFEATED</small><strong>{(weekly.pendingRaidTargets?.length ? weekly.pendingRaidTargets : [weekly.pendingRaidTarget]).join(" · ")}</strong><p>Confirm the completed tier to mark {(weekly.pendingRaidTargets?.length ?? 1) > 1 ? "these lockouts" : "this week’s lockout"} and preserve the clear time.</p></div>
           <div className="raid-confirmation-tiers">{raidDifficulties.map((difficulty) => <button key={difficulty} type="button"
             onClick={() => changeRaidDifficulty(difficulty)}>D{difficulty}</button>)}</div>
         </section>}
