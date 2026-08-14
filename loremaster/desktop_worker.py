@@ -44,10 +44,6 @@ except (ImportError, AttributeError):
     normalize_composition = runtime_module.normalize_composition
 from lull_timer import LullTracker
 from mez_timer import MezTracker
-from hover_ocr import HoverOcrService, capture_game_window, scan_game_window
-from instance_lockout_ocr import (
-    ParsedRaidLockout, instance_panel_detected, parse_instance_character,
-    parse_instance_lockouts)
 from weekly_tracker import DIFFICULTIES, WeeklyBossTracker
 
 
@@ -71,22 +67,6 @@ class HeadlessEngine:
             "LOREMASTER_APP_DATA_DIR", Path.cwd()))
         self.weekly = WeeklyBossTracker(
             storage_path=self.data_dir / "weekly_boss_kills.json")
-        self.instance_lockout_path = self.data_dir / "alt_z_lockouts.json"
-        self.instance_lockouts: list[dict] = []
-        self.lockout_scan = {
-            "status": "idle",
-            "detail": "Open the Alt+Z Instance Information window, then scan.",
-            "scannedAt": "",
-            "importedCount": 0,
-            "timedCount": 0,
-            "hotkey": "Ctrl+Shift+Z",
-        }
-        self._lockout_request_id = 0
-        # The Alt+Z panel is wherever the player put it, so this scan reads the
-        # whole game window rather than a region framed on the cursor.
-        self.lockout_ocr = HoverOcrService(
-            scanner=scan_game_window, capture_factory=capture_game_window)
-        self._load_instance_lockouts()
         self.raid_difficulty: int | None = None
         self.configured_composition = ""
         # Ordered target -> fight seconds. A single slot silently discarded the
@@ -123,191 +103,6 @@ class HeadlessEngine:
     @staticmethod
     def _aware(value: datetime) -> datetime:
         return value if value.tzinfo is not None else value.astimezone()
-
-    @staticmethod
-    def _parse_stamp(value: str) -> datetime | None:
-        try:
-            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-            return parsed if parsed.tzinfo is not None else parsed.astimezone()
-        except (TypeError, ValueError):
-            return None
-
-    def _load_instance_lockouts(self) -> None:
-        try:
-            payload = json.loads(self.instance_lockout_path.read_text(encoding="utf-8"))
-            rows = payload.get("lockouts", []) if isinstance(payload, dict) else []
-            self.instance_lockouts = [row for row in rows if (
-                isinstance(row, dict)
-                and isinstance(row.get("target"), str)
-                and row.get("difficulty") in DIFFICULTIES
-                and self._parse_stamp(str(row.get("expiresAt", ""))) is not None
-            )]
-            scan = payload.get("lastScan", {}) if isinstance(payload, dict) else {}
-            if isinstance(scan, dict) and isinstance(scan.get("scannedAt"), str):
-                self.lockout_scan.update({
-                    "status": "success" if self.instance_lockouts else "idle",
-                    "detail": str(scan.get("detail") or self.lockout_scan["detail"])[:240],
-                    "scannedAt": scan.get("scannedAt", ""),
-                    "importedCount": int(scan.get("importedCount", 0) or 0),
-                    "timedCount": int(scan.get("timedCount", 0) or 0),
-                })
-        except (OSError, ValueError, TypeError, json.JSONDecodeError):
-            self.instance_lockouts = []
-
-    def _save_instance_lockouts(self) -> None:
-        self.instance_lockout_path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = self.instance_lockout_path.with_suffix(".json.tmp")
-        temporary.write_text(json.dumps({
-            "schemaVersion": 1,
-            "lockouts": self.instance_lockouts,
-            "lastScan": self.lockout_scan,
-        }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-        os.replace(temporary, self.instance_lockout_path)
-
-    def request_instance_lockout_scan(self) -> None:
-        self.lockout_scan.update({
-            "status": "scanning",
-            "detail": "Reading the visible Alt+Z Outstanding Instance Timers…",
-            "importedCount": 0,
-            "timedCount": 0,
-        })
-        self._lockout_request_id = self.lockout_ocr.submit()
-
-    def import_instance_lockouts(self, rows: list[ParsedRaidLockout], *,
-                                 scanned_at: datetime | None = None,
-                                 character_hint: str = "") -> int:
-        observed_at = self._aware(scanned_at or datetime.now())
-        character = (character_hint or self.stats.character or "?").strip() or "?"
-        by_key = {
-            (str(row.get("character", "?")).casefold(),
-             str(row.get("target", "")).casefold(), row.get("difficulty")): row
-            for row in self.instance_lockouts
-        }
-        timed_count = 0
-        for lockout in rows:
-            # The scan is itself the confirmation for this target: recording a
-            # completion while still asking the player to confirm a difficulty
-            # for it leaves a prompt that can never be satisfied.
-            self.pending_raid_kills.pop(lockout.target, None)
-            self.weekly.set_completion(
-                observed_at, lockout.target, lockout.difficulty,
-                character=character, completed=True)
-            # A recognized boss/difficulty is sufficient weekly evidence, but
-            # never fabricate an expiry when the tiny timer glyphs were not
-            # actually read by Windows OCR.
-            if lockout.remaining_seconds is None:
-                continue
-            if character != "?":
-                by_key.pop(("?", lockout.target.casefold(), lockout.difficulty), None)
-                by_key.pop(("", lockout.target.casefold(), lockout.difficulty), None)
-            expires_at = observed_at + timedelta(seconds=lockout.remaining_seconds)
-            stored = {
-                "target": lockout.target,
-                "difficulty": lockout.difficulty,
-                "instanceName": lockout.instance_name,
-                "eventName": lockout.event_name,
-                "character": character,
-                "scannedAt": observed_at.isoformat(timespec="seconds"),
-                "expiresAt": expires_at.isoformat(timespec="seconds"),
-            }
-            by_key[(character.casefold(), lockout.target.casefold(),
-                    lockout.difficulty)] = stored
-            timed_count += 1
-        self.instance_lockouts = list(by_key.values())
-        stamp = observed_at.isoformat(timespec="seconds")
-        count = len(rows)
-        if timed_count == count:
-            detail = (f"Marked {count} visible raid completion"
-                      f"{'s' if count != 1 else ''} and read every timer. ")
-        elif timed_count:
-            detail = (f"Marked {count} visible raid completion"
-                      f"{'s' if count != 1 else ''}; read {timed_count} timer"
-                      f"{'s' if timed_count != 1 else ''}. ")
-        else:
-            detail = (f"Marked {count} visible raid completion"
-                      f"{'s' if count != 1 else ''}. Compact timer text was unreadable, "
-                      "so no expiry was guessed. ")
-        self.lockout_scan.update({
-            "status": "success",
-            "detail": detail + "Scroll Alt+Z and scan again to merge more rows.",
-            "scannedAt": stamp,
-            "importedCount": count,
-            "timedCount": timed_count,
-        })
-        self._save_instance_lockouts()
-        if self.alert_config.get("alerts_enabled", True):
-            self.alerts.append({
-                "id": f"lockoutSync-{observed_at.timestamp():.3f}",
-                "kind": "lockoutSync",
-                "severity": "info",
-                "title": "LOCKOUTS SYNCED",
-                "target": f"{count} visible D0–D4 raid completion{'s' if count != 1 else ''}",
-                "occurredAt": stamp,
-                "expiresAt": (observed_at + timedelta(
-                    seconds=self.alert_config["alert_seconds"])).isoformat(
-                        timespec="milliseconds"),
-            })
-        return count
-
-    def _poll_instance_lockout_scan(self) -> None:
-        for result in self.lockout_ocr.poll():
-            if result.request_id != self._lockout_request_id:
-                continue
-            if result.error:
-                self.lockout_scan.update({
-                    "status": "error",
-                    "detail": result.error,
-                    "importedCount": 0,
-                })
-                continue
-            rows = parse_instance_lockouts(result.lines)
-            if not rows:
-                # An empty table is not a failure. Saying so only when the
-                # panel itself was unmistakably read is what tells the player
-                # "you have no lockouts" apart from "the scan missed".
-                if instance_panel_detected(result.lines):
-                    self.lockout_scan.update({
-                        "status": "success",
-                        "detail": ("Read the Alt+Z Outstanding Instance Timers: "
-                                   "no raid lockouts are listed."),
-                        "importedCount": 0,
-                    })
-                else:
-                    self.lockout_scan.update({
-                        "status": "error",
-                        "detail": ("The Alt+Z Instance Information window was not "
-                                   "found on screen. Open it with Alt+Z while "
-                                   "EverQuest is running, then scan again."),
-                        "importedCount": 0,
-                    })
-                continue
-            self.import_instance_lockouts(
-                rows, character_hint=parse_instance_character(result.lines))
-
-    def _instance_lockout_snapshot(self, now: datetime) -> list[dict]:
-        observed_at = self._aware(now)
-        character = (self.stats.character or "?").strip().casefold()
-        visible = []
-        for row in self.instance_lockouts:
-            expires_at = self._parse_stamp(str(row.get("expiresAt", "")))
-            if expires_at is None:
-                continue
-            remaining = max(0, int((expires_at - observed_at).total_seconds()))
-            row_character = str(row.get("character", "?")).strip().casefold()
-            if remaining <= 0 or (
-                    character not in ("", "?")
-                    and row_character not in ("", "?", character)):
-                continue
-            visible.append({
-                "target": row.get("target", ""),
-                "difficulty": row.get("difficulty", 0),
-                "remainingSeconds": remaining,
-                "instanceName": row.get("instanceName", ""),
-                "eventName": row.get("eventName", ""),
-                "expiresAt": row.get("expiresAt", ""),
-            })
-        return sorted(visible, key=lambda row: (
-            int(row["remainingSeconds"]), str(row["target"])))
 
     def set_log_path(self, value: str) -> None:
         old = getattr(self, "watcher", None)
@@ -474,7 +269,6 @@ class HeadlessEngine:
         return True
 
     def poll(self) -> tuple[int, bool]:
-        self._poll_instance_lockout_scan()
         lines, switched = self.watcher.poll()
         if switched:
             self._switch_character()
@@ -529,8 +323,6 @@ class HeadlessEngine:
         # single-target field keeps its meaning and the list is added beside it.
         weekly["pendingRaidTarget"] = pending[0] if pending else ""
         weekly["pendingRaidTargets"] = pending
-        weekly["altZLockouts"] = self._instance_lockout_snapshot(observed_at)
-        weekly["altZScan"] = dict(self.lockout_scan)
         event["snapshot"]["weekly"] = weekly
         self.alerts = [alert for alert in self.alerts
                        if self._aware(datetime.fromisoformat(alert["expiresAt"]))
@@ -539,7 +331,6 @@ class HeadlessEngine:
         return event
 
     def close(self) -> None:
-        self.lockout_ocr.close()
         self.watcher.close()
 
 
@@ -592,8 +383,6 @@ class JsonLineWorker:
                 str(command.get("target") or ""),
                 int(command.get("difficulty", -1)),
                 bool(command.get("completed")))
-        elif kind == "engine.scan-alt-z-lockouts":
-            self.engine.request_instance_lockout_scan()
         elif kind == "engine.reset":
             self.engine.reset()
         elif kind == "engine.shutdown":

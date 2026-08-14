@@ -5629,6 +5629,48 @@
 	<!-- END STORAGE -->
 	
 	<!-- START PET (was MERC so sticking with IWM_)-->
+
+	<!-- Client-native activated-item selector for the current pet's illusion. -->
+	<Label item="IWM_PetIllusionLabel">
+		<Font>3</Font>
+		<RelativePosition>true</RelativePosition>
+		<Location>
+			<X>189</X>
+			<Y>112</Y>
+		</Location>
+		<Size>
+			<CX>120</CX>
+			<CY>14</CY>
+		</Size>
+		<TextColor>
+			<R>138</R>
+			<G>163</G>
+			<B>255</B>
+		</TextColor>
+		<Text>Pet Illusion:</Text>
+		<TooltipReference>Selects a pet illusion item from your activated items inventory.</TooltipReference>
+		<NoWrap>false</NoWrap>
+		<AlignCenter>false</AlignCenter>
+		<AlignLeft>true</AlignLeft>
+	</Label>
+
+	<Combobox item="IWM_PetIllusionComboBox">
+		<ScreenID>IWM_PetIllusionComboBox</ScreenID>
+		<DrawTemplate>WDT_InnerSolid</DrawTemplate>
+		<Location>
+			<X>187</X>
+			<Y>130</Y>
+		</Location>
+		<Size>
+			<CX>160</CX>
+			<CY>24</CY>
+		</Size>
+		<ListHeight>80</ListHeight>
+		<Button>BDT_Combo</Button>
+		<Style_Border>true</Style_Border>
+		<Choices>None</Choices>
+	</Combobox>
+
 	<Label item="IWM_PetInfoLabel">
 	<Font>3</Font>
 		<RelativePosition>true</RelativePosition>
@@ -7159,6 +7201,8 @@
 		<Pieces>IWM_ClassLabel</Pieces>
 		<Pieces>IWM_Class</Pieces>
 		<Pieces>IWM_PetSlotLabel</Pieces>
+		<Pieces>IWM_PetIllusionComboBox</Pieces>
+		<Pieces>IWM_PetIllusionLabel</Pieces>
 		<Pieces>IWM_PetInfoLabel</Pieces>
 	</Page>
 	<!-- END PET -->
