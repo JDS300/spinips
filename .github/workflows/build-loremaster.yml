@@ -533,9 +533,29 @@ jobs:
             'package/SHA256SUMS.txt',
             'dist-electron-release/Loremaster.exe'
           )
-          $candidateNote = if ($prerelease) {
-            "`n`nThis is a release candidate. Install it by hand to test it: the in-app updaters ignore prereleases, so nobody is offered this build."
-          } else { "" }
+          # Built as a joined array rather than a here-string, whose closing
+          # marker has to sit at column zero and so cannot be indented inside
+          # this step.
+          $version = $tag -replace '^v', ''
+          $notes = @()
+          if ($prerelease) {
+            $notes += "> **Release candidate.** Install it by hand and run it. The in-app updaters ignore prereleases, so nobody is offered this build and the current release stays where it is."
+            $notes += ""
+          }
+          $notes += @(
+            "## Installing",
+            "",
+            "**Linux** -- download ``Loremaster-$version-x86_64.AppImage``, ``chmod +x`` it, and run it. There is no self-update on Linux, so new builds always come from this page.",
+            "",
+            "**Windows** -- ``Loremaster.exe`` is the portable build. It is unsigned, so antivirus machine-learning heuristics sometimes flag it; see the README's Troubleshooting section.",
+            "",
+            "**Skins** -- extract ``SpinUI-Manual.zip`` for the classic ``spinui_reloaded`` skin, the optional ``spinui_glass`` skin, layout profiles and the manual guide.",
+            "",
+            "Check what you downloaded against ``Loremaster-Linux-SHA256SUMS.txt`` (Linux) or ``SHA256SUMS.txt`` (Windows and skins).",
+            "",
+            "---"
+          )
+          $releaseNotes = $notes -join "`n"
           gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -eq 0) {
             gh release upload $tag @assets --repo $env:GITHUB_REPOSITORY --clobber
@@ -551,11 +571,27 @@ jobs:
             # expression returning a single-element array unrolls to a bare
             # string, and splatting that string fed gh a lone "-" which it
             # tried to read as an asset filename.
+            # --generate-notes appends what actually changed, taken from the
+            # pull requests merged since the previous release, under the notes
+            # given here. A hand-written summary of a release nobody wrote a
+            # summary for is how the notes became boilerplate in the first
+            # place.
             $options = @(
               '--target', $env:GITHUB_SHA,
-              '--title', "SpinUI $tag — Vellum & Ember + Glass",
-              '--notes', "Complete SpinUI Windows release. Extract SpinUI-Manual.zip for both the classic spinui_reloaded skin and optional spinui_glass skin, layout profiles, manual guide, and the portable TypeScript/Electron Loremaster. Verify downloads against SHA256SUMS.txt; the unsigned Loremaster executable can trip antivirus machine-learning heuristics (see the README's Troubleshooting section).$candidateNote"
+              '--title', "Loremaster $version",
+              '--notes', $releaseNotes,
+              '--generate-notes'
             )
+            # Anchored at the last full release rather than the previous one,
+            # which would be the candidate this promotes: everything merged
+            # since then already appears in the candidate's own notes, leaving
+            # the release people actually install with an empty changelog.
+            # Candidates get the same anchor, so each one lists everything a
+            # tester would be changing from.
+            $previousStable = gh api "repos/$env:GITHUB_REPOSITORY/releases/latest" --jq .tag_name 2>$null
+            if ($LASTEXITCODE -eq 0 -and $previousStable) {
+              $options += @('--notes-start-tag', $previousStable.Trim())
+            }
             if ($prerelease) { $options += '--prerelease' } else { $options += '--latest' }
             gh release create $tag @assets --repo $env:GITHUB_REPOSITORY @options
           }
