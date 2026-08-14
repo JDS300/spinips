@@ -18,8 +18,8 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { compareVersions, parseChecksums } from "./portable-updater.js";
 
-const RELEASE_API = "https://api.github.com/repos/itsspin/spinips/releases/latest";
-const RELEASE_PAGE = "https://github.com/itsspin/spinips/releases/latest";
+const RELEASE_API = "https://api.github.com/repos/JDS300/spinips/releases/latest";
+const RELEASE_PAGE = "https://github.com/JDS300/spinips/releases/latest";
 const ARCHIVE_ASSET = "SpinUI-UI.zip";
 const MANIFEST_ASSET = "SpinUI-Update.json";
 const CHECKSUM_ASSET = "SHA256SUMS.txt";
