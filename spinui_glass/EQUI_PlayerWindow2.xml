@@ -12,10 +12,24 @@
 		</Size>
 	</TextureInfo>
 
+	<TextureInfo item="SpinAttackRail.tga">
+		<Size>
+			<CX>128</CX>
+			<CY>32</CY>
+		</Size>
+	</TextureInfo>
+
+	<TextureInfo item="SpinAttackPerimeter.tga">
+		<Size>
+			<CX>128</CX>
+			<CY>32</CY>
+		</Size>
+	</TextureInfo>
+
 	<Ui2DAnimation item="A_AttackIndicator">
 		<Cycle>false</Cycle>
 		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
+			<Texture>SpinAttackRail.tga</Texture>
 			<Location>
 				<X>0</X>
 				<Y>0</Y>
@@ -30,7 +44,7 @@
 	<Ui2DAnimation item="A_AttackIndicatorTop">
 		<Cycle>false</Cycle>
 		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
+			<Texture>SpinAttackRail.tga</Texture>
 			<Location>
 				<X>0</X>
 				<Y>0</Y>
@@ -45,7 +59,7 @@
 	<Ui2DAnimation item="A_AttackIndicatorBottom">
 		<Cycle>false</Cycle>
 		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
+			<Texture>SpinAttackRail.tga</Texture>
 			<Location>
 				<X>0</X>
 				<Y>0</Y>
@@ -60,7 +74,7 @@
 	<Ui2DAnimation item="A_AttackIndicatorLeft">
 		<Cycle>false</Cycle>
 		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
+			<Texture>SpinAttackRail.tga</Texture>
 			<Location>
 				<X>0</X>
 				<Y>0</Y>
@@ -75,7 +89,7 @@
 	<Ui2DAnimation item="A_AttackIndicatorRight">
 		<Cycle>false</Cycle>
 		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
+			<Texture>SpinAttackRail.tga</Texture>
 			<Location>
 				<X>0</X>
 				<Y>0</Y>
@@ -90,7 +104,7 @@
 	<Ui2DAnimation item="A_AttackIndicatorFill">
 		<Cycle>false</Cycle>
 		<Frames>
-			<Texture>AttackIndicator.tga</Texture>
+			<Texture>SpinAttackPerimeter.tga</Texture>
 			<Location>
 				<X>0</X>
 				<Y>0</Y>
@@ -107,8 +121,8 @@
 		<Animation>A_AttackIndicatorTop</Animation>
 		<AutoDraw>false</AutoDraw>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>70</TopAnchorOffset>
-		<BottomAnchorOffset>78</BottomAnchorOffset>
+		<TopAnchorOffset>67</TopAnchorOffset>
+		<BottomAnchorOffset>70</BottomAnchorOffset>
 		<LeftAnchorOffset>0</LeftAnchorOffset>
 		<RightAnchorOffset>0</RightAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
@@ -122,8 +136,8 @@
 		<Animation>A_AttackIndicatorBottom</Animation>
 		<AutoDraw>false</AutoDraw>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>10</TopAnchorOffset>
-		<BottomAnchorOffset>2</BottomAnchorOffset>
+		<TopAnchorOffset>9</TopAnchorOffset>
+		<BottomAnchorOffset>6</BottomAnchorOffset>
 		<LeftAnchorOffset>0</LeftAnchorOffset>
 		<RightAnchorOffset>0</RightAnchorOffset>
 		<TopAnchorToTop>false</TopAnchorToTop>
@@ -137,10 +151,10 @@
 		<Animation>A_AttackIndicatorLeft</Animation>
 		<AutoDraw>false</AutoDraw>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>70</TopAnchorOffset>
-		<BottomAnchorOffset>2</BottomAnchorOffset>
+		<TopAnchorOffset>67</TopAnchorOffset>
+		<BottomAnchorOffset>6</BottomAnchorOffset>
 		<LeftAnchorOffset>0</LeftAnchorOffset>
-		<RightAnchorOffset>8</RightAnchorOffset>
+		<RightAnchorOffset>3</RightAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
 		<BottomAnchorToTop>false</BottomAnchorToTop>
 		<LeftAnchorToLeft>true</LeftAnchorToLeft>
@@ -152,9 +166,9 @@
 		<Animation>A_AttackIndicatorRight</Animation>
 		<AutoDraw>false</AutoDraw>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>70</TopAnchorOffset>
-		<BottomAnchorOffset>2</BottomAnchorOffset>
-		<LeftAnchorOffset>8</LeftAnchorOffset>
+		<TopAnchorOffset>67</TopAnchorOffset>
+		<BottomAnchorOffset>6</BottomAnchorOffset>
+		<LeftAnchorOffset>3</LeftAnchorOffset>
 		<RightAnchorOffset>0</RightAnchorOffset>
 		<TopAnchorToTop>true</TopAnchorToTop>
 		<BottomAnchorToTop>false</BottomAnchorToTop>
@@ -164,6 +178,19 @@
 
 	<StaticAnimation item="A_AttackIndicatorAnimFill">
 		<ScreenID>A_AttackIndicatorAnimFill</ScreenID>
+		<Animation>A_AttackIndicatorFill</Animation>
+		<RelativePosition>true</RelativePosition>
+		<AutoDraw>false</AutoDraw>
+		<AutoStretch>true</AutoStretch>
+		<Style_Transparent>true</Style_Transparent>
+		<TopAnchorOffset>70</TopAnchorOffset>
+		<BottomAnchorOffset>6</BottomAnchorOffset>
+		<LeftAnchorOffset>0</LeftAnchorOffset>
+		<RightAnchorOffset>0</RightAnchorOffset>
+		<TopAnchorToTop>true</TopAnchorToTop>
+		<BottomAnchorToTop>false</BottomAnchorToTop>
+		<LeftAnchorToLeft>true</LeftAnchorToLeft>
+		<RightAnchorToLeft>false</RightAnchorToLeft>
 	</StaticAnimation>
 <!-- End of Attack Indicator -->
 
@@ -847,7 +874,7 @@
 			<LinesFill>A_GaugeLinesFill</LinesFill>
 		</GaugeDrawTemplate>
 		<AutoStretch>true</AutoStretch>
-		<TopAnchorOffset>84</TopAnchorOffset>
+		<TopAnchorOffset>83</TopAnchorOffset>
 		<BottomAnchorOffset>94</BottomAnchorOffset>
 		<LeftAnchorOffset>1</LeftAnchorOffset>
 		<RightAnchorOffset>1</RightAnchorOffset>
@@ -1164,8 +1191,8 @@
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<LeftAnchorOffset>2</LeftAnchorOffset>
 		<RightAnchorOffset>2</RightAnchorOffset>
-		<BottomAnchorOffset>72</BottomAnchorOffset>
-		<TopAnchorOffset>2</TopAnchorOffset>
+		<BottomAnchorOffset>70</BottomAnchorOffset>
+		<TopAnchorOffset>0</TopAnchorOffset>
 		<Style_VScroll>false</Style_VScroll>
 		<Style_HScroll>false</Style_HScroll>
 		<Style_Transparent>true</Style_Transparent>
@@ -1278,9 +1305,9 @@
 		<BottomAnchorToTop>false</BottomAnchorToTop>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
 		<TopAnchorOffset>70</TopAnchorOffset>
-		<BottomAnchorOffset>2</BottomAnchorOffset>
-		<LeftAnchorOffset>-1</LeftAnchorOffset>
-		<RightAnchorOffset>-1</RightAnchorOffset>
+		<BottomAnchorOffset>9</BottomAnchorOffset>
+		<LeftAnchorOffset>3</LeftAnchorOffset>
+		<RightAnchorOffset>3</RightAnchorOffset>
 		<Pieces>Player_HP</Pieces>
 		<Pieces>Pet_HP</Pieces>
 		<Pieces>Player_Mana</Pieces>
@@ -1335,7 +1362,7 @@
 			<CY>193</CY>
 		</Size>
 		<MinHSize>280</MinHSize>
-		<MinVSize>174</MinVSize>
+		<MinVSize>193</MinVSize>
 		<Style_VScroll>false</Style_VScroll>
 		<Style_HScroll>false</Style_HScroll>
 		<DrawTemplate>WDT_RoundedTransparentNoArrow</DrawTemplate>
@@ -1354,15 +1381,15 @@
 			<Y>-9</Y>
 		</KeepOnScreenOffset>
 		<Pieces>Screen:PlayerSubWindow</Pieces>
+		<Pieces>DragBox:PW_DragBox</Pieces>
+		<Pieces>DragBox:PW_DragBox2</Pieces>
+		<Pieces>DragBox:PWDragBox3</Pieces>
+		<Pieces>PW_BuffWindow</Pieces>
 		<Pieces>A_AttackIndicatorAnimTop</Pieces>
 		<Pieces>A_AttackIndicatorAnimBottom</Pieces>
 		<Pieces>A_AttackIndicatorAnimLeft</Pieces>
 		<Pieces>A_AttackIndicatorAnimRight</Pieces>
 		<Pieces>A_AttackIndicatorAnimFill</Pieces>
-		<Pieces>DragBox:PW_DragBox</Pieces>
-		<Pieces>DragBox:PW_DragBox2</Pieces>
-		<Pieces>DragBox:PWDragBox3</Pieces>
-		<Pieces>PW_BuffWindow</Pieces>
 	</Screen>
 
 </XML>

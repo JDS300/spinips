@@ -13,7 +13,8 @@ from PIL import Image
 
 # The effects-row grid is authored once in tools/restyle_combat.py; the audit
 # imports it so a geometry change can never pass by editing only one side.
-from restyle_combat import (EFFECT_CHIP, EFFECT_ICON, EFFECT_NAME_WIDTH,
+from restyle_combat import (ATTACK_PERIMETER_TEXTURE, ATTACK_RAIL_TEXTURE,
+                           EFFECT_CHIP, EFFECT_ICON, EFFECT_NAME_WIDTH,
                            EFFECT_NAME_X, EFFECT_PLATE_BLEED,
                            EFFECT_ROW_WIDTH, EFFECT_TIMER_FONT,
                            EFFECT_TIMER_HALF_WIDTH, EXTENDED_TARGET_COUNT,
@@ -36,13 +37,15 @@ GLASS_SKIN = REPO / "spinui_glass"
 COMBAT_SKINS = (SKIN, GLASS_SKIN)
 STOCK = Path(r"C:\EQLegends\uifiles\default")
 
-# Pin the client-native attack contract independently of the generator.  This
-# prevents a matching mistake in restyle_combat.py and paint_attack_indicator.py
-# from approving itself.  The source slices and RLE texture envelope mirror the
-# known-working EQ Modern implementation; only destination thickness is SpinUI.
+# Pin the client-native attack contract independently of the generator. The
+# white RLE source maximizes the native red phase while EQ owns the cadence.
 ATTACK_TEXTURE_SIZE = (128, 32)
-ATTACK_TEXTURE_COLOR = (189, 189, 189, 255)
-ATTACK_EDGE_WIDTH = 8
+ATTACK_TEXTURE_COLOR = (255, 255, 255, 255)
+ATTACK_PERIMETER_COLORS = {
+    (255, 255, 255, 255): 2 * 32 + (128 - 2),
+    (255, 255, 255, 0): 128 * 32 - (2 * 32 + (128 - 2)),
+}
+ATTACK_EDGE_WIDTH = 3
 ATTACK_SOURCE_SIZES = {
     "A_AttackIndicator": (128, 32),
     "A_AttackIndicatorTop": (128, 2),
@@ -52,10 +55,10 @@ ATTACK_SOURCE_SIZES = {
     "A_AttackIndicatorFill": (128, 32),
 }
 ATTACK_GEOMETRY = {
-    "A_AttackIndicatorAnimTop": (70, 78, 0, 0),
-    "A_AttackIndicatorAnimBottom": (10, 2, 0, 0),
-    "A_AttackIndicatorAnimLeft": (70, 2, 0, 8),
-    "A_AttackIndicatorAnimRight": (70, 2, 8, 0),
+    "A_AttackIndicatorAnimTop": (67, 70, 0, 0),
+    "A_AttackIndicatorAnimBottom": (9, 6, 0, 0),
+    "A_AttackIndicatorAnimLeft": (67, 6, 0, 3),
+    "A_AttackIndicatorAnimRight": (67, 6, 3, 0),
 }
 ATTACK_ANCHORS = {
     "A_AttackIndicatorAnimTop": ("true", "true", "true", "false"),
@@ -194,29 +197,36 @@ def anchored_rect(node: ET.Element, width: int,
 def audit_attack_indicator_contract() -> None:
     """Prove every theme/variant keeps a visible native attack perimeter."""
     for skin in COMBAT_SKINS:
-        texture_path = skin / "AttackIndicator.tga"
-        payload = texture_path.read_bytes()
-        if len(payload) < 18:
-            fail(f"{skin.name} AttackIndicator.tga has no complete TGA header")
-        width = int.from_bytes(payload[12:14], "little")
-        height = int.from_bytes(payload[14:16], "little")
-        if ((width, height) != ATTACK_TEXTURE_SIZE
-                or payload[2] != 10
-                or payload[16] != 32
-                or payload[17] & 0x0F != 8):
-            fail(
-                f"{skin.name} AttackIndicator.tga lost the proven 32-bit RLE "
-                f"envelope (type={payload[2]}, size={width}x{height}, "
-                f"depth={payload[16]}, descriptor={payload[17]})"
-            )
-        with Image.open(texture_path) as source:
-            rgba = source.convert("RGBA")
-            colors = rgba.getcolors(maxcolors=width * height)
-        if colors != [(width * height, ATTACK_TEXTURE_COLOR)]:
-            fail(
-                f"{skin.name} AttackIndicator.tga is not the solid neutral "
-                "native tint source"
-            )
+        for texture_name, expected_colors in (
+                (ATTACK_RAIL_TEXTURE,
+                 [(128 * 32, ATTACK_TEXTURE_COLOR)]),
+                (ATTACK_PERIMETER_TEXTURE, ATTACK_PERIMETER_COLORS)):
+            texture_path = skin / texture_name
+            payload = texture_path.read_bytes()
+            if len(payload) < 18:
+                fail(f"{skin.name}/{texture_name} has no complete TGA header")
+            width = int.from_bytes(payload[12:14], "little")
+            height = int.from_bytes(payload[14:16], "little")
+            if ((width, height) != ATTACK_TEXTURE_SIZE
+                    or payload[2] != 10
+                    or payload[16] != 32
+                    or payload[17] & 0x0F != 8):
+                fail(
+                    f"{skin.name}/{texture_name} lost the 32-bit RLE "
+                    f"envelope (type={payload[2]}, size={width}x{height}, "
+                    f"depth={payload[16]}, descriptor={payload[17]})"
+                )
+            with Image.open(texture_path) as source:
+                colors = source.convert("RGBA").getcolors(
+                    maxcolors=width * height)
+            if isinstance(expected_colors, dict):
+                actual_colors = {
+                    color_value: count for count, color_value in (colors or [])
+                }
+                if actual_colors != expected_colors:
+                    fail(f"{skin.name}/{texture_name} lost perimeter alpha")
+            elif colors != expected_colors:
+                fail(f"{skin.name}/{texture_name} lost opaque white rail")
 
         for filename in PLAYER_WINDOW_FILES:
             path = skin / filename
@@ -227,15 +237,18 @@ def audit_attack_indicator_contract() -> None:
                 animation = item(root, "Ui2DAnimation", name)
                 frames = animation.findall("Frames")
                 if len(frames) != 1:
-                    fail(f"{label} {name} must have exactly one native frame")
+                    fail(f"{label} {name} must have one native frame")
                 frame = frames[0]
+                expected_texture = (ATTACK_PERIMETER_TEXTURE
+                                    if name == "A_AttackIndicatorFill"
+                                    else ATTACK_RAIL_TEXTURE)
                 if (child_text(animation, "Cycle") != "false"
-                        or child_text(frame, "Texture") != "AttackIndicator.tga"
+                        or child_text(frame, "Texture") != expected_texture
                         or dimensions_at(frame, "Size") != expected_size
                         or (child_int(frame, "Location/X"),
                             child_int(frame, "Location/Y")) != (0, 0)
                         or frame.find("Duration") is not None):
-                    fail(f"{label} {name} violates the native source contract")
+                    fail(f"{label} {name} violates the native flash contract")
 
             edge_nodes: dict[str, ET.Element] = {}
             for name, expected_offsets in ATTACK_GEOMETRY.items():
@@ -259,14 +272,19 @@ def audit_attack_indicator_contract() -> None:
                         or actual_anchors != ATTACK_ANCHORS[name]):
                     fail(
                         f"{label} {name} lost its native state binding or "
-                        f"8px edge geometry: {actual_offsets} {actual_anchors}"
+                        f"outer-seam geometry: {actual_offsets} {actual_anchors}"
                     )
 
             fill = item(root, "StaticAnimation", "A_AttackIndicatorAnimFill")
             if (child_text(fill, "ScreenID") != "A_AttackIndicatorAnimFill"
-                    or fill.find("Animation") is not None
-                    or fill.find("AutoDraw") is not None):
-                fail(f"{label} attack fill must remain an unbound placeholder")
+                    or child_text(fill, "Animation") != "A_AttackIndicatorFill"
+                    or child_text(fill, "AutoDraw") != "false"
+                    or child_text(fill, "AutoStretch") != "true"
+                    or tuple(child_int(fill, tag) for tag in (
+                        "TopAnchorOffset", "BottomAnchorOffset",
+                        "LeftAnchorOffset", "RightAnchorOffset",
+                    )) != (70, 6, 0, 0)):
+                fail(f"{label} attack fill lost its topmost perimeter binding")
 
             window = item(root, "Screen", "PlayerWindow")
             if dimensions(window) != (360, 193):
@@ -276,21 +294,44 @@ def audit_attack_indicator_contract() -> None:
             )
             if minimum != PLAYER_MIN_SIZE:
                 fail(f"{label} changed the safe minimum size: {minimum}")
-            pieces = [(piece.text or "").strip()
-                      for piece in window.findall("Pieces")]
+            root_pieces = [(piece.text or "").strip()
+                           for piece in window.findall("Pieces")]
             expected_pieces = [
                 f"A_AttackIndicatorAnim{edge}"
                 for edge in ("Top", "Bottom", "Left", "Right", "Fill")
             ]
-            player_subwindow_index = pieces.index("Screen:PlayerSubWindow")
-            compositor_slice = pieces[
-                player_subwindow_index + 1:player_subwindow_index + 6
-            ]
-            if (compositor_slice != expected_pieces
-                    or any(pieces.count(piece) != 1 for piece in expected_pieces)):
+            subwindow = item(root, "Screen", "PlayerSubWindow")
+            subwindow_pieces = [(piece.text or "").strip()
+                                for piece in subwindow.findall("Pieces")]
+            if (root_pieces[-5:] != expected_pieces
+                    or any(root_pieces.count(piece) != 1
+                           for piece in expected_pieces)
+                    or any(piece in subwindow_pieces
+                           for piece in expected_pieces)):
                 fail(
-                    f"{label} attack rails must be unique and immediately "
-                    "follow PlayerSubWindow in the native compositor slot"
+                    f"{label} attack controls must be unique direct "
+                    "PlayerWindow children in the final compositor slot"
+                )
+
+            subwindow_offsets = tuple(child_int(subwindow, tag) for tag in (
+                "TopAnchorOffset", "BottomAnchorOffset",
+                "LeftAnchorOffset", "RightAnchorOffset",
+            ))
+            if subwindow_offsets != (70, 9, 3, 3):
+                fail(
+                    f"{label} themed player frame can cover the native "
+                    f"attack perimeter: {subwindow_offsets}"
+                )
+
+            buff_window = item(root, "Screen", "PW_BuffWindow")
+            buff_offsets = (
+                child_int(buff_window, "TopAnchorOffset"),
+                child_int(buff_window, "BottomAnchorOffset"),
+            )
+            if buff_offsets != (0, 70):
+                fail(
+                    f"{label} buff strip can overlap the top attack rail: "
+                    f"{buff_offsets}"
                 )
 
             combat_state = item(root, "Button", "PW_CombatStateAnim")
@@ -304,15 +345,15 @@ def audit_attack_indicator_contract() -> None:
                 frame_width, frame_height = size
                 expected_rects = {
                     "A_AttackIndicatorAnimTop":
-                        (0, 70, frame_width, 70 + ATTACK_EDGE_WIDTH),
+                        (0, 67, frame_width, 70),
                     "A_AttackIndicatorAnimBottom":
-                        (0, frame_height - 2 - ATTACK_EDGE_WIDTH,
-                         frame_width, frame_height - 2),
+                        (0, frame_height - 9, frame_width,
+                         frame_height - 6),
                     "A_AttackIndicatorAnimLeft":
-                        (0, 70, ATTACK_EDGE_WIDTH, frame_height - 2),
+                        (0, 67, 3, frame_height - 6),
                     "A_AttackIndicatorAnimRight":
-                        (frame_width - ATTACK_EDGE_WIDTH, 70,
-                         frame_width, frame_height - 2),
+                        (frame_width - 3, 67, frame_width,
+                         frame_height - 6),
                 }
                 actual_rects = {
                     name: anchored_rect(node, frame_width, frame_height)
@@ -355,6 +396,15 @@ def audit_player_and_target() -> None:
     for path in shared_progression_paths:
         if child_text(exp, path) != child_text(alt_adv, path):
             fail(f"player EXP and AA horizontal rendering differs at {path}")
+    exp_height = (child_int(exp, "BottomAnchorOffset")
+                  - child_int(exp, "TopAnchorOffset"))
+    aa_height = (child_int(alt_adv, "BottomAnchorOffset")
+                 - child_int(alt_adv, "TopAnchorOffset"))
+    if (exp_height, aa_height) != (10, 11):
+        fail(
+            "player AA gauge must retain its one-pixel fractional-scale "
+            f"weight correction: EXP {exp_height}, AA {aa_height}"
+        )
     require_binding(player, "Gauge", "PW_Castspell_Gauge", "PW_Castspell_Gauge", 7)
     require_binding(player, "Label", "Player_ManaLabel", "ManaLabel", 1009)
     require_binding(player, "Label", "PW_MPNumbers", "PW_MPNumbers", 128)
@@ -1286,7 +1336,7 @@ def main() -> int:
     print("Combat Command Center audit: ALL PASS")
     print("  Player/Target/ToT | Group 1..11 | XTarget 0..22 | Raid groups 1..12")
     print("  buffs 30 | songs 15 | spell gems 14 | hotbars 11 x 12 | stance + invocation")
-    print("  52 compatibility aliases + 14 native 8px attack perimeters + spell ledger")
+    print("  52 compatibility aliases + 14 foreground native attack perimeters + spell ledger")
     print("  contrast AAA/AA | July stock parity " + ("PASS" if stock_checked else "not available"))
     return 0
 
