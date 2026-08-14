@@ -1,7 +1,7 @@
 import sys
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -212,10 +212,13 @@ class DesktopWorkerTests(unittest.TestCase):
             # after both are dead, so a shared slot would credit both with
             # whichever fight and zone happened to be current at the end.
             kills = {kill.target: kill for kill in engine.weekly._kills}
-            self.assertEqual(kills["Lord Nagafen"].killed_at,
-                             "2026-08-08T00:00:01Z")
-            self.assertEqual(kills["Lady Vox"].killed_at,
-                             "2026-08-08T00:10:01Z")
+            # Asserted as the interval between the two kills rather than two
+            # absolute stamps: the log lines carry no zone, so the stored UTC
+            # instant depends on the timezone of whatever machine runs this.
+            stamps = {target: datetime.fromisoformat(kill.killed_at)
+                      for target, kill in kills.items()}
+            self.assertEqual(stamps["Lady Vox"] - stamps["Lord Nagafen"],
+                             timedelta(minutes=10))
             self.assertIn("Lord Nagafen", kills["Lord Nagafen"].evidence)
             self.assertIn("Lady Vox", kills["Lady Vox"].evidence)
             self.assertTrue(recorded["Lady Vox"][3])
