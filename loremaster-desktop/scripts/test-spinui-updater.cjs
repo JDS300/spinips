@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const { createHash } = require("node:crypto");
 const { existsSync, readFileSync } = require("node:fs");
-const { mkdir, mkdtemp, readFile, rm, writeFile } = require("node:fs/promises");
+const { mkdir, mkdtemp, readFile, realpath, rm, writeFile } = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 
@@ -153,8 +153,11 @@ async function main() {
     await mkdir(path.dirname(logFile), { recursive: true });
     await writeFile(path.join(eqRoot, "eqgame.exe"), "MZfixture");
     await writeFile(logFile, "log fixture");
-    assert.equal(await deriveEverQuestRoot(logFile), eqRoot);
-    assert.equal(await deriveEverQuestRoot(path.join(uiFiles, "spinui_reloaded")), eqRoot);
+    // Windows runners may expose os.tmpdir() through an 8.3 alias (RUNNER~1),
+    // while deriveEverQuestRoot intentionally returns the canonical long path.
+    const canonicalEqRoot = await realpath(eqRoot);
+    assert.equal(await deriveEverQuestRoot(logFile), canonicalEqRoot);
+    assert.equal(await deriveEverQuestRoot(path.join(uiFiles, "spinui_reloaded")), canonicalEqRoot);
 
     const fixture = makeFixtureRelease();
     const oldReloaded = path.join(uiFiles, "spinui_reloaded");
