@@ -5,8 +5,8 @@ import { mkdir, open, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { once } from "node:events";
 
-const RELEASE_API = "https://api.github.com/repos/itsspin/spinips/releases/latest";
-const RELEASE_PAGE = "https://github.com/itsspin/spinips/releases/latest";
+const RELEASE_API = "https://api.github.com/repos/JDS300/spinips/releases/latest";
+const RELEASE_PAGE = "https://github.com/JDS300/spinips/releases/latest";
 const LOREMASTER_ASSET = "Loremaster.exe";
 const CHECKSUM_ASSET = "SHA256SUMS.txt";
 const MAX_RELEASE_BYTES = 2 * 1024 * 1024;

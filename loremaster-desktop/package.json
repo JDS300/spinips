@@ -69,7 +69,7 @@
       "publish": [
         {
           "provider": "github",
-          "owner": "itsspin",
+          "owner": "JDS300",
           "repo": "spinips"
         }
       ],
