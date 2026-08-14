@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { existsSync, mkdirSync, readFileSync, writeFileSync } = require("node:fs");
+const { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
 const { mkdtemp, rm } = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
@@ -199,6 +199,50 @@ async function testStalePartialDoesNotBlockRetry() {
   console.log("  a stale partial does not block or corrupt a retry: PASS");
 }
 
+async function testMidCopyFailureLeavesNoMarkerAndRetriesCleanly() {
+  await withTempDir(async (dir) => {
+    const userDataDir = path.join(dir, "userdata");
+    const backupRoot = path.join(dir, "backups");
+    const version = "0.4.0-rc.1";
+    mkdirSync(userDataDir, { recursive: true });
+    // File 1 of 4 (RC_BACKUP_FILES order): copies fine.
+    writeFileSync(path.join(userDataDir, "desktop-settings.json"), '{"live":true}');
+    // File 2 of 4: a directory in place of the expected file. copyFileSync
+    // throws EISDIR on it, so the failure happens genuinely mid-copy, after
+    // one file has already landed in the staging directory.
+    mkdirSync(path.join(userDataDir, "update-center.json"), { recursive: true });
+
+    const result = backupBeforeReleaseCandidate({ version, userDataDir, backupRoot });
+
+    assert.equal(result.status, "failed");
+    assert.equal(
+      existsSync(path.join(backupRoot, version)),
+      false,
+      "a mid-copy failure must not leave the marker directory behind, even though one file copied",
+    );
+
+    // Repair the source and retry: the failed attempt must not be a
+    // permanent lockout.
+    rmSync(path.join(userDataDir, "update-center.json"), { recursive: true, force: true });
+    writeFileSync(path.join(userDataDir, "update-center.json"), '{"seen":1}');
+
+    const retry = backupBeforeReleaseCandidate({ version, userDataDir, backupRoot });
+
+    assert.equal(retry.status, "created");
+    assert.equal(retry.directory, path.join(backupRoot, version));
+    assert.deepEqual(retry.files, ["desktop-settings.json", "update-center.json"]);
+    assert.equal(
+      readFileSync(path.join(retry.directory, "desktop-settings.json"), "utf8"),
+      '{"live":true}',
+    );
+    assert.equal(
+      readFileSync(path.join(retry.directory, "update-center.json"), "utf8"),
+      '{"seen":1}',
+    );
+  });
+  console.log("  a mid-copy failure leaves no marker and retries cleanly: PASS");
+}
+
 async function testBackupFileListIsTheStateFiles() {
   assert.deepEqual([...RC_BACKUP_FILES], [
     "desktop-settings.json",
@@ -219,6 +263,7 @@ async function main() {
   await testEachCandidateGetsItsOwnSnapshot();
   await testFailureNeverThrows();
   await testStalePartialDoesNotBlockRetry();
+  await testMidCopyFailureLeavesNoMarkerAndRetriesCleanly();
   console.log("rc backup: ALL PASS");
 }
 
