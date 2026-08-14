@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type {
+  CombatAbilityCategory,
   CombatActorRole,
   CombatHealingMetricView,
   CombatMetricView,
@@ -7,8 +8,10 @@ import type {
   EncounterView,
   EngineHealth,
   EngineSnapshotEvent,
+  JournalEncounterView,
   WeeklyProgressView,
 } from "./protocol";
+import { abilityCategoryLabel, abilityIdentityStyle, actorIdentityStyle, normalizeAbilityCategory } from "./visualIdentity";
 
 type EncounterFilter = "all" | "boss" | "kills" | "live";
 type EncounterSort = "newest" | "dps" | "damage" | "duration";
@@ -27,6 +30,11 @@ interface AnalysisRow {
   average: number;
   maximum: number;
   overheal: number;
+  category: CombatAbilityCategory;
+}
+
+interface ArchiveEncounter extends EncounterView {
+  durableSummary: boolean;
 }
 
 interface CombatArchiveProps {
@@ -34,6 +42,7 @@ interface CombatArchiveProps {
   health: EngineHealth;
   weekly?: WeeklyProgressView;
   onHud: () => void;
+  onSpoils: () => void;
   onSeed: () => void;
   onMinimize: () => void;
   onClose: () => void;
@@ -77,15 +86,55 @@ function normalizeName(value: string): string {
   return value.toLocaleLowerCase().replace(/[’'`_-]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function timestampKey(value: string): string {
+  const timestamp = new Date(value).valueOf();
+  return Number.isNaN(timestamp) ? value.trim() : String(timestamp);
+}
+
+function journalEncounterView(row: JournalEncounterView): ArchiveEncounter {
+  return {
+    encounterId: row.encounterId,
+    name: row.name,
+    active: false,
+    startedAt: row.startedAt,
+    endedAt: row.endedAt,
+    seconds: row.seconds,
+    damage: row.damage,
+    dps: row.dps,
+    personalDamage: row.damage,
+    charmedPetDamage: 0,
+    summonedPetDamage: 0,
+    damageTaken: 0,
+    healingDone: 0,
+    healsReceived: 0,
+    kills: row.kills,
+    crits: 0,
+    misses: 0,
+    sources: [],
+    targets: [],
+    actors: [],
+    healingSources: [],
+    timeline: [],
+    durableSummary: true,
+    summaryOnly: true,
+    zone: row.zone,
+    raidTier: row.raidTier,
+    raidMode: row.raidMode,
+  };
+}
+
 function metricTotals(rows: readonly CombatMetricView[]): CombatMetricView[] {
   const totals = new Map<string, CombatMetricView>();
   for (const row of rows) {
-    const current = totals.get(row.name) ?? { name: row.name, total: 0, hits: 0, maximum: 0 };
+    const current = totals.get(row.name) ?? { name: row.name, total: 0, hits: 0, maximum: 0, category: row.category };
+    const currentCategory = normalizeAbilityCategory(current.category, row.name);
+    const incomingCategory = normalizeAbilityCategory(row.category, row.name);
     totals.set(row.name, {
       name: row.name,
       total: current.total + row.total,
       hits: current.hits + row.hits,
       maximum: Math.max(current.maximum, row.maximum),
+      category: currentCategory === "unknown" ? incomingCategory : currentCategory,
     });
   }
   return [...totals.values()].sort((left, right) => right.total - left.total || left.name.localeCompare(right.name));
@@ -106,7 +155,7 @@ function healingTotals(rows: readonly CombatHealingMetricView[]): CombatHealingM
   return [...totals.values()].sort((left, right) => right.total - left.total || left.name.localeCompare(right.name));
 }
 
-function combineEncounters(encounters: readonly EncounterView[]): EncounterView {
+function combineEncounters(encounters: readonly EncounterView[]): ArchiveEncounter {
   const seconds = encounters.reduce((sum, row) => sum + row.seconds, 0);
   const starts = encounters.map((row) => row.startedAt).filter(Boolean).sort();
   const ends = encounters.map((row) => row.endedAt).filter(Boolean).sort();
@@ -154,6 +203,7 @@ function combineEncounters(encounters: readonly EncounterView[]): EncounterView 
     actors: [...actors.values()].sort((left, right) => right.encounterDamage - left.encounterDamage),
     healingSources: healingTotals(encounters.flatMap((row) => row.healingSources)),
     timeline: [],
+    durableSummary: false,
   };
 }
 
@@ -169,12 +219,14 @@ function rowsFor(tab: DetailTab, encounter: EncounterView, actorFilter: ActorFil
       hits: row.encounterHits,
       average: row.encounterHits > 0 ? row.encounterDamage / row.encounterHits : 0,
       maximum: row.encounterMaximum, overheal: 0,
+      category: "unknown",
     }));
   if (tab === "healing") return encounter.healingSources.map((row) => ({
     name: row.name, role: "HEAL", total: row.total, dps: row.total / seconds,
     share: denominator > 0 ? row.total / denominator * 100 : 0,
     hits: row.hits, average: row.hits > 0 ? row.total / row.hits : 0,
     maximum: row.maximum, overheal: row.overheal,
+    category: "healing",
   }));
   const metrics = tab === "targets" ? encounter.targets : encounter.sources;
   return metrics.map((row) => ({
@@ -183,6 +235,7 @@ function rowsFor(tab: DetailTab, encounter: EncounterView, actorFilter: ActorFil
     share: denominator > 0 ? row.total / denominator * 100 : 0,
     hits: row.hits, average: row.hits > 0 ? row.total / row.hits : 0,
     maximum: row.maximum, overheal: 0,
+    category: tab === "targets" ? "unknown" : normalizeAbilityCategory(row.category, row.name),
   }));
 }
 
@@ -231,13 +284,21 @@ function TimelineChart({ points, seconds }: { points: readonly EncounterTimeline
   </section>;
 }
 
-export function CombatArchive({ event, health, weekly, onHud, onSeed, onMinimize, onClose }: CombatArchiveProps) {
-  const encounters = event.snapshot.encounters ?? [];
+export function CombatArchive({ event, health, weekly, onHud, onSpoils, onSeed, onMinimize, onClose }: CombatArchiveProps) {
+  const encounters = useMemo<ArchiveEncounter[]>(() => {
+    const session = (event.snapshot.encounters ?? []).map((row) => ({ ...row, durableSummary: Boolean(row.summaryOnly) }));
+    const sessionIds = new Set(session.map((row) => row.encounterId).filter(Boolean));
+    const sessionStarts = new Set(session.map((row) => timestampKey(row.startedAt)).filter(Boolean));
+    const durable = (event.snapshot.journalEncounters ?? [])
+      .filter((row) => !sessionIds.has(row.encounterId) && !sessionStarts.has(timestampKey(row.startedAt)))
+      .map(journalEncounterView);
+    return [...session, ...durable];
+  }, [event.snapshot.encounters, event.snapshot.journalEncounters]);
   const [filter, setFilter] = useState<EncounterFilter>("all");
   const [sort, setSort] = useState<EncounterSort>("newest");
   const [query, setQuery] = useState("");
   const [detailQuery, setDetailQuery] = useState("");
-  const [selectedId, setSelectedId] = useState(encounters.at(-1)?.encounterId ?? "");
+  const [selectedId, setSelectedId] = useState(event.snapshot.encounters?.at(-1)?.encounterId ?? encounters[0]?.encounterId ?? "");
   const [scope, setScope] = useState<AnalysisScope>("selected");
   const [tab, setTab] = useState<DetailTab>("actors");
   const [detailSort, setDetailSort] = useState<DetailSort>("damage");
@@ -268,7 +329,12 @@ export function CombatArchive({ event, health, weekly, onHud, onSeed, onMinimize
   }, [filtered, selectedId]);
 
   const selected = filtered.find((row) => row.encounterId === selectedId) ?? filtered[0];
-  const analyzed = scope === "combined" && filtered.length > 0 ? combineEncounters(filtered) : selected;
+  const detailedFiltered = filtered.filter((row) => !row.durableSummary);
+  const analyzed = scope === "combined" && detailedFiltered.length > 0 ? combineEncounters(detailedFiltered) : selected;
+  const summaryOnly = Boolean(analyzed?.summaryOnly || analyzed?.durableSummary);
+  useEffect(() => {
+    if (scope === "combined" && detailedFiltered.length < 2) setScope("selected");
+  }, [scope, detailedFiltered.length]);
   const tableRows = useMemo(() => {
     if (!analyzed || tab === "timeline") return [];
     const needle = normalizeName(detailQuery);
@@ -301,66 +367,71 @@ export function CombatArchive({ event, health, weekly, onHud, onSeed, onMinimize
       <img src="./loremaster-cog.png" alt="" />
       <div><small>LOREMASTER · COMBAT ARCHIVE</small><h1>FULL BREAKDOWN</h1></div>
       <span className={`archive-health ${health.state}`}><i /> {health.state.toUpperCase()} · {event.snapshot.character.name}</span>
-      <nav><button onClick={onHud}>HUD</button><button onClick={onSeed}>SEED</button><button onClick={onMinimize}>—</button><button onClick={onClose}>×</button></nav>
+      <nav aria-label="Combat Archive window controls"><button type="button" onClick={onSpoils}>SPOILS</button><button type="button" onClick={onHud}>HUD</button><button type="button" onClick={onSeed}>SEED</button><button type="button" onClick={onMinimize} aria-label="Minimize Loremaster">—</button><button type="button" onClick={onClose} aria-label="Close Loremaster">×</button></nav>
     </header>
 
     <section className="archive-layout">
       <aside className="archive-fights">
         <header><div><small>ENCOUNTER INDEX</small><b>{filtered.length} / {encounters.length} SHOWN</b></div><span>{event.snapshot.character.zone || "UNKNOWN ZONE"}</span></header>
         <div className="archive-filter-pills">
-          {(["all", "boss", "kills", "live"] as EncounterFilter[]).map((value) => <button className={filter === value ? "active" : ""} key={value} onClick={() => setFilter(value)}>{value === "boss" ? "BOSSES" : value.toUpperCase()}</button>)}
+          {(["all", "boss", "kills", "live"] as EncounterFilter[]).map((value) => <button type="button" className={filter === value ? "active" : ""} aria-pressed={filter === value} key={value} onClick={() => setFilter(value)}>{value === "boss" ? "BOSSES" : value.toUpperCase()}</button>)}
         </div>
         <div className="archive-search"><input aria-label="Search encounters" placeholder="Search fights…" value={query} onChange={(change) => setQuery(change.target.value)} /><select aria-label="Sort encounters" value={sort} onChange={(change) => setSort(change.target.value as EncounterSort)}><option value="newest">NEWEST</option><option value="dps">HIGHEST DPS</option><option value="damage">MOST DAMAGE</option><option value="duration">LONGEST</option></select></div>
-        <div className="archive-fight-list">
-          {filtered.map((encounter) => <button className={`${selected?.encounterId === encounter.encounterId ? "selected" : ""} ${encounter.active ? "live" : ""}`} key={encounter.encounterId} onClick={() => { setSelectedId(encounter.encounterId); setScope("selected"); }}>
-            <span><small>{encounterStamp(encounter.startedAt)}{isBoss(encounter) ? " · BOSS" : encounter.kills > 0 ? " · CLEAR" : ""}</small><b>{encounter.name}</b></span>
+        <div className="archive-fight-list" role="list" aria-label="Encounter history">
+          {filtered.map((encounter) => <div role="listitem" key={encounter.encounterId}><button type="button" aria-pressed={selected?.encounterId === encounter.encounterId} className={`${selected?.encounterId === encounter.encounterId ? "selected" : ""} ${encounter.active ? "live" : ""} ${encounter.durableSummary ? "durable" : ""}`} onClick={() => { setSelectedId(encounter.encounterId); setScope("selected"); }}>
+            <span><small>{encounterStamp(encounter.startedAt)}{encounter.durableSummary ? " · JOURNAL" : isBoss(encounter) ? " · BOSS" : encounter.kills > 0 ? " · CLEAR" : ""}</small><b>{encounter.name}</b></span>
             <strong>{compactNumber(encounter.dps)}<small>DPS</small></strong>
             <footer><span>{compactNumber(encounter.damage)} dmg</span><span>{clock(encounter.seconds)}</span></footer>
-          </button>)}
+          </button></div>)}
           {filtered.length === 0 && <p>No encounters match these filters.</p>}
         </div>
       </aside>
 
       <section className="archive-report">
         <header className="archive-report-head">
-          <div><small>{scope === "combined" ? "FILTERED SET" : analyzed.active ? "LIVE ENCOUNTER" : "SELECTED ENCOUNTER"}</small><h2>{analyzed.name}</h2><p>{scope === "combined" ? `${filtered.length} fights · active filters applied` : `${encounterStamp(analyzed.startedAt)} · ${isBoss(analyzed) ? "tracked raid boss" : analyzed.kills > 0 ? `${analyzed.kills} confirmed kill${analyzed.kills === 1 ? "" : "s"}` : "combat ended without a logged kill"}`}</p></div>
-          <div className="archive-scope"><button className={scope === "selected" ? "active" : ""} onClick={() => setScope("selected")}>ONE FIGHT</button><button className={scope === "combined" ? "active" : ""} disabled={filtered.length < 2} onClick={() => setScope("combined")}>COMBINE FILTERED</button></div>
+          <div><small>{scope === "combined" ? "FILTERED SESSION SET" : summaryOnly ? "DURABLE ENCOUNTER SUMMARY" : analyzed.active ? "LIVE ENCOUNTER" : "SELECTED ENCOUNTER"}</small><h2>{analyzed.name}</h2><p>{scope === "combined" ? `${detailedFiltered.length} detailed fights · active filters applied` : summaryOnly ? `${encounterStamp(analyzed.startedAt)} · ${selected?.zone || "unknown zone"}${selected?.raidTier == null ? "" : ` · D${selected.raidTier}${selected.raidMode ? ` ${selected.raidMode}` : ""}`} · summary only` : `${encounterStamp(analyzed.startedAt)} · ${isBoss(analyzed) ? "tracked raid boss" : analyzed.kills > 0 ? `${analyzed.kills} confirmed kill${analyzed.kills === 1 ? "" : "s"}` : "combat ended without a logged kill"}`}</p></div>
+          <div className="archive-scope"><button type="button" className={scope === "selected" ? "active" : ""} aria-pressed={scope === "selected"} onClick={() => setScope("selected")}>ONE FIGHT</button><button type="button" className={scope === "combined" ? "active" : ""} aria-pressed={scope === "combined"} disabled={detailedFiltered.length < 2} onClick={() => setScope("combined")}>COMBINE SESSION</button></div>
         </header>
 
-        <div className="archive-kpis">
+        <div className={`archive-kpis ${summaryOnly ? "durable" : ""}`}>
           <article className="primary"><small>DPS</small><b>{compactNumber(analyzed.dps)}</b><span>{scope === "combined" ? "weighted active time" : "encounter output"}</span></article>
           <article><small>DAMAGE</small><b>{compactNumber(analyzed.damage)}</b><span>{analyzed.kills} kill{analyzed.kills === 1 ? "" : "s"}</span></article>
-          <article><small>DURATION</small><b>{clock(analyzed.seconds)}</b><span>{scope === "combined" ? `${filtered.length} encounters` : analyzed.active ? "still active" : "final"}</span></article>
-          <article><small>INCOMING</small><b>{compactNumber(analyzed.damageTaken)}</b><span>{compactNumber(pressure)}/s</span></article>
-          <article><small>HEALING</small><b>{compactNumber(analyzed.healingDone)}</b><span>{compactNumber(analyzed.healsReceived)} received</span></article>
-          <article><small>ACCURACY</small><b>{accuracy.toFixed(1)}%</b><span>{critRate.toFixed(1)}% crit · {analyzed.misses} miss</span></article>
+          <article><small>DURATION</small><b>{clock(analyzed.seconds)}</b><span>{scope === "combined" ? `${detailedFiltered.length} encounters` : analyzed.active ? "still active" : "final"}</span></article>
+          {summaryOnly ? <article><small>CONFIRMED KILLS</small><b>{analyzed.kills}</b><span>durable log evidence</span></article> : <>
+            <article><small>INCOMING</small><b>{compactNumber(analyzed.damageTaken)}</b><span>{compactNumber(pressure)}/s</span></article>
+            <article><small>HEALING</small><b>{compactNumber(analyzed.healingDone)}</b><span>{compactNumber(analyzed.healsReceived)} received</span></article>
+            <article><small>ACCURACY</small><b>{accuracy.toFixed(1)}%</b><span>{critRate.toFixed(1)}% crit · {analyzed.misses} miss</span></article>
+          </>}
         </div>
 
-        <section className="archive-contribution">
+        {!summaryOnly && <section className="archive-contribution">
           <header><span><small>ATTRIBUTION</small><b>SELF + PET CONTRIBUTION</b></span><strong>{petShare.toFixed(1)}% PET SHARE</strong></header>
           <div className="archive-share-track" aria-label={`Self ${selfShare.toFixed(1)} percent, charmed pet ${charmedShare.toFixed(1)} percent, summoned pet ${summonedShare.toFixed(1)} percent`}><i className="self" style={{ width: `${selfShare}%` }} /><i className="charmed" style={{ width: `${charmedShare}%` }} /><i className="summoned" style={{ width: `${summonedShare}%` }} /></div>
           <footer><span><i className="self" /> SELF <b>{compactNumber(analyzed.personalDamage)}</b></span><span><i className="charmed" /> CHARMED <b>{compactNumber(analyzed.charmedPetDamage)}</b></span><span><i className="summoned" /> SUMMONED <b>{compactNumber(analyzed.summonedPetDamage)}</b></span></footer>
-        </section>
+        </section>}
 
         <section className="archive-history">
           <header><span><small>FIGHT PULSE</small><b>DPS ACROSS CURRENT FILTER</b></span><strong>PEAK {compactNumber(maxHistoryDps)}</strong></header>
-          <div>{filtered.slice(0, 36).reverse().map((encounter) => <button key={encounter.encounterId} title={`${encounter.name} · ${compactNumber(encounter.dps)} DPS`} className={encounter.encounterId === selected?.encounterId ? "selected" : ""} style={{ height: `${Math.max(6, encounter.dps / maxHistoryDps * 100)}%` }} onClick={() => { setSelectedId(encounter.encounterId); setScope("selected"); }} />)}</div>
+          <div>{filtered.slice(0, 36).reverse().map((encounter) => <button type="button" key={encounter.encounterId} aria-label={`Select ${encounter.name}, ${compactNumber(encounter.dps)} DPS${encounter.durableSummary ? ", durable summary" : ""}`} title={`${encounter.name} · ${compactNumber(encounter.dps)} DPS`} className={encounter.encounterId === selected?.encounterId ? "selected" : ""} style={{ height: `${Math.max(6, encounter.dps / maxHistoryDps * 100)}%` }} onClick={() => { setSelectedId(encounter.encounterId); setScope("selected"); }} />)}</div>
         </section>
 
-        <nav className="archive-tabs">
-          {(["actors", "abilities", "targets", "healing", "timeline"] as DetailTab[]).map((value) => <button className={tab === value ? "active" : ""} key={value} onClick={() => setTab(value)}>{value.toUpperCase()}<small>{value === "actors" ? analyzed.actors.length : value === "abilities" ? analyzed.sources.length : value === "targets" ? analyzed.targets.length : value === "healing" ? analyzed.healingSources.length : analyzed.timeline.length}</small></button>)}
-        </nav>
+        {!summaryOnly && <nav className="archive-tabs" role="tablist" aria-label="Encounter breakdown">
+          {(["actors", "abilities", "targets", "healing", "timeline"] as DetailTab[]).map((value) => <button type="button" role="tab" aria-selected={tab === value} className={tab === value ? "active" : ""} key={value} onClick={() => setTab(value)}>{value.toUpperCase()}<small>{value === "actors" ? analyzed.actors.length : value === "abilities" ? analyzed.sources.length : value === "targets" ? analyzed.targets.length : value === "healing" ? analyzed.healingSources.length : analyzed.timeline.length}</small></button>)}
+        </nav>}
 
-        {tab === "timeline" ? <TimelineChart points={analyzed.timeline} seconds={analyzed.seconds} /> : <section className="archive-detail-grid">
+        {summaryOnly ? <section className="archive-durable-note" role="note"><span aria-hidden="true">◇</span><div><small>DURABLE SUMMARY</small><b>THE ENCOUNTER SURVIVED THE SESSION</b><p>Loremaster preserved the fight total, duration, kill count, zone, and raid context. Per-actor, ability, healing, target, and timeline rows were not stored for this older session, so no detail is inferred.</p></div></section> : tab === "timeline" ? <TimelineChart points={analyzed.timeline} seconds={analyzed.seconds} /> : <section className="archive-detail-grid">
           <div className="archive-table-wrap">
             <header className="archive-table-tools"><input aria-label="Search breakdown rows" placeholder={`Search ${tab}…`} value={detailQuery} onChange={(change) => setDetailQuery(change.target.value)} />{tab === "actors" && <select aria-label="Actor role" value={actorFilter} onChange={(change) => setActorFilter(change.target.value as ActorFilter)}><option value="all">ALL ROLES</option><option value="self">SELF</option><option value="charmed">CHARMED</option><option value="summoned">SUMMONED</option><option value="group">GROUP</option><option value="observed">OBSERVED</option></select>}<span>{tableRows.length} ROWS</span></header>
             <div className="archive-table">
-              <header><span>NAME / ROLE</span>{(["damage", "dps", "share", "hits", "average", "maximum"] as DetailSort[]).map((value) => <button className={detailSort === value ? "active" : ""} key={value} onClick={() => setDetailSort(value)}>{tab === "healing" && value === "damage" ? "HEAL" : tab === "healing" && value === "dps" ? "HPS" : value === "maximum" ? "MAX" : value === "average" ? "AVG" : value.toUpperCase()}</button>)}</header>
-              {tableRows.slice(0, 50).map((row) => <article key={`${row.role}-${row.name}`}>
+              <header><span>NAME / ROLE</span>{(["damage", "dps", "share", "hits", "average", "maximum"] as DetailSort[]).map((value) => <button type="button" aria-pressed={detailSort === value} className={detailSort === value ? "active" : ""} key={value} onClick={() => setDetailSort(value)}>{tab === "healing" && value === "damage" ? "HEAL" : tab === "healing" && value === "dps" ? "HPS" : value === "maximum" ? "MAX" : value === "average" ? "AVG" : value.toUpperCase()}</button>)}</header>
+              {tableRows.slice(0, 50).map((row) => {
+                const identityStyle = tab === "actors" ? actorIdentityStyle(row.name) : abilityIdentityStyle(row.category);
+                const categoryLabel = tab === "abilities" ? abilityCategoryLabel(row.category) : "";
+                return <article className={tab === "actors" ? "actor-identity-row" : tab === "abilities" || tab === "healing" ? "ability-identity-row" : ""} style={identityStyle} key={`${row.role}-${row.name}`}>
                 <i style={{ transform: `scaleX(${row.total / maxRowTotal})` }} />
-                <span><b>{row.name}</b><small>{row.role}{row.overheal > 0 ? ` · ${compactNumber(row.overheal)} OVER` : ""}</small></span>
+                <span><b>{(tab === "actors" || tab === "abilities" || tab === "healing") && <i className="archive-row-swatch" aria-hidden="true" />}{row.name}</b><small>{row.role}{categoryLabel ? ` · ${categoryLabel}` : ""}{row.overheal > 0 ? ` · ${compactNumber(row.overheal)} OVER` : ""}</small></span>
                 <strong>{compactNumber(row.total)}</strong><strong>{compactNumber(row.dps)}</strong><strong>{row.share.toFixed(1)}%</strong><strong>{row.hits || "—"}</strong><strong>{row.hits ? compactNumber(row.average) : "—"}</strong><strong>{row.maximum ? compactNumber(row.maximum) : "—"}</strong>
-              </article>)}
+              </article>})}
               {tableRows.length === 0 && <p>No evidence rows are available for this category.</p>}
             </div>
           </div>

@@ -114,6 +114,10 @@ Loremaster turns the text log EverQuest already writes into a live **Adventurer'
 | Capability | What Loremaster does |
 |---|---|
 | **Encounter Lab** | Encounter, Session, and Records views with multi-enemy pulls plus actor, ability, healing, target, and a timeline grouped into two-second buckets. |
+| **Durable Combat Archive** | Preserves encounter totals, duration, kills, zone, and raid context across restarts, while clearly labeling older summary-only records instead of fabricating actor or timeline detail. |
+| **Automatic raid context** | Reads the logged Solo/Group instance suffix and D0–D4 label, then attaches exact zone, tier, mode, timestamp, and kill evidence to the weekly clear. Manual confirmation remains only for genuinely unknown tiers. |
+| **Spoils Chronicle** | Stores and searches observed loot across restarts, including stacks, storage, currency, auto-sales, merges, and ranked upgrades; filters by item, source, zone, owner, and raid tier. |
+| **Item intelligence** | Shows optional cached EQL Wiki stats, drops, quests, and notes beside the original loot evidence. Network lookup can be disabled without losing the local ledger or cached cards. |
 | **Adventure ledger** | XP/hour, time to level, kills, loot, all ten mote grades, coin and plat/hour, factions, skills, zones, and a bounded death recap. |
 | **Pets and charms** | Credits summoned pets and conservatively claimed charmed creatures; same-name charm totals are included but clearly labeled as estimates when the text log cannot distinguish actor IDs. |
 | **Optional DPS attribution** | Keeps total personal DPS unchanged while optionally exposing separate Self, Charmed pet, and Summoned pet damage/DPS rows for both the current encounter and session. |
@@ -124,6 +128,7 @@ Loremaster turns the text log EverQuest already writes into a live **Adventurer'
 | **Alerts** | Opt-in banners and sound for tells, summons, deaths, charm breaks, big hits, name calls, and fight completion. Compact banners stay beside the Rune Seed with edge-safe Auto, Right, Left, Above, and Below placement choices. |
 | **Character continuity** | Follows standard `eqlog_*.txt` activity and supports manual log-folder selection. Packaged builds store selected records and settings under `%LOCALAPPDATA%\SpinsLoremaster`; source runs keep state beside `loremaster.py`. |
 | **Two native themes** | Vellum & Ember and Midnight Frost Glass are selectable in Settings so Loremaster can visually belong to either SpinUI skin. |
+| **One-click verified updates** | The Settings Update Center shows the installed Loremaster version, verifies new portable builds before a rollback-safe restart, and can check, install, or repair Reloaded and Glass independently without touching EQ logs, character layouts, other skins, or the durable combat and loot journal. |
 
 ### Charm intelligence that respects the log
 
@@ -382,10 +387,19 @@ Its first **BiS Gear Path** milestone imports the version-1 JSON produced by [EQ
 cd loremaster-desktop
 pnpm install --frozen-lockfile
 pnpm test:fixtures
+pnpm test:updates
+pnpm test:skin-updates
 pnpm build
 ```
 
 Every UI release builds and publishes the portable Electron `Loremaster.exe` with its hidden parser engine. No installer or parallel legacy executable is produced. See the [live milestone and validation gates](docs/LOREMASTER_MILESTONE_2.md).
+
+Loremaster's **Settings → SpinUI Update Center** can check the official release,
+download and verify the portable app, then replace and relaunch it with automatic
+rollback if the new renderer or parser does not become healthy. Reloaded and
+Glass are verified from the same release and updated as exact, isolated skin
+trees only after EverQuest closes. Updates preserve Loremaster preferences and
+history, EQ logs, character UI INIs, and every unrelated skin.
 
 ## Customizing and developing
 

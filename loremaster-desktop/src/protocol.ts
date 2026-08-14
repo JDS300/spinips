@@ -37,7 +37,18 @@ export interface CombatMetricView {
   total: number;
   hits: number;
   maximum: number;
+  category?: CombatAbilityCategory;
 }
+
+export type CombatAbilityCategory =
+  | "melee"
+  | "spell"
+  | "dot"
+  | "proc"
+  | "damage_shield"
+  | "pet"
+  | "healing"
+  | "unknown";
 
 export interface CombatHealingMetricView extends CombatMetricView {
   overheal: number;
@@ -95,6 +106,77 @@ export interface EncounterView {
   actors: readonly CombatActorView[];
   healingSources: readonly CombatHealingMetricView[];
   timeline: readonly EncounterTimelinePointView[];
+  zone?: string;
+  raidTier?: number | null;
+  raidMode?: string;
+  summaryOnly?: boolean;
+}
+
+export interface LootItemInfoView {
+  title: string;
+  stats: readonly string[];
+  notes: readonly string[];
+  sections: Readonly<Record<string, readonly string[]>>;
+  url: string;
+  freshness: string;
+}
+
+export interface ItemLookupView extends LootItemInfoView {
+  status: "ready" | "not-found" | "offline" | "error";
+  requestedName: string;
+  detail: string;
+}
+
+export interface LootEventView {
+  eventId: string;
+  occurredAt: string;
+  item: string;
+  itemKey: string;
+  quantity: number;
+  looter: string;
+  source: string;
+  zone: string;
+  character: string;
+  server: string;
+  encounterId: string;
+  acquisitionType: string;
+  raidTier: number | null;
+  raidMode: string;
+  itemInfo?: LootItemInfoView | null;
+}
+
+export type LootQueryScope = "all" | "mine" | "others" | "known";
+
+export interface LootQueryRequest {
+  query?: string;
+  zone?: string;
+  raidTier?: number | "open" | "all";
+  scope?: LootQueryScope;
+  offset?: number;
+  limit?: number;
+}
+
+export interface LootQueryResult {
+  rows: readonly LootEventView[];
+  total: number;
+  offset: number;
+  hasMore: boolean;
+}
+
+export interface JournalEncounterView {
+  encounterId: string;
+  startedAt: string;
+  endedAt: string;
+  name: string;
+  zone: string;
+  character: string;
+  server: string;
+  raidTier: number | null;
+  raidMode: string;
+  seconds: number;
+  damage: number;
+  dps: number;
+  kills: number;
 }
 
 export interface ControlTimerView {
@@ -125,6 +207,11 @@ export interface EngineSnapshot {
   combat: CombatView;
   breakdown: CombatBreakdownView;
   encounters?: readonly EncounterView[];
+  loot?: readonly LootEventView[];
+  lootEventCount?: number;
+  lootTotalCount?: number;
+  lootUniqueCount?: number;
+  journalEncounters?: readonly JournalEncounterView[];
   controls: readonly ControlTimerView[];
   hiddenControlRows: number;
   controlNoticeCount: number;
@@ -149,6 +236,13 @@ export interface WeeklyBossKillView {
   character: string;
   killed_at: string;
   difficulty: number;
+  duration_seconds?: number;
+  difficulty_source?: string;
+  instance_name?: string;
+  instance_mode?: string;
+  instance_label?: string;
+  context_observed_at?: string;
+  evidence?: string;
 }
 
 export interface WeeklyRaidRowView {
@@ -168,7 +262,22 @@ export interface WeeklyProgressView {
   kills: readonly WeeklyBossKillView[];
   raids: readonly WeeklyRaidRowView[];
   activeDifficulty?: number | null;
+  configuredDifficulty?: number | null;
+  difficultySource?: "log-zone" | "manual" | "unknown" | string;
+  raidContext?: RaidContextView | null;
   pendingRaidTarget?: string;
+}
+
+export interface RaidContextView {
+  zone: string;
+  instanceName: string;
+  mode: string;
+  difficulty: number;
+  difficultyName: string;
+  label: string;
+  observedAt: string;
+  evidence: string;
+  source: string;
 }
 
 export interface GearGoalView {
@@ -260,6 +369,8 @@ export interface AlertSettings {
 
 export interface DesktopSettings {
   logPath: string;
+  eqRoot: string;
+  autoCheckUpdates: boolean;
   raidDifficulty: number | null;
   bisBuildPath: string;
   inventoryPath: string;
@@ -269,8 +380,44 @@ export interface DesktopSettings {
   composition: string;
   splitCharmedPetDps: boolean;
   stanceAdvisorEnabled: boolean;
+  itemNetworkLookups: boolean;
   seedPosition: { x: number; y: number } | null;
   alerts: AlertSettings;
+}
+
+export type UpdateComponentId = "loremaster" | "spinui_reloaded" | "spinui_glass";
+
+export type UpdateComponentPhase =
+  | "idle"
+  | "checking"
+  | "current"
+  | "available"
+  | "not-installed"
+  | "modified"
+  | "downloading"
+  | "verifying"
+  | "ready"
+  | "waiting-for-eq"
+  | "installing"
+  | "restart-required"
+  | "error";
+
+export interface UpdateComponentState {
+  id: UpdateComponentId;
+  phase: UpdateComponentPhase;
+  currentVersion: string;
+  latestVersion: string;
+  progress: number | null;
+  detail: string;
+}
+
+export interface UpdateCenterState {
+  currentVersion: string;
+  latestVersion: string;
+  lastCheckedAt: string;
+  eqRoot: string;
+  busy: boolean;
+  components: Record<UpdateComponentId, UpdateComponentState>;
 }
 
 export interface EngineSnapshotEvent {

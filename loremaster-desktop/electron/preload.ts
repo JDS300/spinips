@@ -13,7 +13,12 @@ contextBridge.exposeInMainWorld("loremasterDesktop", {
   chooseInventory: () => ipcRenderer.invoke("gear:choose-inventory"),
   refreshGearData: () => ipcRenderer.invoke("gear:refresh"),
   openExternal: (value: string) => ipcRenderer.invoke("external:open", value),
+  lookupItem: (name: string) => ipcRenderer.invoke("items:lookup", name),
+  queryLoot: (request: unknown) => ipcRenderer.invoke("journal:query-loot", request),
+  getUpdateState: () => ipcRenderer.invoke("updates:get-state"),
   checkForUpdates: () => ipcRenderer.invoke("updates:check"),
+  chooseUpdateEqRoot: () => ipcRenderer.invoke("updates:choose-eq-root"),
+  installUpdates: (ids: readonly string[]) => ipcRenderer.invoke("updates:install", ids),
   resetEngine: () => ipcRenderer.send("engine:reset"),
   testAlert: () => ipcRenderer.send("alerts:test"),
   chooseAlertSound: (kind: string) => ipcRenderer.invoke("alerts:choose-sound", kind),
@@ -37,6 +42,11 @@ contextBridge.exposeInMainWorld("loremasterDesktop", {
     const listener = (_event: Electron.IpcRendererEvent, value: unknown) => callback(value);
     ipcRenderer.on("settings:changed", listener);
     return () => ipcRenderer.removeListener("settings:changed", listener);
+  },
+  onUpdateState: (callback: (state: unknown) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, value: unknown) => callback(value);
+    ipcRenderer.on("updates:state", listener);
+    return () => ipcRenderer.removeListener("updates:state", listener);
   },
   onTestAlert: (callback: (alert: unknown) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, value: unknown) => callback(value);
