@@ -266,6 +266,8 @@ export interface WeeklyProgressView {
   difficultySource?: "log-zone" | "manual" | "unknown" | string;
   raidContext?: RaidContextView | null;
   pendingRaidTarget?: string;
+  /** Every kill awaiting a difficulty. pendingRaidTarget names only the first. */
+  pendingRaidTargets?: string[];
 }
 
 export interface RaidContextView {

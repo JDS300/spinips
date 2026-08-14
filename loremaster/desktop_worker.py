@@ -17,6 +17,7 @@ import sys
 import threading
 import time
 from datetime import datetime, timedelta
+from typing import NamedTuple
 
 from adventure_journal import (AdventureJournal, encounter_identity,
                                evidence_hash)
@@ -62,6 +63,21 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="strict")
 
 
+class PendingRaidKill(NamedTuple):
+    """One raid kill waiting for its difficulty to be confirmed.
+
+    Carries the whole context of the kill rather than the target alone,
+    because the confirmation can arrive minutes later, by which time the
+    session's zone, character and fight have all moved on.
+    """
+
+    seconds: float
+    occurred_at: datetime | None
+    zone: str
+    character: str
+    evidence: str
+
+
 class HeadlessEngine:
     """One deterministic parser session with replaceable log input."""
 
@@ -94,12 +110,10 @@ class HeadlessEngine:
         self.raid_context = RaidContextTracker()
         self.raid_difficulty: int | None = None
         self.configured_composition = ""
-        self.pending_raid_target = ""
-        self.pending_raid_seconds = 0.0
-        self.pending_raid_occurred_at: datetime | None = None
-        self.pending_raid_zone = ""
-        self.pending_raid_character = ""
-        self.pending_raid_evidence = ""
+        # A single slot silently discarded the first kill when two raid
+        # targets died before a difficulty was confirmed, which is exactly
+        # when a raid confirms several at once.
+        self.pending_raid_kills: dict[str, PendingRaidKill] = {}
         self.sequence = 0
         self.stats = SessionStats()
         self.mez = MezTracker()
@@ -150,12 +164,7 @@ class HeadlessEngine:
         self._journal_cache_dirty = False
 
     def _clear_pending_raid_kill(self) -> None:
-        self.pending_raid_target = ""
-        self.pending_raid_seconds = 0.0
-        self.pending_raid_occurred_at = None
-        self.pending_raid_zone = ""
-        self.pending_raid_character = ""
-        self.pending_raid_evidence = ""
+        self.pending_raid_kills.clear()
 
     def _ensure_fight_journal_identity(self, fight) -> str:
         encounter_id = str(getattr(fight, "journal_id", "") or "")
@@ -236,15 +245,15 @@ class HeadlessEngine:
         if value is not None and value not in DIFFICULTIES:
             return False
         self.raid_difficulty = value
-        if value is not None and self.pending_raid_target:
-            self.weekly.observe_kill(
-                self.pending_raid_occurred_at or self.last_observed_at,
-                self.pending_raid_target,
-                zone=self.pending_raid_zone,
-                character=self.pending_raid_character,
-                difficulty=value, duration_seconds=self.pending_raid_seconds,
-                difficulty_source="manual-confirmation",
-                evidence=self.pending_raid_evidence)
+        if value is not None and self.pending_raid_kills:
+            for target, kill in list(self.pending_raid_kills.items()):
+                self.weekly.observe_kill(
+                    kill.occurred_at or self.last_observed_at, target,
+                    zone=kill.zone,
+                    character=kill.character,
+                    difficulty=value, duration_seconds=kill.seconds,
+                    difficulty_source="manual-confirmation",
+                    evidence=kill.evidence)
             self._clear_pending_raid_kill()
         return True
 
@@ -622,13 +631,15 @@ class HeadlessEngine:
             if raid_target:
                 difficulty = self._effective_raid_difficulty()
                 if difficulty is None:
-                    self.pending_raid_target = raid_target.name
-                    self.pending_raid_seconds = (
-                        self.stats.fight.seconds if self.stats.fight else 0.0)
-                    self.pending_raid_occurred_at = occurred_at
-                    self.pending_raid_zone = self.stats.zone
-                    self.pending_raid_character = self.stats.character
-                    self.pending_raid_evidence = raw_message
+                    self.pending_raid_kills.setdefault(
+                        raid_target.name,
+                        PendingRaidKill(
+                            seconds=(self.stats.fight.seconds
+                                     if self.stats.fight else 0.0),
+                            occurred_at=occurred_at,
+                            zone=self.stats.zone,
+                            character=self.stats.character,
+                            evidence=raw_message))
                 else:
                     self.weekly.observe_kill(
                         occurred_at, raid_target.name,
@@ -706,7 +717,9 @@ class HeadlessEngine:
             "log-zone" if context is not None else
             "manual" if self.raid_difficulty is not None else "unknown")
         weekly["raidContext"] = self.raid_context.snapshot()
-        weekly["pendingRaidTarget"] = self.pending_raid_target
+        pending = list(self.pending_raid_kills)
+        weekly["pendingRaidTarget"] = pending[0] if pending else ""
+        weekly["pendingRaidTargets"] = pending
         event["snapshot"]["weekly"] = weekly
         self.alerts = [alert for alert in self.alerts
                        if self._aware(datetime.fromisoformat(alert["expiresAt"]))
