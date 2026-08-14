@@ -13,10 +13,17 @@ import {
   type EngineSnapshotEvent,
   type GearPlanView,
   type LoremasterTheme,
+  type RaidContextView,
   type AlertSoundKind,
   type AlertSoundPreset,
+  type UpdateCenterState,
+  type UpdateComponentId,
+  type UpdateComponentPhase,
+  type UpdateComponentState,
 } from "./protocol";
 import { CombatArchive } from "./CombatArchive";
+import { LootChronicle } from "./LootChronicle";
+import { abilityCategoryLabel, abilityIdentityStyle, actorIdentityStyle, normalizeAbilityCategory } from "./visualIdentity";
 
 const roman = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 const raidDifficulties = [0, 1, 2, 3, 4] as const;
@@ -61,10 +68,11 @@ function applyTheme(value: unknown): LoremasterTheme {
 }
 
 const defaultDesktopSettings: DesktopSettings = {
-  logPath: "", raidDifficulty: null, bisBuildPath: "", inventoryPath: "",
+  logPath: "", eqRoot: "", autoCheckUpdates: true,
+  raidDifficulty: null, bisBuildPath: "", inventoryPath: "",
   uiTheme: "vellum",
   alwaysOnTop: true, fontScale: 1.15, composition: "", splitCharmedPetDps: false,
-  stanceAdvisorEnabled: false, seedPosition: null,
+  stanceAdvisorEnabled: false, itemNetworkLookups: true, seedPosition: null,
   alerts: {
     alertsEnabled: true, alertSound: true, alertSeconds: 5, alertAnchor: "auto",
     alertCharmBreak: true, alertTells: true, alertSummon: true, alertDeath: true,
@@ -72,6 +80,25 @@ const defaultDesktopSettings: DesktopSettings = {
     mezTimersEnabled: true, mezTimerSound: false, mezWarningSeconds: 10,
     lullTimersEnabled: true, lullTimerSound: false, lullWarningSeconds: 12,
     soundProfiles: defaultSoundProfiles,
+  },
+};
+
+const updateComponentIds: readonly UpdateComponentId[] = ["loremaster", "spinui_reloaded", "spinui_glass"];
+const updateComponentLabels: Record<UpdateComponentId, { name: string; eyebrow: string }> = {
+  loremaster: { name: "Loremaster", eyebrow: "DESKTOP OVERLAY" },
+  spinui_reloaded: { name: "SpinUI Reloaded", eyebrow: "VELLUM SKIN" },
+  spinui_glass: { name: "SpinUI Glass", eyebrow: "FROST SKIN" },
+};
+const emptyUpdateState: UpdateCenterState = {
+  currentVersion: "",
+  latestVersion: "",
+  lastCheckedAt: "",
+  eqRoot: "",
+  busy: false,
+  components: {
+    loremaster: { id: "loremaster", phase: "idle", currentVersion: "", latestVersion: "", progress: null, detail: "Ready to check" },
+    spinui_reloaded: { id: "spinui_reloaded", phase: "idle", currentVersion: "", latestVersion: "", progress: null, detail: "Select your EverQuest folder to check this skin" },
+    spinui_glass: { id: "spinui_glass", phase: "idle", currentVersion: "", latestVersion: "", progress: null, detail: "Select your EverQuest folder to check this skin" },
   },
 };
 
@@ -266,8 +293,8 @@ function SeedControlSurface() {
   return <main className="seed-companion-surface" aria-live="polite">
     {group.length > 0 && <section className="seed-group-surface" aria-label="Group DPS contributors">
       <header><span><i /> GROUP DPS</span><strong>{latest?.active ? "LIVE" : "LAST FIGHT"} · {group.length} VERIFIED</strong></header>
-      <div>{group.map((actor) => <article className="seed-group-row" key={actor.name}>
-        <span><b>{actor.name}</b><small>{groupTotal > 0 ? Math.round(actor.encounterDamage / groupTotal * 100) : 0}% GROUP SHARE</small></span>
+      <div>{group.map((actor) => <article className="seed-group-row" style={actorIdentityStyle(actor.name)} key={actor.name}>
+        <span><b><i className="actor-swatch" aria-hidden="true" />{actor.name}</b><small>{groupTotal > 0 ? Math.round(actor.encounterDamage / groupTotal * 100) : 0}% GROUP SHARE</small></span>
         <strong>{formatDps(actor.encounterDps)}<small>DPS</small></strong>
         <em>{actor.encounterDamage.toLocaleString()} DMG</em>
       </article>)}</div>
@@ -289,8 +316,79 @@ function SettingsToggle({ checked, label, detail, onChange }: {
     <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} /><i /></label>;
 }
 
-function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDifficulty, onClose }: {
+const updatePhaseLabels: Record<UpdateComponentPhase, string> = {
+  idle: "READY",
+  checking: "CHECKING",
+  current: "CURRENT",
+  available: "UPDATE READY",
+  "not-installed": "NOT INSTALLED",
+  modified: "REPAIR AVAILABLE",
+  downloading: "DOWNLOADING",
+  verifying: "VERIFYING",
+  ready: "READY TO APPLY",
+  "waiting-for-eq": "CLOSE EVERQUEST",
+  installing: "INSTALLING",
+  "restart-required": "RESTART REQUIRED",
+  error: "NEEDS ATTENTION",
+};
+
+function updateActionLabel(phase: UpdateComponentPhase): string | null {
+  if (phase === "available") return "UPDATE";
+  if (phase === "not-installed") return "INSTALL";
+  if (phase === "modified") return "REPAIR";
+  if (phase === "ready") return "APPLY";
+  if (phase === "waiting-for-eq") return "TRY AGAIN";
+  if (phase === "restart-required") return "RESTART";
+  return null;
+}
+
+function updateProgressPercent(progress: number | null): number | null {
+  if (progress === null || !Number.isFinite(progress)) return null;
+  const percentage = progress >= 0 && progress <= 1 ? progress * 100 : progress;
+  return Math.max(0, Math.min(100, Math.round(percentage)));
+}
+
+function formatLastUpdateCheck(value: string): string {
+  if (!value) return "NOT CHECKED YET";
+  const checked = new Date(value);
+  if (Number.isNaN(checked.getTime())) return "CHECKED RECENTLY";
+  return `CHECKED ${checked.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).toUpperCase()}`;
+}
+
+function UpdateComponentCard({ component, busy, onInstall }: {
+  component: UpdateComponentState;
+  busy: boolean;
+  onInstall: (id: UpdateComponentId) => void;
+}) {
+  const copy = updateComponentLabels[component.id];
+  const action = updateActionLabel(component.phase);
+  const progress = updateProgressPercent(component.progress);
+  const active = ["checking", "downloading", "verifying", "installing"].includes(component.phase);
+  const currentVersion = component.currentVersion || (component.phase === "not-installed" ? "Not installed" : "Unknown");
+  const latestVersion = component.latestVersion || "";
+  return <section className={`update-component ${component.id} phase-${component.phase}`} aria-label={`${copy.name} update status`}>
+    <header>
+      <span><small>{copy.eyebrow}</small><b>{copy.name}</b></span>
+      <em><i aria-hidden="true" />{updatePhaseLabels[component.phase]}</em>
+    </header>
+    <div className="update-version-line">
+      <span><small>ON THIS PC</small><b>{currentVersion.startsWith("v") || currentVersion === "Unknown" || currentVersion === "Not installed" ? currentVersion : `v${currentVersion}`}</b></span>
+      {latestVersion && latestVersion !== component.currentVersion && <span><small>AVAILABLE</small><b>{latestVersion.startsWith("v") ? latestVersion : `v${latestVersion}`}</b></span>}
+    </div>
+    <p>{component.detail || "Ready to check the official SpinUI release."}</p>
+    {(active || progress !== null) && <div className={`update-progress ${progress === null ? "indeterminate" : ""}`} role="progressbar"
+      aria-label={`${copy.name} update progress`} aria-valuemin={0} aria-valuemax={100}
+      aria-valuenow={progress ?? undefined} aria-valuetext={progress === null ? updatePhaseLabels[component.phase] : `${progress}%`}>
+      <i style={{ width: `${progress ?? 18}%` }} /><span>{progress === null ? updatePhaseLabels[component.phase] : `${progress}%`}</span>
+    </div>}
+    {action && <button className="component-update-action" type="button" disabled={busy}
+      onClick={() => onInstall(component.id)}>{action}</button>}
+  </section>;
+}
+
+function SettingsPanel({ health, raidContext, raidDifficulty, settings, onSettings, onRaidDifficulty, onClose }: {
   health: EngineHealth;
+  raidContext?: RaidContextView | null;
   raidDifficulty: number | null;
   settings: DesktopSettings;
   onSettings: (settings: DesktopSettings) => void;
@@ -300,7 +398,10 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
   const [manualPath, setManualPath] = useState(health.configuredPath);
   const [draft, setDraft] = useState(settings);
   const [activeSoundMenu, setActiveSoundMenu] = useState<AlertSoundKind | null>(null);
-  const [updateInfo, setUpdateInfo] = useState<Awaited<ReturnType<NonNullable<typeof window.loremasterDesktop>["checkForUpdates"]>> | null>(null);
+  const [updateState, setUpdateState] = useState<UpdateCenterState>(() => ({
+    ...emptyUpdateState,
+    eqRoot: settings.eqRoot,
+  }));
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   useEffect(() => {
     if (!activeSoundMenu) return;
@@ -310,6 +411,12 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [activeSoundMenu]);
+  useEffect(() => {
+    const desktop = window.loremasterDesktop;
+    if (!desktop) return undefined;
+    void desktop.getUpdateState().then(setUpdateState).catch(() => undefined);
+    return desktop.onUpdateState((state) => setUpdateState(state));
+  }, []);
   const chooseFolder = async () => {
     const selected = await window.loremasterDesktop?.chooseLogFolder();
     if (selected) setManualPath(selected);
@@ -322,10 +429,21 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
     setCheckingUpdate(true);
     try {
       const result = await window.loremasterDesktop?.checkForUpdates();
-      if (result) setUpdateInfo(result);
+      if (result) setUpdateState(result);
     } finally {
       setCheckingUpdate(false);
     }
+  };
+  const chooseUpdateEqRoot = async () => {
+    const state = await window.loremasterDesktop?.chooseUpdateEqRoot();
+    if (!state) return;
+    setUpdateState(state);
+    setDraft((current) => ({ ...current, eqRoot: state.eqRoot }));
+  };
+  const installUpdates = async (ids: readonly UpdateComponentId[]) => {
+    if (ids.length === 0) return;
+    const state = await window.loremasterDesktop?.installUpdates(ids);
+    if (state) setUpdateState(state);
   };
   const patchDraft = (value: Partial<DesktopSettings>) => setDraft((current) => ({ ...current, ...value }));
   const patchAlerts = (value: Partial<DesktopSettings["alerts"]>) => setDraft((current) => ({
@@ -367,6 +485,8 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
       composition: draft.composition,
       splitCharmedPetDps: draft.splitCharmedPetDps,
       stanceAdvisorEnabled: draft.stanceAdvisorEnabled,
+      itemNetworkLookups: draft.itemNetworkLookups,
+      autoCheckUpdates: draft.autoCheckUpdates,
       alerts: draft.alerts,
     });
     if (saved) onSettings(saved);
@@ -387,6 +507,16 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
     const saved = await window.loremasterDesktop?.updateSettings({ fontScale });
     if (saved) onSettings(saved);
   };
+  const changeAutoCheckUpdates = async (autoCheckUpdates: boolean) => {
+    patchDraft({ autoCheckUpdates });
+    const saved = await window.loremasterDesktop?.updateSettings({ autoCheckUpdates });
+    if (saved) {
+      setDraft(saved);
+      onSettings(saved);
+    }
+  };
+  const allUpdateIds = updateComponentIds.filter((id) =>
+    ["available", "modified", "ready", "waiting-for-eq", "restart-required"].includes(updateState.components[id].phase));
   return (
     <section className="settings-panel" aria-label="Loremaster settings">
       <header><div><small>CONFIGURATION</small><h2>ENGINE + LOGS</h2></div><button onClick={onClose}>DONE</button></header>
@@ -442,6 +572,9 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
         <SettingsToggle checked={draft.stanceAdvisorEnabled} label="Enable encounter stance advisor"
           detail="Adds an evidence-based offense or defense lean. Disabled by default; logs cannot see your active stance."
           onChange={(stanceAdvisorEnabled) => patchDraft({ stanceAdvisorEnabled })} />
+        <SettingsToggle checked={draft.itemNetworkLookups} label="Allow EQL Wiki item lookups"
+          detail="When enabled, only the selected item's name is sent for an EQL Wiki lookup. Cached profiles remain available offline."
+          onChange={(itemNetworkLookups) => patchDraft({ itemNetworkLookups })} />
         <div className="font-scale-setting">
           <span><b>HUD TEXT SIZE</b><small>Applies immediately to the Seed, expanded HUD, settings, and alerts.</small></span>
           <div><button type="button" aria-label="Decrease HUD text size" onClick={() => void changeFontScale(-0.05)}>A−</button>
@@ -528,9 +661,14 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
         <small className="sound-note">Custom files are validated at playback and limited to 8 MB. If a file moves or cannot be decoded, Loremaster falls back to the matching preset cue.</small>
       </article>
       <article className="settings-card">
-        <label>ACTIVE RAID DIFFICULTY</label>
-        <p>The EQ text log names the defeated boss but not its D0–D4 tier. Select the tier before a raid so automatic lockouts stay accurate.</p>
-        <div className="difficulty-picker" role="group" aria-label="Active raid difficulty">
+        <label>RAID DIFFICULTY FALLBACK</label>
+        <p>Loremaster reads D0–D4 directly from the instance-entry log line. Use this manual fallback only when no verified Solo or Group instance context is available.</p>
+        {raidContext && <div className="settings-raid-evidence">
+          <span><i /> AUTO-DETECTED</span>
+          <b>D{raidContext.difficulty} · {raidContext.label} · {raidContext.mode}</b>
+          <small>{raidContext.instanceName}</small>
+        </div>}
+        <div className="difficulty-picker" role="group" aria-label="Manual raid difficulty fallback">
           {raidDifficulties.map((difficulty) => <button
             className={raidDifficulty === difficulty ? "selected" : ""}
             key={difficulty}
@@ -558,12 +696,31 @@ function SettingsPanel({ health, raidDifficulty, settings, onSettings, onRaidDif
         <p>Reset live encounter and session totals. Weekly boss history remains intact.</p>
         <button type="button" onClick={() => window.loremasterDesktop?.resetEngine()}>RESET SESSION</button>
       </article>
-      <article className="settings-card compact update-card">
-        <label>UPDATES</label>
-        <p>{updateInfo?.detail || "Check the official GitHub release feed for a newer portable Loremaster build."}</p>
-        <button type="button" disabled={checkingUpdate} onClick={() => void checkForUpdates()}>{checkingUpdate ? "CHECKING…" : "CHECK GITHUB"}</button>
-        {updateInfo?.updateAvailable && <button className="update-ready" type="button"
-          onClick={() => void window.loremasterDesktop?.openExternal(updateInfo.releaseUrl)}>GET {updateInfo.latestVersion} ↗</button>}
+      <article className="settings-card update-center-card">
+        <header className="update-center-heading">
+          <span><label>SPINUI UPDATE CENTER</label><b>{updateState.currentVersion ? `LOREMASTER v${updateState.currentVersion.replace(/^v/i, "")}` : "LOREMASTER"}</b></span>
+          <small>{formatLastUpdateCheck(updateState.lastCheckedAt)}</small>
+        </header>
+        <p>Keep Loremaster and either SpinUI skin current from one trusted release. Downloads are verified before anything is replaced.</p>
+        <div className="update-center-toolbar">
+          <button type="button" disabled={checkingUpdate || updateState.busy} onClick={() => void checkForUpdates()}>
+            {checkingUpdate || updateState.components.loremaster.phase === "checking" ? "CHECKING..." : "CHECK ALL"}
+          </button>
+          <button className="update-all" type="button" disabled={updateState.busy || allUpdateIds.length === 0}
+            onClick={() => void installUpdates(allUpdateIds)}>{updateState.busy ? "WORKING..." : `UPDATE ALL${allUpdateIds.length ? ` (${allUpdateIds.length})` : ""}`}</button>
+        </div>
+        <div className="update-install-path">
+          <span><small>EVERQUEST INSTALL</small><b title={updateState.eqRoot || draft.eqRoot}>{updateState.eqRoot || draft.eqRoot || "Not selected"}</b></span>
+          <button type="button" disabled={updateState.busy} onClick={() => void chooseUpdateEqRoot()}>{updateState.eqRoot || draft.eqRoot ? "CHANGE" : "SELECT"}</button>
+        </div>
+        <div className="update-component-grid">
+          {updateComponentIds.map((id) => <UpdateComponentCard key={id} component={updateState.components[id]}
+            busy={updateState.busy} onInstall={(componentId) => void installUpdates([componentId])} />)}
+        </div>
+        <SettingsToggle checked={draft.autoCheckUpdates} label="Check automatically when Loremaster starts"
+          detail="Checks at most once per day. Downloads and installs still require your click."
+          onChange={(autoCheckUpdates) => void changeAutoCheckUpdates(autoCheckUpdates)} />
+        <div className="update-safety-note"><i aria-hidden="true">&#10003;</i><span><b>YOUR DATA STAYS YOURS</b><small>Updates preserve Loremaster settings, combat and loot history, EverQuest logs, UI layouts, and every other custom skin.</small></span></div>
       </article>
     </section>
   );
@@ -820,8 +977,8 @@ function ActorDrilldown({ role, encounter, combat }: {
       <span><small>SESSION DPS</small><b>{formatDps(sessionDps)}</b></span>
       <span><small>SESSION DAMAGE</small><b>{sessionDamage.toLocaleString()}</b></span>
     </div>
-    {rows.length > 0 && <div className="actor-identities">{rows.map((actor: CombatActorView) => <article key={actor.name}>
-      <span><b>{actor.name}</b><small>{actor.encounterHits} hits · max {actor.encounterMaximum.toLocaleString()}</small></span>
+    {rows.length > 0 && <div className="actor-identities">{rows.map((actor: CombatActorView) => <article style={actorIdentityStyle(actor.name)} key={actor.name}>
+      <span><b><i className="actor-swatch" aria-hidden="true" />{actor.name}</b><small>{actor.encounterHits} hits · max {actor.encounterMaximum.toLocaleString()}</small></span>
       <strong>{actor.encounterDamage.toLocaleString()} <small>· {formatDps(actor.encounterDps)}/s</small></strong>
     </article>)}</div>}
     {rows.length === 0 && encounterDamage > 0 && <p className="actor-estimate">The total is proven, but this older log segment does not preserve a unique pet name.</p>}
@@ -834,10 +991,12 @@ function MainApp() {
   const [health, setHealth] = useState<EngineHealth>(initialHealth);
   const [expanded, setExpanded] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
+  const [lootOpen, setLootOpen] = useState(false);
+  const [lootInitialEventId, setLootInitialEventId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [raidDifficulty, setRaidDifficulty] = useState<number | null>(null);
   const [settings, setSettings] = useState<DesktopSettings>(defaultDesktopSettings);
-  const [runtime, setRuntime] = useState({ coldStartMs: 0, residentMemoryMb: 0 });
+  const [runtime, setRuntime] = useState({ coldStartMs: 0, residentMemoryMb: 0, platform: "", version: "" });
   const [gearPlan, setGearPlan] = useState<GearPlanView>(emptyGearPlan);
   const [selectedEncounterId, setSelectedEncounterId] = useState<string | null>(null);
   const [selectedActorRole, setSelectedActorRole] = useState<CombatActorRole>("self");
@@ -879,6 +1038,7 @@ function MainApp() {
   const setMode = (next: boolean) => {
     setExpanded(next);
     setAnalysisOpen(false);
+    setLootOpen(false);
     if (!next) setSettingsOpen(false);
     window.loremasterDesktop?.setExpanded(next);
   };
@@ -886,6 +1046,7 @@ function MainApp() {
   const showAnalysis = () => {
     setExpanded(true);
     setSettingsOpen(false);
+    setLootOpen(false);
     setAnalysisOpen(true);
     window.loremasterDesktop?.setAnalysis(true);
   };
@@ -893,7 +1054,17 @@ function MainApp() {
   const showHud = () => {
     setExpanded(true);
     setAnalysisOpen(false);
+    setLootOpen(false);
     window.loremasterDesktop?.setAnalysis(false);
+  };
+
+  const showSpoils = (initialEventId?: string) => {
+    setExpanded(true);
+    setSettingsOpen(false);
+    setAnalysisOpen(false);
+    setLootInitialEventId(initialEventId ?? null);
+    setLootOpen(true);
+    window.loremasterDesktop?.setAnalysis(true);
   };
 
   const changeRaidDifficulty = (value: number | null) => {
@@ -920,7 +1091,12 @@ function MainApp() {
 
   const { snapshot } = event;
   const weekly = snapshot.weekly;
+  if (lootOpen) return <LootChronicle event={event} health={health} gearPlan={gearPlan} initialEventId={lootInitialEventId}
+    onAnalyze={showAnalysis} onHud={showHud} onSeed={() => setMode(false)}
+    onMinimize={() => window.loremasterDesktop?.minimizeWindow()}
+    onClose={() => window.loremasterDesktop?.closeWindow()} />;
   if (analysisOpen) return <CombatArchive event={event} health={health} weekly={weekly}
+    onSpoils={() => showSpoils()}
     onHud={showHud} onSeed={() => setMode(false)}
     onMinimize={() => window.loremasterDesktop?.minimizeWindow()}
     onClose={() => window.loremasterDesktop?.closeWindow()} />;
@@ -946,9 +1122,10 @@ function MainApp() {
     <main className="loremaster-shell">
       <header className="masthead">
         <CogMark />
-        <div><p>LOREMASTER</p><small><b className={health.state} /> {health.state.toUpperCase()} · PROTOCOL {event.protocolVersion}</small></div>
+        <div><p>LOREMASTER{runtime.version && <em className="masthead-version">v{runtime.version.replace(/^v/i, "")}</em>}</p><small><b className={health.state} /> {health.state.toUpperCase()} · PROTOCOL {event.protocolVersion}</small></div>
         <div className="masthead-actions">
           <button type="button" onClick={showAnalysis} aria-label="Open full combat breakdown">ANALYZE</button>
+          <button type="button" onClick={() => showSpoils()} aria-label="Open observed loot chronicle">SPOILS</button>
           <button type="button" onClick={() => setSettingsOpen((value) => !value)} aria-label="Open settings">SET</button>
           <button type="button" onClick={() => setMode(false)} aria-label="Collapse to Rune Seed">SEED</button>
           <button type="button" onClick={() => window.loremasterDesktop?.minimizeWindow()} aria-label="Minimize Loremaster">—</button>
@@ -956,7 +1133,8 @@ function MainApp() {
         </div>
       </header>
 
-      {settingsOpen ? <SettingsPanel health={health} raidDifficulty={raidDifficulty} settings={settings}
+      {settingsOpen ? <SettingsPanel health={health} raidContext={weekly?.raidContext}
+        raidDifficulty={raidDifficulty} settings={settings}
         onSettings={setSettings}
         onRaidDifficulty={changeRaidDifficulty} onClose={() => setSettingsOpen(false)} /> : <>
         <section className="context-line">
@@ -970,7 +1148,7 @@ function MainApp() {
 
         {weekly?.pendingRaidTarget && <section className="raid-confirmation" role="alertdialog" aria-label="Confirm raid difficulty">
           <span className="raid-confirmation-glyph">✓</span>
-          <div><small>RAID BOSS DEFEATED</small><strong>{(weekly.pendingRaidTargets?.length ? weekly.pendingRaidTargets : [weekly.pendingRaidTarget]).join(" · ")}</strong><p>Confirm the completed tier to mark {(weekly.pendingRaidTargets?.length ?? 1) > 1 ? "these lockouts" : "this week’s lockout"} and preserve the clear time.</p></div>
+          <div><small>RAID BOSS DEFEATED</small><strong>{weekly.pendingRaidTarget}</strong><p>Confirm the completed tier to mark this week’s lockout and preserve the clear time.</p></div>
           <div className="raid-confirmation-tiers">{raidDifficulties.map((difficulty) => <button key={difficulty} type="button"
             onClick={() => changeRaidDifficulty(difficulty)}>D{difficulty}</button>)}</div>
         </section>}
@@ -1035,9 +1213,11 @@ function MainApp() {
           <ActorDrilldown role={visibleActorRoles.includes(selectedActorRole) ? selectedActorRole : "self"}
             encounter={encounter} combat={snapshot.combat} />
           <div className="breakdown-columns">
-            <section><small>DAMAGE BY ABILITY</small>{encounter.sources.slice(0, 8).map((source) => <article key={source.name}>
-              <span><b>{source.name}</b><small>{source.hits} hits · max {source.maximum.toLocaleString()}</small></span><strong>{source.total.toLocaleString()}</strong>
-            </article>)}</section>
+            <section><small>DAMAGE BY ABILITY</small>{encounter.sources.slice(0, 8).map((source) => {
+              const category = normalizeAbilityCategory(source.category, source.name);
+              return <article className="ability-identity-row" style={abilityIdentityStyle(category)} key={source.name}>
+              <span><b><i className="actor-swatch" aria-hidden="true" />{source.name}</b><small>{abilityCategoryLabel(category)} · {source.hits} hits · max {source.maximum.toLocaleString()}</small></span><strong>{source.total.toLocaleString()}</strong>
+            </article>})}</section>
             <section><small>TARGETS</small>{encounter.targets.slice(0, 8).map((target) => <article key={target.name}>
               <span><b>{target.name}</b></span><strong>{target.total.toLocaleString()}</strong>
             </article>)}</section>
@@ -1051,6 +1231,21 @@ function MainApp() {
           </section>}
         </details>
 
+        <details className="spoils-card">
+          <summary>
+            <div><small>ADVENTURE MEMORY · OBSERVED LOOT</small><h2>{snapshot.lootTotalCount ?? snapshot.loot?.reduce((total, row) => total + Math.max(1, row.quantity || 1), 0) ?? 0} ITEMS · {snapshot.lootUniqueCount ?? new Set(snapshot.loot?.map((row) => row.itemKey || row.item.toLocaleLowerCase()) ?? []).size} UNIQUE</h2></div>
+            <span className="spoils-card-hint">PREVIEW</span>
+          </summary>
+          <button className="spoils-open" type="button" onClick={() => showSpoils()}>OPEN CHRONICLE</button>
+          {(snapshot.loot?.length ?? 0) > 0 ? <div className="spoils-preview">
+            {snapshot.loot!.slice(0, 4).map((loot) => <button type="button" key={loot.eventId} onClick={() => showSpoils(loot.eventId)} aria-label={`Open ${loot.item} in the Spoils Chronicle`}>
+              <span><b>{loot.item}{loot.quantity > 1 ? ` ×${loot.quantity}` : ""}</b><small>{loot.looter || "UNKNOWN"} · {loot.zone || "UNKNOWN ZONE"}</small></span>
+              <em>{loot.raidTier == null ? "OPEN" : `D${loot.raidTier}`}</em>
+            </button>)}
+          </div> : <p>No observed loot yet. Loremaster will preserve announced loot as it appears in your local log.</p>}
+          <footer>Evidence-backed · unopened or filtered corpse contents are never guessed.</footer>
+        </details>
+
         {weekly && <details className="weekly-card">
           <summary>
             <div><small>RAID RESET · D0–D4</small><h2>{weekly.completedCount} / {weekly.trackedLockoutCount} LOCKOUTS</h2></div>
@@ -1058,6 +1253,11 @@ function MainApp() {
               {weekly.activeDifficulty == null ? "SET TIER" : `D${weekly.activeDifficulty}`}
             </span>
           </summary>
+          {weekly.raidContext && <section className="raid-context-proof" aria-label="Current raid instance evidence">
+            <span><i /> LIVE INSTANCE EVIDENCE</span>
+            <div><b>{weekly.raidContext.instanceName}</b><strong>D{weekly.raidContext.difficulty} · {weekly.raidContext.mode.toUpperCase()}</strong></div>
+            <p>{weekly.raidContext.evidence}</p>
+          </section>}
           {weekly.pendingRaidTarget && <p className="raid-pending"><b>{weekly.pendingRaidTarget}</b> is awaiting the D0–D4 confirmation shown above.</p>}
           <div className="raid-grid" aria-label="Weekly D0 through D4 raid lockouts">
             <div className="raid-grid-head"><span>RAID TARGET</span>{raidDifficulties.map((difficulty) => <b key={difficulty}>D{difficulty}</b>)}</div>
@@ -1067,8 +1267,15 @@ function MainApp() {
                 : raid.zone}</small></span>
               {raidDifficulties.map((difficulty) => {
                 const completed = Boolean(raid.difficulties[difficulty]);
+                const completion = weekly.kills.find((kill) =>
+                  kill.target === raid.target && kill.difficulty === difficulty);
+                const completionEvidence = completion?.difficulty_source === "log-zone"
+                  ? `Auto-detected from ${completion.instance_name || completion.evidence || "instance log evidence"}`
+                  : completed ? "Manually confirmed" : "No completion evidence yet";
+                const bestTime = raid.bestSeconds[difficulty] != null
+                  ? ` · personal best ${formatDuration(raid.bestSeconds[difficulty] ?? 0)}` : "";
                 return <button className={completed ? "done" : ""} key={difficulty} type="button"
-                  title={raid.bestSeconds[difficulty] != null ? `Personal best ${formatDuration(raid.bestSeconds[difficulty] ?? 0)}` : "No personal best yet"}
+                  title={`${completionEvidence}${bestTime}`}
                   aria-label={`${raid.target} D${difficulty}: ${completed ? "complete" : "not complete"}${raid.bestSeconds[difficulty] != null ? `, personal best ${formatDuration(raid.bestSeconds[difficulty] ?? 0)}` : ""}`}
                   aria-pressed={completed}
                   onClick={() => void window.loremasterDesktop?.setRaidCompletion(raid.target, difficulty, !completed)}>

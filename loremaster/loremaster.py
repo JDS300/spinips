@@ -179,6 +179,7 @@ def png_asset_identity(path) -> tuple[int, int, int]:
 COMBAT_GAP = timedelta(seconds=10)
 BYSTANDER_GRACE = timedelta(seconds=20)
 CHARM_LAND_WINDOW = timedelta(seconds=12)
+DIRECT_CAST_FANOUT_WINDOW = timedelta(seconds=2)
 SESSION_GAP = timedelta(minutes=60)
 POLL_MS = 500
 LOG_RESCAN_SECONDS = 2.0
@@ -796,6 +797,25 @@ PATTERNS: list[tuple[str, re.Pattern]] = [
     # Stackables can arrive as a count rather than an article ("looted 5
     # Motes of Minor Potential"), and the old article-only form dropped those
     # lines on the floor entirely - they never reached the ledger at all.
+    # Legends also has explicit terminal dispositions. Keep these ahead of the
+    # ordinary form so a stored/sold acquisition produces exactly one event.
+    ("loot_storage", re.compile(
+        r"^(?:--)?You (?:have )?looted (?:an?|(?P<qty>\d+)) (?P<item>.+?)"
+        r" from (?P<source>.+?)'s corpse and stored it in your "
+        r"(?P<destination>tradeskill depot|Dragon Hoard|currency)\.?(?:--)?$", re.I)),
+    ("loot_auto_sale", re.compile(
+        r"^(?:--)?You (?:have )?looted (?:an?|(?P<qty>\d+)) (?P<item>.+?)"
+        r" from (?P<source>.+?)'s corpse and sold it for (?P<coins>.+?)\."
+        r"(?:--)?$", re.I)),
+    ("loot_merge", re.compile(
+        r"^You have successfully merged two items together to create a new "
+        r"item:\s*(?P<item>.+?)\.?$", re.I)),
+    ("loot_upgrade", re.compile(
+        r"^(?:--)?You (?:have )?looted (?:an?|(?P<qty>\d+)) "
+        r"(?P<input_item>.+?) from (?P<source>.+?)'s corpse to create "
+        r"(?:an? )?(?P<item>.+?)\.?(?:--)?$", re.I)),
+    ("loot_inventory", re.compile(
+        r"^(?P<item>.+?) has been placed in your inventory!$", re.I)),
     ("loot", re.compile(
         r"^--You have looted (?:an?|(?P<qty>\d+)) (?P<item>.+?)"
         r"(?: from (?P<source>.+?)'s corpse)?\.--$")),
@@ -1222,6 +1242,12 @@ def parse_line(line: str):
 class Fight:
     start: datetime
     end: datetime
+    zone: str = ""
+    # Assigned once by the desktop worker from the immutable start evidence
+    # and initial title. It is never recomputed as later targets evolve.
+    journal_id: str = ""
+    journal_raid_tier: int | None = None
+    journal_raid_mode: str = ""
     composition: str = ""
     composition_source: str = "unset"
     damage: int = 0
@@ -1234,6 +1260,7 @@ class Fight:
     targets: dict = field(default_factory=lambda: defaultdict(int))
     sources: dict = field(default_factory=lambda: defaultdict(
         lambda: {"t": 0, "h": 0, "max": 0}))
+    source_categories: dict[str, str] = field(default_factory=dict)
     healing_sources: dict = field(default_factory=lambda: defaultdict(
         lambda: {"t": 0, "h": 0, "max": 0, "over": 0}))
     actor_damage: dict = field(default_factory=lambda: defaultdict(
@@ -1307,6 +1334,7 @@ class SessionStats:
         self.closed_seconds = 0.0
         self.best_fight: Fight | None = None
         self.last_own_action: datetime | None = None
+        self.last_support_action: datetime | None = None
         self.last_combat_signal: datetime | None = None
         self.damage_by_source: dict[str, dict] = defaultdict(
             lambda: {"t": 0, "h": 0, "max": 0})
@@ -1340,6 +1368,9 @@ class SessionStats:
         self.charm_breaks = CharmBreakDetector()
         self.charm_spells: set[str] = set()
         self.pending_cast: tuple[str, datetime] | None = None
+        # One named direct cast may emit a damage result for several targets.
+        # Keep only the short landing fan-out, separate from charm ownership.
+        self.recent_direct_damage_cast: tuple[str, datetime] | None = None
         self.pet_damage = 0
         self.charmed_pet_damage = 0
         self.summoned_pet_damage = 0
@@ -1456,7 +1487,8 @@ class SessionStats:
         return canonical
 
     def _new_fight(self, ts: datetime) -> Fight:
-        return Fight(start=ts, end=ts, composition=self.composition,
+        return Fight(start=ts, end=ts, zone=self.zone,
+                     composition=self.composition,
                      composition_source=self.composition_source)
 
     # -- combat windows --------------------------------------------------
@@ -1544,7 +1576,7 @@ class SessionStats:
 
     def _deal(self, ts: datetime, target: str, dmg: int, source: str,
               crit: bool = False, actor: str | None = None,
-              actor_role: str | None = None):
+              actor_role: str | None = None, category: str = "unknown"):
         self._own_combat(ts)
         if self.fight is None:
             self.fight = self._new_fight(ts)
@@ -1557,6 +1589,8 @@ class SessionStats:
         self.fight.observed_targets[normalized_target] += dmg
         self.fight.add_timeline(ts, "out", dmg)
         fight_src = self.fight.sources[source]
+        if category != "unknown":
+            self.fight.source_categories[source] = category
         fight_src["t"] += dmg
         fight_src["h"] += 1
         fight_src["max"] = max(fight_src["max"], dmg)
@@ -1570,6 +1604,24 @@ class SessionStats:
             self.max_hit = (dmg, source, normalize_mob(target))
         if crit:
             self.crits += 1
+
+    def _direct_cast_result(self, ts: datetime,
+                            spell: str | None = None) -> str | None:
+        """Return a proven direct-cast name for one bounded result line."""
+        if self.pending_cast:
+            cast_spell, cast_at = self.pending_cast
+            if ((spell is None or cast_spell.casefold() == spell.casefold())
+                    and timedelta(0) <= ts - cast_at <= CHARM_LAND_WINDOW):
+                self.pending_cast = None
+                self.recent_direct_damage_cast = (cast_spell, ts)
+                return cast_spell
+        if self.recent_direct_damage_cast:
+            cast_spell, landed_at = self.recent_direct_damage_cast
+            if ((spell is None or cast_spell.casefold() == spell.casefold())
+                    and timedelta(0) <= ts - landed_at
+                    <= DIRECT_CAST_FANOUT_WINDOW):
+                return cast_spell
+        return None
 
     def _observe_actor_damage(self, ts: datetime, actor: str, target: str, dmg: int):
         """Add a visible player/pet contributor without polluting self DPS."""
@@ -1614,20 +1666,36 @@ class SessionStats:
             self.auto_attack = g.get("state", "").casefold() == "on"
         elif kind == "melee_out":
             self.melee_hits += 1
-            self._deal(ts, g["target"], int(g["dmg"]), "Melee", crit)
+            self._deal(ts, g["target"], int(g["dmg"]), "Melee", crit,
+                       category="melee")
         elif kind == "miss_out":
             self.melee_misses += 1
             self._own_combat(ts)
             if self.fight:
                 self.fight.misses += 1
         elif kind == "dot_out":
-            self._deal(ts, g["target"], int(g["dmg"]), f"DoT: {g['spell']}", crit)
+            self._deal(ts, g["target"], int(g["dmg"]), f"DoT: {g['spell']}",
+                       crit, category="dot")
         elif kind == "nuke_out_plain":
-            self._deal(ts, g["target"], int(g["dmg"]), "Spells", crit)
+            # This line carries no spell identity. It may be a spell, item
+            # proc, or another non-melee source. Attribute it only when an
+            # immediately preceding local cast supplies direct evidence.
+            cast_spell = self._direct_cast_result(ts)
+            self._deal(
+                ts, g["target"], int(g["dmg"]),
+                f"Spell: {cast_spell}" if cast_spell
+                else "Unattributed non-melee",
+                crit, category="spell" if cast_spell else "unknown")
         elif kind == "nuke_out_school":
-            self._deal(ts, g["target"], int(g["dmg"]), f"Spell: {g['spell']}", crit)
+            spell = g["spell"]
+            category = ("spell" if self._direct_cast_result(ts, spell)
+                        else "proc")
+            self._deal(ts, g["target"], int(g["dmg"]),
+                       f"{'Spell' if category == 'spell' else 'Proc'}: {spell}",
+                       crit, category=category)
         elif kind == "ds_out":
-            self._deal(ts, g["target"], int(g["dmg"]), "Damage shield")
+            self._deal(ts, g["target"], int(g["dmg"]), "Damage shield",
+                       category="damage_shield")
 
         elif kind == "melee_in":
             dmg = int(g["dmg"])
@@ -1675,6 +1743,7 @@ class SessionStats:
         elif kind == "death_you":
             self.auto_attack = False
             self.pending_cast = None
+            self.recent_direct_damage_cast = None
             self._drop_charmed_pets()
             self.deaths += 1
             if count_lifetime:
@@ -1752,18 +1821,29 @@ class SessionStats:
 
         elif kind == "song_begin":
             self.songs += 1
+            self.last_support_action = ts
         elif kind == "cast_begin":
             self.casts += 1
+            self.last_support_action = ts
             self.pending_cast = (g["spell"], ts)
+            self.recent_direct_damage_cast = None
         elif kind == "fizzle":
             self.fizzles += 1
             self.pending_cast = None
+            self.recent_direct_damage_cast = None
         elif kind in ("resist", "resist2"):
             self.resists += 1
+            if self.pending_cast:
+                cast_spell, _cast_at = self.pending_cast
+                if cast_spell.casefold() == (g.get("spell") or "").casefold():
+                    # An area spell can be resisted by one target and still
+                    # land on another. Retain only its brief result fan-out.
+                    self.recent_direct_damage_cast = (cast_spell, ts)
             self.pending_cast = None
         elif kind == "interrupt":
             self.interrupts += 1
             self.pending_cast = None
+            self.recent_direct_damage_cast = None
         elif kind == "spell_fade":
             target = (g.get("target") or "").strip()
             charm_faded = (g["spell"].casefold() in self.charm_spells
@@ -1798,11 +1878,14 @@ class SessionStats:
         elif kind == "aa":
             self.aa_points += 1
 
-        elif kind in ("loot", "loot2"):
+        elif kind in ("loot", "loot2", "loot_storage", "loot_auto_sale",
+                      "loot_merge", "loot_upgrade", "loot_inventory"):
             who = g.get("who")
             if who is None or who == self.character:
                 self.loot[g["item"]] += _quantity(g)
                 self._count_motes(g)
+            if kind == "loot_auto_sale" and g.get("coins"):
+                self.copper += parse_coins(g["coins"])
         elif kind == "mote_gain":
             # Only reached by acquisition sentences no loot pattern claimed, so
             # a mote is never counted twice for one line.
@@ -1819,6 +1902,7 @@ class SessionStats:
                 # Charm never crosses a zone boundary. Keeping an NPC alias
                 # here would turn a future same-named mob into personal DPS.
                 self.pending_cast = None
+                self.recent_direct_damage_cast = None
                 self._drop_charmed_pets()
                 self.zone = g["zone"]
                 if not self.zones or self.zones[-1] != g["zone"]:
@@ -1883,7 +1967,8 @@ class SessionStats:
                 self.pet_damage += dmg
                 self._deal(ts, g["target"], dmg, f"Pet ({pet})",
                            actor=f"{pet} (pet)",
-                           actor_role="charmed" if is_charmed else "summoned")
+                           actor_role="charmed" if is_charmed else "summoned",
+                           category="pet")
                 if is_charmed:
                     self.charmed_pet_damage += dmg
                     if self.fight:
@@ -1983,7 +2068,10 @@ class SessionStats:
             "ambiguous_pet_damage": self.ambiguous_pet_damage,
             "best_fight": best,
             "fight": shown_fight,
-            "fight_sources": ({k: dict(v) for k, v in shown_fight.sources.items()}
+            "fight_sources": ({k: {
+                **dict(v),
+                "category": shown_fight.source_categories.get(k, "unknown"),
+            } for k, v in shown_fight.sources.items()}
                               if shown_fight else {}),
             "fight_targets": dict(shown_fight.targets) if shown_fight else {},
             "fight_observed_targets": (
@@ -2129,7 +2217,11 @@ class LogWatcher:
         context gets one separate bounded reverse scan when a log is attached.
         """
         if self.path is None:
-            return {"zone": "", "composition": "", "group_members": []}
+            return {
+                "zone": "", "zone_observed_at": None,
+                "zone_evidence": "", "composition": "",
+                "group_members": [],
+            }
         try:
             size = self.path.stat().st_size
             start = max(0, size - CONTEXT_BACKFILL_BYTES)
@@ -2137,10 +2229,16 @@ class LogWatcher:
                 handle.seek(start)
                 data = handle.read()
         except OSError:
-            return {"zone": "", "composition": "", "group_members": []}
+            return {
+                "zone": "", "zone_observed_at": None,
+                "zone_evidence": "", "composition": "",
+                "group_members": [],
+            }
         if start and b"\n" in data:
             data = data[data.index(b"\n") + 1:]
         zone = ""
+        zone_observed_at = None
+        zone_evidence = ""
         composition = ""
         group_members: dict[str, str] = {}
         for raw in data.splitlines():
@@ -2148,7 +2246,8 @@ class LogWatcher:
             if not any(marker in folded for marker in (
                     b"you have entered", b"active class", b"group")):
                 continue
-            parsed = parse_line(raw.decode("latin-1", errors="replace"))
+            decoded = raw.decode("latin-1", errors="replace")
+            parsed = parse_line(decoded)
             if parsed is None:
                 continue
             _stamp, kind, groups = parsed
@@ -2156,6 +2255,9 @@ class LogWatcher:
                 candidate = groups.get("zone", "")
                 if is_real_zone_transition(candidate):
                     zone = candidate
+                    zone_observed_at = _stamp
+                    zone_evidence = (decoded.split("] ", 1)[1]
+                                     if "] " in decoded else decoded)
             elif kind == "composition":
                 try:
                     composition = normalize_composition(
@@ -2173,6 +2275,8 @@ class LogWatcher:
                 group_members.clear()
         return {
             "zone": zone,
+            "zone_observed_at": zone_observed_at,
+            "zone_evidence": zone_evidence,
             "composition": composition,
             "group_members": sorted(group_members.values(), key=str.casefold),
         }

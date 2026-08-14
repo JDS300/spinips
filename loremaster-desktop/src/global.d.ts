@@ -1,4 +1,4 @@
-import type { AlertSoundKind, DesktopSettings, EngineHealth, EngineSnapshotEvent, GearPlanView } from "./protocol";
+import type { AlertSoundKind, DesktopSettings, EngineHealth, EngineSnapshotEvent, GearPlanView, ItemLookupView, LootQueryRequest, LootQueryResult, UpdateCenterState, UpdateComponentId } from "./protocol";
 
 export {};
 
@@ -9,6 +9,7 @@ declare global {
         coldStartMs: number;
         residentMemoryMb: number;
         platform: string;
+        version: string;
       }>;
       getEngineState: () => Promise<{
         health: EngineHealth;
@@ -25,14 +26,12 @@ declare global {
       chooseInventory: () => Promise<string | null>;
       refreshGearData: () => Promise<boolean>;
       openExternal: (value: string) => Promise<boolean>;
-      checkForUpdates: () => Promise<{
-        ok: boolean;
-        currentVersion: string;
-        latestVersion: string;
-        updateAvailable: boolean;
-        releaseUrl: string;
-        detail: string;
-      }>;
+      lookupItem: (name: string) => Promise<ItemLookupView>;
+      queryLoot: (request: LootQueryRequest) => Promise<LootQueryResult>;
+      getUpdateState: () => Promise<UpdateCenterState>;
+      checkForUpdates: () => Promise<UpdateCenterState>;
+      chooseUpdateEqRoot: () => Promise<UpdateCenterState | null>;
+      installUpdates: (ids: readonly UpdateComponentId[]) => Promise<UpdateCenterState>;
       resetEngine: () => void;
       testAlert: () => void;
       chooseAlertSound: (kind: AlertSoundKind) => Promise<DesktopSettings | null>;
@@ -45,6 +44,7 @@ declare global {
       onHealth: (callback: (health: unknown) => void) => () => void;
       onGearPlan: (callback: (gearPlan: unknown) => void) => () => void;
       onSettings: (callback: (settings: unknown) => void) => () => void;
+      onUpdateState: (callback: (state: UpdateCenterState) => void) => () => void;
       onTestAlert: (callback: (alert: unknown) => void) => () => void;
       setExpanded: (expanded: boolean) => void;
       setAnalysis: (active: boolean) => void;

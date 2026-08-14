@@ -132,6 +132,9 @@ jobs:
           # necessary but not sufficient. GitHub still serves it by exact SHA.
           git fetch --no-tags origin 0eac353de160346146fc8bd451fc60eb7b7a371a
 
+      - name: Verify update manifest builder
+        run: python tools/build_spinui_update_manifest.py --self-test
+
       - name: Run release quality gate
         run: python tools/release_quality_gate.py
 
@@ -156,11 +159,23 @@ jobs:
           Copy-Item -Force installer/INSTALL-MANUAL.md (Join-Path $uiPackage 'INSTALL.md')
           Compress-Archive -Path "$uiPackage/*" -DestinationPath package/SpinUI-UI.zip -CompressionLevel Optimal
 
+          $tag = '${{ github.event.release.tag_name || inputs.release_tag }}'.Trim()
+          $version = $tag -replace '^v', ''
+          if ($version -notmatch '^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$') {
+            $version = (Get-Content loremaster-desktop/package.json -Raw | ConvertFrom-Json).version
+          }
+          python tools/build_spinui_update_manifest.py `
+            --archive package/SpinUI-UI.zip `
+            --version $version `
+            --output package/SpinUI-Update.json
+
       - name: Upload UI test package
         uses: actions/upload-artifact@v6
         with:
           name: SpinUI-UI
-          path: package/SpinUI-UI.zip
+          path: |
+            package/SpinUI-UI.zip
+            package/SpinUI-Update.json
           if-no-files-found: error
 
   build-loremaster:
@@ -198,6 +213,9 @@ jobs:
           pnpm test:fixtures
           pnpm build
           pnpm test:gear
+          pnpm test:items
+          pnpm test:updates
+          pnpm test:skin-updates
 
       - name: Fetch stock-layout reference commit
         shell: bash
@@ -424,7 +442,9 @@ jobs:
         run: |
           $manualPackage = Join-Path $PWD 'package/SpinUI-Manual'
           New-Item -ItemType Directory -Force -Path $manualPackage | Out-Null
-          Expand-Archive -LiteralPath package/ui-component/SpinUI-UI.zip -DestinationPath $manualPackage -Force
+          Copy-Item -Force package/ui-component/SpinUI-UI.zip package/SpinUI-UI.zip
+          Copy-Item -Force package/ui-component/SpinUI-Update.json package/SpinUI-Update.json
+          Expand-Archive -LiteralPath package/SpinUI-UI.zip -DestinationPath $manualPackage -Force
           New-Item -ItemType Directory -Force -Path dist-electron-release | Out-Null
           Copy-Item -Force package/loremaster-component/Loremaster.exe dist-electron-release/Loremaster.exe
           Copy-Item -Force dist-electron-release/Loremaster.exe $manualPackage
@@ -447,6 +467,8 @@ jobs:
           # exact CI-built file when an antivirus heuristic questions it.
           $lines = foreach ($file in @(
               'package/SpinUI-Manual.zip',
+              'package/SpinUI-UI.zip',
+              'package/SpinUI-Update.json',
               'dist-electron-release/Loremaster.exe')) {
             $hash = (Get-FileHash -Algorithm SHA256 $file).Hash.ToLower()
             "$hash  $(Split-Path -Leaf $file)"
@@ -468,6 +490,8 @@ jobs:
           name: SpinUI-Windows-tools
           path: |
             dist-electron-release/Loremaster.exe
+            package/SpinUI-UI.zip
+            package/SpinUI-Update.json
             package/SHA256SUMS.txt
           if-no-files-found: error
 
@@ -481,6 +505,8 @@ jobs:
           if (-not $tag) { throw 'release_tag cannot be empty' }
           $assets = @(
             'package/SpinUI-Manual.zip',
+            'package/SpinUI-UI.zip',
+            'package/SpinUI-Update.json',
             'package/SHA256SUMS.txt',
             'dist-electron-release/Loremaster.exe'
           )
@@ -501,6 +527,8 @@ jobs:
         run: >
           gh release upload "${{ github.event.release.tag_name }}"
           package/SpinUI-Manual.zip
+          package/SpinUI-UI.zip
+          package/SpinUI-Update.json
           package/SHA256SUMS.txt
           dist-electron-release/Loremaster.exe
           --clobber
