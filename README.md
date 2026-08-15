@@ -374,9 +374,9 @@ EverQuest draws a countdown and a beneficial/detrimental plate on the same buff 
 1. Download and extract **`SpinUI-Manual.zip`** from the [latest release](https://github.com/itsspin/spinips/releases/latest).
 2. Fully close EverQuest, then copy `spinui_reloaded`, `spinui_glass`, or both included folders to `<EverQuest>\uifiles\`.
 3. Keep your existing character UI INI for a skin-only update. If you want a complete layout, select the matching resolution and Combat Focus, Social Focus, or Hybrid profile and back up the existing character UI file before replacing it.
-4. Run the included **`Loremaster.exe`**, select **`/loadskin spinui_glass 1`** or **`/loadskin spinui_reloaded 1`**, and type **`/log on`** once in game.
+4. Select **`/loadskin spinui_glass 1`** or **`/loadskin spinui_reloaded 1`** and type **`/log on`** once in game. On Linux, run Loremaster from the AppImage in the same release; on Windows, this repository builds and tests `Loremaster.exe` in CI but does not publish it, so build it from source if you want it there.
 
-Releases intentionally ship the manual package and standalone Loremaster only; the Windows installer is not built or published as a release option.
+Releases intentionally ship the manual package and the Linux AppImage and tar.gz. The Windows installer is not built or published as a release option, and the Windows executable, while built and tested in CI, is not published either.
 
 Packaged releases require no Python installation. Running Loremaster from source requires Python 3.10+; the application otherwise uses the standard library, with Lore Lens calling Windows-provided OCR integration.
 
@@ -385,7 +385,7 @@ Packaged releases require no Python installation. Running Loremaster from source
 <details>
 <summary><strong>Show the manual installation guide</strong></summary>
 
-Download **`SpinUI-Manual.zip`** from the same release. It contains both UI skins, Loremaster, layouts, and a standalone [manual guide](installer/INSTALL-MANUAL.md).
+Download **`SpinUI-Manual.zip`** from the same release. It contains both UI skins, layouts, and a standalone [manual guide](installer/INSTALL-MANUAL.md).
 
 1. If the skin folder you are updating already exists, rename or move it out of the way; do not merge a new release into a retired file tree.
 2. Copy `spinui_glass`, `spinui_reloaded`, or both into `<EverQuest>\uifiles\` so each installed folder contains its own `EQUI.xml`.
@@ -394,15 +394,11 @@ Download **`SpinUI-Manual.zip`** from the same release. It contains both UI skin
 5. A manual profile replaces that entire character UI INI, including its window and chat preferences. Apply one only after making the backup in the previous step.
 6. Name the preset `UI_<ExactCharacterName>_<server>_<layout-suffix>.ini`, preserving the character's existing `LO1`, `LO2`, `LO3`, or other suffix. Example: `UI_Spin_qeynos_LO1.ini`.
 7. Copy that optional character UI file beside `eqgame.exe`. Do **not** replace the separate `<Character>_<server>_<layout-suffix>.ini` file or `eqclient.ini`.
-8. Launch EverQuest and use `/loadskin spinui_glass 1` for Midnight Frost or `/loadskin spinui_reloaded 1` for Vellum & Ember. Run the packaged `Loremaster.exe` if desired and type `/log on` in game.
+8. Launch EverQuest and use `/loadskin spinui_glass 1` for Midnight Frost or `/loadskin spinui_reloaded 1` for Vellum & Ember. On Linux, run Loremaster from the AppImage in the release and type `/log on` in game; on Windows, build `Loremaster.exe` from source if you want it, since this repository doesn't publish it.
 
 **Rollback:** restore your character UI backup and select `/loadskin default_modern 1`.
 
 </details>
-
-### Windows security note
-
-SpinUI's unsigned `Loremaster.exe` may trigger SmartScreen or heuristic antivirus warnings. Release executables are built publicly by GitHub Actions from this repository. Verify downloads against the release's **`SHA256SUMS.txt`** with `Get-FileHash -Algorithm SHA256 <file>`.
 
 ## Trust by design
 
@@ -420,7 +416,7 @@ This architecture supports a transparent non-injecting workflow. As with any com
 
 ### Running and controlling the overlay
 
-1. Take `Loremaster.exe` from `SpinUI-Manual.zip`, download the standalone release executable, or run it from source.
+1. On Linux, run the AppImage from the release. On Windows, this repository builds and tests `Loremaster.exe` in CI but does not publish it, so build it from source.
 2. Type `/log on` in game. Loremaster follows the newest standard EQ log it can find; **Settings → Change EverQuest Folder** or **CHANGE / LOCATE LOG** can point it to an EverQuest root or `Logs` directory.
 3. Click the **Rune Seed** to unfold the full ledger; use **SEED** in the masthead to collapse it again. The transition fades the current surface, performs one atomic geometry/layout swap, then reveals the destination—avoiding a frame-by-frame child-widget reflow. Reduced motion switches instantly. Full and compact positions are remembered separately.
 4. DPS is the only default Rune Seed metric. Pin additional ledger sections with ✦ to build an optional four-item carousel, then use the mouse wheel over the seed to rotate it.
@@ -489,7 +485,7 @@ pnpm test:skin-updates
 pnpm build
 ```
 
-Every UI release builds and publishes the portable Electron `Loremaster.exe` with its hidden parser engine. No installer or parallel legacy executable is produced. See the [live milestone and validation gates](docs/LOREMASTER_MILESTONE_2.md).
+Every UI release builds and tests the portable Electron `Loremaster.exe` with its hidden parser engine in CI, but this fork does not publish it; the Linux AppImage and tar.gz are what ship. No installer or parallel legacy executable is produced. See the [live milestone and validation gates](docs/LOREMASTER_MILESTONE_2.md).
 
 Loremaster's **Settings → SpinUI Update Center** can check the official release,
 download and verify the portable app, then replace and relaunch it with automatic
@@ -536,7 +532,6 @@ python3 tools/release_quality_gate.py
 
 | Symptom | Fix |
 |---|---|
-| SmartScreen or antivirus warns about an executable | Verify it against release `SHA256SUMS.txt` and the public Actions build. Use the Manual package if preferred. |
 | Skin does not load | Confirm `uifiles\spinui_glass\EQUI.xml` or `uifiles\spinui_reloaded\EQUI.xml`, then use the matching `/loadskin <folder> 1` command. |
 | Layout did not apply | Close EverQuest completely, restore/reapply the intended character UI file, and relaunch. |
 | Layout does not fit | Restore your character UI backup, then select the exact or nearest validated screen profile from the manual package. |
