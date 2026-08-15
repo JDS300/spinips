@@ -78,27 +78,6 @@ if (process.platform === "linux"
   }
 }
 
-// A candidate shares the live settings directory on purpose -- bugs surface
-// against real data that way -- so it snapshots the state files before any
-// code can write to them. Runs before app.whenReady on purpose: both paths
-// resolve this early, and nothing has opened a settings file yet.
-{
-  const backup = backupBeforeReleaseCandidate({
-    version: app.getVersion(),
-    userDataDir: app.getPath("userData"),
-    backupRoot: path.join(app.getPath("appData"), "spins-loremaster-rc-backups"),
-  });
-  if (backup.status === "created") {
-    console.info(
-      `[Loremaster] release candidate: backed up ${backup.files.length}`
-      + ` settings file(s) to ${backup.directory}`);
-  } else if (backup.status === "failed") {
-    // Logged, never fatal: a backup that cannot be written must not stop the
-    // application from starting.
-    console.warn(`[Loremaster] release candidate backup failed: ${backup.error}`);
-  }
-}
-
 // Which backend is actually running, not which one was asked for. The flag
 // usually arrives on the command line -- the AppImage launcher supplies it --
 // so reading only LOREMASTER_OZONE concluded "Wayland" while X11 was running,
@@ -122,6 +101,31 @@ const windowPositioningIsReliable = (() => {
 if (process.env.LOREMASTER_DESKTOP_DATA_DIR) {
   app.setPath("userData", path.resolve(process.env.LOREMASTER_DESKTOP_DATA_DIR));
 }
+
+// A candidate shares the live settings directory on purpose -- bugs surface
+// against real data that way -- so it snapshots the state files before any
+// code can write to them. Placed after the LOREMASTER_DESKTOP_DATA_DIR
+// override above so it always observes the final userData path, never the
+// OS default the override replaces. Still runs well before app.whenReady:
+// nothing between here and there reads or writes a settings file.
+{
+  const userDataDir = app.getPath("userData");
+  const backup = backupBeforeReleaseCandidate({
+    version: app.getVersion(),
+    userDataDir,
+    backupRoot: path.join(path.dirname(userDataDir), "spins-loremaster-rc-backups"),
+  });
+  if (backup.status === "created") {
+    console.info(
+      `[Loremaster] release candidate: backed up ${backup.files.length}`
+      + ` settings file(s) to ${backup.directory}`);
+  } else if (backup.status === "failed") {
+    // Logged, never fatal: a backup that cannot be written must not stop the
+    // application from starting.
+    console.warn(`[Loremaster] release candidate backup failed: ${backup.error}`);
+  }
+}
+
 const ownsSingleInstance = app.requestSingleInstanceLock();
 if (!ownsSingleInstance) app.quit();
 let mainWindow: BrowserWindow | null = null;
