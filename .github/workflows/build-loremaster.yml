@@ -239,6 +239,7 @@ jobs:
           pnpm test:items
           pnpm test:updates
           pnpm test:skin-updates
+          pnpm test:rc-backup
 
       - name: Fetch stock-layout reference commit
         shell: bash
@@ -378,6 +379,7 @@ jobs:
           pnpm test:fixtures
           pnpm build
           pnpm test:gear
+          pnpm test:rc-backup
 
       - name: Verify installer selftest
         run: python3 installer/spinui_installer.py --selftest
@@ -397,9 +399,34 @@ jobs:
             | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'; then
             version="$(node -p "require('./package.json').version")"
           fi
+          # A candidate has to install beside the live release rather than
+          # replace it. Gear Lever keys on the desktop entry, so productName
+          # (Name=) and desktopName (the .desktop filename, and StartupWMClass)
+          # both have to differ -- app-builder-lib reads desktopName first and
+          # only falls back to executableName, so overriding executableName
+          # alone leaves the entry named loremaster.desktop and the collision
+          # unfixed. desktopName sits at the top level of package.json, which
+          # is why it goes through extraMetadata rather than -c.linux.
+          #
+          # name is deliberately never overridden: userData comes from it, and
+          # a candidate shares the live settings on purpose so bugs surface
+          # against real data.
+          identity=()
+          if printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-'; then
+            identity=(
+              "-c.productName=Loremaster RC"
+              "-c.appId=com.spinui.loremaster.rc"
+              "-c.extraMetadata.desktopName=loremaster-rc.desktop"
+              "-c.linux.executableName=loremaster-rc"
+              # Single quoted: these are electron-builder templates, and bash
+              # would expand them to empty strings.
+              '-c.linux.artifactName=Loremaster-RC-${version}-${arch}.${ext}'
+            )
+            echo "building release candidate identity: Loremaster RC ($version)"
+          fi
           pnpm build
           pnpm exec electron-builder --linux AppImage tar.gz --x64 \
-            --publish never "-c.extraMetadata.version=$version"
+            --publish never "-c.extraMetadata.version=$version" "${identity[@]}"
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
 
@@ -549,6 +576,13 @@ jobs:
           # marker has to sit at column zero and so cannot be indented inside
           # this step.
           $version = $tag -replace '^v', ''
+          # A candidate ships under its own name so it can sit beside the live
+          # release, so the notes have to point at that file, not the other one.
+          $appImage = if ($prerelease) {
+            "Loremaster-RC-$version-x86_64.AppImage"
+          } else {
+            "Loremaster-$version-x86_64.AppImage"
+          }
           $changelog = python tools/release_notes.py --version $tag
           if ($LASTEXITCODE -ne 0) { throw "no changelog entry for $tag" }
           $notes = @()
@@ -561,7 +595,7 @@ jobs:
             "",
             "## Installing",
             "",
-            "**Linux** -- download ``Loremaster-$version-x86_64.AppImage``, ``chmod +x`` it, and run it. There is no self-update on Linux, so new builds always come from this page.",
+            "**Linux** -- download ``$appImage``, ``chmod +x`` it, and run it. There is no self-update on Linux, so new builds always come from this page.",
             "",
             "**Windows** -- ``Loremaster.exe`` is the portable build. It is unsigned, so antivirus machine-learning heuristics sometimes flag it; see the README's Troubleshooting section.",
             "",
