@@ -180,7 +180,13 @@ jobs:
           # docs/superpowers holds this project's own internal design specs
           # and implementation plans, not user-facing documentation -- strip
           # it before the tree is compressed and shipped to end users.
-          Remove-Item -Recurse -Force (Join-Path $uiPackage 'docs/superpowers')
+          # Conditional because these are transient planning documents: once
+          # they are deleted from the repo, their absence must not fail or
+          # noisily error the build.
+          $stagedPlans = Join-Path $uiPackage 'docs/superpowers'
+          if (Test-Path $stagedPlans) {
+            Remove-Item -Recurse -Force $stagedPlans
+          }
           Copy-Item -Force UI_Spin_qeynos_LO1.ini $uiPackage
           Copy-Item -Force README.md $uiPackage
           Copy-Item -Force installer/INSTALL-MANUAL.md (Join-Path $uiPackage 'INSTALL.md')
