@@ -17,6 +17,7 @@
     "test:items": "node scripts/test-item-intelligence.cjs",
     "test:updates": "node scripts/test-portable-updater.cjs",
     "test:skin-updates": "node scripts/test-spinui-updater.cjs",
+    "test:alert-placement": "node scripts/test-alert-placement.cjs",
     "test:rc-backup": "node scripts/test-rc-backup.cjs"
   },
   "dependencies": {
