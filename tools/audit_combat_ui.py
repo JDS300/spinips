@@ -444,9 +444,12 @@ def audit_player_and_target() -> None:
     )
     if player_min_size != PLAYER_MIN_SIZE:
         fail(f"PlayerWindow resize bounds changed: {player_min_size}")
+    # Offsets measure upward from PlayerSubWindow's bottom edge: the row is
+    # 16px tall (18 -> 2) riding 2px above that edge, so it stays on screen at
+    # any height rather than being clipped by the pinned 193px window.
     for label, expected, alignment in (
-        (stance, (96, 112, 6, 132), "false"),
-        (invocation, (96, 112, 232, 6), "true"),
+        (stance, (18, 2, 6, 132), "false"),
+        (invocation, (18, 2, 232, 6), "true"),
     ):
         actual = tuple(
             child_int(label, tag) for tag in (
@@ -1323,6 +1326,49 @@ def audit_variant_safety() -> None:
         fail(f"variant audit coverage changed unexpectedly: {checked}")
 
 
+def audit_stance_row_visibility() -> None:
+    """Prove the stance/invocation row cannot fall outside the sub-window.
+
+    PlayerSubWindow is pinned to (70, 9, 3, 3) so the themed frame never
+    covers the native attack perimeter, which leaves it 114px tall inside a
+    193px window -- minus whatever the bordered draw template insets. The
+    stance row is the bottom-most content, so anchoring it a fixed distance
+    from the TOP put its lower edge past the client area and clipped it. Both
+    edges anchor to the BOTTOM instead, so the row rides the sub-window's
+    lower edge at any height the player resizes to.
+    """
+    checked = 0
+    for skin in COMBAT_SKINS:
+        for name in PLAYER_WINDOW_FILES:
+            root = root_for_path(skin / name)
+            label = f"{skin.name}/{name}"
+            for element in ("PW_StanceLabel", "PW_InvocationInfo"):
+                node = item(root, "Label", element)
+                # An absent anchor tag means EQ defaults it to the top edge,
+                # which is the clipping bug this guards -- so read it without
+                # failing on absence and treat the default as top-anchored.
+                anchors = tuple((node.findtext(tag) or "true").strip()
+                                for tag in ("TopAnchorToTop",
+                                            "BottomAnchorToTop"))
+                if anchors != ("false", "false"):
+                    fail(
+                        f"{label} {element} anchors to the top, so a fixed "
+                        "window height can clip it out of view"
+                    )
+                top = child_int(node, "TopAnchorOffset")
+                bottom = child_int(node, "BottomAnchorOffset")
+                # Offsets measure upward from the sub-window's bottom edge, so
+                # the top offset is the larger of the two.
+                if top <= bottom:
+                    fail(f"{label} {element} has an inverted bottom anchor")
+                if top - bottom < 14:
+                    fail(f"{label} {element} row is too short to read: "
+                         f"{top - bottom}px")
+                checked += 1
+    if checked != 28:
+        fail(f"stance row coverage changed unexpectedly: {checked}")
+
+
 def main() -> int:
     audit_attack_indicator_contract()
     audit_player_and_target()
@@ -1332,6 +1378,7 @@ def main() -> int:
     audit_accessibility()
     audit_default_visibility()
     audit_variant_safety()
+    audit_stance_row_visibility()
     stock_checked = audit_optional_stock_parity()
     print("Combat Command Center audit: ALL PASS")
     print("  Player/Target/ToT | Group 1..11 | XTarget 0..22 | Raid groups 1..12")

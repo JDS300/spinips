@@ -517,12 +517,13 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignRight>false</AlignRight>
-		<TopAnchorOffset>96</TopAnchorOffset>
-		<BottomAnchorOffset>112</BottomAnchorOffset>
+		<TopAnchorOffset>18</TopAnchorOffset>
+		<BottomAnchorOffset>2</BottomAnchorOffset>
 		<LeftAnchorOffset>6</LeftAnchorOffset>
 		<RightAnchorOffset>132</RightAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
-		<BottomAnchorToTop>true</BottomAnchorToTop>
+		<TopAnchorToTop>false</TopAnchorToTop>
+		<BottomAnchorToTop>false</BottomAnchorToTop>
 		<FontShadow>true</FontShadow>
 	</Label>
 
@@ -550,12 +551,13 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignRight>true</AlignRight>
-		<TopAnchorOffset>96</TopAnchorOffset>
-		<BottomAnchorOffset>112</BottomAnchorOffset>
+		<TopAnchorOffset>18</TopAnchorOffset>
+		<BottomAnchorOffset>2</BottomAnchorOffset>
 		<LeftAnchorOffset>232</LeftAnchorOffset>
 		<RightAnchorOffset>6</RightAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
-		<BottomAnchorToTop>true</BottomAnchorToTop>
+		<TopAnchorToTop>false</TopAnchorToTop>
+		<BottomAnchorToTop>false</BottomAnchorToTop>
 		<FontShadow>true</FontShadow>
 	</Label>
 
