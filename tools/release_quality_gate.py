@@ -365,12 +365,15 @@ def check_loremaster_release_pipeline() -> None:
         "Copy-Item -Force dist-electron-release/Loremaster.exe $manualPackage",
     )
     present = [value for value in retired if value in workflow]
-    # build-loremaster legitimately stages its own freshly built exe with
-    # "Copy-Item -Force dist-electron-release/Loremaster.exe $component" so
-    # it can hash it and upload the Loremaster-Windows artifact; that one
-    # sanctioned reference is exempt. Any other appearance of the same path
-    # means the executable has crept back into a release-publishing step.
-    if re.search(r"(?<!-Force )dist-electron-release/Loremaster\.exe", workflow):
+    # build-loremaster legitimately stages its own freshly built executable so
+    # it can hash it and upload the Loremaster-Windows artifact. That one line
+    # is exempt by exact text; any other appearance of the path means the
+    # executable has crept back into a release-publishing step.
+    SANCTIONED_EXE_STAGING = (
+        "Copy-Item -Force dist-electron-release/Loremaster.exe $component"
+    )
+    residual = workflow.replace(SANCTIONED_EXE_STAGING, "")
+    if "dist-electron-release/Loremaster.exe" in residual:
         present.append("dist-electron-release/Loremaster.exe")
     if present:
         fail("release workflow publishes a retired artifact: " + ", ".join(present))
