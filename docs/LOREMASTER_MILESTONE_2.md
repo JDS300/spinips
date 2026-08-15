@@ -36,8 +36,9 @@ versioned UTF-8 JSONL and is the portable desktop shipped with UI releases.
 `Loremaster.exe` is the CI-built Electron desktop and contains its private
 headless parser engine. The workflow smoke-tests the protocol, strict
 TypeScript build, production renderer, bundled engine, and portable executable
-before the same binary is copied into the manual ZIP and attached to the UI
-release. The legacy Python GUI remains source/reference code and is not
+on every qualifying run, but the binary is not published: it is not copied
+into the manual ZIP and not attached to the UI release. It can still be built
+from source. The legacy Python GUI remains source/reference code and is not
 published as a competing executable.
 
 The release also publishes `SpinUI-UI.zip`, `SpinUI-Update.json`, and
