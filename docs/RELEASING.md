@@ -72,3 +72,14 @@ a manual download. The SpinUI **skin** updater does run on Linux, and it
 follows full releases only, exactly like the app updater.
 
 That is why testing a candidate on Linux is a manual install by design.
+
+## Installing a candidate alongside the live release
+
+A candidate builds and installs as "Loremaster RC", with its own desktop
+entry, so it sits beside the live release instead of replacing it. It shares
+the live settings directory on purpose -- bugs surface against real data that
+way -- so before it can write to anything, it snapshots settings and progress
+once per candidate to `<appData>/spins-loremaster-rc-backups/<version>/` (on
+Linux, `~/.config/spins-loremaster-rc-backups/<version>/`). If a candidate
+damages something, recovery is a manual copy of that snapshot back into
+`~/.config/spins-loremaster`.

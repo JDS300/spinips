@@ -1,14 +1,20 @@
-import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
 
-// The files holding state a candidate can damage. Regenerable data
-// (item-intelligence/, updates/, Electron's own caches) is deliberately
-// absent: it is large, slow to copy, and rebuilt on demand.
+// The files holding state a candidate can damage: Electron's own settings
+// and caches, plus the engine-owned progress data (weekly raid kills and the
+// adventure journal) that the Python worker writes into the same directory.
+// Regenerable data (item-intelligence/, updates/, Electron's own caches) is
+// deliberately absent: it is large, slow to copy, and rebuilt on demand.
 export const RC_BACKUP_FILES = [
   "desktop-settings.json",
   "update-center.json",
   "spinui-update-receipts.json",
   "eq-legends-tools-gear-cache.json",
+  "weekly_boss_kills.json",
+  "adventure_journal.sqlite3",
+  "adventure_journal.sqlite3-wal",
+  "adventure_journal.sqlite3-shm",
 ] as const;
 
 export interface RcBackupRequest {
@@ -47,15 +53,20 @@ export function backupBeforeReleaseCandidate(request: RcBackupRequest): RcBackup
   // file has been copied, via an atomic rename. If a copy fails partway,
   // `directory` never comes into existence, so a later launch retries
   // instead of trusting an incomplete snapshot.
-  const staging = path.join(request.backupRoot, `${version}.partial`);
+  // Unique per process so two simultaneous launches (this runs before
+  // app.requestSingleInstanceLock()) never share a staging directory: each
+  // process's rmSync/mkdirSync below only ever touches its own leftovers.
+  const staging = path.join(request.backupRoot, `${version}.${process.pid}.partial`);
   try {
     // The directory's presence is the marker, so a later launch cannot
-    // overwrite the pre-candidate snapshot with already-damaged state.
-    if (existsSync(directory)) {
+    // overwrite the pre-candidate snapshot with already-damaged state. Only
+    // a genuine directory counts: a stray file at this path must not
+    // permanently suppress the backup.
+    if (statSync(directory, { throwIfNoEntry: false })?.isDirectory()) {
       return { status: "skipped", reason: "already-backed-up" };
     }
-    // A crashed earlier attempt may have left a partial staging directory
-    // behind; it must not poison this retry.
+    // A crashed earlier attempt may have left this process's own partial
+    // staging directory behind; it must not poison this retry.
     rmSync(staging, { recursive: true, force: true });
     mkdirSync(staging, { recursive: true });
 

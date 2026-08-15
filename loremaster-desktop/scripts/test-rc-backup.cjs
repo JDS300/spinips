@@ -14,8 +14,9 @@ function seedUserData(root) {
   mkdirSync(root, { recursive: true });
   writeFileSync(path.join(root, "desktop-settings.json"), '{"live":true}');
   writeFileSync(path.join(root, "update-center.json"), '{"seen":1}');
-  // spinui-update-receipts.json and eq-legends-tools-gear-cache.json are
-  // deliberately absent: a fresh install has neither, and that must not raise.
+  // spinui-update-receipts.json, eq-legends-tools-gear-cache.json, and the
+  // engine-owned files below are deliberately absent: a fresh install has
+  // none of them, and that must not raise.
 }
 
 async function withTempDir(run) {
@@ -171,9 +172,10 @@ async function testStalePartialDoesNotBlockRetry() {
     const backupRoot = path.join(dir, "backups");
     seedUserData(userDataDir);
 
-    // Simulate a crashed earlier attempt that left a partial staging
-    // directory behind, with junk in it.
-    const staging = path.join(backupRoot, "0.4.0-rc.1.partial");
+    // Simulate a crashed earlier attempt by this same process that left a
+    // partial staging directory behind, with junk in it. The staging path is
+    // scoped by pid, so this must match the pid the retry below will use.
+    const staging = path.join(backupRoot, `0.4.0-rc.1.${process.pid}.partial`);
     mkdirSync(staging, { recursive: true });
     writeFileSync(path.join(staging, "junk.txt"), "leftover from a crash");
 
@@ -249,8 +251,72 @@ async function testBackupFileListIsTheStateFiles() {
     "update-center.json",
     "spinui-update-receipts.json",
     "eq-legends-tools-gear-cache.json",
+    "weekly_boss_kills.json",
+    "adventure_journal.sqlite3",
+    "adventure_journal.sqlite3-wal",
+    "adventure_journal.sqlite3-shm",
   ]);
   console.log("  backup file list: PASS");
+}
+
+async function testCopiesEngineOwnedProgressData() {
+  await withTempDir(async (dir) => {
+    const userDataDir = path.join(dir, "userdata");
+    const backupRoot = path.join(dir, "backups");
+    seedUserData(userDataDir);
+    writeFileSync(path.join(userDataDir, "weekly_boss_kills.json"), '{"week":1}');
+    writeFileSync(path.join(userDataDir, "adventure_journal.sqlite3"), "sqlite-bytes");
+
+    const result = backupBeforeReleaseCandidate({
+      version: "0.4.0-rc.1",
+      userDataDir,
+      backupRoot,
+    });
+
+    assert.equal(result.status, "created");
+    assert.ok(
+      result.files.includes("weekly_boss_kills.json"),
+      "weekly_boss_kills.json must be reported as copied",
+    );
+    assert.ok(
+      result.files.includes("adventure_journal.sqlite3"),
+      "adventure_journal.sqlite3 must be reported as copied",
+    );
+    assert.equal(
+      readFileSync(path.join(result.directory, "weekly_boss_kills.json"), "utf8"),
+      '{"week":1}',
+    );
+    assert.equal(
+      readFileSync(path.join(result.directory, "adventure_journal.sqlite3"), "utf8"),
+      "sqlite-bytes",
+    );
+  });
+  console.log("  copies engine-owned progress data: PASS");
+}
+
+async function testFileAtMarkerPathDoesNotSuppressBackupForever() {
+  await withTempDir(async (dir) => {
+    const userDataDir = path.join(dir, "userdata");
+    const backupRoot = path.join(dir, "backups");
+    seedUserData(userDataDir);
+
+    // A stray plain file sitting at the marker path, instead of a directory.
+    mkdirSync(backupRoot, { recursive: true });
+    writeFileSync(path.join(backupRoot, "0.4.0-rc.1"), "not a directory");
+
+    const result = backupBeforeReleaseCandidate({
+      version: "0.4.0-rc.1",
+      userDataDir,
+      backupRoot,
+    });
+
+    assert.notEqual(
+      result.status,
+      "skipped",
+      "a plain file at the marker path must not be treated as an already-completed backup",
+    );
+  });
+  console.log("  a stray file at the marker path does not suppress the backup forever: PASS");
 }
 
 async function main() {
@@ -264,6 +330,8 @@ async function main() {
   await testFailureNeverThrows();
   await testStalePartialDoesNotBlockRetry();
   await testMidCopyFailureLeavesNoMarkerAndRetriesCleanly();
+  await testCopiesEngineOwnedProgressData();
+  await testFileAtMarkerPathDoesNotSuppressBackupForever();
   console.log("rc backup: ALL PASS");
 }
 
