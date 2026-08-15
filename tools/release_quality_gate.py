@@ -365,16 +365,32 @@ def check_loremaster_release_pipeline() -> None:
         "Copy-Item -Force dist-electron-release/Loremaster.exe $manualPackage",
     )
     present = [value for value in retired if value in workflow]
-    # build-loremaster legitimately stages its own freshly built executable so
-    # it can hash it and upload the Loremaster-Windows artifact. That one line
-    # is exempt by exact text; any other appearance of the path means the
-    # executable has crept back into a release-publishing step.
-    SANCTIONED_EXE_STAGING = (
-        "Copy-Item -Force dist-electron-release/Loremaster.exe $component"
+    # Gating on one path shape (dist-electron-release/Loremaster.exe) only
+    # catches that shape: a downloaded Loremaster-Windows artifact staged at
+    # package/loremaster-component/Loremaster.exe and referenced straight
+    # from a publish step would slip past it untouched. So this checks the
+    # bare filename instead, and exempts the handful of lines that
+    # legitimately build and verify the Windows executable inside the
+    # build-loremaster job -- build it, smoke-test it, stage it for the
+    # Loremaster-Windows workflow artifact, and checksum that artifact.
+    # Everything else that mentions Loremaster.exe is a publishing path.
+    # Adding a line here should be a deliberate decision that a new
+    # reference is genuinely build-and-verify, never a reflex to silence
+    # this check.
+    SANCTIONED_EXE_LINES = (
+        "          $lore = Start-Process -FilePath "
+        "'dist-electron-release/win-unpacked/Loremaster.exe' "
+        "-PassThru -Wait -WindowStyle Hidden",
+        "          Copy-Item -Force dist-electron-release/Loremaster.exe $component",
+        "          $file = Join-Path $component 'Loremaster.exe'",
+        '          Set-Content -Path $checksum -Value "$hash  Loremaster.exe`n" '
+        "-NoNewline",
     )
-    residual = workflow.replace(SANCTIONED_EXE_STAGING, "")
-    if "dist-electron-release/Loremaster.exe" in residual:
-        present.append("dist-electron-release/Loremaster.exe")
+    residual = workflow
+    for sanctioned in SANCTIONED_EXE_LINES:
+        residual = residual.replace(sanctioned, "")
+    if "Loremaster.exe" in residual:
+        present.append("Loremaster.exe")
     if present:
         fail("release workflow publishes a retired artifact: " + ", ".join(present))
     print(
