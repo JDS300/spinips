@@ -287,7 +287,7 @@ def audit_attack_indicator_contract() -> None:
                 fail(f"{label} attack fill lost its topmost perimeter binding")
 
             window = item(root, "Screen", "PlayerWindow")
-            if dimensions(window) != (360, 193):
+            if dimensions(window) != (360, 207):
                 fail(f"{label} changed the canonical player-window size")
             minimum = (
                 child_int(window, "MinHSize"), child_int(window, "MinVSize")
@@ -341,7 +341,7 @@ def audit_attack_indicator_contract() -> None:
             # Resolve real rectangles at both supported extremes.  This catches
             # gaps, clipped corners, and one-sided anchor regressions that an
             # XML symbol-table check cannot see.
-            for size in ((360, 193), PLAYER_MIN_SIZE):
+            for size in ((360, 207), PLAYER_MIN_SIZE):
                 frame_width, frame_height = size
                 expected_rects = {
                     "A_AttackIndicatorAnimTop":
@@ -428,8 +428,11 @@ def audit_player_and_target() -> None:
     if child_text(player_subwindow, "Style_Border") != "true":
         fail("PlayerSubWindow must remain the visible compact command frame")
     player_window = item(player, "Screen", "PlayerWindow")
-    if dimensions(player_window) != (360, 193):
-        fail("PlayerWindow must remain 360x193")
+    # 207, not 193: the bordered sub-window's client area is ~12px shorter
+    # than its box, so the stance/invocation row had no room and was clipped.
+    # TargetWindow has no such row and stays 193.
+    if dimensions(player_window) != (360, 207):
+        fail("PlayerWindow must remain 360x207")
     if (child_text(player_window, "Style_Border") != "false" or
             child_text(player_window, "Style_Transparent") != "true"):
         fail("PlayerWindow reintroduced the faint maximum-canvas perimeter")

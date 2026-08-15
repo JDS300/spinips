@@ -1361,10 +1361,10 @@
 		</Location>
 		<Size>
 			<CX>360</CX>
-			<CY>193</CY>
+			<CY>207</CY>
 		</Size>
 		<MinHSize>280</MinHSize>
-		<MinVSize>193</MinVSize>
+		<MinVSize>207</MinVSize>
 		<Style_VScroll>false</Style_VScroll>
 		<Style_HScroll>false</Style_HScroll>
 		<DrawTemplate>WDT_RoundedTransparentNoArrow</DrawTemplate>

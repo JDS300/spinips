@@ -62,7 +62,7 @@ EFFECT_NAME_WIDTH = EFFECT_ROW_WIDTH - EFFECT_NAME_X - EFFECT_NAME_TAIL
 # The authored 360x193 command frames remain unchanged on first load. Their
 # anchored subwindows can safely contract to these Legends-compatible bounds,
 # so users may resize them without clipping the command rows.
-PLAYER_MIN_SIZE = (280, 193)
+PLAYER_MIN_SIZE = (280, 207)
 TARGET_MIN_SIZE = (260, 174)
 # EverQuest recognizes the attack indicator by exact animation and ScreenID
 # names, then owns its attack-on visibility, red tint, and flashing cadence.
