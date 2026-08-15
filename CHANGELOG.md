@@ -35,6 +35,11 @@ that came with it.
   discarded the first kill when two raid targets died before you confirmed a
   difficulty, which is exactly what happens when a raid clears several at
   once. Each kill now keeps its own zone, character and clear time.
+- **Release candidates install beside the release** — a candidate now builds as
+  "Loremaster RC" with its own desktop entry, so a tool like Gear Lever can hold
+  it and the live release at the same time instead of treating them as one app.
+  It shares the live settings on purpose, so bugs show up against real data, and
+  it copies those settings aside once per candidate before it can touch them.
 
 ### Removed
 
