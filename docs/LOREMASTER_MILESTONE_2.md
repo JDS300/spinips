@@ -4,7 +4,9 @@
 
 Loremaster is now a live Electron + React + TypeScript application, not a
 fixture player. Electron supervises a private headless parser engine over
-versioned UTF-8 JSONL and is the portable desktop shipped with UI releases.
+versioned UTF-8 JSONL and is the portable desktop this project builds. The
+Linux AppImage is what ships with UI releases; the Windows portable build is
+CI-tested but not published.
 
 ## Live path delivered
 
@@ -25,9 +27,11 @@ versioned UTF-8 JSONL and is the portable desktop shipped with UI releases.
   group participation can count. Difficulty and Solo/Group mode come from the
   logged instance-entry line, with an explicit fallback only for unknown tiers.
 - A Settings Update Center that displays the running version, checks the
-  official release, verifies portable and skin downloads, and can update
-  Loremaster, Reloaded, and Glass independently. App relaunch has automatic
-  rollback; skin replacement is isolated and blocked while EverQuest runs.
+  official release, and verifies and updates the Reloaded and Glass skins
+  independently, with automatic relaunch rollback and skin replacement
+  isolated and blocked while EverQuest runs. The Windows app updater still
+  looks for a `Loremaster.exe` release asset, but this fork publishes none,
+  so it has nothing to find.
 - A single portable Windows test build containing the React application and
   its hidden parser engine. No installer target is produced.
 
@@ -36,8 +40,9 @@ versioned UTF-8 JSONL and is the portable desktop shipped with UI releases.
 `Loremaster.exe` is the CI-built Electron desktop and contains its private
 headless parser engine. The workflow smoke-tests the protocol, strict
 TypeScript build, production renderer, bundled engine, and portable executable
-before the same binary is copied into the manual ZIP and attached to the UI
-release. The legacy Python GUI remains source/reference code and is not
+on every qualifying run, but the binary is not published: it is not copied
+into the manual ZIP and not attached to the UI release. It can still be built
+from source. The legacy Python GUI remains source/reference code and is not
 published as a competing executable.
 
 The release also publishes `SpinUI-UI.zip`, `SpinUI-Update.json`, and

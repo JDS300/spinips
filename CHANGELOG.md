@@ -40,6 +40,11 @@ that came with it.
   it and the live release at the same time instead of treating them as one app.
   It shares the live settings on purpose, so bugs show up against real data, and
   it copies those settings aside once per candidate before it can touch them.
+- **The Windows executable is no longer published here** — releases carry the
+  Linux build and the skins. The executable is still built and tested on every
+  run, so a change that breaks it is still caught, but it is not offered for
+  download from this fork. Anyone already running the Windows build will see
+  its updater fail rather than find a new one.
 
 ### Removed
 

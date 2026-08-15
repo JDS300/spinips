@@ -224,7 +224,6 @@ COMMON_PACKAGE_TOP_LEVEL = {
     "UI_Spin_qeynos_LO1.ini",
     "README.md",
     "INSTALL.md",
-    "Loremaster.exe",
 }
 
 
@@ -350,8 +349,6 @@ def check_loremaster_release_pipeline() -> None:
         "actions/download-artifact@v6",
         "electron-builder --win portable --x64 --publish never",
         "-c.extraMetadata.version=$version",
-        "dist-electron-release/Loremaster.exe",
-        "Copy-Item -Force dist-electron-release/Loremaster.exe $manualPackage",
     )
     missing = [value for value in required if value not in workflow]
     if missing:
@@ -361,13 +358,53 @@ def check_loremaster_release_pipeline() -> None:
         "dist/Loremaster.exe",
         "--specpath build/spec loremaster/loremaster.py",
         "LOREMASTER-NEXT-SHA256.txt",
+        # The Windows executable is built and tested in CI but never published:
+        # it is this repository's code compiled for a platform the fork does
+        # not test, and nobody should be installing it from here. Retired
+        # rather than deleted so an upstream sync cannot quietly restore it.
+        "Copy-Item -Force dist-electron-release/Loremaster.exe $manualPackage",
     )
     present = [value for value in retired if value in workflow]
+    # Gating on one path shape (dist-electron-release/Loremaster.exe) only
+    # catches that shape: a downloaded Loremaster-Windows artifact staged at
+    # package/loremaster-component/Loremaster.exe and referenced straight
+    # from a publish step would slip past it untouched. So this checks the
+    # bare filename instead, and exempts the handful of lines that
+    # legitimately build and verify the Windows executable inside the
+    # build-loremaster job -- build it, smoke-test it, stage it for the
+    # Loremaster-Windows workflow artifact, and checksum that artifact.
+    # Everything else that mentions Loremaster.exe is a publishing path.
+    # Adding a line here should be a deliberate decision that a new
+    # reference is genuinely build-and-verify, never a reflex to silence
+    # this check.
+    SANCTIONED_EXE_LINES = (
+        "          $lore = Start-Process -FilePath "
+        "'dist-electron-release/win-unpacked/Loremaster.exe' "
+        "-PassThru -Wait -WindowStyle Hidden",
+        "          Copy-Item -Force dist-electron-release/Loremaster.exe $component",
+        "          $file = Join-Path $component 'Loremaster.exe'",
+        '          Set-Content -Path $checksum -Value "$hash  Loremaster.exe`n" '
+        "-NoNewline",
+    )
+    residual = workflow
+    for sanctioned in SANCTIONED_EXE_LINES:
+        residual = residual.replace(sanctioned, "")
+    if "Loremaster.exe" in residual:
+        # Name the offending line(s) so someone resolving an upstream merge
+        # knows what to look at, rather than just that the bare filename
+        # matched somewhere in the workflow.
+        offending_lines = [
+            line.strip() for line in residual.splitlines() if "Loremaster.exe" in line
+        ]
+        present.append(
+            "Loremaster.exe (unsanctioned line(s): " + " | ".join(offending_lines) + ")"
+        )
     if present:
-        fail("release workflow still publishes the legacy/preview GUI: " + ", ".join(present))
+        fail("release workflow publishes a retired artifact: " + ", ".join(present))
     print(
         "[PASS] push builds are component-scoped; full releases freshly build, "
-        "verify, package, checksum, and publish both UI and Loremaster",
+        "verify, package, checksum, and publish UI, while Loremaster is built "
+        "and verified but never published",
         flush=True,
     )
 
@@ -864,8 +901,16 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _compare_packaged_tree(source: Path, packaged: Path, label: str) -> int:
+def _compare_packaged_tree(
+    source: Path, packaged: Path, label: str, exclude_prefixes: tuple[str, ...] = ()
+) -> int:
     source_files = _tree_files(source)
+    if exclude_prefixes:
+        source_files = {
+            relative: path
+            for relative, path in source_files.items()
+            if not relative.startswith(exclude_prefixes)
+        }
     package_files = _tree_files(packaged)
     missing = sorted(set(source_files) - set(package_files))
     extra = sorted(set(package_files) - set(source_files))
@@ -952,8 +997,21 @@ def check_staged_package(kind: str, package_root: Path) -> None:
         package_layouts / "profiles",
         f"{kind}/layouts/profiles",
     )
+    # docs/superpowers holds this project's own internal design specs and
+    # implementation plans, not user-facing documentation, so it must never
+    # be staged into a release package. Check this explicitly -- and before
+    # the tree comparison below -- so a regression fails with a message that
+    # names the real problem instead of a generic "unexpected files" diff.
+    staged_superpowers = package_root / "docs" / "superpowers"
+    if staged_superpowers.exists():
+        fail(
+            f"{kind} package ships internal planning docs at "
+            f"{staged_superpowers}: docs/superpowers holds this project's "
+            "own specs and plans and must not ship to end users"
+        )
     docs_files = _compare_packaged_tree(
-        REPO / "docs", package_root / "docs", f"{kind}/docs"
+        REPO / "docs", package_root / "docs", f"{kind}/docs",
+        exclude_prefixes=("superpowers/",),
     )
     _check_same_file(
         REPO / "README.md", package_root / "README.md", f"{kind}/README.md")
@@ -967,7 +1025,6 @@ def check_staged_package(kind: str, package_root: Path) -> None:
         package_root / "UI_Spin_qeynos_LO1.ini",
         f"{kind}/UI_Spin_qeynos_LO1.ini",
     )
-    _check_windows_executable(package_root / "Loremaster.exe")
     if kind == "installer":
         _check_windows_executable(package_root / "SpinUIInstaller.exe")
     print(

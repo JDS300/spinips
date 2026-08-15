@@ -177,6 +177,16 @@ jobs:
           }
           Copy-Item -Recurse -Force layouts/profiles (Join-Path $packageLayouts 'profiles')
           Copy-Item -Recurse -Force docs (Join-Path $uiPackage 'docs')
+          # docs/superpowers holds this project's own internal design specs
+          # and implementation plans, not user-facing documentation -- strip
+          # it before the tree is compressed and shipped to end users.
+          # Conditional because these are transient planning documents: once
+          # they are deleted from the repo, their absence must not fail or
+          # noisily error the build.
+          $stagedPlans = Join-Path $uiPackage 'docs/superpowers'
+          if (Test-Path $stagedPlans) {
+            Remove-Item -Recurse -Force $stagedPlans
+          }
           Copy-Item -Force UI_Spin_qeynos_LO1.ini $uiPackage
           Copy-Item -Force README.md $uiPackage
           Copy-Item -Force installer/INSTALL-MANUAL.md (Join-Path $uiPackage 'INSTALL.md')
@@ -457,6 +467,11 @@ jobs:
 
   package-windows-release:
     name: Assemble complete Windows release
+    # needs: build-loremaster is a gating dependency, not a component one:
+    # this job downloads nothing from build-loremaster (the portable
+    # Windows build is never published), but keeping it here means a broken
+    # Windows build still blocks a release -- the one invariant this whole
+    # change exists to preserve.
     needs: [detect-changes, build-ui, build-loremaster]
     # Named events rather than "not push": these jobs stage and publish a
     # release, so they belong to the two events that produce one. Pull
@@ -481,12 +496,6 @@ jobs:
           name: SpinUI-UI
           path: package/ui-component
 
-      - name: Download verified Loremaster component
-        uses: actions/download-artifact@v6
-        with:
-          name: Loremaster-Windows
-          path: package/loremaster-component
-
       - name: Assemble staged manual release
         shell: pwsh
         run: |
@@ -495,9 +504,6 @@ jobs:
           Copy-Item -Force package/ui-component/SpinUI-UI.zip package/SpinUI-UI.zip
           Copy-Item -Force package/ui-component/SpinUI-Update.json package/SpinUI-Update.json
           Expand-Archive -LiteralPath package/SpinUI-UI.zip -DestinationPath $manualPackage -Force
-          New-Item -ItemType Directory -Force -Path dist-electron-release | Out-Null
-          Copy-Item -Force package/loremaster-component/Loremaster.exe dist-electron-release/Loremaster.exe
-          Copy-Item -Force dist-electron-release/Loremaster.exe $manualPackage
 
       - name: Verify staged release package
         run: >
@@ -518,8 +524,7 @@ jobs:
           $lines = foreach ($file in @(
               'package/SpinUI-Manual.zip',
               'package/SpinUI-UI.zip',
-              'package/SpinUI-Update.json',
-              'dist-electron-release/Loremaster.exe')) {
+              'package/SpinUI-Update.json')) {
             $hash = (Get-FileHash -Algorithm SHA256 $file).Hash.ToLower()
             "$hash  $(Split-Path -Leaf $file)"
           }
@@ -539,7 +544,6 @@ jobs:
         with:
           name: SpinUI-Windows-tools
           path: |
-            dist-electron-release/Loremaster.exe
             package/SpinUI-UI.zip
             package/SpinUI-Update.json
             package/SHA256SUMS.txt
@@ -569,8 +573,7 @@ jobs:
             'package/SpinUI-Manual.zip',
             'package/SpinUI-UI.zip',
             'package/SpinUI-Update.json',
-            'package/SHA256SUMS.txt',
-            'dist-electron-release/Loremaster.exe'
+            'package/SHA256SUMS.txt'
           )
           # Built as a joined array rather than a here-string, whose closing
           # marker has to sit at column zero and so cannot be indented inside
@@ -597,11 +600,9 @@ jobs:
             "",
             "**Linux** -- download ``$appImage``, ``chmod +x`` it, and run it. There is no self-update on Linux, so new builds always come from this page.",
             "",
-            "**Windows** -- ``Loremaster.exe`` is the portable build. It is unsigned, so antivirus machine-learning heuristics sometimes flag it; see the README's Troubleshooting section.",
-            "",
             "**Skins** -- extract ``SpinUI-Manual.zip`` for the classic ``spinui_reloaded`` skin, the optional ``spinui_glass`` skin, layout profiles and the manual guide.",
             "",
-            "Check what you downloaded against ``Loremaster-Linux-SHA256SUMS.txt`` (Linux) or ``SHA256SUMS.txt`` (Windows and skins).",
+            "Check what you downloaded against ``Loremaster-Linux-SHA256SUMS.txt`` (Linux) or ``SHA256SUMS.txt`` (skins).",
             "",
             "---"
           )
@@ -656,15 +657,14 @@ jobs:
           package/SpinUI-UI.zip
           package/SpinUI-Update.json
           package/SHA256SUMS.txt
-          dist-electron-release/Loremaster.exe
           --clobber
 
   package-linux-release:
     name: Assemble complete Linux release
-    # Linux artifacts are attached to the release standalone (mirroring how
-    # Loremaster.exe is published as its own release asset) rather than
-    # folded into SpinUI-Manual.zip, which is the Windows-specific manual
-    # install bundle referenced by that package's own release notes text.
+    # Linux artifacts are attached to the release standalone rather than
+    # folded into SpinUI-Manual.zip, which is the manual install bundle for
+    # skins, layouts and docs; its own INSTALL.md directs Linux users to the
+    # AppImage instead.
     # This job never touches package-windows-release's steps or outputs.
     #
     # needs: package-windows-release is a sequencing dependency, not a

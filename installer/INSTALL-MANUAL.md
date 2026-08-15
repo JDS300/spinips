@@ -2,23 +2,16 @@
 
 This package does not require the installer. It contains both complete skins:
 the classic **Vellum & Ember** `spinui_reloaded` skin and the optional
-**Midnight Frost** `spinui_glass` skin, plus Spin's Loremaster, the optional
-character-layout profiles, and alternate chat presets. Seven validated screen
-profiles cover 1920×1080, 2048×1080, 2560×1080, 2560×1440, 3440×1440,
-3840×1600, and 3840×2160.
+**Midnight Frost** `spinui_glass` skin, plus the optional character-layout
+profiles and alternate chat presets. Spin's Loremaster ships separately --
+see step 4. Seven validated screen profiles cover 1920×1080, 2048×1080,
+2560×1080, 2560×1440, 3440×1440, 3840×1600, and 3840×2160.
 
 > **Safest layout option:** install either skin and keep your current
 > character UI INI. Combat Focus, Social Focus, and Hybrid are
 > optional full-file profiles: they replace the selected character UI file,
 > including its window and chat preferences. Make a byte-exact backup before
 > applying one so the original arrangement is easy to restore.
-
-> **Antivirus note:** the unsigned `Loremaster.exe` can trip machine-learning
-> heuristics (commonly `Wacatac!ml` or "suspicious PE"). Every release
-> publishes a `SHA256SUMS.txt`; verify a download with
-> `Get-FileHash -Algorithm SHA256 <file>` in PowerShell before restoring it
-> from quarantine. The executable is built in public by GitHub Actions from
-> the repository source.
 
 ## 1. Close EverQuest completely
 
@@ -109,7 +102,11 @@ matching filename as permission to overwrite it without a backup.
 
 ## 4. Run Spin's Loremaster
 
-Move `Loremaster.exe` anywhere you prefer, then run it. In EverQuest, type:
+This package does not include `Loremaster.exe`. On Linux, download the
+AppImage from the release and run it instead -- see section 5 below. On
+Windows, this repository builds and tests `Loremaster.exe` in every CI run
+but does not publish it, so build it from source if you want it there. Once
+it's running, in EverQuest type:
 
 ```text
 /log on
@@ -142,8 +139,10 @@ confirm it. The shortcut, Hover Scan, wiki network access, high-contrast
 palette, reduced motion, and text scale are configurable through **SETTINGS**.
 Lore Lens never injects into or reads memory from `eqgame.exe`.
 
-To start Loremaster with Windows without showing it before the game launches,
-create a shortcut in `shell:startup` whose target is:
+This applies only if you've built `Loremaster.exe` yourself, since this
+repository doesn't publish it. To start Loremaster with Windows without
+showing it before the game launches, create a shortcut in `shell:startup`
+whose target is:
 
 ```text
 "C:\path\to\Loremaster.exe" --wait-for-eq
@@ -190,8 +189,9 @@ in the payload (for example, a plain source checkout with no release
 artifacts), `--install` still installs the skin and reports the layout
 result normally; it just skips Loremaster with an explicit message telling
 you to grab the Linux build from the releases page, rather than silently
-doing nothing or falling back to the Windows exe under Wine. `Loremaster.exe`
-is only ever installed on Windows. When the native build is found,
+doing nothing or falling back to a Windows exe under Wine -- there is no exe
+to fall back to, since this repository builds and tests `Loremaster.exe` in
+CI but never publishes it. When the native build is found,
 `--desktop-shortcut` and `--startup-shortcut` write a freedesktop `.desktop`
 entry (to your Desktop folder and `~/.config/autostart`, respectively) whose
 `Exec=` points straight at the installed AppImage, instead of a Windows `.lnk`.

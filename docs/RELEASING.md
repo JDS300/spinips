@@ -67,9 +67,10 @@ candidate was cut from and tested at.
 ## What a Linux install actually updates
 
 The Linux AppImage has **no self-update**. The app updater replaces a portable
-Windows `Loremaster.exe` and does nothing on Linux, so a new AppImage is always
-a manual download. The SpinUI **skin** updater does run on Linux, and it
-follows full releases only, exactly like the app updater.
+Windows `Loremaster.exe` -- which CI still builds and tests on every
+qualifying run but no longer publishes -- and does nothing on Linux, so a new
+AppImage is always a manual download. The SpinUI **skin** updater does run on
+Linux, and it follows full releases only, exactly like the app updater.
 
 That is why testing a candidate on Linux is a manual install by design.
 
