@@ -481,12 +481,6 @@ jobs:
           name: SpinUI-UI
           path: package/ui-component
 
-      - name: Download verified Loremaster component
-        uses: actions/download-artifact@v6
-        with:
-          name: Loremaster-Windows
-          path: package/loremaster-component
-
       - name: Assemble staged manual release
         shell: pwsh
         run: |
@@ -495,9 +489,6 @@ jobs:
           Copy-Item -Force package/ui-component/SpinUI-UI.zip package/SpinUI-UI.zip
           Copy-Item -Force package/ui-component/SpinUI-Update.json package/SpinUI-Update.json
           Expand-Archive -LiteralPath package/SpinUI-UI.zip -DestinationPath $manualPackage -Force
-          New-Item -ItemType Directory -Force -Path dist-electron-release | Out-Null
-          Copy-Item -Force package/loremaster-component/Loremaster.exe dist-electron-release/Loremaster.exe
-          Copy-Item -Force dist-electron-release/Loremaster.exe $manualPackage
 
       - name: Verify staged release package
         run: >
@@ -518,8 +509,7 @@ jobs:
           $lines = foreach ($file in @(
               'package/SpinUI-Manual.zip',
               'package/SpinUI-UI.zip',
-              'package/SpinUI-Update.json',
-              'dist-electron-release/Loremaster.exe')) {
+              'package/SpinUI-Update.json')) {
             $hash = (Get-FileHash -Algorithm SHA256 $file).Hash.ToLower()
             "$hash  $(Split-Path -Leaf $file)"
           }
@@ -539,7 +529,6 @@ jobs:
         with:
           name: SpinUI-Windows-tools
           path: |
-            dist-electron-release/Loremaster.exe
             package/SpinUI-UI.zip
             package/SpinUI-Update.json
             package/SHA256SUMS.txt
@@ -569,8 +558,7 @@ jobs:
             'package/SpinUI-Manual.zip',
             'package/SpinUI-UI.zip',
             'package/SpinUI-Update.json',
-            'package/SHA256SUMS.txt',
-            'dist-electron-release/Loremaster.exe'
+            'package/SHA256SUMS.txt'
           )
           # Built as a joined array rather than a here-string, whose closing
           # marker has to sit at column zero and so cannot be indented inside
@@ -597,11 +585,9 @@ jobs:
             "",
             "**Linux** -- download ``$appImage``, ``chmod +x`` it, and run it. There is no self-update on Linux, so new builds always come from this page.",
             "",
-            "**Windows** -- ``Loremaster.exe`` is the portable build. It is unsigned, so antivirus machine-learning heuristics sometimes flag it; see the README's Troubleshooting section.",
-            "",
             "**Skins** -- extract ``SpinUI-Manual.zip`` for the classic ``spinui_reloaded`` skin, the optional ``spinui_glass`` skin, layout profiles and the manual guide.",
             "",
-            "Check what you downloaded against ``Loremaster-Linux-SHA256SUMS.txt`` (Linux) or ``SHA256SUMS.txt`` (Windows and skins).",
+            "Check what you downloaded against ``Loremaster-Linux-SHA256SUMS.txt`` (Linux) or ``SHA256SUMS.txt`` (skins).",
             "",
             "---"
           )
@@ -656,13 +642,11 @@ jobs:
           package/SpinUI-UI.zip
           package/SpinUI-Update.json
           package/SHA256SUMS.txt
-          dist-electron-release/Loremaster.exe
           --clobber
 
   package-linux-release:
     name: Assemble complete Linux release
-    # Linux artifacts are attached to the release standalone (mirroring how
-    # Loremaster.exe is published as its own release asset) rather than
+    # Linux artifacts are attached to the release standalone rather than
     # folded into SpinUI-Manual.zip, which is the Windows-specific manual
     # install bundle referenced by that package's own release notes text.
     # This job never touches package-windows-release's steps or outputs.

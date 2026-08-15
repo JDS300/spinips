@@ -224,7 +224,6 @@ COMMON_PACKAGE_TOP_LEVEL = {
     "UI_Spin_qeynos_LO1.ini",
     "README.md",
     "INSTALL.md",
-    "Loremaster.exe",
 }
 
 
@@ -350,8 +349,6 @@ def check_loremaster_release_pipeline() -> None:
         "actions/download-artifact@v6",
         "electron-builder --win portable --x64 --publish never",
         "-c.extraMetadata.version=$version",
-        "dist-electron-release/Loremaster.exe",
-        "Copy-Item -Force dist-electron-release/Loremaster.exe $manualPackage",
     )
     missing = [value for value in required if value not in workflow]
     if missing:
@@ -361,13 +358,26 @@ def check_loremaster_release_pipeline() -> None:
         "dist/Loremaster.exe",
         "--specpath build/spec loremaster/loremaster.py",
         "LOREMASTER-NEXT-SHA256.txt",
+        # The Windows executable is built and tested in CI but never published:
+        # it is this repository's code compiled for a platform the fork does
+        # not test, and nobody should be installing it from here. Retired
+        # rather than deleted so an upstream sync cannot quietly restore it.
+        "Copy-Item -Force dist-electron-release/Loremaster.exe $manualPackage",
     )
     present = [value for value in retired if value in workflow]
+    # build-loremaster legitimately stages its own freshly built exe with
+    # "Copy-Item -Force dist-electron-release/Loremaster.exe $component" so
+    # it can hash it and upload the Loremaster-Windows artifact; that one
+    # sanctioned reference is exempt. Any other appearance of the same path
+    # means the executable has crept back into a release-publishing step.
+    if re.search(r"(?<!-Force )dist-electron-release/Loremaster\.exe", workflow):
+        present.append("dist-electron-release/Loremaster.exe")
     if present:
-        fail("release workflow still publishes the legacy/preview GUI: " + ", ".join(present))
+        fail("release workflow publishes a retired artifact: " + ", ".join(present))
     print(
         "[PASS] push builds are component-scoped; full releases freshly build, "
-        "verify, package, checksum, and publish both UI and Loremaster",
+        "verify, package, checksum, and publish UI, while Loremaster is built "
+        "and verified but never published",
         flush=True,
     )
 
@@ -967,7 +977,6 @@ def check_staged_package(kind: str, package_root: Path) -> None:
         package_root / "UI_Spin_qeynos_LO1.ini",
         f"{kind}/UI_Spin_qeynos_LO1.ini",
     )
-    _check_windows_executable(package_root / "Loremaster.exe")
     if kind == "installer":
         _check_windows_executable(package_root / "SpinUIInstaller.exe")
     print(
