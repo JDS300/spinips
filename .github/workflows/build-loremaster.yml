@@ -177,6 +177,10 @@ jobs:
           }
           Copy-Item -Recurse -Force layouts/profiles (Join-Path $packageLayouts 'profiles')
           Copy-Item -Recurse -Force docs (Join-Path $uiPackage 'docs')
+          # docs/superpowers holds this project's own internal design specs
+          # and implementation plans, not user-facing documentation -- strip
+          # it before the tree is compressed and shipped to end users.
+          Remove-Item -Recurse -Force (Join-Path $uiPackage 'docs/superpowers')
           Copy-Item -Force UI_Spin_qeynos_LO1.ini $uiPackage
           Copy-Item -Force README.md $uiPackage
           Copy-Item -Force installer/INSTALL-MANUAL.md (Join-Path $uiPackage 'INSTALL.md')
@@ -457,6 +461,11 @@ jobs:
 
   package-windows-release:
     name: Assemble complete Windows release
+    # needs: build-loremaster is a gating dependency, not a component one:
+    # this job downloads nothing from build-loremaster (the portable
+    # Windows build is never published), but keeping it here means a broken
+    # Windows build still blocks a release -- the one invariant this whole
+    # change exists to preserve.
     needs: [detect-changes, build-ui, build-loremaster]
     # Named events rather than "not push": these jobs stage and publish a
     # release, so they belong to the two events that produce one. Pull
@@ -647,8 +656,9 @@ jobs:
   package-linux-release:
     name: Assemble complete Linux release
     # Linux artifacts are attached to the release standalone rather than
-    # folded into SpinUI-Manual.zip, which is the Windows-specific manual
-    # install bundle referenced by that package's own release notes text.
+    # folded into SpinUI-Manual.zip, which is the manual install bundle for
+    # skins, layouts and docs; its own INSTALL.md directs Linux users to the
+    # AppImage instead.
     # This job never touches package-windows-release's steps or outputs.
     #
     # needs: package-windows-release is a sequencing dependency, not a

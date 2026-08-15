@@ -390,7 +390,15 @@ def check_loremaster_release_pipeline() -> None:
     for sanctioned in SANCTIONED_EXE_LINES:
         residual = residual.replace(sanctioned, "")
     if "Loremaster.exe" in residual:
-        present.append("Loremaster.exe")
+        # Name the offending line(s) so someone resolving an upstream merge
+        # knows what to look at, rather than just that the bare filename
+        # matched somewhere in the workflow.
+        offending_lines = [
+            line.strip() for line in residual.splitlines() if "Loremaster.exe" in line
+        ]
+        present.append(
+            "Loremaster.exe (unsanctioned line(s): " + " | ".join(offending_lines) + ")"
+        )
     if present:
         fail("release workflow publishes a retired artifact: " + ", ".join(present))
     print(
@@ -893,8 +901,16 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _compare_packaged_tree(source: Path, packaged: Path, label: str) -> int:
+def _compare_packaged_tree(
+    source: Path, packaged: Path, label: str, exclude_prefixes: tuple[str, ...] = ()
+) -> int:
     source_files = _tree_files(source)
+    if exclude_prefixes:
+        source_files = {
+            relative: path
+            for relative, path in source_files.items()
+            if not relative.startswith(exclude_prefixes)
+        }
     package_files = _tree_files(packaged)
     missing = sorted(set(source_files) - set(package_files))
     extra = sorted(set(package_files) - set(source_files))
@@ -981,8 +997,21 @@ def check_staged_package(kind: str, package_root: Path) -> None:
         package_layouts / "profiles",
         f"{kind}/layouts/profiles",
     )
+    # docs/superpowers holds this project's own internal design specs and
+    # implementation plans, not user-facing documentation, so it must never
+    # be staged into a release package. Check this explicitly -- and before
+    # the tree comparison below -- so a regression fails with a message that
+    # names the real problem instead of a generic "unexpected files" diff.
+    staged_superpowers = package_root / "docs" / "superpowers"
+    if staged_superpowers.exists():
+        fail(
+            f"{kind} package ships internal planning docs at "
+            f"{staged_superpowers}: docs/superpowers holds this project's "
+            "own specs and plans and must not ship to end users"
+        )
     docs_files = _compare_packaged_tree(
-        REPO / "docs", package_root / "docs", f"{kind}/docs"
+        REPO / "docs", package_root / "docs", f"{kind}/docs",
+        exclude_prefixes=("superpowers/",),
     )
     _check_same_file(
         REPO / "README.md", package_root / "README.md", f"{kind}/README.md")
