@@ -163,7 +163,7 @@ PLACEMENTS: dict[str, dict] = {
     # --- center combat cluster (above chat) ---------------------------------
     # Player and Target plates share the hotbar block's outer edges, so the
     # pair is perfectly centered over the rows beneath (block midpoint 1720).
-    "PlayerWindow":  P(1170, 771, 360, 193, show=1),
+    "PlayerWindow":  P(1170, 771, 360, 207, show=1),
     "TargetWindow":  P(1898, 771, 360, 193, show=1),
     # Every pet layout preserves the historical x=1180 right edge and y=965
     # bottom baseline: 8px before PlayerWindow and 7px above the hotbar row.
@@ -299,7 +299,7 @@ def adaptive_placements(profile: ResolutionProfile, preset: str) -> dict[str, di
     # plate instead of inside it (seen at 2560x1080).
     tot_x, tot_y = max(8, sw - 1080), 536
     plate_clash = (
-        tot_y < player_y + 193 and tot_y + 100 > player_y and (
+        tot_y < player_y + 207 and tot_y + 100 > player_y and (
             (tot_x < player_x + 360 and tot_x + 232 > player_x)
             or (tot_x < target_x + 360 and tot_x + 232 > target_x)))
     if plate_clash:
@@ -323,7 +323,7 @@ def adaptive_placements(profile: ResolutionProfile, preset: str) -> dict[str, di
         "HotButtonWnd": q(center - 588, chat_top - 98, 272, 93, show=1),
         "HotButtonWnd2": q(center + 289, chat_top - 98, 272, 93, show=1),
         "HotButtonWnd11": q(64, max(8, chat_top - 273), 98, 271, show=0),
-        "PlayerWindow": q(player_x, player_y, 360, 193, show=1),
+        "PlayerWindow": q(player_x, player_y, 360, 207, show=1),
         "TargetWindow": q(target_x, player_y, 360, 193, show=1),
         "PetInfoWindow": q(pet_x, pet_y, 356, 210, show=0),
         "PetInfoWindow_1": q(pet_x + 157, pet_y - 24,
@@ -570,7 +570,7 @@ def rebuild_chat_manager(lines: list[str], font: int = CHAT_FONT_1440) -> list[s
 XML_SIZES = {
     # Player/Target keep their full transparent interaction and buff hosts for
     # placement math even though only the compact lower subframes are painted.
-    "PlayerWindow": (360, 193), "TargetWindow": (360, 193),
+    "PlayerWindow": (360, 207), "TargetWindow": (360, 193),
     "PetInfoWindow": (356, 210), "BuffWindow": (216, 640),
     "PetInfoWindow_1": (356, 210), "PetInfoWindow_2": (356, 210),
     "PetInfoWindow_3": (441, 181),

@@ -488,7 +488,7 @@ export class PortableUpdateService {
   private readonly spawnImpl: typeof spawn;
   private readonly minExecutableBytes: number;
   private readonly maxExecutableBytes: number;
-  private readonly powershellPath: string;
+  private readonly configuredPowershellPath: string | null;
   private readonly listeners = new Set<ProgressListener>();
   private progress: UpdateProgress = { phase: "idle", percent: 0, detail: "Ready to check for updates." };
   private activeDownload: Promise<StagedPortableUpdate> | null = null;
@@ -505,7 +505,16 @@ export class PortableUpdateService {
     this.spawnImpl = options.spawnImpl ?? spawn;
     this.minExecutableBytes = options.minExecutableBytes ?? MIN_EXECUTABLE_BYTES;
     this.maxExecutableBytes = options.maxExecutableBytes ?? MAX_EXECUTABLE_BYTES;
-    this.powershellPath = options.powershellPath ?? resolveWindowsPowerShell();
+    this.configuredPowershellPath = options.powershellPath ?? null;
+  }
+
+  // Resolved at install time, not construction time. The constructor runs
+  // during app startup on every platform -- main.ts calls it synchronously
+  // inside app.whenReady(), ahead of createWindow() and ensureTray() -- so a
+  // throw here silently costs the window and the tray icon. Only the Windows
+  // portable-replacement path actually needs PowerShell.
+  private resolvePowershellPath(): string {
+    return this.configuredPowershellPath ?? resolveWindowsPowerShell();
   }
 
   subscribe(listener: ProgressListener): () => void {
@@ -669,7 +678,7 @@ export class PortableUpdateService {
     }
     this.emit({ phase: "installing", percent: 100, detail: "Closing Loremaster, installing the update, and reopening it.", version: update.version });
     const child: ChildProcess = this.spawnImpl(
-      this.powershellPath,
+      this.resolvePowershellPath(),
       [
         "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
         "-File", update.helperPath,

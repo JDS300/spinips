@@ -14,6 +14,7 @@ import {
   type InventoryEntry,
 } from "./gear-plan";
 import { ItemIntelligenceService } from "./item-intelligence";
+import { placeAlertWindow } from "./alert-placement";
 import {
   acknowledgePortableUpdateRelaunch,
   PortableUpdateService,
@@ -1608,39 +1609,21 @@ function positionAlertWindow(): void {
   const settings = engine?.getState().settings ?? defaultSettings;
   const alertSize = scaledSize(ALERT_SIZE, settings.fontScale);
   const anchorBounds = mainWindow.getBounds();
-  const companionBounds = controlWindow?.isVisible() ? controlWindow.getBounds() : null;
-  const companionAbove = Boolean(
-    companionBounds && companionBounds.y + companionBounds.height <= anchorBounds.y);
-  const workArea = screen.getDisplayMatching(anchorBounds).workArea;
-  const gap = 10;
-  let anchor = settings.alerts.alertAnchor;
-  if (anchor === "auto") {
-    const aboveEdge = companionAbove && companionBounds
-      ? companionBounds.y
-      : anchorBounds.y;
-    const above = aboveEdge - workArea.y;
-    const below = workArea.y + workArea.height - (anchorBounds.y + anchorBounds.height);
-    const right = workArea.x + workArea.width - (anchorBounds.x + anchorBounds.width);
-    anchor = above >= alertSize.height + gap && above >= below
-      ? "above"
-      : right >= alertSize.width + gap ? "right"
-        : below >= alertSize.height + gap ? "below" : "left";
-  }
-  let x = anchorBounds.x + Math.round((anchorBounds.width - alertSize.width) / 2);
-  let y = (companionAbove && companionBounds ? companionBounds.y : anchorBounds.y)
-    - alertSize.height - gap;
-  if (anchor === "below") y = anchorBounds.y + anchorBounds.height + gap;
-  if (anchor === "left") {
-    x = anchorBounds.x - alertSize.width - gap;
-    y = anchorBounds.y + Math.round((anchorBounds.height - alertSize.height) / 2);
-  }
-  if (anchor === "right") {
-    x = anchorBounds.x + anchorBounds.width + gap;
-    y = anchorBounds.y + Math.round((anchorBounds.height - alertSize.height) / 2);
-  }
-  x = clamp(x, workArea.x, workArea.x + workArea.width - alertSize.width);
-  y = clamp(y, workArea.y, workArea.y + workArea.height - alertSize.height);
-  alertWindow.setBounds({ x, y, ...alertSize }, false);
+  // The control panel auto-places itself on whichever side has room and is
+  // click-through, so a player cannot drag it clear. The alerts are the ones
+  // that have to move out of its way -- on every side, not just above it.
+  const control = controlWindow && !controlWindow.isDestroyed() && controlWindow.isVisible()
+    ? controlWindow.getBounds()
+    : null;
+  const placement = placeAlertWindow({
+    anchor: settings.alerts.alertAnchor,
+    main: anchorBounds,
+    alert: alertSize,
+    control,
+    workArea: screen.getDisplayMatching(anchorBounds).workArea,
+    gap: 10,
+  });
+  alertWindow.setBounds({ x: placement.x, y: placement.y, ...alertSize }, false);
 }
 
 function setWindowMode(expanded: boolean, preserveAnchor = false): void {

@@ -250,6 +250,8 @@ jobs:
           pnpm test:updates
           pnpm test:skin-updates
           pnpm test:rc-backup
+          pnpm test:alert-placement
+          pnpm test:updater-startup
 
       - name: Fetch stock-layout reference commit
         shell: bash
@@ -390,6 +392,8 @@ jobs:
           pnpm build
           pnpm test:gear
           pnpm test:rc-backup
+          pnpm test:alert-placement
+          pnpm test:updater-startup
 
       - name: Verify installer selftest
         run: python3 installer/spinui_installer.py --selftest

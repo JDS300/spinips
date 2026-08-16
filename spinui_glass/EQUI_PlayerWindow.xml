@@ -517,12 +517,13 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignRight>false</AlignRight>
-		<TopAnchorOffset>96</TopAnchorOffset>
-		<BottomAnchorOffset>112</BottomAnchorOffset>
+		<TopAnchorOffset>18</TopAnchorOffset>
+		<BottomAnchorOffset>2</BottomAnchorOffset>
 		<LeftAnchorOffset>6</LeftAnchorOffset>
 		<RightAnchorOffset>132</RightAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
-		<BottomAnchorToTop>true</BottomAnchorToTop>
+		<TopAnchorToTop>false</TopAnchorToTop>
+		<BottomAnchorToTop>false</BottomAnchorToTop>
 		<FontShadow>true</FontShadow>
 	</Label>
 
@@ -550,12 +551,13 @@
 		<NoWrap>true</NoWrap>
 		<AutoStretch>true</AutoStretch>
 		<AlignRight>true</AlignRight>
-		<TopAnchorOffset>96</TopAnchorOffset>
-		<BottomAnchorOffset>112</BottomAnchorOffset>
+		<TopAnchorOffset>18</TopAnchorOffset>
+		<BottomAnchorOffset>2</BottomAnchorOffset>
 		<LeftAnchorOffset>232</LeftAnchorOffset>
 		<RightAnchorOffset>6</RightAnchorOffset>
 		<RightAnchorToLeft>false</RightAnchorToLeft>
-		<BottomAnchorToTop>true</BottomAnchorToTop>
+		<TopAnchorToTop>false</TopAnchorToTop>
+		<BottomAnchorToTop>false</BottomAnchorToTop>
 		<FontShadow>true</FontShadow>
 	</Label>
 
@@ -1358,10 +1360,10 @@
 		</Location>
 		<Size>
 			<CX>360</CX>
-			<CY>193</CY>
+			<CY>207</CY>
 		</Size>
 		<MinHSize>280</MinHSize>
-		<MinVSize>193</MinVSize>
+		<MinVSize>207</MinVSize>
 		<Style_VScroll>false</Style_VScroll>
 		<Style_HScroll>false</Style_HScroll>
 		<DrawTemplate>WDT_RoundedTransparentNoArrow</DrawTemplate>
