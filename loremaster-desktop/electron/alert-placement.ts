@@ -85,18 +85,40 @@ function clampToWorkArea(rect: Rect, workArea: Rect): Rect {
   };
 }
 
-function resolveSide(side: AlertSide, request: AlertPlacementRequest): Rect {
-  return clampToWorkArea(
-    clearControl(baseRect(side, request), side, request),
-    request.workArea,
-  );
+// Base position for a side, with the control panel dodged, but NOT clamped.
+// Clamping is deliberately withheld here: a clamped rectangle always fits the
+// work area, so testing fit after clamping is a tautology that makes every
+// side look viable.
+function candidate(side: AlertSide, request: AlertPlacementRequest): Rect {
+  return clearControl(baseRect(side, request), side, request);
 }
 
-function fitsOnScreen(rect: Rect, workArea: Rect): boolean {
+function insideWorkArea(rect: Rect, workArea: Rect): boolean {
   return (rect.x >= workArea.x
     && rect.y >= workArea.y
     && rect.x + rect.width <= workArea.x + workArea.width
     && rect.y + rect.height <= workArea.y + workArea.height);
+}
+
+// The seed window is the only way to reach analyze and settings, and the only
+// thing a player can drag. An alert card parked on top of it makes the whole
+// application unreachable, so overlapping it disqualifies a side outright --
+// ahead of honouring a preferred anchor.
+function usable(rect: Rect, request: AlertPlacementRequest): boolean {
+  return (insideWorkArea(rect, request.workArea)
+    && !intersects(rect, request.control)
+    && !intersects(rect, request.main));
+}
+
+// Mirrors the historic preference: above first, but only while it has at
+// least as much room as below; otherwise try the sides before dropping below.
+function preferenceOrder(request: AlertPlacementRequest): readonly AlertSide[] {
+  const { main, workArea } = request;
+  const spaceAbove = main.y - workArea.y;
+  const spaceBelow = workArea.y + workArea.height - (main.y + main.height);
+  return spaceAbove >= spaceBelow
+    ? (["above", "right", "below", "left"] as const)
+    : (["right", "below", "left", "above"] as const);
 }
 
 /**
@@ -104,28 +126,36 @@ function fitsOnScreen(rect: Rect, workArea: Rect): boolean {
  *
  * The control panel is auto-placed on whichever side of the window has room,
  * and it is click-through, so a player cannot drag it out of the way. The
- * alerts therefore have to be the ones that move: `auto` skips any side the
- * panel occupies, and an explicit choice is honoured but pushed clear of the
- * panel rather than drawn over it.
+ * alerts therefore have to be the ones that move: they dodge the panel on
+ * every side, and they never cover the seed window.
+ *
+ * Every side yields two candidates -- its natural position, and that position
+ * pulled back inside the work area. Near a screen edge the natural one falls
+ * off screen while the clamped one can land on the seed, so both are offered
+ * and ranked together rather than clamping blindly at the end.
  */
 export function placeAlertWindow(request: AlertPlacementRequest): AlertPlacement {
-  const { anchor, control, workArea } = request;
+  const { workArea, main } = request;
+  const sides = preferenceOrder(request);
+  const optionsFor = (side: AlertSide) => {
+    const raw = candidate(side, request);
+    return [{ side, rect: raw }, { side, rect: clampToWorkArea(raw, workArea) }];
+  };
+  const preferred = request.anchor === "auto" ? [] : optionsFor(request.anchor);
+  const options = [...preferred, ...sides.flatMap(optionsFor)];
 
-  if (anchor !== "auto") {
-    const rect = resolveSide(anchor, request);
-    return { x: rect.x, y: rect.y, side: anchor, anchor };
-  }
+  const chosen = options.find(({ rect }) => usable(rect, request))
+    // Nothing ideal: staying off the seed matters more than the panel, and
+    // both matter more than honouring the requested side.
+    ?? options.find(({ rect }) => insideWorkArea(rect, workArea)
+      && !intersects(rect, main))
+    ?? options.find(({ rect }) => !intersects(rect, main))
+    ?? options[0];
 
-  const resolved = ALERT_SIDES.map((side) => ({ side, rect: resolveSide(side, request) }));
-  const clear = resolved.find(({ rect }) => (
-    fitsOnScreen(rect, workArea) && !intersects(rect, control)
-  ));
-  // Nothing is both on screen and clear -- prefer staying clear of the panel
-  // over staying fully on screen, since an alert drawn over the panel hides
-  // the crowd-control timers this window exists to show.
-  const fallback = resolved.find(({ rect }) => !intersects(rect, control))
-    ?? resolved.find(({ rect }) => fitsOnScreen(rect, workArea))
-    ?? resolved[0];
-  const chosen = clear ?? fallback;
-  return { x: chosen.rect.x, y: chosen.rect.y, side: chosen.side, anchor };
+  return {
+    x: chosen.rect.x,
+    y: chosen.rect.y,
+    side: chosen.side,
+    anchor: request.anchor,
+  };
 }

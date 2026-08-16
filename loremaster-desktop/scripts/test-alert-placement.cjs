@@ -124,6 +124,77 @@ function testIntersectsHelper() {
   console.log("  intersects helper: PASS");
 }
 
+
+// --- regression: the alert must never cover the seed window -----------------
+// A clamped rectangle always "fits" the work area, so checking fit after
+// clamping is a tautology: auto then picks "above" no matter how little room
+// is there, and near a screen edge that lands on top of the seed. The seed is
+// the only way to reach analyze/settings and to drag the app, so covering it
+// makes the application unusable.
+const SEED = { width: 128, height: 74 };
+const REAL_ALERT = { width: 420, height: 112 };
+
+function placeSeed(main, overrides = {}) {
+  return placeAlertWindow({
+    anchor: "auto",
+    main,
+    alert: REAL_ALERT,
+    control: null,
+    workArea: WORK,
+    gap: 10,
+    ...overrides,
+  });
+}
+
+function testNeverCoversSeedAnywhereOnScreen() {
+  const xs = [WORK.x, 400, WORK.x + WORK.width - SEED.width];
+  const ys = [WORK.y, 300, WORK.y + WORK.height - SEED.height];
+  let checked = 0;
+  for (const x of xs) {
+    for (const y of ys) {
+      const main = { x, y, ...SEED };
+      for (const anchor of ["auto", ...ALERT_SIDES]) {
+        const r = placeSeed(main, { anchor });
+        const rect = { x: r.x, y: r.y, ...REAL_ALERT };
+        assert.equal(
+          intersects(rect, main), false,
+          `alert covered the seed at (${x},${y}) with anchor ${anchor}`,
+        );
+        checked += 1;
+      }
+    }
+  }
+  console.log(`  never covers the seed (${checked} positions): PASS`);
+}
+
+function testSeedAtTopDoesNotChooseAbove() {
+  const main = { x: 900, y: WORK.y, ...SEED };
+  const r = placeSeed(main);
+  assert.notEqual(r.side, "above", "no room above a seed pinned to the top edge");
+  const rect = { x: r.x, y: r.y, ...REAL_ALERT };
+  assert.equal(intersects(rect, main), false);
+  console.log("  seed at the top edge -> auto avoids 'above': PASS");
+}
+
+function testSeedAtBottomDoesNotChooseBelow() {
+  const main = { x: 900, y: WORK.y + WORK.height - SEED.height, ...SEED };
+  const r = placeSeed(main);
+  assert.notEqual(r.side, "below", "no room below a seed pinned to the bottom edge");
+  const rect = { x: r.x, y: r.y, ...REAL_ALERT };
+  assert.equal(intersects(rect, main), false);
+  console.log("  seed at the bottom edge -> auto avoids 'below': PASS");
+}
+
+function testAvoidsSeedAndPanelTogether() {
+  const main = { x: 900, y: WORK.y, ...SEED };
+  const control = { x: main.x + main.width + 6, y: main.y, width: 300, height: 90 };
+  const r = placeSeed(main, { control });
+  const rect = { x: r.x, y: r.y, ...REAL_ALERT };
+  assert.equal(intersects(rect, main), false, "covered the seed");
+  assert.equal(intersects(rect, control), false, "covered the control panel");
+  console.log("  avoids the seed and the panel at once: PASS");
+}
+
 function main() {
   console.log("alert placement:");
   testIntersectsHelper();
@@ -134,6 +205,10 @@ function main() {
   testExplicitAnchorIsNudgedClear();
   testTallPanelFallsBackWithoutOverlap();
   testStaysOnScreen();
+  testSeedAtTopDoesNotChooseAbove();
+  testSeedAtBottomDoesNotChooseBelow();
+  testAvoidsSeedAndPanelTogether();
+  testNeverCoversSeedAnywhereOnScreen();
   console.log("alert placement: ALL PASS");
 }
 
