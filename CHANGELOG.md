@@ -46,6 +46,19 @@ that came with it.
   download from this fork. Anyone already running the Windows build will see
   its updater fail rather than find a new one.
 
+- **Loremaster starts again on Linux.** The Windows portable updater resolved a
+  PowerShell path while the app was still starting, which fails on Linux and
+  took the whole startup with it: no window, no tray icon, no engine. The path
+  is now looked up only when a Windows update is actually being installed.
+- **The stance row is visible again.** The player frame's bottom row -- Mage
+  Hunter, Defensive, Invocation, Over Channel, Recovery -- was cut off because
+  the frame was ~12px shorter inside than its layout assumed. The frame is
+  taller and the row now rides its lower edge, so it stays readable at any
+  size. Both skins, all seven variants.
+- **Alert cards keep out of the way.** They no longer land on the crowd-control
+  panel, which cannot be dragged aside, and they never cover the seed window --
+  which had made analyze, settings and even moving the app unreachable.
+
 ### Removed
 
 - **Alt+Z instance lockout OCR.** Upstream retired the feature and this fork
