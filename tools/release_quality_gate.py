@@ -349,6 +349,8 @@ def check_loremaster_release_pipeline() -> None:
         "actions/download-artifact@v6",
         "electron-builder --win portable --x64 --publish never",
         "-c.extraMetadata.version=$version",
+        # The changelog reaches the notes as text, not as "System.Object[]".
+        '$changelog = (python tools/release_notes.py --version $tag) -join "`n"',
     )
     missing = [value for value in required if value not in workflow]
     if missing:
