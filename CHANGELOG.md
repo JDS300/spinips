@@ -58,6 +58,19 @@ that came with it.
 - **Alert cards keep out of the way.** They no longer land on the crowd-control
   panel, which cannot be dragged aside, and they never cover the seed window --
   which had made analyze, settings and even moving the app unreachable.
+- **The game's new interface options are there again.** The August patch added
+  Use System Cursor, Cursor Scaling and "Use Actions - Spells instead of
+  Spellbook" to Options > Interface > General. Both skins ship their own copy of
+  that window, so the client could not find the three controls: it logged
+  "Could not find child" every time the window opened and the settings were
+  unreachable while a skin was loaded. They are laid out with the rest of the
+  page now, and Cursor Scaling offers the same eleven steps the default UI does.
+- **UI Scaling asks for the scale it names.** Both skins listed `1x` through
+  `5x`, from before the game moved to quarter steps. The client reads the
+  selection by which row is chosen rather than by its text, so the rows had
+  quietly stopped meaning what they said: `3x` asked for 1.50x and `5x` asked
+  for 2.00x, and nothing above 2.00x could be picked at all. Both scaling menus
+  now carry the client's eleven steps in the client's order.
 
 ### Removed
 
