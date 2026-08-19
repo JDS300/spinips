@@ -1311,6 +1311,77 @@ def audit_inventory_geometry() -> None:
             fail(f"{animation_name} duration changed")
 
 
+# Controls the client's Interface > General options page expects to find by
+# name.  The August 2026 patch added the last four; a skin that ships its own
+# EQUI_OptionsWindow.xml without them makes the client log "Could not find
+# child" on every open and silently drops the settings they carry.
+OPTION_PAGE_CONTROLS = {
+    "OIGP_LeftLayout": (
+        "ODP_ShowTargetRingCheckbox",
+        "ODP_AllowWindowResizingCheckbox",
+        "ODP_SwapMapCtrlRightClickCheckbox",
+        "ODP_SystemCursor",
+        "ODP_SpellbookButtonToggle",
+    ),
+    "OIGP_RightLayout": (
+        "ODP_UIScaleLabel",
+        "ODP_UIScale",
+        "ODP_TextFilteringLabel",
+        "ODP_TextFiltering",
+        "ODP_CursorScaleLabel",
+        "ODP_CursorScale",
+    ),
+}
+
+
+# EverQuest reports a combobox selection by the index of the chosen row, so
+# these lists have to match the client's row for row.  A shorter list does not
+# offer fewer scales, it offers the wrong ones: the 2026-08 patch moved to
+# quarter-step scaling, and a five-row list would have made "3x" select 1.50x.
+OPTION_SCALE_CHOICES = {
+    "ODP_UIScale": (
+        "1.00x", "1.25x Experimental", "1.50x Experimental",
+        "1.75x Experimental", "2.00x", "2.25x Experimental",
+        "2.50x Experimental", "2.75x Experimental", "3.00x", "4.00x", "0.75x",
+    ),
+    "ODP_CursorScale": (
+        "1.00x", "1.25x", "1.50x", "1.75x", "2.00x", "2.25x",
+        "2.50x", "2.75x", "3.00x", "4.00x", "0.75x",
+    ),
+}
+
+
+def audit_options_window() -> None:
+    """Keep Interface > General carrying every control the client looks up."""
+    path = SKIN / "EQUI_OptionsWindow.xml"
+    root = ET.parse(path).getroot()
+    declared = {node.get("item") for node in root.iter() if node.get("item")}
+
+    for box_name, required in OPTION_PAGE_CONTROLS.items():
+        box = item(root, "VerticalLayoutBox", box_name)
+        pieces = [(node.text or "").strip() for node in box.findall("Pieces")]
+        for control in required:
+            if control not in declared:
+                fail(f"{path.name} does not declare {control}")
+            if control not in pieces:
+                fail(f"{box_name} does not lay out {control}")
+        for piece in pieces:
+            name = piece.split(":", 1)[1] if ":" in piece else piece
+            if name not in declared:
+                fail(f"{box_name} lays out undeclared control {piece}")
+
+    for name, expected in OPTION_SCALE_CHOICES.items():
+        combo = item(root, "Combobox", name)
+        choices = tuple(
+            (node.text or "").strip() for node in combo.findall("Choices")
+        )
+        if choices != expected:
+            fail(
+                f"{name} no longer matches the client's scale list: "
+                f"{list(choices)}"
+            )
+
+
 def main() -> int:
     xml_files, texture_refs, template_count, template_reference_files = audit_xml()
     tga_count, dds_count, cur_count = audit_binary_assets()
@@ -1319,6 +1390,7 @@ def main() -> int:
     audit_inventory_progression()
     audit_aa_window()
     audit_inventory_geometry()
+    audit_options_window()
     print("SpinUI asset audit: ALL PASS")
     print(f"  XML {len(xml_files)} | texture refs {len(texture_refs)} | "
           f"TGA {tga_count} | DDS {dds_count} | CUR {cur_count}")
