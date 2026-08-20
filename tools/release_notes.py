@@ -69,11 +69,18 @@ def _self_test_stdout_encoding() -> None:
         env={**os.environ, "PYTHONIOENCODING": "cp1252"},
         capture_output=True, check=True,
     )
-    expected = entry(text, version).encode("utf-8")
-    assert result.stdout.rstrip(b"\r\n") == expected, (
-        "release notes are not UTF-8 on the way out: "
-        f"{result.stdout[:80]!r}"
-    )
+    # Two separate claims, so a failure says which one broke.  Decoding is the
+    # invariant under test; the content check guards against fixing the bytes
+    # by mangling the text.  Windows translates \n to \r\n on the way out of a
+    # text-mode stdout, which is not corruption -- the workflow rejoins lines
+    # anyway -- so it is normalized before comparing.
+    try:
+        produced = result.stdout.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise AssertionError(
+            f"release notes are not UTF-8 on the way out: {exc}") from exc
+    assert produced.replace("\r\n", "\n").strip("\n") == entry(text, version), (
+        "release notes changed on the way out")
 
 
 def _self_test() -> int:
