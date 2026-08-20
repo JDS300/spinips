@@ -351,6 +351,16 @@ def check_loremaster_release_pipeline() -> None:
         "-c.extraMetadata.version=$version",
         # The changelog reaches the notes as text, not as "System.Object[]".
         '$changelog = (python tools/release_notes.py --version $tag) -join "`n"',
+        # Re-running a dispatch rewrites the notes of a release that already
+        # exists, so a published page is corrected by the workflow rather than
+        # by hand. Without this, a corrected changelog could never reach a page
+        # that had already shipped a wrong one.
+        "gh release edit $tag --repo $env:GITHUB_REPOSITORY --notes-file release-notes.md",
+        # The pull request list is rebuilt rather than dropped, and anchored at
+        # a release that is not the one being published -- releases/latest is
+        # $tag itself once $tag is Latest, which generates an empty list.
+        "releases/generate-notes",
+        "$env:NOTES_EXCLUDE_TAG = $tag",
     )
     missing = [value for value in required if value not in workflow]
     if missing:

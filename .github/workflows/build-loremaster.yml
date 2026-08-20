@@ -615,9 +615,48 @@ jobs:
             "---"
           )
           $releaseNotes = $notes -join "`n"
+          # Anchored at the last full release rather than the previous one,
+          # which would be the candidate this promotes: everything merged
+          # since then already appears in the candidate's own notes, leaving
+          # the release people actually install with an empty changelog.
+          # Candidates get the same anchor, so each one lists everything a
+          # tester would be changing from.
+          #
+          # $tag itself is excluded. This read releases/latest, which is the
+          # right answer only while $tag does not exist yet: re-running a
+          # dispatch for a release that is already Latest anchored it at itself
+          # and generated an empty list. Read through the environment rather
+          # than interpolated, so a tag never lands inside the jq program.
+          $env:NOTES_EXCLUDE_TAG = $tag
+          $previousStable = (gh api "repos/$env:GITHUB_REPOSITORY/releases?per_page=100" --jq '[.[] | select(.draft == false and .prerelease == false and .tag_name != $ENV.NOTES_EXCLUDE_TAG)][0].tag_name' 2>$null) -join ""
+          if ($LASTEXITCODE -ne 0) { $previousStable = '' }
+          $previousStable = "$previousStable".Trim()
           gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -eq 0) {
             gh release upload $tag @assets --repo $env:GITHUB_REPOSITORY --clobber
+            # A published page is only ever corrected by re-running this, never
+            # by hand -- a hand-edited release rots, because the next run does
+            # not know about the edit. So the notes are rewritten, not just the
+            # assets replaced: v0.4.0 shipped with every em dash as U+FFFD and
+            # nothing here could put the corrected changelog back.
+            #
+            # gh release edit replaces the whole body and has no
+            # --generate-notes, so the pull request list is rebuilt through the
+            # API that --generate-notes itself calls, and appended the same way.
+            $generateArgs = @('-f', "tag_name=$tag")
+            if ($previousStable) { $generateArgs += @('-f', "previous_tag_name=$previousStable") }
+            $generated = (gh api --method POST "repos/$env:GITHUB_REPOSITORY/releases/generate-notes" @generateArgs --jq .body) -join "`n"
+            # Loud rather than partial: a body silently missing its pull request
+            # list reads exactly like a release that changed nothing.
+            if ($LASTEXITCODE -ne 0 -or -not $generated) { throw "could not rebuild the pull request list for $tag" }
+            # Passed as a file, not an argument: the body now carries pull
+            # request titles, which are arbitrary text, and utf8NoBOM states
+            # what encoding it is in rather than leaving it to the codepage --
+            # which is how the changelog lost every em dash in the first place.
+            Set-Content -Path release-notes.md -Value (@($releaseNotes, $generated) -join "`n") -Encoding utf8NoBOM
+            gh release edit $tag --repo $env:GITHUB_REPOSITORY --notes-file release-notes.md
+            if ($LASTEXITCODE -ne 0) { throw "could not update the notes on $tag" }
+            Remove-Item release-notes.md
             # Re-running a dispatch must not silently promote a candidate to a
             # full release, or demote a published one.
             if ($prerelease) {
@@ -641,16 +680,7 @@ jobs:
               '--notes', $releaseNotes,
               '--generate-notes'
             )
-            # Anchored at the last full release rather than the previous one,
-            # which would be the candidate this promotes: everything merged
-            # since then already appears in the candidate's own notes, leaving
-            # the release people actually install with an empty changelog.
-            # Candidates get the same anchor, so each one lists everything a
-            # tester would be changing from.
-            $previousStable = gh api "repos/$env:GITHUB_REPOSITORY/releases/latest" --jq .tag_name 2>$null
-            if ($LASTEXITCODE -eq 0 -and $previousStable) {
-              $options += @('--notes-start-tag', $previousStable.Trim())
-            }
+            if ($previousStable) { $options += @('--notes-start-tag', $previousStable) }
             if ($prerelease) { $options += '--prerelease' } else { $options += '--latest' }
             gh release create $tag @assets --repo $env:GITHUB_REPOSITORY @options
           }
