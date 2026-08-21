@@ -71,6 +71,12 @@ that came with it.
   quietly stopped meaning what they said: `3x` asked for 1.50x and `5x` asked
   for 2.00x, and nothing above 2.00x could be picked at all. Both scaling menus
   now carry the client's eleven steps in the client's order.
+- **An update manager can see this release.** The Linux AppImage has always
+  advertised zsync updates, so a manager like Gear Lever goes looking for a
+  matching `.zsync` file in the newest release -- but nothing in the build ever
+  produced one. Only 0.3.4 carried it, made by hand, which is why that was the
+  last release an update could be offered from. It is built and published
+  alongside the AppImage from here on.
 
 ### Removed
 

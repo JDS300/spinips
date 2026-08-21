@@ -472,6 +472,10 @@ def check_loremaster_release_pipeline() -> None:
         # $tag itself once $tag is Latest, which generates an empty list.
         "releases/generate-notes",
         "$env:NOTES_EXCLUDE_TAG = $tag",
+        # The AppImage advertises gh-releases-zsync update information, so the
+        # release has to carry the .zsync it names or the update route
+        # dead-ends. electron-builder 26.x has no zsync code, so CI builds it.
+        'zsyncmake -u "$image" -o "$image.zsync" "$image"',
     )
     missing = [value for value in required if value not in workflow]
     if missing:

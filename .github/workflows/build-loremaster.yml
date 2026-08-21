@@ -459,7 +459,34 @@ jobs:
             exit 1
           fi
           cp -f "${appimages[@]}" "${tarballs[@]}" "$component/"
-          (cd "$component" && sha256sum -- *.AppImage *.tar.gz > Loremaster-Linux-SHA256SUMS.txt)
+          # Every AppImage carries gh-releases-zsync update information in its
+          # .upd_info section, naming Loremaster-*-x86_64.AppImage.zsync in this
+          # repository's latest release. An update manager reading it goes
+          # looking for exactly that asset, so without it the AppImage
+          # advertises a route that dead-ends -- which is why v0.3.4 was the
+          # last release Gear Lever could update from. Its zsync was made by
+          # hand and uploaded by hand; no CI-published release has ever had one.
+          #
+          # electron-builder does not produce it: 26.x carries no zsync code at
+          # all, so it is built here or not at all.
+          if ! command -v zsyncmake >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq zsync
+          fi
+          (
+            cd "$component"
+            for image in *.AppImage; do
+              # -u is the URL recorded inside the file, kept relative because
+              # the consumer resolves it against wherever it fetched the zsync
+              # -- the release the AppImage is an asset of.
+              zsyncmake -u "$image" -o "$image.zsync" "$image"
+              # A zsync that describes nothing would publish just as quietly as
+              # one that was never built.
+              test -s "$image.zsync"
+            done
+            sha256sum -- *.AppImage *.AppImage.zsync *.tar.gz \
+              > Loremaster-Linux-SHA256SUMS.txt
+          )
           cat "$component/Loremaster-Linux-SHA256SUMS.txt"
 
       - name: Upload Loremaster Linux test build
