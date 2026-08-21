@@ -22,9 +22,11 @@ import hashlib
 import importlib.util
 import os
 import re
+import shutil
 import struct
 import subprocess
 import sys
+import tempfile
 import time
 import tracemalloc
 import xml.etree.ElementTree as ET
@@ -321,6 +323,115 @@ def check_source_manifest() -> None:
     print("[PASS] required files present | " + " | ".join(summaries), flush=True)
 
 
+PWSH_PARSE = """param([string]$Path)
+$errors = $null
+[void][System.Management.Automation.Language.Parser]::ParseFile(
+    $Path, [ref]$null, [ref]$errors)
+if ($errors) {
+    foreach ($item in $errors) {
+        Write-Output ("line {0}: {1}" -f $item.Extent.StartLineNumber, $item.Message)
+    }
+    exit 1
+}
+"""
+
+
+def pwsh_run_blocks(workflow: str) -> list[tuple[str, str]]:
+    """Every ``shell: pwsh`` step's script, paired with its step name.
+
+    Parsed out by hand rather than with a YAML library: this gate deliberately
+    depends on nothing outside the standard library, so it runs the same way
+    locally as in the packaging workflow.
+    """
+    blocks: list[tuple[str, str]] = []
+    name = ""
+    shell = ""
+    script: list[str] | None = None
+    indent = 0
+    for line in workflow.splitlines():
+        stripped = line.strip()
+        depth = len(line) - len(line.lstrip())
+        if script is not None:
+            # The block ends at the first non-blank line indented no further
+            # than the run: key that opened it.
+            if stripped and depth < indent:
+                blocks.append((name, "\n".join(script)))
+                script = None
+            else:
+                script.append(line[indent:] if len(line) >= indent else "")
+                continue
+        if stripped.startswith("- name: "):
+            name, shell = stripped[len("- name: "):], ""
+        elif stripped == "shell: pwsh":
+            shell = "pwsh"
+        elif stripped in ("run: |", "run: |-") and shell == "pwsh":
+            script, indent = [], depth + 2
+    if script is not None:
+        blocks.append((name, "\n".join(script)))
+    return blocks
+
+
+def check_release_script_syntax(workflow: str) -> None:
+    """Parse the PowerShell that no pull request run ever executes.
+
+    The publishing step is gated to workflow_dispatch, so nothing in a pull
+    request runs it: a syntax error there first appears on release day, after a
+    twenty-minute build, with the assets already uploaded and the notes not
+    written. Parsing is the only check available before that point.
+
+    GitHub expressions survive the parse because every one of them sits inside
+    a single-quoted PowerShell string, where it is literal text. That is worth
+    keeping -- an expression interpolated straight into a script is how a tag
+    name becomes code -- so this check failing on an unquoted one is the right
+    answer, not a false positive.
+    """
+    blocks = pwsh_run_blocks(workflow)
+    if not blocks:
+        fail("no pwsh steps found in the release workflow, which cannot be right")
+    pwsh = shutil.which("pwsh")
+    if pwsh is None:
+        # Reading CI rather than the platform: both GitHub runners ship pwsh,
+        # so this must never quietly skip where a release is actually built.
+        # A developer box without pwsh is told, and carries on.
+        if os.environ.get("CI"):
+            fail("pwsh is unavailable, so the release script cannot be parsed")
+        print(
+            f"[SKIP] {len(blocks)} pwsh steps unparsed: no pwsh on this machine",
+            flush=True,
+        )
+        return
+    with tempfile.TemporaryDirectory() as directory:
+        checker = Path(directory) / "parse.ps1"
+        checker.write_text(PWSH_PARSE, encoding="utf-8")
+        target = Path(directory) / "step.ps1"
+
+        def parse(script: str) -> tuple[int, str]:
+            target.write_text(script, encoding="utf-8")
+            result = subprocess.run(
+                [pwsh, "-NoProfile", "-NonInteractive", "-File",
+                 str(checker), str(target)],
+                capture_output=True, text=True, check=False,
+            )
+            return result.returncode, (result.stdout.strip()
+                                       or result.stderr.strip())
+
+        # Prove the parser reports an error at all before trusting its silence:
+        # a checker that always succeeded would pass every step here forever.
+        broken, _ = parse("if ($unclosed -eq 1) {\n")
+        if not broken:
+            fail("the PowerShell parser accepted an unclosed block, so a "
+                 "passing result here would mean nothing")
+        for name, script in blocks:
+            code, detail = parse(script)
+            if code:
+                fail(f"step {name!r} is not valid PowerShell:\n{detail}")
+    print(
+        f"[PASS] {len(blocks)} pwsh steps parse, including the publishing step "
+        "no pull request run executes",
+        flush=True,
+    )
+
+
 def check_loremaster_release_pipeline() -> None:
     section("Loremaster Electron release pipeline")
     workflow = (REPO / ".github" / "workflows" / "build-loremaster.yml").read_text(
@@ -419,6 +530,7 @@ def check_loremaster_release_pipeline() -> None:
         "and verified but never published",
         flush=True,
     )
+    check_release_script_syntax(workflow)
 
 
 def _jpeg_dimensions(payload: bytes) -> tuple[int, int]:
