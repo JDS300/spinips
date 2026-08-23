@@ -5,6 +5,32 @@ so the release itself carries it: `tools/release_notes.py` reads the entry
 matching the version being published, and a candidate and the release it is
 promoted to resolve to the same entry.
 
+## 0.5.1
+
+Fixes AppImage update information, which has never worked.
+
+### Fork-specific
+
+- **Gear Lever can update Loremaster again.** An update manager reads a 1 KB
+  `.upd_info` section inside the AppImage to learn where a newer build lives.
+  electron-builder never wrote it -- app-builder-lib 26.x has no writer for it
+  and no zsync code at all -- so the section shipped as the zeroed placeholder
+  baked into the AppImage runtime. Confirmed with `readelf` against the
+  published v0.4.0 and v0.5.0-rc.1 images: 1024 bytes, entirely zero in both.
+  Every release this project has made showed a blank update panel, and the
+  `.zsync` added in 0.4.0 was an orphan -- a correct file that nothing pointed
+  at.
+
+  CI now writes the section after the build and verifies it by reading it back,
+  so a silent regression fails the build rather than shipping.
+
+- **Candidates track candidates, releases track releases.** GitHub's
+  `/releases/latest` excludes prereleases, so a release candidate could never
+  have found a newer candidate through it. Candidates now advertise the
+  `latest-pre` channel and match `Loremaster-RC-*`; releases stay on `latest`
+  and match `Loremaster-[0-9]*`. The two globs cannot match each other's
+  assets, in either direction.
+
 ## 0.5.0
 
 Adds debuff timers — the first fork-only *feature*, rather than platform

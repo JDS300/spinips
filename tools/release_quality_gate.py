@@ -164,6 +164,7 @@ SOURCE_REQUIRED = (
     "installer/INSTALL-MANUAL.md",
     "installer/versioninfo-installer.txt",
     "loremaster/versioninfo-loremaster.txt",
+    "tools/appimage_update_info.py",
     "tools/audit_combat_ui.py",
     "tools/audit_loremaster_desktop.py",
     "tools/audit_spinui_glass.py",
