@@ -22,6 +22,7 @@ from typing import NamedTuple
 from adventure_journal import (AdventureJournal, encounter_identity,
                                evidence_hash)
 from control_snapshot import merge_control_snapshots
+from debuff_timer import DebuffTracker
 from engine_protocol import build_engine_snapshot, snapshot_event
 try:
     # Script/PyInstaller import used by the production worker.
@@ -118,6 +119,7 @@ class HeadlessEngine:
         self.stats = SessionStats()
         self.mez = MezTracker()
         self.lull = LullTracker()
+        self.debuffs = DebuffTracker()
         self.alerts: list[dict] = []
         self.alert_config = {
             "alerts_enabled": True,
@@ -134,6 +136,12 @@ class HeadlessEngine:
             "mez_warning_seconds": 10,
             "lull_timers_enabled": True,
             "lull_warning_seconds": 12,
+            "debuff_timers_enabled": True,
+            "debuff_dot_enabled": True,
+            "debuff_slow_enabled": True,
+            "debuff_resist_enabled": True,
+            "debuff_warning_seconds": 10,
+            "debuff_mob_limit": 6,
             "custom_alerts": [],
         }
         self.watcher: LogWatcher
@@ -204,6 +212,7 @@ class HeadlessEngine:
         self.stats = SessionStats(character, composition=composition)
         self.mez.clear()
         self.lull.clear()
+        self.debuffs.clear()
         self.alerts.clear()
         self._persisted_encounter_ids.clear()
         self._clear_pending_raid_kill()
@@ -226,6 +235,12 @@ class HeadlessEngine:
             "mezWarningSeconds": "mez_warning_seconds",
             "lullTimersEnabled": "lull_timers_enabled",
             "lullWarningSeconds": "lull_warning_seconds",
+            "debuffTimersEnabled": "debuff_timers_enabled",
+            "debuffDotEnabled": "debuff_dot_enabled",
+            "debuffSlowEnabled": "debuff_slow_enabled",
+            "debuffResistEnabled": "debuff_resist_enabled",
+            "debuffWarningSeconds": "debuff_warning_seconds",
+            "debuffMobLimit": "debuff_mob_limit",
         }
         for source, target in mapping.items():
             if source in value:
@@ -234,7 +249,9 @@ class HeadlessEngine:
                 ("alert_seconds", 1, 15),
                 ("big_hit_threshold", 1, 999999),
                 ("mez_warning_seconds", 3, 30),
-                ("lull_warning_seconds", 3, 30)):
+                ("lull_warning_seconds", 3, 30),
+                ("debuff_warning_seconds", 3, 30),
+                ("debuff_mob_limit", 1, 12)):
             try:
                 self.alert_config[key] = max(
                     low, min(high, int(self.alert_config[key])))
@@ -302,6 +319,7 @@ class HeadlessEngine:
             self.raid_context.clear()
         self.mez.clear()
         self.lull.clear()
+        self.debuffs.clear()
         self._journal_cache_dirty = True
         self._persisted_encounter_ids.clear()
         self._loot_evidence_counts.clear()
@@ -558,7 +576,8 @@ class HeadlessEngine:
         self.last_observed_at = occurred_at
         charm_breaks = apply_log_models(
             self.stats, self.mez, occurred_at, kind, groups,
-            lull_tracker=self.lull, caster_level=self.stats.level)
+            lull_tracker=self.lull, debuff_tracker=self.debuffs,
+            caster_level=self.stats.level)
         # Bind immutable identity and context at encounter creation. A later
         # target discovery or zone transition must not rewrite journal links.
         if self.stats.fight is not None:
@@ -697,13 +716,26 @@ class HeadlessEngine:
             mez_snapshot, lull_snapshot, limit=6,
             include_mez=bool(self.alert_config.get("mez_timers_enabled", True)),
             include_lull=bool(self.alert_config.get("lull_timers_enabled", True)))
+        debuff_kinds = frozenset(
+            kind for kind, key in (("dot", "debuff_dot_enabled"),
+                                   ("slow", "debuff_slow_enabled"),
+                                   ("resist", "debuff_resist_enabled"))
+            if bool(self.alert_config.get(key, True)))
+        if not self.alert_config.get("debuff_timers_enabled", True):
+            debuff_kinds = frozenset()
+        debuff_snapshot = self.debuffs.snapshot(
+            observed_at,
+            limit=int(self.alert_config.get("debuff_mob_limit", 6)),
+            warning_seconds=self.alert_config["debuff_warning_seconds"],
+            kinds=debuff_kinds)
         self.sequence += 1
         snapshot = build_engine_snapshot(
             sequence=self.sequence, observed_at=observed_at,
             stats_snapshot=stats, control_snapshot=controls,
             recent_loot=recent_loot,
             journal_encounters=journal_encounters,
-            loot_summary=loot_summary)
+            loot_summary=loot_summary,
+            debuff_snapshot=debuff_snapshot)
         event = snapshot_event(snapshot).to_dict()
         weekly_character = (self.stats.character or "").strip()
         weekly = self.weekly.snapshot(
