@@ -1076,8 +1076,10 @@ def observe_debuff_log_event(tracker: "DebuffTracker", ts: datetime,
     elif kind in DEBUFF_LANDING_KINDS:
         tracker.observe_landing(
             groups.get("target", ""), DEBUFF_LANDING_KINDS[kind], ts)
-    elif kind in ("dot_out", "dot_third"):
-        # The one signal that names target and spell together.
+    elif kind == "dot_out":
+        # The one signal that names target and spell together.  Deliberately
+        # not dot_third: that line carries "by <caster>" and is somebody
+        # else's DoT, which must no more reach our deck than their slow does.
         tracker.observe_dot_tick(
             groups.get("target", ""), groups.get("spell", ""), ts)
     elif kind == "spell_fade":

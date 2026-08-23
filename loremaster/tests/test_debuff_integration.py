@@ -119,6 +119,21 @@ class DebuffParserModelTests(unittest.TestCase):
         self.assertGreater(
             self.stats.damage_by_source["DoT: Envenomed Bolt"]["t"], 0)
 
+    def test_another_players_dot_never_reaches_our_deck(self):
+        """dot_third carries "by <caster>" and belongs to somebody else."""
+        self.apply(
+            "an ice giant has taken 110 damage from Envenomed Bolt by Zarthok.", 0)
+        self.assertEqual(self.debuffs.snapshot(at(1)).groups, ())
+
+    def test_our_own_dot_and_a_strangers_are_told_apart(self):
+        self.apply("You begin casting Envenomed Bolt.", 0)
+        self.apply("a froglok tad has taken 110 damage from your Envenomed Bolt.", 6)
+        self.apply(
+            "an ice giant has taken 110 damage from Envenomed Bolt by Zarthok.", 7)
+        snapshot = self.debuffs.snapshot(at(8))
+        self.assertEqual([group.target for group in snapshot.groups],
+                         ["a froglok tad"])
+
     def test_resist_line_stops_the_timer_from_arming(self):
         self.apply("You begin casting Togor's Insects.", 0)
         self.apply("an ice giant resisted your Togor's Insects!", 2)
