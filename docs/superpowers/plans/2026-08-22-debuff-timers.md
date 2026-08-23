@@ -60,48 +60,55 @@
 - [ ] **Step 1: Write the failing endpoint test**
 
 ```python
-import json, pathlib, pytest
+import json, sys, unittest
+from datetime import datetime, timedelta
+from pathlib import Path
+
+LOREMASTER_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(LOREMASTER_DIR))
+
 from debuff_timer import DEBUFF_SPELLS, duration_ticks, resolve_debuff_spell
 
+BASE = datetime(2026, 8, 6, 12, 0, 0)
 REFERENCE = json.loads(
-    (pathlib.Path(__file__).parent / "fixtures" / "debuff_spell_reference.json").read_text())
+    (Path(__file__).parent / "fixtures" / "debuff_spell_reference.json").read_text())
 
 
-def test_every_spell_reproduces_its_published_endpoints():
-    """The scraped Allakhazam endpoints are the contract for the formulas."""
-    checked = 0
-    for spell in DEBUFF_SPELLS:
-        for level, expected in spell.published_endpoints:
-            assert duration_ticks(spell, level) == expected, (
-                f"{spell.name} @L{level}: expected {expected}")
-            checked += 1
-    assert checked > 0
+class DebuffCatalogTests(unittest.TestCase):
+    def test_every_spell_reproduces_its_published_endpoints(self):
+        """The scraped Allakhazam endpoints are the contract for the formulas."""
+        checked = 0
+        for spell in DEBUFF_SPELLS:
+            for level, expected in spell.published_endpoints:
+                self.assertEqual(duration_ticks(spell, level), expected,
+                                 f"{spell.name} @L{level} expected {expected} ticks")
+                checked += 1
+        self.assertGreater(checked, 40)
 
+    def test_table_matches_the_committed_reference_scrape(self):
+        self.assertEqual({s.name for s in DEBUFF_SPELLS}, set(REFERENCE))
+        for spell in DEBUFF_SPELLS:
+            reference = REFERENCE[spell.name]
+            self.assertEqual(spell.kind, reference["kind"], spell.name)
+            self.assertEqual(spell.duration_cap_ticks, reference["cap_ticks"], spell.name)
 
-def test_table_matches_reference_data():
-    """The table may not drift from the committed scrape."""
-    assert {s.name for s in DEBUFF_SPELLS} == set(REFERENCE)
-    for spell in DEBUFF_SPELLS:
-        ref = REFERENCE[spell.name]
-        assert spell.kind == ref["kind"]
-        assert spell.duration_cap_ticks == ref["cap_ticks"]
+    def test_fixed_duration_spells_ignore_caster_level(self):
+        sicken = resolve_debuff_spell("Sicken").spell
+        self.assertEqual(duration_ticks(sicken, 10), 14)
+        self.assertEqual(duration_ticks(sicken, 60), 14)
 
+    def test_cap_applies_before_rank_scaling(self):
+        tagars = resolve_debuff_spell("Tagar's Insects").spell
+        self.assertEqual(duration_ticks(tagars, 70), 35)
+        self.assertEqual(duration_ticks(tagars, 70, rank=10), 70)
 
-def test_fixed_duration_spells_ignore_level():
-    sicken = resolve_debuff_spell("Sicken")
-    assert duration_ticks(sicken.spell, 10) == duration_ticks(sicken.spell, 60) == 14
-
-
-def test_cap_applies_before_rank_scaling():
-    tagars = resolve_debuff_spell("Tagar's Insects").spell
-    assert duration_ticks(tagars, 70) == 35          # capped
-    assert duration_ticks(tagars, 70, rank=10) == 70  # cap then +100%
-
-
-def test_rank_suffix_is_read_from_the_spell_name():
-    assert resolve_debuff_spell("Tagar's Insects Rk. II").rank == 2
-    assert resolve_debuff_spell("tagars insects").rank == 0
+    def test_rank_suffix_is_read_from_the_spell_name(self):
+        self.assertEqual(resolve_debuff_spell("Tagar's Insects Rk. II").rank, 2)
+        self.assertEqual(resolve_debuff_spell("Tagar's Insects").rank, 0)
 ```
+
+The shipped module has 36 such tests; see
+`loremaster/tests/test_debuff_timer.py` for the full set.
 
 - [ ] **Step 2: Run it and confirm it fails**
 
@@ -198,7 +205,7 @@ def test_slow_landing_correlates_to_the_pending_cast_not_the_family():
     t.observe_landing(2.5, "yawns", "an ice giant")
     row = only_row(t.snapshot(2.5), "an ice giant")
     assert row.spell == "Togor's Insects"
-    assert row.expires_at == pytest.approx(2.5 + 25 * 6)   # L50 -> 25 ticks
+    self.assertEqual(row.remaining_seconds, 150.0)   # L50 -> 25 ticks
 
 
 def test_landing_without_a_local_cast_is_ignored():
