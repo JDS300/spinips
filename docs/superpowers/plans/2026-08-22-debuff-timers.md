@@ -35,7 +35,7 @@
 - **Caster level is a resolve-time parameter, not tracker state.**
   `resolve_lull_spell(name, caster_level=...)` is the model to follow.
 - **Reuse `duration_confidence`** (`"exact"` / `"conservative"`) from
-  `lull_timer.py` rather than inventing an `duration_confidence` boolean. DoT rows
+  `lull_timer.py` rather than inventing an `estimated` boolean. DoT rows
   confirmed by a tick are `"exact"`; slow and resist countdowns are
   `"conservative"`.
 - Test modules bootstrap imports with
@@ -53,7 +53,7 @@
 - Consumes: nothing.
 - Produces: `DebuffSpell` dataclass; `DEBUFF_SPELLS: tuple[DebuffSpell, ...]`;
   `duration_ticks(spell: DebuffSpell, level: int, rank: int = 0) -> int`;
-  `resolve_debuff_spell(spell_name: str | None) -> ResolvedDebuff | None`;
+  `resolve_debuff_spell(spell_name: str | None, caster_level: int = 1) -> ResolvedDebuff | None`;
   `DEBUFF_LANDING_COMPATIBILITY: dict[str, frozenset[str]]`;
   `SERVER_TICK_SECONDS = 6`.
 
