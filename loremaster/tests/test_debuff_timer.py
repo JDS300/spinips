@@ -259,6 +259,40 @@ class DebuffTrackerTests(unittest.TestCase):
         snapshot = tracker.snapshot(at(8))
         self.assertEqual([g.target for g in snapshot.groups], ["a froglok tad"])
 
+    def test_a_kill_clears_the_row_despite_sentence_case(self):
+        """EQ capitalises the first word of a line.
+
+        The landing reads "An abhorrent yawns." and the kill reads "You have
+        slain an abhorrent!", so the same mob arrives spelled two ways.
+        """
+        tracker = self.tracker()
+        tracker.begin_cast("Togor's Insects", at(0))
+        tracker.observe_landing("An abhorrent", "yawns", at(1))
+        tracker.observe_kill("an abhorrent", at(5))
+        self.assertEqual(tracker.snapshot(at(6)).groups, ())
+
+    def test_a_fade_clears_the_row_despite_sentence_case(self):
+        tracker = self.tracker()
+        tracker.begin_cast("Togor's Insects", at(0))
+        tracker.observe_landing("An abhorrent", "yawns", at(1))
+        tracker.observe_fade("an abhorrent", "Togor's Insects", at(5))
+        self.assertEqual(tracker.snapshot(at(6)).groups, ())
+
+    def test_a_dot_tick_refreshes_the_row_despite_sentence_case(self):
+        tracker = self.tracker()
+        tracker.begin_cast("Envenomed Bolt", at(0))
+        tracker.observe_dot_tick("An abhorrent", "Envenomed Bolt", at(6))
+        tracker.observe_dot_tick("an abhorrent", "Envenomed Bolt", at(12))
+        group = only_group(tracker.snapshot(at(12)), "An abhorrent")
+        self.assertEqual(len(group.rows), 1, "must not split into two mobs")
+
+    def test_the_row_keeps_the_name_as_first_seen(self):
+        """Keying is case-insensitive; the deck still shows readable text."""
+        tracker = self.tracker()
+        tracker.begin_cast("Togor's Insects", at(0))
+        tracker.observe_landing("An abhorrent", "yawns", at(1))
+        self.assertEqual(tracker.snapshot(at(1)).groups[0].target, "An abhorrent")
+
     def test_recast_on_the_same_target_resets_the_timer(self):
         tracker = self.tracker()
         tracker.begin_cast("Togor's Insects", at(0))

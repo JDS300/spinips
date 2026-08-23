@@ -43,6 +43,7 @@ const soundKinds: readonly { id: AlertSoundKind; label: string; detail: string }
   { id: "nameCalled", label: "Name called", detail: "Group, raid, or guild mention" },
   { id: "mez", label: "Mez urgent", detail: "Safe window closing" },
   { id: "lull", label: "Lull urgent", detail: "Safe window closing" },
+  { id: "debuff", label: "Debuff ending", detail: "DoT, slow, or resist running out" },
 ];
 const soundPresets: readonly { id: AlertSoundPreset; label: string }[] = [
   { id: "rune", label: "Rune Pulse" },
@@ -58,6 +59,7 @@ const defaultSoundProfiles: DesktopSettings["alerts"]["soundProfiles"] = {
   death: { preset: "ember", customPath: "" }, bigHit: { preset: "rune", customPath: "" },
   nameCalled: { preset: "crystal", customPath: "" }, mez: { preset: "rune", customPath: "" },
   lull: { preset: "bell", customPath: "" },
+  debuff: { preset: "crystal", customPath: "" },
 };
 
 function normalizeTheme(value: unknown): LoremasterTheme {
@@ -82,7 +84,8 @@ const defaultDesktopSettings: DesktopSettings = {
     alertBigHit: true, alertNameCalled: true, bigHitThreshold: 800,
     mezTimersEnabled: true, mezTimerSound: false, mezWarningSeconds: 10,
     lullTimersEnabled: true, lullTimerSound: false, lullWarningSeconds: 12,
-    debuffTimersEnabled: true, debuffDotEnabled: true, debuffSlowEnabled: true,
+    debuffTimersEnabled: true, debuffTimerSound: false,
+    debuffDotEnabled: true, debuffSlowEnabled: true,
     debuffResistEnabled: true, debuffWarningSeconds: 10, debuffMobLimit: 6,
     soundProfiles: defaultSoundProfiles,
   },
@@ -691,6 +694,8 @@ function SettingsPanel({ health, raidContext, raidDifficulty, settings, onSettin
         <p>Countdowns for your own DoTs, slows and resist debuffs, grouped by mob. DoT timers self-correct from tick lines; slow and resist are estimates that cannot see focus items.</p>
         <SettingsToggle checked={draft.alerts.debuffTimersEnabled} label="Show debuff timers"
           onChange={(debuffTimersEnabled) => patchAlerts({ debuffTimersEnabled })} />
+        <SettingsToggle checked={draft.alerts.debuffTimerSound} label="Sound when a debuff becomes urgent"
+          onChange={(debuffTimerSound) => patchAlerts({ debuffTimerSound })} />
         <SettingsToggle checked={draft.alerts.debuffDotEnabled} label="Track damage over time"
           onChange={(debuffDotEnabled) => patchAlerts({ debuffDotEnabled })} />
         <SettingsToggle checked={draft.alerts.debuffSlowEnabled} label="Track slows"
@@ -750,7 +755,7 @@ function SettingsPanel({ health, raidContext, raidDifficulty, settings, onSettin
                 title={profile.customPath || "No custom sound selected"}
                 onClick={() => void chooseCustomSound(kind.id)}>{customName}</button>}
               <button className="sound-preview" type="button" aria-label={`Preview ${kind.label} sound`}
-                onClick={() => void previewConfiguredSound(kind.id, profile, kind.id === "tell" || kind.id === "nameCalled" ? "info" : kind.id === "bigHit" || kind.id === "mez" || kind.id === "lull" ? "warn" : "danger")}>▶</button>
+                onClick={() => void previewConfiguredSound(kind.id, profile, kind.id === "tell" || kind.id === "nameCalled" ? "info" : kind.id === "bigHit" || kind.id === "mez" || kind.id === "lull" || kind.id === "debuff" ? "warn" : "danger")}>▶</button>
               {menuOpen && <div className="sound-preset-menu" role="listbox" aria-label={`${kind.label} sound choices`}>
                 {soundPresets.map((preset) => <button type="button" role="option"
                   aria-selected={profile.preset === preset.id}
@@ -949,6 +954,18 @@ function AlertSurface() {
   const urgentControl = event.snapshot.controls.find((control) =>
     control.state === "active" && control.urgency !== "safe" &&
     (control.kind === "mez" ? settings.alerts.mezTimersEnabled : settings.alerts.lullTimersEnabled));
+  // Debuff rows carry an urgency computed from the player's own warning
+  // threshold, so the alert derives from that exactly as mez and lull do.
+  const urgentDebuff = settings.alerts.debuffTimersEnabled
+    ? event.snapshot.debuffs?.groups.flatMap((group) => group.rows).find((row) =>
+        row.urgency !== "safe" && !row.expired &&
+        (row.kind === "dot" ? settings.alerts.debuffDotEnabled
+          : row.kind === "slow" ? settings.alerts.debuffSlowEnabled
+            : settings.alerts.debuffResistEnabled))
+    : undefined;
+  const urgentDebuffTarget = settings.alerts.debuffTimersEnabled
+    ? event.snapshot.debuffs?.groups.find((group) => group.rows.includes(urgentDebuff!))?.target
+    : undefined;
   const signal = testAlert ? {
     id: testAlert.id, severity: testAlert.severity, eyebrow: "ALERT PREVIEW",
     title: testAlert.title, detail: testAlert.target, kind: "test",
@@ -981,6 +998,17 @@ function AlertSurface() {
     kind: urgentControl.kind,
     soundKind: urgentControl.kind as AlertSoundKind,
     shouldSound: urgentControl.kind === "mez" ? settings.alerts.mezTimerSound : settings.alerts.lullTimerSound,
+  } : urgentDebuff ? {
+    // Keyed on the expiry so a recast, which moves it, alerts again while a
+    // steady countdown does not re-fire every frame.
+    id: `debuff-${urgentDebuffTarget}-${urgentDebuff.spell}-${urgentDebuff.expiresAt}-${urgentDebuff.urgency}`,
+    severity: urgentDebuff.urgency === "critical" ? "danger" as const : "warn" as const,
+    eyebrow: `${urgentDebuff.kind.toUpperCase()} ENDING`,
+    title: urgentDebuffTarget ?? urgentDebuff.spell,
+    detail: `${Math.ceil(urgentDebuff.remainingSeconds)}s left · ${urgentDebuff.spell}`,
+    kind: "debuff",
+    soundKind: "debuff" as AlertSoundKind,
+    shouldSound: settings.alerts.debuffTimerSound,
   } : null;
 
   useEffect(() => {
