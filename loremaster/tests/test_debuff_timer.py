@@ -64,7 +64,7 @@ class DebuffCatalogTests(unittest.TestCase):
             kinds[spell.kind] = kinds.get(spell.kind, 0) + 1
         self.assertGreaterEqual(kinds["slow"], 13)
         self.assertGreaterEqual(kinds["resist"], 16)
-        self.assertGreaterEqual(kinds["dot"], 48)
+        self.assertGreaterEqual(kinds["dot"], 56)
 
     def test_fixed_duration_spells_ignore_caster_level(self):
         sicken = resolve_debuff_spell("Sicken").spell
@@ -131,6 +131,37 @@ class DebuffCatalogTests(unittest.TestCase):
             resolved = resolve_debuff_spell(name)
             self.assertIsNotNone(resolved, name)
             self.assertEqual(resolved.kind, kind, name)
+
+    def test_heat_blood_is_flat_thirty_six_seconds(self):
+        """EQL publishes one duration per spell; Allakhazam's Live data scales."""
+        spell = resolve_debuff_spell("Heat Blood").spell
+        self.assertIsNone(spell.duration_formula)
+        for level in (10, 12, 40, 60):
+            self.assertEqual(duration_ticks(spell, level), 6, f"L{level}")
+
+    def test_the_negation_of_life_line_is_tracked(self):
+        for name, ticks in (("Cancelling of Life", 10),
+                            ("Negation of Life", 15),
+                            ("Cessation of Life", 16)):
+            resolved = resolve_debuff_spell(name, 60)
+            self.assertIsNotNone(resolved, name)
+            self.assertEqual(resolved.kind, "dot", name)
+            self.assertEqual(resolved.duration_ticks, ticks, name)
+
+    def test_tashan_is_tracked_from_measured_data(self):
+        """Absent from Allakhazam; duration measured from a real Quarm log."""
+        resolved = resolve_debuff_spell("Tashan", 60)
+        self.assertIsNotNone(resolved)
+        self.assertEqual(resolved.kind, "resist")
+        self.assertEqual(resolved.duration_ticks, 60)
+        self.assertEqual(resolved.spell.landing_family, "tashan")
+        self.assertEqual(resolved.spell.published_endpoints, (),
+                         "no published endpoints exist to assert against")
+
+    def test_a_spell_without_published_endpoints_asserts_nothing(self):
+        """The endpoint test must not silently skip everything."""
+        with_endpoints = [s for s in DEBUFF_SPELLS if s.published_endpoints]
+        self.assertGreater(len(with_endpoints), 20)
 
     def test_no_beneficial_or_self_only_spell_is_tracked(self):
         """Torpor and the Lich line drain the caster, not the mob."""
