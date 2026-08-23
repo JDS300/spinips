@@ -238,6 +238,35 @@ class JournalEncounterView:
 
 
 @dataclass(frozen=True)
+class DebuffRowView:
+    """One debuff counting down on one mob."""
+
+    spell: str
+    kind: str
+    rank: int
+    expires_at: str
+    remaining_seconds: float
+    urgency: str
+    duration_confidence: str
+    expired: bool
+
+
+@dataclass(frozen=True)
+class DebuffGroupView:
+    """Every tracked debuff on a single mob."""
+
+    target: str
+    urgency: str
+    rows: tuple[DebuffRowView, ...]
+
+
+@dataclass(frozen=True)
+class DebuffDeckView:
+    groups: tuple[DebuffGroupView, ...]
+    overflow: int
+
+
+@dataclass(frozen=True)
 class ControlTimerView:
     kind: str
     state: str
@@ -273,6 +302,7 @@ class EngineSnapshot:
     loot_unique_count: int
     journal_encounters: tuple[JournalEncounterView, ...]
     controls: tuple[ControlTimerView, ...]
+    debuffs: DebuffDeckView
     hidden_control_rows: int
     control_notice_count: int
     control_ambiguity_count: int
@@ -331,6 +361,11 @@ class EngineEvent:
                     ("raid_tier", "raidTier"),
                     ("raid_mode", "raidMode")):
                 encounter[new] = encounter.pop(old)
+        for group in snapshot["debuffs"]["groups"]:
+            for row in group["rows"]:
+                row["expiresAt"] = row.pop("expires_at")
+                row["remainingSeconds"] = row.pop("remaining_seconds")
+                row["durationConfidence"] = row.pop("duration_confidence")
         for control in snapshot["controls"]:
             control["landedAt"] = control.pop("landed_at")
             control["safeExpiresAt"] = control.pop("safe_expires_at")
@@ -397,7 +432,8 @@ class EngineEvent:
 def build_engine_snapshot(*, sequence: int, observed_at: datetime,
                           stats_snapshot: dict,
                           control_snapshot, recent_loot=(),
-                          journal_encounters=(), loot_summary=None
+                          journal_encounters=(), loot_summary=None,
+                          debuff_snapshot=None
                           ) -> EngineSnapshot:
     """Copy mutable runtime dictionaries into one frozen boundary snapshot."""
 
@@ -419,6 +455,22 @@ def build_engine_snapshot(*, sequence: int, observed_at: datetime,
         confidence=row.confidence,
         ambiguity=row.ambiguity,
     ) for row in control_snapshot.rows)
+    debuffs = DebuffDeckView(
+        groups=tuple(DebuffGroupView(
+            target=group.target,
+            urgency=group.urgency,
+            rows=tuple(DebuffRowView(
+                spell=row.spell,
+                kind=row.kind,
+                rank=int(row.rank),
+                expires_at=_timestamp(row.expires_at),
+                remaining_seconds=round(float(row.remaining_seconds), 3),
+                urgency=row.urgency,
+                duration_confidence=row.duration_confidence,
+                expired=bool(row.expired),
+            ) for row in group.rows),
+        ) for group in getattr(debuff_snapshot, "groups", ())),
+        overflow=int(getattr(debuff_snapshot, "overflow", 0)))
     fight = stats_snapshot.get("fight")
     if isinstance(fight, dict):
         encounter_name = str(fight.get("name") or "")
@@ -744,6 +796,7 @@ def build_engine_snapshot(*, sequence: int, observed_at: datetime,
             row.item_key for row in loot}))),
         journal_encounters=journal,
         controls=controls,
+        debuffs=debuffs,
         hidden_control_rows=int(control_snapshot.hidden_rows),
         control_notice_count=int(control_snapshot.notice_count),
         control_ambiguity_count=int(control_snapshot.ambiguity_count),

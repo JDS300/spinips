@@ -1,0 +1,632 @@
+{
+  "Affliction": {
+    "cap_ticks": 14,
+    "cast_on_other": "sweats and shivers, looking feverish",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Boil Blood": {
+    "cap_ticks": 7,
+    "cast_on_other": "'s blood boils",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Cascading Darkness": {
+    "cap_ticks": 16,
+    "cast_on_other": "is engulfed by darkness",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Choke": {
+    "cap_ticks": 8,
+    "cast_on_other": "begins to choke",
+    "endpoints": [
+      [
+        11,
+        6
+      ],
+      [
+        16,
+        8
+      ]
+    ],
+    "fit": "ambiguous",
+    "formula": "level_half_roundup",
+    "kind": "dot",
+    "scaling": "level"
+  },
+  "Clinging Darkness": {
+    "cap_ticks": 8,
+    "cast_on_other": "is surrounded by darkness",
+    "endpoints": [
+      [
+        4,
+        2
+      ],
+      [
+        16,
+        8
+      ]
+    ],
+    "fit": "ambiguous",
+    "formula": "level_half_roundup",
+    "kind": "dot",
+    "scaling": "level"
+  },
+  "Creeping Crud": {
+    "cap_ticks": 8,
+    "cast_on_other": "is engulfed by a swarm",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Disease Cloud": {
+    "cap_ticks": 60,
+    "cast_on_other": "doubles over in pain",
+    "endpoints": [
+      [
+        1,
+        30
+      ],
+      [
+        2,
+        60
+      ]
+    ],
+    "fit": "unique",
+    "formula": "level_x30",
+    "kind": "dot",
+    "scaling": "level"
+  },
+  "Dooming Darkness": {
+    "cap_ticks": 15,
+    "cast_on_other": "is engulfed by darkness",
+    "endpoints": [
+      [
+        27,
+        14
+      ],
+      [
+        30,
+        15
+      ]
+    ],
+    "fit": "ambiguous",
+    "formula": "level_half_roundup",
+    "kind": "dot",
+    "scaling": "level"
+  },
+  "Drifting Death": {
+    "cap_ticks": 9,
+    "cast_on_other": "is engulfed by a swarm",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Drones of Doom": {
+    "cap_ticks": 8,
+    "cast_on_other": "is engulfed by a swarm",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Drowsy": {
+    "cap_ticks": 35,
+    "cast_on_other": "yawns",
+    "endpoints": [
+      [
+        5,
+        3
+      ],
+      [
+        70,
+        35
+      ]
+    ],
+    "fit": "ambiguous",
+    "formula": "level_half_roundup",
+    "kind": "slow",
+    "scaling": "level"
+  },
+  "Engulfing Darkness": {
+    "cap_ticks": 10,
+    "cast_on_other": "is engulfed by darkness",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Envenomed Bolt": {
+    "cap_ticks": 6,
+    "cast_on_other": "has been poisoned",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Envenomed Breath": {
+    "cap_ticks": 7,
+    "cast_on_other": "has been poisoned",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Flame Lick": {
+    "cap_ticks": 6,
+    "cast_on_other": "is surrounded by flickering flames",
+    "endpoints": [
+      [
+        1,
+        1
+      ],
+      [
+        10,
+        6
+      ]
+    ],
+    "fit": "ambiguous",
+    "formula": "level_half_plus1",
+    "kind": "dot",
+    "scaling": "level"
+  },
+  "Gasping Embrace": {
+    "cap_ticks": 8,
+    "cast_on_other": "begins to choke",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Heart Flutter": {
+    "cap_ticks": 6,
+    "cast_on_other": "clutches their chest",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Heat Blood": {
+    "cap_ticks": 6,
+    "cast_on_other": "'s blood simmers",
+    "endpoints": [
+      [
+        10,
+        5
+      ],
+      [
+        12,
+        6
+      ]
+    ],
+    "fit": "ambiguous",
+    "formula": "level_half_roundup",
+    "kind": "dot",
+    "scaling": "level"
+  },
+  "Ignite Blood": {
+    "cap_ticks": 7,
+    "cast_on_other": "'s blood ignites",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Immolate": {
+    "cap_ticks": 8,
+    "cast_on_other": "is surrounded by blazing flames",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Infectious Cloud": {
+    "cap_ticks": 21,
+    "cast_on_other": "starts to retch",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Insidious Fever": {
+    "cap_ticks": 140,
+    "cast_on_other": "sweats and shivers, looking feverish",
+    "endpoints": [
+      [
+        17,
+        44
+      ],
+      [
+        65,
+        140
+      ]
+    ],
+    "fit": "unique",
+    "formula": "level_x2_plus10",
+    "kind": "dot",
+    "scaling": "level"
+  },
+  "Insidious Malady": {
+    "cap_ticks": 140,
+    "cast_on_other": "sweats and shivers, looking feverish",
+    "endpoints": [
+      [
+        38,
+        86
+      ],
+      [
+        65,
+        140
+      ]
+    ],
+    "fit": "unique",
+    "formula": "level_x2_plus10",
+    "kind": "dot",
+    "scaling": "level"
+  },
+  "Languid Pace": {
+    "cap_ticks": 35,
+    "cast_on_other": "slows down",
+    "endpoints": [
+      [
+        9,
+        5
+      ],
+      [
+        70,
+        35
+      ]
+    ],
+    "fit": "ambiguous",
+    "formula": "level_half_roundup",
+    "kind": "slow",
+    "scaling": "level"
+  },
+  "Malaise": {
+    "cap_ticks": 140,
+    "cast_on_other": "looks somewhat uncomfortable",
+    "endpoints": [
+      [
+        18,
+        46
+      ],
+      [
+        65,
+        140
+      ]
+    ],
+    "fit": "unique",
+    "formula": "level_x2_plus10",
+    "kind": "resist",
+    "scaling": "level"
+  },
+  "Malaisement": {
+    "cap_ticks": 140,
+    "cast_on_other": "looks uncomfortable",
+    "endpoints": [
+      [
+        32,
+        74
+      ],
+      [
+        65,
+        140
+      ]
+    ],
+    "fit": "unique",
+    "formula": "level_x2_plus10",
+    "kind": "resist",
+    "scaling": "level"
+  },
+  "Malosi": {
+    "cap_ticks": 140,
+    "cast_on_other": "looks very uncomfortable",
+    "endpoints": [
+      [
+        48,
+        106
+      ],
+      [
+        65,
+        140
+      ]
+    ],
+    "fit": "unique",
+    "formula": "level_x2_plus10",
+    "kind": "resist",
+    "scaling": "level"
+  },
+  "Plague": {
+    "cap_ticks": 13,
+    "cast_on_other": "sweats and shivers, looking feverish",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Poison Bolt": {
+    "cap_ticks": 4,
+    "cast_on_other": "has been poisoned",
+    "endpoints": [
+      [
+        4,
+        3
+      ],
+      [
+        7,
+        4
+      ]
+    ],
+    "fit": "unique",
+    "formula": "level_half_plus1",
+    "kind": "dot",
+    "scaling": "level"
+  },
+  "Scourge": {
+    "cap_ticks": 12,
+    "cast_on_other": "sweats and shivers, looking feverish",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Sha's Lethargy": {
+    "cap_ticks": 35,
+    "cast_on_other": "feels lethargic",
+    "endpoints": [
+      [
+        50,
+        25
+      ],
+      [
+        70,
+        35
+      ]
+    ],
+    "fit": "ambiguous",
+    "formula": "level_half_roundup",
+    "kind": "slow",
+    "scaling": "level"
+  },
+  "Shallow Breath": {
+    "cap_ticks": 2,
+    "cast_on_other": "begins to choke",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Shiftless Deeds": {
+    "cap_ticks": 35,
+    "cast_on_other": "slows down",
+    "endpoints": [
+      [
+        41,
+        21
+      ],
+      [
+        70,
+        35
+      ]
+    ],
+    "fit": "ambiguous",
+    "formula": "level_half_roundup",
+    "kind": "slow",
+    "scaling": "level"
+  },
+  "Sicken": {
+    "cap_ticks": 14,
+    "cast_on_other": "sweats and shivers, looking feverish",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Stinging Swarm": {
+    "cap_ticks": 9,
+    "cast_on_other": "is engulfed by a swarm",
+    "endpoints": [
+      [
+        10,
+        5
+      ],
+      [
+        18,
+        9
+      ]
+    ],
+    "fit": "ambiguous",
+    "formula": "level_half_roundup",
+    "kind": "dot",
+    "scaling": "level"
+  },
+  "Suffocate": {
+    "cap_ticks": 8,
+    "cast_on_other": "begins to choke",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Suffocating Sphere": {
+    "cap_ticks": 7,
+    "cast_on_other": "gasps for breath",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Tagar's Insects": {
+    "cap_ticks": 35,
+    "cast_on_other": "yawns",
+    "endpoints": [
+      [
+        27,
+        14
+      ],
+      [
+        70,
+        35
+      ]
+    ],
+    "fit": "ambiguous",
+    "formula": "level_half_roundup",
+    "kind": "slow",
+    "scaling": "level"
+  },
+  "Tainted Breath": {
+    "cap_ticks": 7,
+    "cast_on_other": "has been poisoned",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Tashani": {
+    "cap_ticks": 140,
+    "cast_on_other": "glances nervously about",
+    "endpoints": [
+      [
+        18,
+        46
+      ],
+      [
+        65,
+        140
+      ]
+    ],
+    "fit": "unique",
+    "formula": "level_x2_plus10",
+    "kind": "resist",
+    "scaling": "level"
+  },
+  "Tashania": {
+    "cap_ticks": 140,
+    "cast_on_other": "glances nervously about",
+    "endpoints": [
+      [
+        41,
+        92
+      ],
+      [
+        65,
+        140
+      ]
+    ],
+    "fit": "unique",
+    "formula": "level_x2_plus10",
+    "kind": "resist",
+    "scaling": "level"
+  },
+  "Tashina": {
+    "cap_ticks": 140,
+    "cast_on_other": "glances nervously about",
+    "endpoints": [
+      [
+        2,
+        14
+      ],
+      [
+        65,
+        140
+      ]
+    ],
+    "fit": "unique",
+    "formula": "level_x2_plus10",
+    "kind": "resist",
+    "scaling": "level"
+  },
+  "Tepid Deeds": {
+    "cap_ticks": 35,
+    "cast_on_other": "slows down",
+    "endpoints": [
+      [
+        23,
+        12
+      ],
+      [
+        70,
+        35
+      ]
+    ],
+    "fit": "ambiguous",
+    "formula": "level_half_roundup",
+    "kind": "slow",
+    "scaling": "level"
+  },
+  "Togor's Insects": {
+    "cap_ticks": 35,
+    "cast_on_other": "yawns",
+    "endpoints": [
+      [
+        38,
+        19
+      ],
+      [
+        70,
+        35
+      ]
+    ],
+    "fit": "ambiguous",
+    "formula": "level_half_roundup",
+    "kind": "slow",
+    "scaling": "level"
+  },
+  "Venom of the Snake": {
+    "cap_ticks": 6,
+    "cast_on_other": "has been poisoned",
+    "endpoints": [],
+    "fit": "fixed",
+    "formula": null,
+    "kind": "dot",
+    "scaling": "fixed"
+  },
+  "Walking Sleep": {
+    "cap_ticks": 35,
+    "cast_on_other": "yawns",
+    "endpoints": [
+      [
+        13,
+        7
+      ],
+      [
+        70,
+        35
+      ]
+    ],
+    "fit": "ambiguous",
+    "formula": "level_half_roundup",
+    "kind": "slow",
+    "scaling": "level"
+  }
+}

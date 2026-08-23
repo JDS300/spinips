@@ -203,6 +203,12 @@ export interface AlertSettings {
   lullTimersEnabled: boolean;
   lullTimerSound: boolean;
   lullWarningSeconds: number;
+  debuffTimersEnabled: boolean;
+  debuffDotEnabled: boolean;
+  debuffSlowEnabled: boolean;
+  debuffResistEnabled: boolean;
+  debuffWarningSeconds: number;
+  debuffMobLimit: number;
   soundProfiles: AlertSoundProfiles;
 }
 
@@ -311,6 +317,12 @@ const defaultAlertSettings: AlertSettings = {
   lullTimersEnabled: true,
   lullTimerSound: false,
   lullWarningSeconds: 12,
+  debuffTimersEnabled: true,
+  debuffDotEnabled: true,
+  debuffSlowEnabled: true,
+  debuffResistEnabled: true,
+  debuffWarningSeconds: 10,
+  debuffMobLimit: 6,
   soundProfiles: defaultSoundProfiles,
 };
 
@@ -392,6 +404,12 @@ function readSettings(): DesktopSettings {
         lullTimersEnabled: boolean(alertValue.lullTimersEnabled, true),
         lullTimerSound: boolean(alertValue.lullTimerSound, false),
         lullWarningSeconds: clampInteger(alertValue.lullWarningSeconds, 12, 3, 30),
+        debuffTimersEnabled: boolean(alertValue.debuffTimersEnabled, true),
+        debuffDotEnabled: boolean(alertValue.debuffDotEnabled, true),
+        debuffSlowEnabled: boolean(alertValue.debuffSlowEnabled, true),
+        debuffResistEnabled: boolean(alertValue.debuffResistEnabled, true),
+        debuffWarningSeconds: clampInteger(alertValue.debuffWarningSeconds, 10, 3, 30),
+        debuffMobLimit: clampInteger(alertValue.debuffMobLimit, 6, 1, 12),
         soundProfiles: normalizeSoundProfiles(alertValue.soundProfiles),
       },
     };
@@ -2209,6 +2227,7 @@ ipcMain.handle("settings:update", (_event, value: unknown) => {
       "alertsEnabled", "alertSound", "alertCharmBreak", "alertTells", "alertSummon",
       "alertDeath", "alertBigHit", "alertNameCalled", "mezTimersEnabled", "mezTimerSound",
       "lullTimersEnabled", "lullTimerSound",
+      "debuffTimersEnabled", "debuffDotEnabled", "debuffSlowEnabled", "debuffResistEnabled",
     ];
     for (const key of booleanKeys) if (typeof candidate[key] === "boolean") Object.assign(alerts, { [key]: candidate[key] });
     if (candidate.soundProfiles && typeof candidate.soundProfiles === "object") {
@@ -2219,6 +2238,7 @@ ipcMain.handle("settings:update", (_event, value: unknown) => {
     }
     const numericRanges: Record<string, [number, number]> = {
       alertSeconds: [1, 15], bigHitThreshold: [1, 999999], mezWarningSeconds: [3, 30], lullWarningSeconds: [3, 30],
+      debuffWarningSeconds: [3, 30], debuffMobLimit: [1, 12],
     };
     for (const [key, [low, high]] of Object.entries(numericRanges)) {
       const numeric = Number(candidate[key]);

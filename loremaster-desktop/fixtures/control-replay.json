@@ -112,6 +112,19 @@
           {"kind": "mez", "state": "active", "target": "an essence carrier", "count": 2, "spell": "Mesmerization", "rank": 5, "landedAt": "2026-08-06T20:00:03.000Z", "safeExpiresAt": "2026-08-06T20:00:39.000Z", "expiresAt": "2026-08-06T20:00:45.000Z", "durationSeconds": 36, "safeRemainingSeconds": 0, "remainingSeconds": 1, "lastTick": true, "urgency": "critical", "confidence": "confirmed", "ambiguity": "earliest expiry of 2 same-name targets"},
           {"kind": "lull", "state": "ambiguous", "target": "RESULT NOT TRACKED", "count": 1, "spell": "Calm", "rank": 0, "landedAt": "2026-08-06T20:00:43.000Z", "safeExpiresAt": "2026-08-06T20:00:51.000Z", "expiresAt": "2026-08-06T20:00:51.000Z", "durationSeconds": 0, "safeRemainingSeconds": 0, "remainingSeconds": 0, "lastTick": false, "urgency": "warning", "confidence": "unconfirmed", "ambiguity": "Nearby lull cast made the landing ownership ambiguous"}
         ],
+        "debuffs": {
+          "groups": [
+            {"target": "an essence carrier", "urgency": "critical", "rows": [
+              {"spell": "Envenomed Bolt", "kind": "dot", "rank": 0, "expiresAt": "2026-08-06T20:00:48.000Z", "remainingSeconds": 4, "urgency": "critical", "durationConfidence": "exact", "expired": false},
+              {"spell": "Togor's Insects", "kind": "slow", "rank": 2, "expiresAt": "2026-08-06T20:02:14.000Z", "remainingSeconds": 90, "urgency": "safe", "durationConfidence": "conservative", "expired": false},
+              {"spell": "Tashani", "kind": "resist", "rank": 0, "expiresAt": "2026-08-06T20:11:04.000Z", "remainingSeconds": 620, "urgency": "safe", "durationConfidence": "conservative", "expired": false}
+            ]},
+            {"target": "a sky reaver", "urgency": "warning", "rows": [
+              {"spell": "Drowsy", "kind": "slow", "rank": 0, "expiresAt": "2026-08-06T20:00:52.000Z", "remainingSeconds": 8, "urgency": "warning", "durationConfidence": "conservative", "expired": false}
+            ]}
+          ],
+          "overflow": 2
+        },
         "hiddenControlRows": 0,
         "controlNoticeCount": 1,
         "controlAmbiguityCount": 1

@@ -788,6 +788,25 @@ PATTERNS: list[tuple[str, re.Pattern]] = [
         r"^(?P<target>.+?) looks less aggressive\.$", re.I)),
     ("mez_awakened", re.compile(
         r"^(?P<target>.+?) has been awakened by (?P<breaker>.+?)\.$", re.I)),
+    # --- confirmed debuff landings --------------------------------------
+    # Each line names the target but not the spell, and is equally visible
+    # when somebody else casts.  The debuff tracker accepts one only while a
+    # compatible local cast is pending.  Anchoring matters: the three Malaise
+    # ranks differ only by an adverb.
+    ("debuff_landed_yawns", re.compile(
+        r"^(?P<target>.+?) yawns\.$", re.I)),
+    ("debuff_landed_slows_down", re.compile(
+        r"^(?P<target>.+?) slows down\.$", re.I)),
+    ("debuff_landed_lethargic", re.compile(
+        r"^(?P<target>.+?) feels lethargic\.$", re.I)),
+    ("debuff_landed_malaise", re.compile(
+        r"^(?P<target>.+?) looks somewhat uncomfortable\.$", re.I)),
+    ("debuff_landed_malaisement", re.compile(
+        r"^(?P<target>.+?) looks uncomfortable\.$", re.I)),
+    ("debuff_landed_malosi", re.compile(
+        r"^(?P<target>.+?) looks very uncomfortable\.$", re.I)),
+    ("debuff_landed_tashan", re.compile(
+        r"^(?P<target>.+?) glances nervously about\.$", re.I)),
     # --- xp / progression ---
     ("xp", re.compile(r"^You gain (?P<party>party )?experience!+(?: \((?P<pct>[\d.]+)%\))?.*$")),
     ("level", re.compile(r"^You have gained a level! Welcome to level (?P<level>\d+)!$")),
@@ -915,7 +934,17 @@ MEZ_ONLY_KINDS = frozenset((
 LULL_LANDING_COMPATIBILITY = frozenset({
     "Pacify", "Calm", "Lull", "Soothe", "Calm Animal", "Pacification",
 })
-CONTROL_ONLY_KINDS = frozenset((*MEZ_ONLY_KINDS, "lull_landed"))
+DEBUFF_LANDING_KINDS = {
+    "debuff_landed_yawns": "yawns",
+    "debuff_landed_slows_down": "slows_down",
+    "debuff_landed_lethargic": "lethargic",
+    "debuff_landed_malaise": "malaise",
+    "debuff_landed_malaisement": "malaisement",
+    "debuff_landed_malosi": "malosi",
+    "debuff_landed_tashan": "tashan",
+}
+CONTROL_ONLY_KINDS = frozenset(
+    (*MEZ_ONLY_KINDS, "lull_landed", *DEBUFF_LANDING_KINDS))
 
 
 def observe_mez_log_event(tracker: MezTracker, ts: datetime,
@@ -1024,9 +1053,58 @@ def observe_lull_log_event(tracker: LullTracker, ts: datetime,
             tracker.clear()
 
 
+def observe_debuff_log_event(tracker: "DebuffTracker", ts: datetime,
+                             kind: str, groups: dict,
+                             caster_level: int | None = None) -> None:
+    """Feed one parsed line to the debuff timer state machine."""
+    if caster_level:
+        tracker.set_caster_level(caster_level)
+    if kind == "cast_begin":
+        tracker.begin_cast(groups.get("spell", ""), ts)
+    elif kind == "song_begin":
+        tracker.begin_cast(groups.get("song", ""), ts)
+    elif kind == "cast_begin_other":
+        tracker.observe_nearby_cast(groups.get("spell", ""), ts)
+    elif kind == "song_begin_other":
+        tracker.observe_nearby_cast(groups.get("song", ""), ts)
+    elif kind == "fizzle":
+        tracker.observe_fizzle(groups.get("spell"), ts)
+    elif kind == "interrupt":
+        tracker.observe_interrupt(groups.get("spell"), ts)
+    elif kind in ("resist", "resist2"):
+        tracker.observe_resist(groups.get("spell"), ts)
+    elif kind in DEBUFF_LANDING_KINDS:
+        tracker.observe_landing(
+            groups.get("target", ""), DEBUFF_LANDING_KINDS[kind], ts)
+    elif kind == "dot_out":
+        # The one signal that names target and spell together.  Deliberately
+        # not dot_third: that line carries "by <caster>" and is somebody
+        # else's DoT, which must no more reach our deck than their slow does.
+        tracker.observe_dot_tick(
+            groups.get("target", ""), groups.get("spell", ""), ts)
+    elif kind == "spell_fade":
+        tracker.observe_fade(groups.get("target"), groups.get("spell"), ts)
+    elif kind == "spell_overwritten":
+        tracker.observe_overwrite(
+            groups.get("target"), groups.get("spell"), ts)
+    elif kind in ("kill_you", "kill_other"):
+        tracker.observe_kill(groups.get("target", ""), ts)
+    elif kind == "death_you":
+        tracker.clear()
+    elif kind == "level":
+        try:
+            tracker.set_caster_level(int(groups.get("level", 0)))
+        except (TypeError, ValueError):
+            pass
+    elif kind == "zone":
+        if is_real_zone_transition(groups.get("zone", "")):
+            tracker.clear()
+
+
 def apply_log_models(stats, tracker: MezTracker, ts: datetime, kind: str,
                      groups: dict, *, count_lifetime: bool = True,
                      lull_tracker: LullTracker | None = None,
+                     debuff_tracker=None,
                      caster_level: int | None = None):
     """Apply a parsed line without letting timer-only prose alter DPS state."""
     charm_break_events = ()
@@ -1037,6 +1115,9 @@ def apply_log_models(stats, tracker: MezTracker, ts: datetime, kind: str,
     if lull_tracker is not None:
         observe_lull_log_event(
             lull_tracker, ts, kind, groups, caster_level)
+    if debuff_tracker is not None:
+        observe_debuff_log_event(
+            debuff_tracker, ts, kind, groups, caster_level)
     return charm_break_events
 
 COIN_RE = re.compile(r"(\d+) (platinum|gold|silver|copper)")

@@ -1,6 +1,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 export type ControlKind = "mez" | "lull";
+export type DebuffKind = "dot" | "slow" | "resist";
 export type ControlState = "active" | "unconfirmed" | "ambiguous" | "failed";
 export type ControlUrgency = "safe" | "warning" | "critical";
 
@@ -198,6 +199,33 @@ export interface ControlTimerView {
   ambiguity: string;
 }
 
+export interface DebuffRowView {
+  spell: string;
+  kind: DebuffKind;
+  rank: number;
+  expiresAt: string;
+  remainingSeconds: number;
+  urgency: ControlUrgency;
+  /**
+   * "exact" for a DoT, whose tick line confirms it is still running.
+   * "conservative" for slow and resist, whose countdown is computed and
+   * cannot see focus items, so it runs short rather than long.
+   */
+  durationConfidence: "exact" | "conservative";
+  expired: boolean;
+}
+
+export interface DebuffGroupView {
+  target: string;
+  urgency: ControlUrgency;
+  rows: readonly DebuffRowView[];
+}
+
+export interface DebuffDeckView {
+  groups: readonly DebuffGroupView[];
+  overflow: number;
+}
+
 export interface EngineSnapshot {
   protocolVersion: typeof PROTOCOL_VERSION;
   sequence: number;
@@ -213,6 +241,7 @@ export interface EngineSnapshot {
   lootUniqueCount?: number;
   journalEncounters?: readonly JournalEncounterView[];
   controls: readonly ControlTimerView[];
+  debuffs?: DebuffDeckView;
   hiddenControlRows: number;
   controlNoticeCount: number;
   controlAmbiguityCount: number;
@@ -366,6 +395,12 @@ export interface AlertSettings {
   lullTimersEnabled: boolean;
   lullTimerSound: boolean;
   lullWarningSeconds: number;
+  debuffTimersEnabled: boolean;
+  debuffDotEnabled: boolean;
+  debuffSlowEnabled: boolean;
+  debuffResistEnabled: boolean;
+  debuffWarningSeconds: number;
+  debuffMobLimit: number;
   soundProfiles: AlertSoundProfiles;
 }
 
@@ -447,8 +482,21 @@ export function isEngineSnapshotEvent(value: unknown): value is EngineSnapshotEv
     typeof snapshot.sequence === "number" &&
     snapshot.character && typeof snapshot.character.name === "string" &&
     snapshot.combat && typeof snapshot.combat.fightDps === "number" &&
-    Array.isArray(snapshot.controls),
+    Array.isArray(snapshot.controls) &&
+    isDebuffDeck(snapshot.debuffs),
   );
+}
+
+/** A malformed deck is rejected rather than rendered; absent is fine. */
+function isDebuffDeck(value: unknown): boolean {
+  if (value === undefined || value === null) return true;
+  if (typeof value !== "object") return false;
+  const deck = value as Partial<DebuffDeckView>;
+  if (typeof deck.overflow !== "number" || !Array.isArray(deck.groups)) return false;
+  return deck.groups.every((group: DebuffGroupView) =>
+    group && typeof group.target === "string" && Array.isArray(group.rows) &&
+    group.rows.every((row: DebuffRowView) =>
+      row && typeof row.spell === "string" && typeof row.remainingSeconds === "number"));
 }
 
 export function isEngineHealth(value: unknown): value is EngineHealth {
