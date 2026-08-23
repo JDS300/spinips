@@ -7,7 +7,7 @@
 <p align="center"><strong>See more of Norrath. Read every fight. Natively, on Linux.</strong></p>
 
 <p align="center">
-  <a href="https://github.com/itsspin/spinips">itsspin's</a> EverQuest Legends interface and companion — two complete skins, a combat cockpit, and a log-driven encounter lab — running natively on Linux. This fork adds the platform support and nothing else.
+  <a href="https://github.com/itsspin/spinips">itsspin's</a> EverQuest Legends interface and companion — two complete skins, a combat cockpit, and a log-driven encounter lab — running natively on Linux. This fork adds the platform support, and a small number of fork-only features on top.
 </p>
 
 <p align="center">
@@ -30,10 +30,13 @@
 > — the interface design, the skins, the parser engine and the desktop
 > application are all their work.
 >
-> This fork exists for one purpose: to add native Linux support and offer it
+> This fork began for one purpose: to add native Linux support and offer it
 > back upstream. It adds platform plumbing — process launch, log discovery
 > inside Wine and Proton prefixes, X11 screen capture, packaging — and changes
 > no Windows behaviour.
+>
+> It now also carries a small number of **fork-only features** that upstream
+> does not have, listed under [what this fork adds](#what-this-fork-adds).
 >
 > **On Windows, use [the original project](https://github.com/itsspin/spinips)
 > and its releases.** Nothing here improves on it for you.
@@ -218,6 +221,7 @@ Loremaster turns the text log EverQuest already writes into a live **Adventurer'
 | **Adventure ledger** | XP/hour, time to level, kills, loot, all ten mote grades, coin and plat/hour, factions, skills, zones, and a bounded death recap. |
 | **Pets and charms** | Credits summoned pets and conservatively claimed charmed creatures; same-name charm totals are included but clearly labeled as estimates when the text log cannot distinguish actor IDs. |
 | **Optional DPS attribution** | Keeps total personal DPS unchanged while optionally exposing separate Self, Charmed pet, and Summoned pet damage/DPS rows for both the current encounter and session. |
+| **Debuff timers** *(fork-only)* | Countdowns for your own DoTs, slows and resist debuffs, grouped by mob, on a deck below the mez and lull control stack. Shaman, enchanter, beastlord, necromancer and druid to level 50. |
 | **Mez control** | Starts a sleek target countdown only after your own recognized mez actually lands. Ranked durations use EQL's whole-tick scaling; identical mob names group honestly, and `LAST TICK` exposes the server-tick uncertainty instead of inventing an exact wake-up second. |
 | **Rune Seed HUD** | A rounded 92×48 combat capsule pairs the generated SpinUI brass cog with a separate, overlap-free DPS lane. DPS is its only seeded metric; players can deliberately star up to four ledger cards to create a scrollable wheel. LIVE, READY, STALE, and ALERT use restrained trim motion; click to morph into the full parser, drag when unlocked, or right-click for settings. |
 | **Lore Lens** | One-shot hovered-item OCR, exact EQL Wiki validation, cached results, and a configurable `Ctrl+Shift+E` shortcut. |
@@ -240,6 +244,21 @@ The global alert switch ships **off**. The **Charmed pet breaks** and **Play ale
 ### Mez and lull timing without fake precision
 
 Loremaster recognizes the Enchanter mez line plus supported Bard and Necromancer control songs/spells directly from the normal EQ text log. A cast alone never starts a timer: the target-specific success line must follow your own recent cast. The same evidence rule now covers Pacify, Calm, Lull, Soothe, Calm Animal, and Pacification. Harmony and Lull Animal do not expose a target-specific success line in EQL, so Loremaster labels those casts **UNCONFIRMED** instead of inventing a timer.
+
+<a id="what-this-fork-adds"></a>
+
+#### Debuff timers (fork-only)
+
+Alongside mez and lull, Loremaster tracks your own **damage-over-time spells, slows, and resist debuffs** as live countdowns, grouped one block per mob. Coverage is shaman, enchanter and beastlord for slows, shaman and enchanter for resist debuffs, and shaman, enchanter, beastlord, necromancer and druid for DoTs, to level 50.
+
+The two families are tracked by different evidence, and the deck says which is which:
+
+- **DoTs are confirmed.** Every tick line names both the target and the spell, so attribution is never guessed, and the tick doubles as a heartbeat — a DoT still ticking past its computed expiry is held on the deck rather than dropped.
+- **Slows and resist debuffs are estimates**, marked `EST`. Their landing prose names the target but not the spell, so the timer is correlated against your own recent cast the same way mez is; a nearby shaman's slow prints the same line and is ignored. Their countdown is computed from your level and the spell's rank.
+
+Durations do not account for **focus items**, which extend them and which Loremaster cannot see — the same limitation mez and lull have always had. An `EST` countdown is therefore a floor, not a measurement. DoT rows correct themselves from their ticks; slow and resist rows cannot, so they linger briefly at zero instead of vanishing.
+
+Spell durations are derived from published per-level endpoints, and the test suite asserts every formula still reproduces both of its published endpoints, so the data cannot drift silently. Visibility, per-family toggles, the warning threshold and the mob cap are in **Settings → Debuff Timers**.
 
 Fizzles, interrupts, single-target resists, fades, overwrites, damage breaks, deaths, zoning, character changes, and reset all close the appropriate state. AE mez keeps accepting interleaved successes even when another target resists. If a nearby caster overlaps a spell that shares the same actorless landing message, Loremaster quarantines the ambiguous result instead of double-counting it as yours.
 

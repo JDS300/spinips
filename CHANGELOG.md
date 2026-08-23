@@ -5,6 +5,43 @@ so the release itself carries it: `tools/release_notes.py` reads the entry
 matching the version being published, and a candidate and the release it is
 promoted to resolve to the same entry.
 
+## 0.5.0
+
+Adds debuff timers — the first fork-only *feature*, rather than platform
+plumbing or a bug fix.
+
+### Fork-specific
+
+- **Debuff timers.** Your own damage-over-time spells, slows and resist
+  debuffs now count down on their own deck below the mez and lull control
+  stack, grouped one block per mob. Coverage is shaman, enchanter and
+  beastlord for slows, shaman and enchanter for resist debuffs, and shaman,
+  enchanter, beastlord, necromancer and druid for DoTs, to level 50.
+
+  The two families are tracked by different evidence, and the deck marks which
+  is which. **DoTs are confirmed:** every tick line names target and spell
+  together, so attribution is never guessed, and the tick doubles as a
+  heartbeat — a DoT still ticking past its computed expiry is held on the deck
+  instead of dropped. **Slows and resist debuffs are estimates,** marked `EST`:
+  their landing prose names the target but not the spell, so the timer is
+  correlated against your own recent cast exactly as mez is, and a nearby
+  shaman's slow prints the same line and is ignored.
+
+  Durations do not account for **focus items**, which extend them and which
+  Loremaster cannot see — the same limitation mez and lull have always had. An
+  `EST` countdown is a floor rather than a measurement. DoT rows correct
+  themselves from their ticks; slow and resist rows cannot, so they linger
+  briefly at zero instead of vanishing.
+
+  Spell durations are derived from published per-level endpoints, and the test
+  suite asserts every formula still reproduces both of its published
+  endpoints, so the table cannot drift silently. Visibility, per-family
+  toggles, the warning threshold and the mob cap live in
+  **Settings → Debuff Timers**.
+
+- **The README no longer claims the fork adds "nothing else."** It now says
+  what it does add.
+
 ## 0.4.0
 
 First build carrying the upstream work merged since 0.3.4, plus the fork fixes
