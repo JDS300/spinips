@@ -162,6 +162,12 @@ const CONTROL_SURFACE_ROW_HEIGHT = 48;
 const CONTROL_SURFACE_MAX_ROWS = 6;
 const GROUP_SURFACE_HEADER_HEIGHT = 31;
 const GROUP_SURFACE_ROW_HEIGHT = 38;
+// Mirrors .seed-debuff-* in styles.css. A group costs its mob name plus a row
+// per spell; the window is sized from these, so a drift here clips the deck.
+const DEBUFF_SURFACE_HEADER_HEIGHT = 27;
+const DEBUFF_SURFACE_GROUP_HEIGHT = 20;
+const DEBUFF_SURFACE_ROW_HEIGHT = 19;
+const DEBUFF_SURFACE_MAX_GROUPS = 6;
 const GROUP_SURFACE_MAX_ROWS = 5;
 const screenshotControls = [
   {
@@ -1351,6 +1357,41 @@ function visibleSeedControls(value: unknown, settings: DesktopSettings): Record<
   }).slice(0, CONTROL_SURFACE_MAX_ROWS);
 }
 
+function visibleSeedDebuffs(value: unknown, settings: DesktopSettings): {
+  groups: number; rows: number;
+} {
+  const empty = { groups: 0, rows: 0 };
+  if (!settings.alerts.debuffTimersEnabled) return empty;
+  if (!value || typeof value !== "object") return empty;
+  const snapshot = (value as { snapshot?: unknown }).snapshot;
+  if (!snapshot || typeof snapshot !== "object") return empty;
+  const deck = (snapshot as { debuffs?: unknown }).debuffs;
+  if (!deck || typeof deck !== "object") return empty;
+  const list = (deck as { groups?: unknown }).groups;
+  if (!Array.isArray(list)) return empty;
+
+  const kinds = new Set<string>([
+    ...(settings.alerts.debuffDotEnabled ? ["dot"] : []),
+    ...(settings.alerts.debuffSlowEnabled ? ["slow"] : []),
+    ...(settings.alerts.debuffResistEnabled ? ["resist"] : []),
+  ]);
+  let groups = 0;
+  let rows = 0;
+  for (const entry of list) {
+    if (!entry || typeof entry !== "object") continue;
+    const candidate = (entry as { rows?: unknown }).rows;
+    if (!Array.isArray(candidate)) continue;
+    const visible = candidate.filter((row) =>
+      row && typeof row === "object" &&
+      kinds.has(String((row as Record<string, unknown>).kind)));
+    if (visible.length === 0) continue;
+    if (groups >= DEBUFF_SURFACE_MAX_GROUPS) break;
+    groups += 1;
+    rows += visible.length;
+  }
+  return { groups, rows };
+}
+
 function visibleGroupContributors(value: unknown): Record<string, unknown>[] {
   if (!value || typeof value !== "object") return [];
   const snapshot = (value as { snapshot?: unknown }).snapshot;
@@ -1376,16 +1417,22 @@ function visibleGroupContributors(value: unknown): Record<string, unknown>[] {
   )).slice(0, GROUP_SURFACE_MAX_ROWS);
 }
 
-function controlSurfaceSize(controlRows: number, groupRows: number, scale: number) {
+function controlSurfaceSize(controlRows: number, groupRows: number, scale: number,
+                            debuffs: { groups: number; rows: number } = { groups: 0, rows: 0 }) {
   const controlHeight = controlRows > 0
     ? CONTROL_SURFACE_HEADER_HEIGHT + controlRows * CONTROL_SURFACE_ROW_HEIGHT
     : 0;
   const groupHeight = groupRows > 0
     ? GROUP_SURFACE_HEADER_HEIGHT + groupRows * GROUP_SURFACE_ROW_HEIGHT
     : 0;
+  const debuffHeight = debuffs.groups > 0
+    ? DEBUFF_SURFACE_HEADER_HEIGHT
+      + debuffs.groups * DEBUFF_SURFACE_GROUP_HEIGHT
+      + debuffs.rows * DEBUFF_SURFACE_ROW_HEIGHT
+    : 0;
   return scaledSize({
     width: CONTROL_SURFACE_WIDTH,
-    height: Math.max(1, controlHeight + groupHeight),
+    height: Math.max(1, controlHeight + groupHeight + debuffHeight),
   }, scale);
 }
 
@@ -1567,13 +1614,16 @@ function syncControlWindow(): void {
   const settings = engine?.getState().settings ?? defaultSettings;
   const rows = visibleSeedControls(engine?.getState().snapshot, settings);
   const contributors = visibleGroupContributors(engine?.getState().snapshot);
-  if (!mainWindow.isVisible() || windowExpanded || (rows.length === 0 && contributors.length === 0)) {
+  const debuffs = visibleSeedDebuffs(engine?.getState().snapshot, settings);
+  if (!mainWindow.isVisible() || windowExpanded
+      || (rows.length === 0 && contributors.length === 0 && debuffs.groups === 0)) {
     controlWindow.hide();
     positionAlertWindow();
     return;
   }
 
-  const panelSize = controlSurfaceSize(rows.length, contributors.length, settings.fontScale);
+  const panelSize = controlSurfaceSize(
+    rows.length, contributors.length, settings.fontScale, debuffs);
   const anchor = mainWindow.getBounds();
   const workArea = screen.getDisplayMatching(anchor).workArea;
   const gap = Math.max(5, Math.round(6 * settings.fontScale));
