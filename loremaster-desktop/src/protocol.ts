@@ -367,7 +367,7 @@ export interface EngineHealth {
 
 export type AlertAnchor = "auto" | "above" | "below" | "left" | "right";
 export type LoremasterTheme = "vellum" | "glass";
-export type AlertSoundKind = "default" | "charmBreak" | "tell" | "summon" | "death" | "bigHit" | "nameCalled" | "mez" | "lull";
+export type AlertSoundKind = "default" | "charmBreak" | "tell" | "summon" | "death" | "bigHit" | "nameCalled" | "mez" | "lull" | "debuff";
 export type AlertSoundPreset = "rune" | "crystal" | "ember" | "bell" | "custom" | "silent";
 
 export interface AlertSoundProfile {
@@ -396,6 +396,7 @@ export interface AlertSettings {
   lullTimerSound: boolean;
   lullWarningSeconds: number;
   debuffTimersEnabled: boolean;
+  debuffTimerSound: boolean;
   debuffDotEnabled: boolean;
   debuffSlowEnabled: boolean;
   debuffResistEnabled: boolean;

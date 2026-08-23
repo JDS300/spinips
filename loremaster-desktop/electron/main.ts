@@ -186,7 +186,7 @@ const screenshotControls = [
   },
 ] as const;
 type AlertAnchor = "auto" | "above" | "below" | "left" | "right";
-type AlertSoundKind = "default" | "charmBreak" | "tell" | "summon" | "death" | "bigHit" | "nameCalled" | "mez" | "lull";
+type AlertSoundKind = "default" | "charmBreak" | "tell" | "summon" | "death" | "bigHit" | "nameCalled" | "mez" | "lull" | "debuff";
 type AlertSoundPreset = "rune" | "crystal" | "ember" | "bell" | "custom" | "silent";
 interface AlertSoundProfile { preset: AlertSoundPreset; customPath: string }
 type AlertSoundProfiles = Record<AlertSoundKind, AlertSoundProfile>;
@@ -210,6 +210,7 @@ export interface AlertSettings {
   lullTimerSound: boolean;
   lullWarningSeconds: number;
   debuffTimersEnabled: boolean;
+  debuffTimerSound: boolean;
   debuffDotEnabled: boolean;
   debuffSlowEnabled: boolean;
   debuffResistEnabled: boolean;
@@ -278,6 +279,7 @@ const defaultHealth: EngineHealth = {
 
 const ALERT_SOUND_KINDS: readonly AlertSoundKind[] = [
   "default", "charmBreak", "tell", "summon", "death", "bigHit", "nameCalled", "mez", "lull",
+  "debuff",
 ];
 const ALERT_SOUND_PRESETS: readonly AlertSoundPreset[] = ["rune", "crystal", "ember", "bell", "custom", "silent"];
 const defaultSoundProfiles: AlertSoundProfiles = {
@@ -290,6 +292,7 @@ const defaultSoundProfiles: AlertSoundProfiles = {
   nameCalled: { preset: "crystal", customPath: "" },
   mez: { preset: "rune", customPath: "" },
   lull: { preset: "bell", customPath: "" },
+  debuff: { preset: "crystal", customPath: "" },
 };
 
 function normalizeSoundProfiles(value: unknown): AlertSoundProfiles {
@@ -324,6 +327,7 @@ const defaultAlertSettings: AlertSettings = {
   lullTimerSound: false,
   lullWarningSeconds: 12,
   debuffTimersEnabled: true,
+  debuffTimerSound: false,
   debuffDotEnabled: true,
   debuffSlowEnabled: true,
   debuffResistEnabled: true,
@@ -411,6 +415,7 @@ function readSettings(): DesktopSettings {
         lullTimerSound: boolean(alertValue.lullTimerSound, false),
         lullWarningSeconds: clampInteger(alertValue.lullWarningSeconds, 12, 3, 30),
         debuffTimersEnabled: boolean(alertValue.debuffTimersEnabled, true),
+        debuffTimerSound: boolean(alertValue.debuffTimerSound, false),
         debuffDotEnabled: boolean(alertValue.debuffDotEnabled, true),
         debuffSlowEnabled: boolean(alertValue.debuffSlowEnabled, true),
         debuffResistEnabled: boolean(alertValue.debuffResistEnabled, true),
@@ -2277,7 +2282,7 @@ ipcMain.handle("settings:update", (_event, value: unknown) => {
       "alertsEnabled", "alertSound", "alertCharmBreak", "alertTells", "alertSummon",
       "alertDeath", "alertBigHit", "alertNameCalled", "mezTimersEnabled", "mezTimerSound",
       "lullTimersEnabled", "lullTimerSound",
-      "debuffTimersEnabled", "debuffDotEnabled", "debuffSlowEnabled", "debuffResistEnabled",
+      "debuffTimersEnabled", "debuffTimerSound", "debuffDotEnabled", "debuffSlowEnabled", "debuffResistEnabled",
     ];
     for (const key of booleanKeys) if (typeof candidate[key] === "boolean") Object.assign(alerts, { [key]: candidate[key] });
     if (candidate.soundProfiles && typeof candidate.soundProfiles === "object") {

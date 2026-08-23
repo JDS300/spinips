@@ -331,6 +331,7 @@ class DebuffSnapshot:
 @dataclass
 class _ActiveDebuff:
     resolved: ResolvedDebuff
+    target: str            # as first seen, for display
     landed_at: datetime
     expires_at: datetime
     last_tick_at: datetime | None = None
@@ -435,8 +436,15 @@ class DebuffTracker:
 
     def _arm(self, target_name: str, resolved: ResolvedDebuff,
              occurred_at: datetime, *, tick_at: datetime | None = None) -> None:
-        self._active[(target_name, resolved.name)] = _ActiveDebuff(
+        key = (_name_key(target_name), resolved.name)
+        # EQ capitalises the first word of a line, so the same mob arrives as
+        # "An abhorrent" in a landing and "an abhorrent" in a kill. Key on the
+        # folded name -- mez_timer has always done this -- and keep whichever
+        # spelling was seen first for the deck to display.
+        display = self._active[key].target if key in self._active else target_name
+        self._active[key] = _ActiveDebuff(
             resolved=resolved,
+            target=display,
             landed_at=occurred_at,
             expires_at=occurred_at + timedelta(seconds=resolved.duration_seconds),
             last_tick_at=tick_at)
@@ -462,7 +470,7 @@ class DebuffTracker:
         resolved = resolve_debuff_spell(spell_name, self._caster_level)
         if resolved is None or resolved.kind != "dot":
             return False
-        key = (target_name, resolved.name)
+        key = (_name_key(target_name), resolved.name)
         pending = self._take_pending(occurred_at, spell_name=resolved.name)
         active = self._active.get(key)
         if pending is not None:
@@ -484,7 +492,8 @@ class DebuffTracker:
         if resolved is None:
             return False
         if target_name:
-            return self._active.pop((target_name, resolved.name), None) is not None
+            return self._active.pop(
+                (_name_key(target_name), resolved.name), None) is not None
         # A fade line without a target clears that spell everywhere.
         doomed = [k for k in self._active if k[1] == resolved.name]
         for key in doomed:
@@ -497,7 +506,8 @@ class DebuffTracker:
         return self.observe_fade(target_name, spell_name, occurred_at)
 
     def observe_kill(self, target_name: str, occurred_at: datetime) -> bool:
-        doomed = [k for k in self._active if k[0] == target_name]
+        folded = _name_key(target_name)
+        doomed = [k for k in self._active if k[0] == folded]
         for key in doomed:
             del self._active[key]
         return bool(doomed)
@@ -509,11 +519,11 @@ class DebuffTracker:
         return cleared
 
     # -- snapshot ------------------------------------------------------
-    def _row(self, target: str, active: _ActiveDebuff, now: datetime, *,
+    def _row(self, active: _ActiveDebuff, now: datetime, *,
              warning_seconds: float, critical_seconds: float) -> DebuffRow:
         remaining = (active.expires_at - now).total_seconds()
         return DebuffRow(
-            target=target,
+            target=active.target,
             spell=active.resolved.name,
             kind=active.resolved.kind,
             rank=active.resolved.rank,
@@ -548,11 +558,11 @@ class DebuffTracker:
             del self._active[key]
 
         grouped: dict[str, list[DebuffRow]] = {}
-        for (target, _spell), active in self._active.items():
+        for active in self._active.values():
             if kinds is not None and active.resolved.kind not in kinds:
                 continue
-            grouped.setdefault(target, []).append(
-                self._row(target, active, now, warning_seconds=warning_seconds,
+            grouped.setdefault(active.target, []).append(
+                self._row(active, now, warning_seconds=warning_seconds,
                           critical_seconds=critical_seconds))
         if not grouped:
             return DebuffSnapshot()

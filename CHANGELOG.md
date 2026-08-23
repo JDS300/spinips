@@ -12,6 +12,19 @@ information, which has never worked.
 
 ### Fork-specific
 
+- **A debuff timer clears when the mob dies.** It did not. EverQuest
+  capitalises the first word of a line, so the same creature arrives as "An
+  abhorrent yawns." when the debuff lands and "You have slain an abhorrent!"
+  when it dies. The tracker keyed its rows on the raw text, so the two never
+  matched and the row lingered until it expired on its own. Fade lines carry
+  the same mid-sentence form, so both ways a row can clear were affected.
+  Rows are now keyed case-insensitively, as the mez tracker has always done,
+  and still display whichever spelling was seen first.
+
+- **Optional sound when a debuff is about to run out**, matching mez and lull.
+  Off by default; the threshold is the existing DEBUFF WARNING setting, and the
+  Sound Studio gains a Debuff ending entry.
+
 - **Debuff timers appear on the overlay you actually watch.** The deck was
   built into the expanded HUD only. Mez and lull also render in the
   always-on-top control window, which is the surface open during a fight, and
