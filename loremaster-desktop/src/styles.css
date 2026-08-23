@@ -196,6 +196,38 @@ body.control-window { background: transparent; }
 .quiet-state { margin: 0; padding: 18px; color: var(--dim); text-align: center; font-size: 11px; }
 .control-deck > footer { display: flex; gap: 12px; padding: 6px 10px; color: #e7bd69; font-size: 9px; border-top: 1px solid var(--soft-line); }
 
+/* Debuff deck -- the same instrument as the control deck, one step quieter,
+   because a mob can carry several debuffs and the mez row must stay loudest. */
+.debuff-deck { margin-top: 9px; border: 1px solid rgba(97,215,208,.16); border-radius: 12px; overflow: hidden; background: rgba(7,10,15,.66); }
+.debuff-deck > header { display: flex; align-items: center; justify-content: space-between; padding: 8px 11px; background: rgba(22,29,39,.72); border-bottom: 1px solid var(--soft-line); }
+.debuff-deck h2 { margin: 1px 0 0; font: 700 11px Georgia, serif; letter-spacing: .11em; color: #cfdde5; }
+.debuff-deck header small { color: var(--cyan); font-size: 8px; letter-spacing: .16em; }
+.debuff-deck header > span { color: var(--dim); font-size: 9px; letter-spacing: .1em; }
+.debuff-list { display: grid; }
+.debuff-group { padding: 6px 0 5px; border-bottom: 1px solid rgba(80,102,122,.16); }
+.debuff-group:last-child { border-bottom: 0; }
+.debuff-group h3 { margin: 0; padding: 2px 11px 5px; font: 700 10px Georgia, serif; letter-spacing: .09em; color: #b8c7d2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.debuff-group.critical h3 { color: var(--ember); }
+.debuff-group.warning h3 { color: #f2c96f; }
+.debuff-row { position: relative; min-height: 26px; display: flex; align-items: center; gap: 9px; padding: 3px 10px 3px 20px; }
+.debuff-accent { position: absolute; inset: 4px auto 4px 11px; width: 2px; border-radius: 0 2px 2px 0; background: var(--blue); }
+.debuff-row.dot .debuff-accent { background: #9a6bd8; }
+.debuff-row.slow .debuff-accent { background: var(--cyan); }
+.debuff-row.resist .debuff-accent { background: var(--gold); }
+.debuff-row.warning .debuff-accent { background: #f2c96f; }
+.debuff-row.critical .debuff-accent { background: var(--ember); }
+.debuff-row.expired { opacity: .55; }
+.debuff-copy { min-width: 0; flex: 1; display: flex; align-items: baseline; gap: 7px; }
+.debuff-copy strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #dce7ed; font-size: 11px; font-weight: 600; }
+.debuff-copy small { color: var(--dim); font-size: 8px; letter-spacing: .12em; flex: none; }
+.debuff-time { width: 62px; text-align: right; display: flex; align-items: baseline; justify-content: flex-end; gap: 5px; }
+.debuff-time strong { color: var(--cyan); font: 700 13px "Segoe UI", sans-serif; }
+.debuff-row.warning .debuff-time strong { color: #f2c96f; }
+.debuff-row.critical .debuff-time strong { color: var(--ember); }
+/* A computed countdown cannot see focus items, so it is marked as an estimate. */
+.debuff-time small { color: var(--dim); font: 700 7px Georgia, serif; letter-spacing: .08em; }
+.debuff-deck > footer { display: flex; gap: 12px; padding: 5px 10px; color: #e7bd69; font-size: 9px; border-top: 1px solid var(--soft-line); }
+
 .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 9px; }
 .stat-grid article { border: 1px solid var(--soft-line); background: rgba(20,26,35,.74); border-radius: 9px; padding: 9px; display: grid; gap: 3px; }
 .stat-grid small { color: var(--dim); font-size: 8px; letter-spacing: .1em; }

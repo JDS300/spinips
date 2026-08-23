@@ -20,6 +20,8 @@ import {
   type UpdateComponentId,
   type UpdateComponentPhase,
   type UpdateComponentState,
+  type DebuffDeckView,
+  type DebuffRowView,
 } from "./protocol";
 import { CombatArchive } from "./CombatArchive";
 import { LootChronicle } from "./LootChronicle";
@@ -79,6 +81,8 @@ const defaultDesktopSettings: DesktopSettings = {
     alertBigHit: true, alertNameCalled: true, bigHitThreshold: 800,
     mezTimersEnabled: true, mezTimerSound: false, mezWarningSeconds: 10,
     lullTimersEnabled: true, lullTimerSound: false, lullWarningSeconds: 12,
+    debuffTimersEnabled: true, debuffDotEnabled: true, debuffSlowEnabled: true,
+    debuffResistEnabled: true, debuffWarningSeconds: 10, debuffMobLimit: 6,
     soundProfiles: defaultSoundProfiles,
   },
 };
@@ -194,6 +198,55 @@ function ControlRow({ control }: { control: ControlTimerView }) {
         </span>
       )}
     </article>
+  );
+}
+
+function debuffRemaining(seconds: number): string {
+  const whole = Math.max(0, Math.ceil(seconds));
+  if (whole >= 60) return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
+  return `${whole}s`;
+}
+
+function DebuffRow({ row }: { row: DebuffRowView }) {
+  return (
+    <article
+      className={`debuff-row ${row.kind} ${row.urgency}${row.expired ? " expired" : ""}`}
+      aria-label={`${row.spell} on target, ${debuffRemaining(row.remainingSeconds)} remaining`}
+    >
+      <span className="debuff-accent" aria-hidden="true" />
+      <div className="debuff-copy">
+        <strong>{row.spell}{row.rank > 0 ? ` +${row.rank}` : ""}</strong>
+        <small>{row.kind.toUpperCase()}</small>
+      </div>
+      <div className="debuff-time">
+        <strong>{debuffRemaining(row.remainingSeconds)}</strong>
+        {/* A conservative countdown cannot see focus items, so it runs short. */}
+        {row.durationConfidence === "conservative" && <small title="Estimated: focus items extend this">EST</small>}
+      </div>
+    </article>
+  );
+}
+
+function DebuffDeck({ deck }: { deck: DebuffDeckView | undefined }) {
+  const groups = deck?.groups ?? [];
+  if (groups.length === 0) return null;
+  const tracked = groups.reduce((total, group) => total + group.rows.length, 0);
+  return (
+    <section className="debuff-deck" aria-live="polite">
+      <header>
+        <div><small>ON TARGET</small><h2>DEBUFFS</h2></div>
+        <span>{tracked} TRACKED</span>
+      </header>
+      <div className="debuff-list">
+        {groups.map((group) => (
+          <div className={`debuff-group ${group.urgency}`} key={group.target}>
+            <h3>{group.target}</h3>
+            {group.rows.map((row) => <DebuffRow key={`${group.target}-${row.spell}`} row={row} />)}
+          </div>
+        ))}
+      </div>
+      {(deck?.overflow ?? 0) > 0 && <footer><span>+{deck?.overflow} more mob{deck?.overflow === 1 ? "" : "s"}</span></footer>}
+    </section>
   );
 }
 
@@ -597,6 +650,22 @@ function SettingsPanel({ health, raidContext, raidDifficulty, settings, onSettin
           onChange={(lullTimerSound) => patchAlerts({ lullTimerSound })} />
         <div className="number-setting"><span>LULL WARNING</span><input type="number" min="3" max="30"
           value={draft.alerts.lullWarningSeconds} onChange={(event) => patchAlerts({ lullWarningSeconds: Number(event.target.value) })} /><b>SEC</b></div>
+      </article>
+      <article className="settings-card">
+        <label>DEBUFF TIMERS</label>
+        <p>Countdowns for your own DoTs, slows and resist debuffs, grouped by mob. DoT timers self-correct from tick lines; slow and resist are estimates that cannot see focus items.</p>
+        <SettingsToggle checked={draft.alerts.debuffTimersEnabled} label="Show debuff timers"
+          onChange={(debuffTimersEnabled) => patchAlerts({ debuffTimersEnabled })} />
+        <SettingsToggle checked={draft.alerts.debuffDotEnabled} label="Track damage over time"
+          onChange={(debuffDotEnabled) => patchAlerts({ debuffDotEnabled })} />
+        <SettingsToggle checked={draft.alerts.debuffSlowEnabled} label="Track slows"
+          onChange={(debuffSlowEnabled) => patchAlerts({ debuffSlowEnabled })} />
+        <SettingsToggle checked={draft.alerts.debuffResistEnabled} label="Track resist debuffs"
+          onChange={(debuffResistEnabled) => patchAlerts({ debuffResistEnabled })} />
+        <div className="number-setting"><span>DEBUFF WARNING</span><input type="number" min="3" max="30"
+          value={draft.alerts.debuffWarningSeconds} onChange={(event) => patchAlerts({ debuffWarningSeconds: Number(event.target.value) })} /><b>SEC</b></div>
+        <div className="number-setting"><span>MOB LIMIT</span><input type="number" min="1" max="12"
+          value={draft.alerts.debuffMobLimit} onChange={(event) => patchAlerts({ debuffMobLimit: Number(event.target.value) })} /><b>MOBS</b></div>
       </article>
       <article className="settings-card">
         <label>ALERTS + PLACEMENT</label>
@@ -1188,6 +1257,8 @@ function MainApp() {
             {snapshot.controlAmbiguityCount > 0 && <span>? {snapshot.controlAmbiguityCount} ambiguous result</span>}
           </footer>}
         </section>
+
+        <DebuffDeck deck={snapshot.debuffs} />
 
         <section className="stat-grid">
           <article><small>PERSONAL</small><strong>{snapshot.combat.personalDamage.toLocaleString()}</strong></article>
