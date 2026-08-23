@@ -105,6 +105,9 @@ jobs:
       - name: Verify release notes tooling
         run: python tools/release_notes.py --self-test
 
+      - name: Verify AppImage update information tool
+        run: python tools/appimage_update_info.py --self-test
+
       - name: Require a changelog entry for the release being published
         if: github.event_name == 'workflow_dispatch' && inputs.publish_release
         # Checked here rather than at the publish step, which is twenty
@@ -472,16 +475,20 @@ jobs:
             exit 1
           fi
           cp -f "${appimages[@]}" "${tarballs[@]}" "$component/"
-          # Every AppImage carries gh-releases-zsync update information in its
-          # .upd_info section, naming Loremaster-*-x86_64.AppImage.zsync in this
-          # repository's latest release. An update manager reading it goes
-          # looking for exactly that asset, so without it the AppImage
-          # advertises a route that dead-ends -- which is why v0.3.4 was the
-          # last release Gear Lever could update from. Its zsync was made by
-          # hand and uploaded by hand; no CI-published release has ever had one.
+          # An update manager (Gear Lever, AppImageUpdate) reads the AppImage's
+          # 1 KB .upd_info ELF section to learn where a newer build lives.
           #
-          # electron-builder does not produce it: 26.x carries no zsync code at
-          # all, so it is built here or not at all.
+          # electron-builder does not write it. app-builder-lib 26.15.7 has no
+          # upd_info writer and no zsync code at all, so the section ships as
+          # the zeroed placeholder baked into the AppImage runtime. Verified by
+          # readelf against the published v0.4.0 and v0.5.0-rc.1 images: 1024
+          # bytes, entirely zero in both. Every release this project has ever
+          # made shows a blank update panel, and the .zsync built below was an
+          # orphan -- a correct file that nothing pointed at.
+          #
+          # Both halves are produced here or not at all, and the order is
+          # load-bearing: zsync checksums file content, so the section has to
+          # be written first or the zsync describes bytes that no longer exist.
           if ! command -v zsyncmake >/dev/null; then
             sudo apt-get update -qq
             sudo apt-get install -y -qq zsync
@@ -489,6 +496,24 @@ jobs:
           (
             cd "$component"
             for image in *.AppImage; do
+              # A candidate tracks candidates and a release tracks releases.
+              # GitHub's /releases/latest excludes prereleases, so `latest`
+              # can never reach an RC; `latest-pre` makes the client walk the
+              # full release list newest-first and take the first release
+              # carrying an asset that matches the glob. The glob is what
+              # separates the two channels. The release glob anchors on a
+              # digit rather than using a bare Loremaster-*, which would also
+              # match Loremaster-RC-* -- harmless while releases resolve
+              # through `latest`, but a trap for anyone who later switches
+              # that channel to latest-all.
+              case "$image" in
+                Loremaster-RC-*) channel=latest-pre; glob='Loremaster-RC-*-x86_64.AppImage.zsync' ;;
+                *)               channel=latest;     glob='Loremaster-[0-9]*-x86_64.AppImage.zsync' ;;
+              esac
+              info="gh-releases-zsync|JDS300|spinips|$channel|$glob"
+              python3 "$GITHUB_WORKSPACE/tools/appimage_update_info.py" \
+                "$image" --write "$info" --expect "$info"
+
               # -u is the URL recorded inside the file, kept relative because
               # the consumer resolves it against wherever it fetched the zsync
               # -- the release the AppImage is an asset of.
@@ -496,6 +521,12 @@ jobs:
               # A zsync that describes nothing would publish just as quietly as
               # one that was never built.
               test -s "$image.zsync"
+              # The AppImage names this exact file; if the two ever disagree
+              # the advertised route dead-ends silently.
+              case "$image.zsync" in
+                $glob) ;;
+                *) echo "zsync $image.zsync does not match advertised $glob" >&2; exit 1 ;;
+              esac
             done
             sha256sum -- *.AppImage *.AppImage.zsync *.tar.gz \
               > Loremaster-Linux-SHA256SUMS.txt
