@@ -7,9 +7,34 @@ promoted to resolve to the same entry.
 
 ## 0.5.1
 
-Fixes AppImage update information, which has never worked.
+Fixes debuff timers for characters past level 50, and AppImage update
+information, which has never worked.
 
 ### Fork-specific
+
+- **Debuff timers now cover levels 51 to 60.** 0.5.0 shipped a table that
+  stopped at level 50, so a level 60 character casting the top tier of every
+  line saw an empty deck: the tracked spells were the lower-tier versions they
+  had outgrown. Adds 31 spells -- among them Tashanian, Wind of Tashani, Wind
+  of Tashanian, Malo, Malosini, Insidious Decay, Scent of Terris, Forlorn
+  Deeds, Turgur's Insects, Tigir's Insects, Plague of Insects, Sha's Advantage,
+  Torment of Argli and Asphyxiate. The table now holds 77 spells across 13
+  landing families.
+
+  Spells are filtered by Allakhazam's own Spell Type, so beneficial ones that
+  merely look like debuffs stay out: the necromancer Lich line and shaman
+  Torpor reduce the *caster's* hitpoints or attack speed and would otherwise
+  have been read as mob debuffs.
+
+  Verified by replaying a real level 60 log through the tracker: 179 rows where
+  0.5.0 produced none.
+
+- **A diagnostic for when a timer does not appear.**
+  `tools/diagnose_debuff_timers.py` finds your log inside a Wine or Proton
+  prefix and reports which landing lines parsed, which of your casts the table
+  recognises, and which it does not. A missing debuff fails silently by nature
+  -- no row, no error -- and this is how to tell "the feature is off" from "the
+  table has never heard of that spell".
 
 - **Gear Lever can update Loremaster again.** An update manager reads a 1 KB
   `.upd_info` section inside the AppImage to learn where a newer build lives.

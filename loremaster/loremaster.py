@@ -807,6 +807,19 @@ PATTERNS: list[tuple[str, re.Pattern]] = [
         r"^(?P<target>.+?) looks very uncomfortable\.$", re.I)),
     ("debuff_landed_tashan", re.compile(
         r"^(?P<target>.+?) glances nervously about\.$", re.I)),
+    ("debuff_landed_plague_insects", re.compile(
+        r"^(?P<target>.+?)'s motions slow as a plague of insects chews at "
+        r"their skin\.$", re.I)),
+    ("debuff_landed_fighting_edge", re.compile(
+        r"^(?P<target>.+?) loses their fighting edge\.$", re.I)),
+    ("debuff_landed_feverish", re.compile(
+        r"^(?P<target>.+?) sweats and shivers, looking feverish\.$", re.I)),
+    ("debuff_landed_tunarian", re.compile(
+        r"^(?P<target>.+?) is surrounded by a Tunarian glamour\.$", re.I)),
+    ("debuff_landed_cold_flame", re.compile(
+        r"^(?P<target>.+?) is surrounded by an outline of cold flame\.$", re.I)),
+    ("debuff_landed_dark_haze", re.compile(
+        r"^(?P<target>.+?) is surrounded by a dark haze\.$", re.I)),
     # --- xp / progression ---
     ("xp", re.compile(r"^You gain (?P<party>party )?experience!+(?: \((?P<pct>[\d.]+)%\))?.*$")),
     ("level", re.compile(r"^You have gained a level! Welcome to level (?P<level>\d+)!$")),
@@ -942,6 +955,12 @@ DEBUFF_LANDING_KINDS = {
     "debuff_landed_malaisement": "malaisement",
     "debuff_landed_malosi": "malosi",
     "debuff_landed_tashan": "tashan",
+    "debuff_landed_plague_insects": "plague_insects",
+    "debuff_landed_fighting_edge": "fighting_edge",
+    "debuff_landed_feverish": "feverish",
+    "debuff_landed_tunarian": "tunarian",
+    "debuff_landed_cold_flame": "cold_flame",
+    "debuff_landed_dark_haze": "dark_haze",
 }
 CONTROL_ONLY_KINDS = frozenset(
     (*MEZ_ONLY_KINDS, "lull_landed", *DEBUFF_LANDING_KINDS))
