@@ -293,6 +293,53 @@ class DebuffTrackerTests(unittest.TestCase):
         tracker.observe_landing("An abhorrent", "yawns", at(1))
         self.assertEqual(tracker.snapshot(at(1)).groups[0].target, "An abhorrent")
 
+    def test_a_dot_clears_when_the_mob_dies(self):
+        """DoTs take the same exit as slows, including the sentence-case form."""
+        tracker = self.tracker()
+        tracker.begin_cast("Envenomed Bolt", at(0))
+        tracker.observe_dot_tick("An abhorrent", "Envenomed Bolt", at(6))
+        self.assertTrue(tracker.snapshot(at(6)).groups)
+        tracker.observe_kill("an abhorrent", at(10))
+        self.assertEqual(tracker.snapshot(at(11)).groups, ())
+
+    def test_a_still_ticking_dot_clears_when_the_mob_dies(self):
+        """The heartbeat holds a DoT past its estimate; death must still win."""
+        tracker = self.tracker()
+        tracker.begin_cast("Envenomed Bolt", at(0))     # 6 ticks == 36s
+        tracker.observe_dot_tick("an ice giant", "Envenomed Bolt", at(6))
+        tracker.observe_dot_tick("an ice giant", "Envenomed Bolt", at(42))
+        self.assertTrue(tracker.snapshot(at(43)).groups, "held open by ticks")
+        tracker.observe_kill("an ice giant", at(44))
+        self.assertEqual(tracker.snapshot(at(45)).groups, ())
+
+    def test_a_dot_clears_on_a_fade_line(self):
+        tracker = self.tracker()
+        tracker.begin_cast("Envenomed Bolt", at(0))
+        tracker.observe_dot_tick("An abhorrent", "Envenomed Bolt", at(6))
+        tracker.observe_fade("an abhorrent", "Envenomed Bolt", at(20))
+        self.assertEqual(tracker.snapshot(at(21)).groups, ())
+
+    def test_a_kill_clears_dots_and_slows_together(self):
+        tracker = self.tracker()
+        tracker.begin_cast("Togor's Insects", at(0))
+        tracker.observe_landing("An abhorrent", "yawns", at(1))
+        tracker.begin_cast("Envenomed Bolt", at(2))
+        tracker.observe_dot_tick("An abhorrent", "Envenomed Bolt", at(8))
+        self.assertEqual(len(only_group(tracker.snapshot(at(8)), "An abhorrent").rows), 2)
+        tracker.observe_kill("an abhorrent", at(9))
+        self.assertEqual(tracker.snapshot(at(10)).groups, ())
+
+    def test_a_dot_reaches_warning_urgency_before_it_expires(self):
+        """The renderer's alert keys off urgency, so a DoT must reach it."""
+        tracker = self.tracker()
+        tracker.begin_cast("Envenomed Bolt", at(0))     # 6 ticks == 36s
+        tracker.observe_dot_tick("an ice giant", "Envenomed Bolt", at(6))
+        row = only_row(tracker.snapshot(at(28), warning_seconds=10), "an ice giant")
+        self.assertEqual(row.urgency, "warning")
+        self.assertFalse(row.expired)
+        critical = only_row(tracker.snapshot(at(33), warning_seconds=10), "an ice giant")
+        self.assertEqual(critical.urgency, "critical")
+
     def test_recast_on_the_same_target_resets_the_timer(self):
         tracker = self.tracker()
         tracker.begin_cast("Togor's Insects", at(0))
