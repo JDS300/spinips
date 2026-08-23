@@ -28,6 +28,15 @@ information, which has never worked.
   run is 342 seconds against 360 predicted, and a fade can only arrive early,
   never late.
 
+- **One mob is one block on the deck.** A creature could appear twice, its
+  debuffs split between the two. Rows are keyed on a case-folded name, but the
+  deck grouped by the spelling each row happened to capture, and EverQuest
+  capitalises only the first word of a line -- so a landing ("A Teir`Dal rogue
+  yawns.") and a tick mid-sentence ("A Teir`Dal rogue has taken ...") could
+  disagree. One spelling is now settled per mob, preferring the mid-sentence
+  form, which is the creature's real name; a proper name such as
+  "Innoruuk`s Chosen" is never seen lowercase and keeps its capital.
+
 - **A debuff timer clears when the mob dies.** It did not. EverQuest
   capitalises the first word of a line, so the same creature arrives as "An
   abhorrent yawns." when the debuff lands and "You have slain an abhorrent!"

@@ -324,6 +324,40 @@ class DebuffTrackerTests(unittest.TestCase):
         tracker.observe_landing("An abhorrent", "yawns", at(1))
         self.assertEqual(tracker.snapshot(at(1)).groups[0].target, "An abhorrent")
 
+    def test_one_mob_is_one_block_whatever_the_line_capitalised(self):
+        """Found by replaying a real log: the deck showed one mob twice.
+
+        A landing line is sentence-initial ("A Teir`Dal rogue yawns.") while a
+        DoT tick is mid-sentence ("A Teir`Dal rogue has taken ..."), so two
+        spells on one mob can capture two spellings. Keying folded them; the
+        grouping still used the stored display name and split them apart.
+        """
+        tracker = self.tracker()
+        tracker.begin_cast("Envenomed Bolt", at(0))
+        tracker.observe_dot_tick("A Teir`Dal rogue", "Envenomed Bolt", at(6))
+        tracker.begin_cast("Togor's Insects", at(7))
+        tracker.observe_landing("a Teir`Dal rogue", "yawns", at(8))
+        snapshot = tracker.snapshot(at(8))
+        self.assertEqual(len(snapshot.groups), 1,
+                         f"one mob, one block: {[g.target for g in snapshot.groups]}")
+        self.assertEqual(len(snapshot.groups[0].rows), 2)
+
+    def test_the_mid_sentence_spelling_wins_for_display(self):
+        """EQ capitalises only at the start of a line, so the lowercase form is
+        the creature's real name."""
+        tracker = self.tracker()
+        tracker.begin_cast("Togor's Insects", at(0))
+        tracker.observe_landing("A Teir`Dal rogue", "yawns", at(1))
+        tracker.begin_cast("Envenomed Bolt", at(2))
+        tracker.observe_dot_tick("a Teir`Dal rogue", "Envenomed Bolt", at(8))
+        self.assertEqual(tracker.snapshot(at(8)).groups[0].target, "a Teir`Dal rogue")
+
+    def test_a_proper_name_keeps_its_capital(self):
+        tracker = self.tracker()
+        tracker.begin_cast("Togor's Insects", at(0))
+        tracker.observe_landing("Innoruuk`s Chosen", "yawns", at(1))
+        self.assertEqual(tracker.snapshot(at(1)).groups[0].target, "Innoruuk`s Chosen")
+
     def test_recast_on_the_same_target_resets_the_timer(self):
         tracker = self.tracker()
         tracker.begin_cast("Togor's Insects", at(0))

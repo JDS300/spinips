@@ -352,6 +352,10 @@ class DebuffTracker:
         self._pending_seconds = pending_seconds
         self._pending: list[PendingDebuffCast] = []
         self._active: dict[tuple[str, str], _ActiveDebuff] = {}
+        # One display spelling per mob. Rows are keyed on a folded name, but
+        # each row used to store the spelling it happened to see, and grouping
+        # by that split one mob into two blocks on the deck.
+        self._display: dict[str, str] = {}
         self._caster_level = 1
 
     # -- level ---------------------------------------------------------
@@ -442,14 +446,26 @@ class DebuffTracker:
             return self._pending.pop(index)
         return None
 
+    def _remember_display(self, target_name: str) -> str:
+        """Settle on one spelling of a mob's name for the whole deck.
+
+        EQ capitalises the first word of a line, so the same creature arrives
+        as "A Teir`Dal rogue" from a landing and "a Teir`Dal rogue" from a tick
+        mid-sentence. The lowercase form is the creature's real name, so it
+        wins; a proper name like "Innoruuk`s Chosen" is never seen lowercase
+        and keeps its capital.
+        """
+
+        folded = _name_key(target_name)
+        current = self._display.get(folded)
+        if current is None or (current[:1].isupper() and target_name[:1].islower()):
+            self._display[folded] = target_name
+        return self._display[folded]
+
     def _arm(self, target_name: str, resolved: ResolvedDebuff,
              occurred_at: datetime, *, tick_at: datetime | None = None) -> None:
         key = (_name_key(target_name), resolved.name)
-        # EQ capitalises the first word of a line, so the same mob arrives as
-        # "An abhorrent" in a landing and "an abhorrent" in a kill. Key on the
-        # folded name -- mez_timer has always done this -- and keep whichever
-        # spelling was seen first for the deck to display.
-        display = self._active[key].target if key in self._active else target_name
+        display = self._remember_display(target_name)
         self._active[key] = _ActiveDebuff(
             resolved=resolved,
             target=display,
@@ -523,6 +539,7 @@ class DebuffTracker:
     def clear(self) -> int:
         cleared = len(self._active)
         self._active.clear()
+        self._display.clear()
         self._pending.clear()
         return cleared
 
@@ -531,7 +548,7 @@ class DebuffTracker:
              warning_seconds: float, critical_seconds: float) -> DebuffRow:
         remaining = (active.expires_at - now).total_seconds()
         return DebuffRow(
-            target=active.target,
+            target=self._display.get(_name_key(active.target), active.target),
             spell=active.resolved.name,
             kind=active.resolved.kind,
             rank=active.resolved.rank,
@@ -569,7 +586,8 @@ class DebuffTracker:
         for active in self._active.values():
             if kinds is not None and active.resolved.kind not in kinds:
                 continue
-            grouped.setdefault(active.target, []).append(
+            display = self._display.get(_name_key(active.target), active.target)
+            grouped.setdefault(display, []).append(
                 self._row(active, now, warning_seconds=warning_seconds,
                           critical_seconds=critical_seconds))
         if not grouped:
