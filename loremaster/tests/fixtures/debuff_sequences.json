@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 1,
+  "source": "Sanitized EverQuest Legends log grammar for debuff timers; landing prose sourced from Allakhazam's classic spell data, names changed.",
+  "casterLevel": 50,
+  "sequences": [
+    {
+      "name": "slow cast without landing never arms",
+      "events": [{"at": 0, "line": "You begin casting Togor's Insects."}],
+      "observeAt": 5,
+      "expected": {"rows": [], "overflow": 0}
+    },
+    {
+      "name": "slow landing is attributed to the pending cast",
+      "events": [
+        {"at": 0, "line": "You begin casting Togor's Insects."},
+        {"at": 2, "line": "an ice giant yawns."}
+      ],
+      "observeAt": 3,
+      "expected": {"rows": ["an ice giant|Togor's Insects|slow|conservative"], "overflow": 0}
+    },
+    {
+      "name": "the shared yawns family resolves a different slow to its own duration",
+      "events": [
+        {"at": 0, "line": "You begin casting Drowsy."},
+        {"at": 2, "line": "an ice giant yawns."}
+      ],
+      "observeAt": 3,
+      "expected": {"rows": ["an ice giant|Drowsy|slow|conservative"], "overflow": 0}
+    },
+    {
+      "name": "another player's slow prints the same line and is ignored",
+      "events": [
+        {"at": 0, "line": "Zarthok begins casting Togor's Insects."},
+        {"at": 2, "line": "an ice giant yawns."}
+      ],
+      "observeAt": 3,
+      "expected": {"rows": [], "overflow": 0}
+    },
+    {
+      "name": "a resisted slow never arms the timer",
+      "events": [
+        {"at": 0, "line": "You begin casting Togor's Insects."},
+        {"at": 2, "line": "an ice giant resisted your Togor's Insects!"},
+        {"at": 3, "line": "an ice giant yawns."}
+      ],
+      "observeAt": 4,
+      "expected": {"rows": [], "overflow": 0}
+    },
+    {
+      "name": "a fizzled slow never arms the timer",
+      "events": [
+        {"at": 0, "line": "You begin casting Togor's Insects."},
+        {"at": 1, "line": "Your Togor's Insects spell fizzles!"},
+        {"at": 3, "line": "an ice giant yawns."}
+      ],
+      "observeAt": 4,
+      "expected": {"rows": [], "overflow": 0}
+    },
+    {
+      "name": "the three Malaise ranks resolve to three different spells",
+      "events": [
+        {"at": 0, "line": "You begin casting Malaise."},
+        {"at": 1, "line": "an ice giant looks somewhat uncomfortable."},
+        {"at": 2, "line": "You begin casting Malaisement."},
+        {"at": 3, "line": "a froglok tad looks uncomfortable."},
+        {"at": 4, "line": "You begin casting Malosi."},
+        {"at": 5, "line": "a sand giant looks very uncomfortable."}
+      ],
+      "observeAt": 6,
+      "expected": {
+        "rows": [
+          "a froglok tad|Malaisement|resist|conservative",
+          "a sand giant|Malosi|resist|conservative",
+          "an ice giant|Malaise|resist|conservative"
+        ],
+        "overflow": 0
+      }
+    },
+    {
+      "name": "tashan line lands from its own prose",
+      "events": [
+        {"at": 0, "line": "You begin casting Tashani."},
+        {"at": 2, "line": "an ice giant glances nervously about."}
+      ],
+      "observeAt": 3,
+      "expected": {"rows": ["an ice giant|Tashani|resist|conservative"], "overflow": 0}
+    },
+    {
+      "name": "beastlord slow has its own landing prose",
+      "events": [
+        {"at": 0, "line": "You begin casting Sha's Lethargy."},
+        {"at": 2, "line": "an ice giant feels lethargic."}
+      ],
+      "observeAt": 3,
+      "expected": {"rows": ["an ice giant|Sha's Lethargy|slow|conservative"], "overflow": 0}
+    },
+    {
+      "name": "enchanter slow has its own landing prose",
+      "events": [
+        {"at": 0, "line": "You begin casting Tepid Deeds."},
+        {"at": 2, "line": "a froglok tad slows down."}
+      ],
+      "observeAt": 3,
+      "expected": {"rows": ["a froglok tad|Tepid Deeds|slow|conservative"], "overflow": 0}
+    },
+    {
+      "name": "a dot is attributed from its tick line",
+      "events": [
+        {"at": 0, "line": "You begin casting Envenomed Bolt."},
+        {"at": 6, "line": "an ice giant has taken 110 damage from your Envenomed Bolt."}
+      ],
+      "observeAt": 7,
+      "expected": {"rows": ["an ice giant|Envenomed Bolt|dot|exact"], "overflow": 0}
+    },
+    {
+      "name": "a dot outlives its estimate while ticks continue",
+      "events": [
+        {"at": 0, "line": "You begin casting Envenomed Bolt."},
+        {"at": 6, "line": "an ice giant has taken 110 damage from your Envenomed Bolt."},
+        {"at": 42, "line": "an ice giant has taken 110 damage from your Envenomed Bolt."}
+      ],
+      "observeAt": 44,
+      "expected": {"rows": ["an ice giant|Envenomed Bolt|dot|exact"], "overflow": 0}
+    },
+    {
+      "name": "a dot that stops ticking is dropped",
+      "events": [
+        {"at": 0, "line": "You begin casting Envenomed Bolt."},
+        {"at": 6, "line": "an ice giant has taken 110 damage from your Envenomed Bolt."}
+      ],
+      "observeAt": 200,
+      "expected": {"rows": [], "overflow": 0}
+    },
+    {
+      "name": "a fade line clears one row and leaves the other",
+      "events": [
+        {"at": 0, "line": "You begin casting Togor's Insects."},
+        {"at": 1, "line": "an ice giant yawns."},
+        {"at": 2, "line": "You begin casting Tashani."},
+        {"at": 3, "line": "an ice giant glances nervously about."},
+        {"at": 40, "line": "Your Togor's Insects spell has worn off of an ice giant."}
+      ],
+      "observeAt": 41,
+      "expected": {"rows": ["an ice giant|Tashani|resist|conservative"], "overflow": 0}
+    },
+    {
+      "name": "a kill clears every row on that mob only",
+      "events": [
+        {"at": 0, "line": "You begin casting Togor's Insects."},
+        {"at": 1, "line": "an ice giant yawns."},
+        {"at": 2, "line": "You begin casting Tashani."},
+        {"at": 3, "line": "an ice giant glances nervously about."},
+        {"at": 4, "line": "You begin casting Drowsy."},
+        {"at": 5, "line": "a froglok tad yawns."},
+        {"at": 10, "line": "You have slain an ice giant!"}
+      ],
+      "observeAt": 11,
+      "expected": {"rows": ["a froglok tad|Drowsy|slow|conservative"], "overflow": 0}
+    },
+    {
+      "name": "a raid shape groups several debuffs per mob",
+      "events": [
+        {"at": 0, "line": "You begin casting Togor's Insects."},
+        {"at": 1, "line": "an ice giant yawns."},
+        {"at": 2, "line": "You begin casting Tashani."},
+        {"at": 3, "line": "an ice giant glances nervously about."},
+        {"at": 4, "line": "You begin casting Envenomed Bolt."},
+        {"at": 10, "line": "a froglok tad has taken 110 damage from your Envenomed Bolt."}
+      ],
+      "observeAt": 11,
+      "expected": {
+        "rows": [
+          "a froglok tad|Envenomed Bolt|dot|exact",
+          "an ice giant|Tashani|resist|conservative",
+          "an ice giant|Togor's Insects|slow|conservative"
+        ],
+        "overflow": 0
+      }
+    },
+    {
+      "name": "recasting a slow on the same mob replaces rather than duplicates",
+      "events": [
+        {"at": 0, "line": "You begin casting Togor's Insects."},
+        {"at": 1, "line": "an ice giant yawns."},
+        {"at": 60, "line": "You begin casting Togor's Insects."},
+        {"at": 61, "line": "an ice giant yawns."}
+      ],
+      "observeAt": 62,
+      "expected": {"rows": ["an ice giant|Togor's Insects|slow|conservative"], "overflow": 0}
+    },
+    {
+      "name": "the mob cap reports overflow",
+      "events": [
+        {"at": 0, "line": "You begin casting Drowsy."},
+        {"at": 1, "line": "mob one yawns."},
+        {"at": 2, "line": "You begin casting Drowsy."},
+        {"at": 3, "line": "mob two yawns."},
+        {"at": 4, "line": "You begin casting Drowsy."},
+        {"at": 5, "line": "mob three yawns."}
+      ],
+      "observeAt": 6,
+      "limit": 2,
+      "expected": {
+        "rows": ["mob one|Drowsy|slow|conservative", "mob two|Drowsy|slow|conservative"],
+        "overflow": 1
+      }
+    }
+  ]
+}
