@@ -447,6 +447,13 @@ def check_loremaster_release_pipeline() -> None:
         # release. Named events rather than "not push" so that adding a
         # trigger (pull_request) cannot quietly enrol the assembly jobs.
         "if: github.event_name == 'workflow_dispatch' || github.event_name == 'release'",
+        # Releases hold a concurrency group of their own. Sharing one with
+        # pushes meant any push to main cancelled a release mid-assembly --
+        # cancel-in-progress is read from the incoming run, so a dispatch could
+        # never protect itself. A cancelled run looks like any other cancelled
+        # run, so nothing else would report this coming back.
+        "spinui-build-${{ github.workflow }}-${{ github.ref }}-${{",
+        "&& 'release' || 'test' }}",
         "SpinUI-UI.zip",
         "SpinUI-Update.json",
         "tools/build_spinui_update_manifest.py",

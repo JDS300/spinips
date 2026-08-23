@@ -64,9 +64,22 @@ permissions:
   contents: write
 
 concurrency:
-  group: spinui-build-${{ github.workflow }}-${{ github.ref }}
-  # A newer test push or PR revision supersedes an older one; release assembly
-  # is never cancelled.
+  # Release runs and test runs are held apart by group, not merely by
+  # cancel-in-progress. That flag is evaluated on the *incoming* run and
+  # cancels whichever older run holds the group, whatever kind it is, so
+  # setting it false for a dispatch only stopped a dispatch from cancelling
+  # others -- it never protected one from being cancelled. Any push to main
+  # killed a release that was already assembling, which is what happened to the
+  # v0.4.0 re-publish on 2026-08-21. Losing that race between the Windows job's
+  # gh release create and the Linux job's upload publishes a release with no
+  # Linux assets at all.
+  group: >-
+    spinui-build-${{ github.workflow }}-${{ github.ref }}-${{
+    (github.event_name == 'workflow_dispatch' || github.event_name == 'release')
+    && 'release' || 'test' }}
+  # A newer test push or PR revision still supersedes an older one. Releases
+  # now have a group to themselves, where nothing cancels: a second dispatch
+  # queues behind the first rather than interrupting it mid-publish.
   cancel-in-progress: >-
     ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
 
