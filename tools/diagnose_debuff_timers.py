@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import re
 import sys
 from collections import Counter
 from pathlib import Path
@@ -36,16 +37,63 @@ from debuff_timer import (  # noqa: E402
 
 
 # Windows paths in DEFAULT_LOG_DIRS mean nothing on Linux, where the game runs
-# inside a Wine or Proton prefix. Search the prefixes themselves.
-PREFIX_ROOTS = (
-    "~/.wine/drive_c",
-    "~/Games",
-    "~/.local/share/Steam/steamapps/compatdata",
+# inside a Wine or Proton prefix. Mirrors what the desktop app already probes.
+PREFIX_PARENTS = (
+    "~/.wine", "~/Games", "~/.local/share/Steam/steamapps/compatdata",
     "~/.steam/steam/steamapps/compatdata",
     "~/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/compatdata",
-    "~/.var/app/net.lutris.Lutris",
-    "~/EverQuest Legends",
 )
+# EverQuest folder shapes inside a prefix's drive_c.
+EQ_SHAPES = (
+    "users/Public/Daybreak Game Company/Installed Games/EverQuest Legends",
+    "users/Public/Daybreak Game Company/Installed Games/EverQuest",
+    "users/steamuser/Daybreak Game Company/Installed Games/EverQuest Legends",
+    "users/steamuser/Daybreak Game Company/Installed Games/EverQuest",
+    "Program Files (x86)/Daybreak Game Company/Installed Games/EverQuest Legends",
+    "Program Files (x86)/Daybreak Game Company/Installed Games/EverQuest",
+    "EQLegends", "EverQuest",
+)
+
+
+def lutris_prefix_roots() -> list[Path]:
+    """Prefix paths declared in Lutris game configs.
+
+    Lutris routinely puts a prefix on another drive entirely, so a
+    home-relative probe never sees it -- which is exactly how this tool missed
+    a live EverQuest Legends install sitting under /mnt. The desktop app reads
+    these already; this mirrors it rather than reimplementing discovery.
+    """
+
+    roots: list[Path] = []
+    for directory in ("~/.local/share/lutris/games",
+                      "~/.var/app/net.lutris.Lutris/data/lutris/games"):
+        base = Path(directory).expanduser()
+        if not base.is_dir():
+            continue
+        for config in base.glob("*.yml"):
+            try:
+                text = config.read_text(errors="replace")
+            except OSError:
+                continue
+            for match in re.finditer(r"^\s*prefix:\s*(\S.*?)\s*$", text, re.M):
+                candidate = Path(match.group(1).strip().strip("'\""))
+                if candidate.is_absolute():
+                    roots.append(candidate)
+    return roots
+
+
+def prefix_roots() -> list[Path]:
+    roots = list(lutris_prefix_roots())
+    for parent in PREFIX_PARENTS:
+        base = Path(parent).expanduser()
+        if not base.is_dir():
+            continue
+        roots.append(base)
+        for child in base.iterdir():
+            if child.is_dir():
+                roots.append(child)
+                roots.append(child / "pfx")
+    return roots
 
 
 def discover() -> list[Path]:
@@ -57,17 +105,21 @@ def discover() -> list[Path]:
         for candidate in (base, base / "Logs"):
             if candidate.is_dir():
                 found.extend(candidate.glob("eqlog_*.txt"))
-    for root in PREFIX_ROOTS:
-        base = Path(root).expanduser()
-        if not base.is_dir():
+
+    seen: set[Path] = set()
+    for root in prefix_roots():
+        drive = root / "drive_c"
+        if not drive.is_dir():
+            drive = root if (root / "users").is_dir() else drive
+        if not drive.is_dir() or drive in seen:
             continue
-        # Bounded so a large prefix tree cannot hang the scan.
-        for depth in range(1, 8):
-            pattern = "/".join(["*"] * depth) + "/eqlog_*.txt"
-            try:
-                found.extend(base.glob(pattern))
-            except OSError:
-                break
+        seen.add(drive)
+        for shape in EQ_SHAPES:
+            game = drive / shape
+            for candidate in (game, game / "Logs"):
+                if candidate.is_dir():
+                    found.extend(candidate.glob("eqlog_*.txt"))
+
     return sorted({f.resolve() for f in found if f.is_file()},
                   key=lambda p: p.stat().st_mtime, reverse=True)
 
@@ -85,10 +137,9 @@ def main() -> int:
         if not candidates:
             print("No eqlog_*.txt found in the usual places. Pass a path.",
                   file=sys.stderr)
-            print("Searched Wine/Proton prefixes:", file=sys.stderr)
-            for d in PREFIX_ROOTS:
-                marker = "" if Path(d).expanduser().is_dir() else "  (absent)"
-                print(f"  {d}{marker}", file=sys.stderr)
+            print("Searched these prefixes:", file=sys.stderr)
+            for d in prefix_roots()[:20]:
+                print(f"  {d}", file=sys.stderr)
             print("\nIf EQ logging is off, there is no file to find: type"
                   " /log on in game.", file=sys.stderr)
             return 2
@@ -106,20 +157,24 @@ def main() -> int:
 
     kinds = Counter()
     cast_names = Counter()
-    dot_names = Counter()
+    dot_names = Counter()        # your own, from dot_out
+    other_dot_names = Counter()  # somebody else's, from dot_third
     landing_examples: dict[str, str] = {}
     unparsed_candidates: list[str] = []
 
     landing_kinds = set(APP.DEBUFF_LANDING_KINDS)
     # Prose that looks like it could be a debuff landing but matched nothing.
-    suspicious = ("yawn", "slows down", "lethargic", "uncomfortable",
-                  "glances nervously", "sleepy", "slowed")
+    # Anchored to a trailing period so ordinary chat does not qualify -- an
+    # earlier version flagged every line from a player called Sleepyjoe.
+    suspicious = re.compile(
+        r"(yawns|slows down|feels lethargic|looks (somewhat |very )?uncomfortable"
+        r"|glances nervously about)\.$")
 
     for line in lines:
         parsed = APP.parse_line(line)
         if parsed is None:
             body = line.split("] ", 1)[-1]
-            if any(word in body.lower() for word in suspicious):
+            if suspicious.search(body):
                 unparsed_candidates.append(body)
             continue
         _ts, kind, groups = parsed
@@ -128,8 +183,12 @@ def main() -> int:
             cast_names[groups.get("spell", "")] += 1
         elif kind == "song_begin":
             cast_names[groups.get("song", "")] += 1
-        elif kind in ("dot_out", "dot_third"):
+        elif kind == "dot_out":
             dot_names[groups.get("spell", "")] += 1
+        elif kind == "dot_third":
+            # Carries "by <caster>": somebody else's DoT, which never reaches
+            # the deck. Counted separately so it cannot look like a gap.
+            other_dot_names[groups.get("spell", "")] += 1
         elif kind in landing_kinds:
             landing_examples.setdefault(kind, line.split("] ", 1)[-1])
 
@@ -165,7 +224,7 @@ def main() -> int:
         print("  ^ a debuff here means the table is missing it or the name differs.")
     print()
 
-    print("== 3. DoT ticks, and whether the table knows them ==")
+    print("== 3. Your DoT ticks, and whether the table knows them ==")
     if not dot_names:
         print("  no DoT damage lines in this window.")
     for name, count in dot_names.most_common(30):
@@ -175,6 +234,12 @@ def main() -> int:
     if dot_names and not any(resolve_debuff_spell(n) for n in dot_names):
         print("  ^ none recognised: the table does not cover these spells.")
     print()
+
+    if other_dot_names:
+        print("  Other players' DoTs seen on the same mobs (never tracked, by design):")
+        for name, count in other_dot_names.most_common(8):
+            print(f"    {name:34s} x{count}")
+        print()
 
     print("== 4. Table coverage ==")
     by_kind = Counter(s.kind for s in DEBUFF_SPELLS)

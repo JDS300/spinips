@@ -12,6 +12,22 @@ information, which has never worked.
 
 ### Fork-specific
 
+- **Necromancer damage over time from EverQuest Legends.** The Negation of
+  Life line (Cancelling of Life, Negation of Life, Cessation of Life) plus
+  Leech, Eternities Torment, Chilling Embrace, Dark Soul and Asystole, taken
+  from the EQL wiki. None appear in Allakhazam's classic data, which is what
+  the rest of the table was built from.
+
+  **Heat Blood is 36 seconds flat**, not the level-scaled duration Allakhazam
+  publishes. EQL lists one duration per spell; the scraped figure was Live
+  behaviour and ran six seconds short at levels 10 and 11.
+
+- **Tashan is tracked.** It exists on Project Quarm but not in Allakhazam's
+  database, so there is no published duration to derive. Its 60 ticks come from
+  measuring 30 clean landing-to-fade pairs in a real log: the longest observed
+  run is 342 seconds against 360 predicted, and a fade can only arrive early,
+  never late.
+
 - **A debuff timer clears when the mob dies.** It did not. EverQuest
   capitalises the first word of a line, so the same creature arrives as "An
   abhorrent yawns." when the debuff lands and "You have slain an abhorrent!"

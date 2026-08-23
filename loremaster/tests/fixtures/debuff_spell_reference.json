@@ -31,6 +31,14 @@
     "kind": "dot",
     "source": "allakhazam"
   },
+  "Asystole": {
+    "cap_ticks": 7,
+    "cast_on_other": null,
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "eqlwiki"
+  },
   "Bane of Nife": {
     "cap_ticks": 7,
     "cast_on_other": "'s veins have been filled with deadly poison",
@@ -55,6 +63,14 @@
     "kind": "dot",
     "source": "allakhazam"
   },
+  "Cancelling of Life": {
+    "cap_ticks": 10,
+    "cast_on_other": "doubles over in pain",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "eqlwiki"
+  },
   "Cascading Darkness": {
     "cap_ticks": 16,
     "cast_on_other": "is engulfed by darkness",
@@ -70,6 +86,22 @@
     "formula": null,
     "kind": "dot",
     "source": "allakhazam"
+  },
+  "Cessation of Life": {
+    "cap_ticks": 16,
+    "cast_on_other": "doubles over in pain",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "eqlwiki"
+  },
+  "Chilling Embrace": {
+    "cap_ticks": 6,
+    "cast_on_other": null,
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "eqlwiki"
   },
   "Choke": {
     "cap_ticks": 8,
@@ -112,6 +144,14 @@
     "formula": null,
     "kind": "dot",
     "source": "allakhazam"
+  },
+  "Dark Soul": {
+    "cap_ticks": 5,
+    "cast_on_other": null,
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "eqlwiki"
   },
   "Devouring Darkness": {
     "cap_ticks": 13,
@@ -212,6 +252,14 @@
     "kind": "dot",
     "source": "allakhazam"
   },
+  "Eternities Torment": {
+    "cap_ticks": 21,
+    "cast_on_other": null,
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "eqlwiki"
+  },
   "Flame Lick": {
     "cap_ticks": 6,
     "cast_on_other": "is surrounded by flickering flames",
@@ -290,19 +338,10 @@
   "Heat Blood": {
     "cap_ticks": 6,
     "cast_on_other": "'s blood simmers",
-    "endpoints": [
-      [
-        10,
-        5
-      ],
-      [
-        12,
-        6
-      ]
-    ],
-    "formula": "level_half_roundup",
+    "endpoints": [],
+    "formula": null,
     "kind": "dot",
-    "source": "allakhazam"
+    "source": "eqlwiki"
   },
   "Ignite Blood": {
     "cap_ticks": 7,
@@ -404,6 +443,14 @@
     "kind": "slow",
     "source": "allakhazam"
   },
+  "Leech": {
+    "cap_ticks": 9,
+    "cast_on_other": null,
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "eqlwiki"
+  },
   "Malaise": {
     "cap_ticks": 140,
     "cast_on_other": "looks somewhat uncomfortable",
@@ -488,6 +535,14 @@
     "formula": "level_x3_plus10",
     "kind": "resist",
     "source": "allakhazam"
+  },
+  "Negation of Life": {
+    "cap_ticks": 15,
+    "cast_on_other": "doubles over in pain",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "eqlwiki"
   },
   "Plague": {
     "cap_ticks": 13,
