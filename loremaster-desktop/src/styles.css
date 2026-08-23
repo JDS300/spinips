@@ -68,6 +68,44 @@ body.control-window { background: transparent; }
   animation: control-surface-in 160ms cubic-bezier(.2,.8,.2,1);
 }
 .seed-control-surface.empty { opacity: 0; }
+/* Debuffs on the always-on-top overlay. Denser than the control rows above:
+   one mob can carry several, and the mez row has to stay the loudest thing
+   on screen. */
+.seed-debuff-surface {
+  width: 100%; overflow: hidden; color: #dce9f1;
+  border: 1px solid rgba(97,215,208,.30); border-radius: 14px;
+  background: linear-gradient(145deg, rgba(13,20,29,.97), rgba(5,8,12,.98));
+  box-shadow: inset 0 1px rgba(255,255,255,.05), 0 10px 30px rgba(0,0,0,.42);
+  animation: control-surface-in 160ms cubic-bezier(.2,.8,.2,1);
+}
+.seed-companion-surface .seed-debuff-surface { height: auto; flex: 0 0 auto; }
+.seed-companion-surface .seed-debuff-surface:not(:first-child) { border-radius: 0 0 14px 14px; border-top: 0; }
+.seed-companion-surface .seed-control-surface:not(:first-child):not(:last-child) { border-radius: 0; }
+.seed-debuff-surface > header {
+  height: 27px; display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 0 10px; border-bottom: 1px solid var(--soft-line);
+  background: rgba(22,30,40,.7);
+}
+.seed-debuff-surface > header span { display: flex; align-items: center; gap: 6px; color: var(--cyan); font: 700 8px Georgia, serif; letter-spacing: .14em; }
+.seed-debuff-surface > header span i { width: 5px; height: 5px; border-radius: 50%; background: #9a6bd8; box-shadow: 0 0 8px rgba(154,107,216,.7); }
+.seed-debuff-surface > header strong { color: var(--dim); font-size: 8px; letter-spacing: .1em; }
+.seed-debuff-group { padding: 4px 0 3px; border-bottom: 1px solid rgba(80,102,122,.14); }
+.seed-debuff-group:last-child { border-bottom: 0; }
+.seed-debuff-group > b { display: block; padding: 1px 10px 3px; color: #b9c8d3; font: 700 9px Georgia, serif; letter-spacing: .07em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seed-debuff-group.critical > b { color: var(--ember); }
+.seed-debuff-group.warning > b { color: #f2c96f; }
+.seed-debuff-row { position: relative; display: flex; align-items: baseline; gap: 7px; padding: 2px 10px 2px 18px; }
+.seed-debuff-accent { position: absolute; inset: 3px auto 3px 10px; width: 2px; border-radius: 0 2px 2px 0; background: var(--blue); }
+.seed-debuff-row.dot .seed-debuff-accent { background: #9a6bd8; }
+.seed-debuff-row.slow .seed-debuff-accent { background: var(--cyan); }
+.seed-debuff-row.resist .seed-debuff-accent { background: var(--gold); }
+.seed-debuff-row.warning .seed-debuff-accent { background: #f2c96f; }
+.seed-debuff-row.critical .seed-debuff-accent { background: var(--ember); }
+.seed-debuff-row em { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-style: normal; color: #dbe6ec; font-size: 10px; }
+.seed-debuff-row strong { color: var(--cyan); font: 700 11px "Segoe UI", sans-serif; }
+.seed-debuff-row.warning strong { color: #f2c96f; }
+.seed-debuff-row.critical strong { color: var(--ember); }
+.seed-debuff-row small { color: var(--dim); font: 700 7px Georgia, serif; letter-spacing: .06em; }
 .seed-control-surface > header {
   height: 31px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 0 10px; border-bottom: 1px solid rgba(91,123,151,.27);

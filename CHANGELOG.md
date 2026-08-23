@@ -12,6 +12,18 @@ information, which has never worked.
 
 ### Fork-specific
 
+- **Debuff timers appear on the overlay you actually watch.** The deck was
+  built into the expanded HUD only. Mez and lull also render in the
+  always-on-top control window, which is the surface open during a fight, and
+  the debuff deck did not -- so for anyone playing with the overlay rather than
+  the full window, the feature looked dead no matter what the engine was
+  tracking. It now renders in both, honouring the same per-family toggles.
+
+  The overlay window is sized in TypeScript from heights declared in CSS, so
+  the release gate now asserts the two agree. A drift there would size the
+  window for a deck that no longer fits and clip the bottom rows -- silently,
+  the same way a missing debuff fails.
+
 - **Debuff timers now cover levels 51 to 60.** 0.5.0 shipped a table that
   stopped at level 50, so a level 60 character casting the top tier of every
   line saw an empty deck: the tracked spells were the lower-tier versions they

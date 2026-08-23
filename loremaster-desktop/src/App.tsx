@@ -21,6 +21,7 @@ import {
   type UpdateComponentPhase,
   type UpdateComponentState,
   type DebuffDeckView,
+  type DebuffGroupView,
   type DebuffRowView,
 } from "./protocol";
 import { CombatArchive } from "./CombatArchive";
@@ -299,6 +300,20 @@ function SeedControlRow({ control }: { control: ControlTimerView }) {
   </article>;
 }
 
+function SeedDebuffGroup({ group }: { group: DebuffGroupView }) {
+  return <article className={`seed-debuff-group ${group.urgency}`}>
+    <b>{group.target}</b>
+    {group.rows.map((row) => <span className={`seed-debuff-row ${row.kind} ${row.urgency}`}
+      key={`${group.target}-${row.spell}`}>
+      <i className="seed-debuff-accent" aria-hidden="true" />
+      <em>{row.spell}</em>
+      <strong>{debuffRemaining(row.remainingSeconds)}</strong>
+      {/* A computed countdown cannot see focus items, so it runs short. */}
+      {row.durationConfidence === "conservative" && <small>EST</small>}
+    </span>)}
+  </article>;
+}
+
 function SeedControlSurface() {
   const [event, setEvent] = useState(emptyEvent);
   const [settings, setSettings] = useState(defaultDesktopSettings);
@@ -332,6 +347,19 @@ function SeedControlSurface() {
     control.state === "active" &&
     (control.kind === "mez" ? settings.alerts.mezTimersEnabled : settings.alerts.lullTimersEnabled),
   ).slice(0, 6);
+  // The deck belongs wherever mez is shown. It lived only in the expanded HUD
+  // at first, which is not the window anyone watches during a fight.
+  const debuffKinds = new Set<string>([
+    ...(settings.alerts.debuffDotEnabled ? ["dot"] : []),
+    ...(settings.alerts.debuffSlowEnabled ? ["slow"] : []),
+    ...(settings.alerts.debuffResistEnabled ? ["resist"] : []),
+  ]);
+  const debuffGroups = (settings.alerts.debuffTimersEnabled
+    ? (event.snapshot.debuffs?.groups ?? [])
+    : []
+  ).map((group) => ({ ...group, rows: group.rows.filter((row) => debuffKinds.has(row.kind)) }))
+    .filter((group) => group.rows.length > 0)
+    .slice(0, 6);
   const latest = event.snapshot.encounters?.at(-1);
   const activeGroup = new Set((event.snapshot.groupMembers ?? []).map((name) => name.toLocaleLowerCase()));
   const group = [...(latest?.actors ?? [])]
@@ -339,7 +367,7 @@ function SeedControlSurface() {
       activeGroup.has(actor.name.toLocaleLowerCase()))
     .sort((left, right) => right.encounterDamage - left.encounterDamage)
     .slice(0, 5);
-  if (controls.length === 0 && group.length === 0) {
+  if (controls.length === 0 && group.length === 0 && debuffGroups.length === 0) {
     return <div className="seed-companion-surface empty" />;
   }
   const groupTotal = group.reduce((total, actor) => total + actor.encounterDamage, 0);
@@ -358,6 +386,13 @@ function SeedControlSurface() {
         key={`${control.kind}-${control.target}-${control.landedAt}-${index}`}
         control={control}
       />)}</div>
+    </section>}
+    {debuffGroups.length > 0 && <section className="seed-debuff-surface" aria-label="Active debuff timers">
+      <header><span><i /> DEBUFFS</span><strong>
+        {debuffGroups.reduce((total, entry) => total + entry.rows.length, 0)} ACTIVE ·
+        {" "}{debuffGroups.length} MOB{debuffGroups.length === 1 ? "" : "S"}
+      </strong></header>
+      <div>{debuffGroups.map((entry) => <SeedDebuffGroup key={entry.target} group={entry} />)}</div>
     </section>}
   </main>;
 }
