@@ -3,28 +3,73 @@
     "cap_ticks": 14,
     "cast_on_other": "sweats and shivers, looking feverish",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
+  },
+  "Anathema": {
+    "cap_ticks": 5,
+    "cast_on_other": "staggers under an ancient curse",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "allakhazam"
+  },
+  "Ancient Scourge of Nife": {
+    "cap_ticks": 7,
+    "cast_on_other": "'s veins have been filled with deadly poison",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "allakhazam"
+  },
+  "Asphyxiate": {
+    "cap_ticks": 8,
+    "cast_on_other": "begins to choke",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "allakhazam"
+  },
+  "Bane of Nife": {
+    "cap_ticks": 7,
+    "cast_on_other": "'s veins have been filled with deadly poison",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "allakhazam"
   },
   "Boil Blood": {
     "cap_ticks": 7,
     "cast_on_other": "'s blood boils",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
+  },
+  "Breath of Ro": {
+    "cap_ticks": 9,
+    "cast_on_other": "is immolated by blazing flames",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "allakhazam"
   },
   "Cascading Darkness": {
     "cap_ticks": 16,
     "cast_on_other": "is engulfed by darkness",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
+  },
+  "Cessation of Cor": {
+    "cap_ticks": 9,
+    "cast_on_other": "'s blood stills within their veins",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "allakhazam"
   },
   "Choke": {
     "cap_ticks": 8,
@@ -39,10 +84,9 @@
         8
       ]
     ],
-    "fit": "ambiguous",
     "formula": "level_half_roundup",
     "kind": "dot",
-    "scaling": "level"
+    "source": "allakhazam"
   },
   "Clinging Darkness": {
     "cap_ticks": 8,
@@ -57,19 +101,25 @@
         8
       ]
     ],
-    "fit": "ambiguous",
     "formula": "level_half_roundup",
     "kind": "dot",
-    "scaling": "level"
+    "source": "allakhazam"
   },
   "Creeping Crud": {
     "cap_ticks": 8,
     "cast_on_other": "is engulfed by a swarm",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
+  },
+  "Devouring Darkness": {
+    "cap_ticks": 13,
+    "cast_on_other": "is engulfed in devouring darkness",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "allakhazam"
   },
   "Disease Cloud": {
     "cap_ticks": 60,
@@ -84,10 +134,9 @@
         60
       ]
     ],
-    "fit": "unique",
     "formula": "level_x30",
     "kind": "dot",
-    "scaling": "level"
+    "source": "allakhazam"
   },
   "Dooming Darkness": {
     "cap_ticks": 15,
@@ -102,28 +151,25 @@
         15
       ]
     ],
-    "fit": "ambiguous",
     "formula": "level_half_roundup",
     "kind": "dot",
-    "scaling": "level"
+    "source": "allakhazam"
   },
   "Drifting Death": {
     "cap_ticks": 9,
     "cast_on_other": "is engulfed by a swarm",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
   },
   "Drones of Doom": {
     "cap_ticks": 8,
     "cast_on_other": "is engulfed by a swarm",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
   },
   "Drowsy": {
     "cap_ticks": 35,
@@ -138,37 +184,33 @@
         35
       ]
     ],
-    "fit": "ambiguous",
     "formula": "level_half_roundup",
     "kind": "slow",
-    "scaling": "level"
+    "source": "allakhazam"
   },
   "Engulfing Darkness": {
     "cap_ticks": 10,
     "cast_on_other": "is engulfed by darkness",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
   },
   "Envenomed Bolt": {
     "cap_ticks": 6,
     "cast_on_other": "has been poisoned",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
   },
   "Envenomed Breath": {
     "cap_ticks": 7,
     "cast_on_other": "has been poisoned",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
   },
   "Flame Lick": {
     "cap_ticks": 6,
@@ -183,28 +225,67 @@
         6
       ]
     ],
-    "fit": "ambiguous",
     "formula": "level_half_plus1",
     "kind": "dot",
-    "scaling": "level"
+    "source": "allakhazam"
+  },
+  "Forlorn Deeds": {
+    "cap_ticks": 35,
+    "cast_on_other": "slows down",
+    "endpoints": [
+      [
+        57,
+        29
+      ],
+      [
+        70,
+        35
+      ]
+    ],
+    "formula": "level_half_roundup",
+    "kind": "slow",
+    "source": "allakhazam"
+  },
+  "Funeral Pyre of Kelador": {
+    "cap_ticks": 8,
+    "cast_on_other": "is enveloped in a funeral pyre",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "allakhazam"
   },
   "Gasping Embrace": {
     "cap_ticks": 8,
     "cast_on_other": "begins to choke",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
+  },
+  "Glamour of Tunare": {
+    "cap_ticks": 205,
+    "cast_on_other": "is surrounded by a Tunarian glamour",
+    "endpoints": [
+      [
+        53,
+        169
+      ],
+      [
+        65,
+        205
+      ]
+    ],
+    "formula": "level_x3_plus10",
+    "kind": "resist",
+    "source": "allakhazam"
   },
   "Heart Flutter": {
     "cap_ticks": 6,
     "cast_on_other": "clutches their chest",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
   },
   "Heat Blood": {
     "cap_ticks": 6,
@@ -219,37 +300,58 @@
         6
       ]
     ],
-    "fit": "ambiguous",
     "formula": "level_half_roundup",
     "kind": "dot",
-    "scaling": "level"
+    "source": "allakhazam"
   },
   "Ignite Blood": {
     "cap_ticks": 7,
     "cast_on_other": "'s blood ignites",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
   },
   "Immolate": {
     "cap_ticks": 8,
     "cast_on_other": "is surrounded by blazing flames",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
+  },
+  "Imprecation": {
+    "cap_ticks": 5,
+    "cast_on_other": "has been surrounded in cold darkness",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "allakhazam"
   },
   "Infectious Cloud": {
     "cap_ticks": 21,
     "cast_on_other": "starts to retch",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
+  },
+  "Insidious Decay": {
+    "cap_ticks": 140,
+    "cast_on_other": "sweats and shivers, looking feverish",
+    "endpoints": [
+      [
+        52,
+        114
+      ],
+      [
+        65,
+        140
+      ]
+    ],
+    "formula": "level_x2_plus10",
+    "kind": "resist",
+    "source": "allakhazam"
   },
   "Insidious Fever": {
     "cap_ticks": 140,
@@ -264,10 +366,9 @@
         140
       ]
     ],
-    "fit": "unique",
     "formula": "level_x2_plus10",
     "kind": "dot",
-    "scaling": "level"
+    "source": "allakhazam"
   },
   "Insidious Malady": {
     "cap_ticks": 140,
@@ -282,10 +383,9 @@
         140
       ]
     ],
-    "fit": "unique",
     "formula": "level_x2_plus10",
     "kind": "dot",
-    "scaling": "level"
+    "source": "allakhazam"
   },
   "Languid Pace": {
     "cap_ticks": 35,
@@ -300,10 +400,9 @@
         35
       ]
     ],
-    "fit": "ambiguous",
     "formula": "level_half_roundup",
     "kind": "slow",
-    "scaling": "level"
+    "source": "allakhazam"
   },
   "Malaise": {
     "cap_ticks": 140,
@@ -318,10 +417,9 @@
         140
       ]
     ],
-    "fit": "unique",
     "formula": "level_x2_plus10",
     "kind": "resist",
-    "scaling": "level"
+    "source": "allakhazam"
   },
   "Malaisement": {
     "cap_ticks": 140,
@@ -336,10 +434,26 @@
         140
       ]
     ],
-    "fit": "unique",
     "formula": "level_x2_plus10",
     "kind": "resist",
-    "scaling": "level"
+    "source": "allakhazam"
+  },
+  "Malo": {
+    "cap_ticks": 140,
+    "cast_on_other": "looks very uncomfortable",
+    "endpoints": [
+      [
+        60,
+        130
+      ],
+      [
+        65,
+        140
+      ]
+    ],
+    "formula": "level_x2_plus10",
+    "kind": "resist",
+    "source": "allakhazam"
   },
   "Malosi": {
     "cap_ticks": 140,
@@ -354,19 +468,51 @@
         140
       ]
     ],
-    "fit": "unique",
     "formula": "level_x2_plus10",
     "kind": "resist",
-    "scaling": "level"
+    "source": "allakhazam"
+  },
+  "Malosini": {
+    "cap_ticks": 205,
+    "cast_on_other": "looks very uncomfortable",
+    "endpoints": [
+      [
+        57,
+        181
+      ],
+      [
+        65,
+        205
+      ]
+    ],
+    "formula": "level_x3_plus10",
+    "kind": "resist",
+    "source": "allakhazam"
   },
   "Plague": {
     "cap_ticks": 13,
     "cast_on_other": "sweats and shivers, looking feverish",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
+  },
+  "Plague of Insects": {
+    "cap_ticks": 35,
+    "cast_on_other": "'s motions slow as a plague of insects chews at their skin",
+    "endpoints": [
+      [
+        54,
+        27
+      ],
+      [
+        70,
+        35
+      ]
+    ],
+    "formula": "level_half_roundup",
+    "kind": "slow",
+    "source": "allakhazam"
   },
   "Poison Bolt": {
     "cap_ticks": 4,
@@ -381,19 +527,75 @@
         4
       ]
     ],
-    "fit": "unique",
     "formula": "level_half_plus1",
     "kind": "dot",
-    "scaling": "level"
+    "source": "allakhazam"
+  },
+  "Pox of Bertoxxulous": {
+    "cap_ticks": 14,
+    "cast_on_other": "'s skin erupts in purulent pustules",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "allakhazam"
+  },
+  "Pyrocruor": {
+    "cap_ticks": 8,
+    "cast_on_other": "'s blood ignites",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "allakhazam"
+  },
+  "Ro's Smoldering Disjunction": {
+    "cap_ticks": 100,
+    "cast_on_other": "is surrounded by an outline of cold flame",
+    "endpoints": [],
+    "formula": null,
+    "kind": "resist",
+    "source": "allakhazam"
+  },
+  "Scent of Terris": {
+    "cap_ticks": 140,
+    "cast_on_other": "is surrounded by a dark haze",
+    "endpoints": [
+      [
+        52,
+        114
+      ],
+      [
+        65,
+        140
+      ]
+    ],
+    "formula": "level_x2_plus10",
+    "kind": "resist",
+    "source": "allakhazam"
   },
   "Scourge": {
     "cap_ticks": 12,
     "cast_on_other": "sweats and shivers, looking feverish",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
+  },
+  "Sha's Advantage": {
+    "cap_ticks": 35,
+    "cast_on_other": "loses their fighting edge",
+    "endpoints": [
+      [
+        60,
+        30
+      ],
+      [
+        70,
+        35
+      ]
+    ],
+    "formula": "level_half_roundup",
+    "kind": "slow",
+    "source": "allakhazam"
   },
   "Sha's Lethargy": {
     "cap_ticks": 35,
@@ -408,19 +610,17 @@
         35
       ]
     ],
-    "fit": "ambiguous",
     "formula": "level_half_roundup",
     "kind": "slow",
-    "scaling": "level"
+    "source": "allakhazam"
   },
   "Shallow Breath": {
     "cap_ticks": 2,
     "cast_on_other": "begins to choke",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
   },
   "Shiftless Deeds": {
     "cap_ticks": 35,
@@ -435,19 +635,17 @@
         35
       ]
     ],
-    "fit": "ambiguous",
     "formula": "level_half_roundup",
     "kind": "slow",
-    "scaling": "level"
+    "source": "allakhazam"
   },
   "Sicken": {
     "cap_ticks": 14,
     "cast_on_other": "sweats and shivers, looking feverish",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
   },
   "Stinging Swarm": {
     "cap_ticks": 9,
@@ -462,28 +660,25 @@
         9
       ]
     ],
-    "fit": "ambiguous",
     "formula": "level_half_roundup",
     "kind": "dot",
-    "scaling": "level"
+    "source": "allakhazam"
   },
   "Suffocate": {
     "cap_ticks": 8,
     "cast_on_other": "begins to choke",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
   },
   "Suffocating Sphere": {
     "cap_ticks": 7,
     "cast_on_other": "gasps for breath",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
   },
   "Tagar's Insects": {
     "cap_ticks": 35,
@@ -498,19 +693,25 @@
         35
       ]
     ],
-    "fit": "ambiguous",
     "formula": "level_half_roundup",
     "kind": "slow",
-    "scaling": "level"
+    "source": "allakhazam"
   },
   "Tainted Breath": {
     "cap_ticks": 7,
     "cast_on_other": "has been poisoned",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
+  },
+  "Tashan": {
+    "cap_ticks": 60,
+    "cast_on_other": "glances nervously about",
+    "endpoints": [],
+    "formula": "level",
+    "kind": "resist",
+    "source": "measured-from-log"
   },
   "Tashani": {
     "cap_ticks": 140,
@@ -525,10 +726,9 @@
         140
       ]
     ],
-    "fit": "unique",
     "formula": "level_x2_plus10",
     "kind": "resist",
-    "scaling": "level"
+    "source": "allakhazam"
   },
   "Tashania": {
     "cap_ticks": 140,
@@ -543,10 +743,26 @@
         140
       ]
     ],
-    "fit": "unique",
     "formula": "level_x2_plus10",
     "kind": "resist",
-    "scaling": "level"
+    "source": "allakhazam"
+  },
+  "Tashanian": {
+    "cap_ticks": 140,
+    "cast_on_other": "glances nervously about",
+    "endpoints": [
+      [
+        57,
+        124
+      ],
+      [
+        65,
+        140
+      ]
+    ],
+    "formula": "level_x2_plus10",
+    "kind": "resist",
+    "source": "allakhazam"
   },
   "Tashina": {
     "cap_ticks": 140,
@@ -561,10 +777,9 @@
         140
       ]
     ],
-    "fit": "unique",
     "formula": "level_x2_plus10",
     "kind": "resist",
-    "scaling": "level"
+    "source": "allakhazam"
   },
   "Tepid Deeds": {
     "cap_ticks": 35,
@@ -579,10 +794,26 @@
         35
       ]
     ],
-    "fit": "ambiguous",
     "formula": "level_half_roundup",
     "kind": "slow",
-    "scaling": "level"
+    "source": "allakhazam"
+  },
+  "Tigir's Insects": {
+    "cap_ticks": 35,
+    "cast_on_other": "yawns",
+    "endpoints": [
+      [
+        58,
+        29
+      ],
+      [
+        70,
+        35
+      ]
+    ],
+    "formula": "level_half_roundup",
+    "kind": "slow",
+    "source": "allakhazam"
   },
   "Togor's Insects": {
     "cap_ticks": 35,
@@ -597,19 +828,58 @@
         35
       ]
     ],
-    "fit": "ambiguous",
     "formula": "level_half_roundup",
     "kind": "slow",
-    "scaling": "level"
+    "source": "allakhazam"
+  },
+  "Torment of Argli": {
+    "cap_ticks": 20,
+    "cast_on_other": "screams from the Torment of Argli",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "allakhazam"
+  },
+  "Turgur's Insects": {
+    "cap_ticks": 65,
+    "cast_on_other": "yawns",
+    "endpoints": [
+      [
+        51,
+        51
+      ],
+      [
+        65,
+        65
+      ]
+    ],
+    "formula": "level",
+    "kind": "slow",
+    "source": "allakhazam"
+  },
+  "Vengeance of Nature": {
+    "cap_ticks": 5,
+    "cast_on_other": "has been consumed in the flames of nature",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "allakhazam"
   },
   "Venom of the Snake": {
     "cap_ticks": 6,
     "cast_on_other": "has been poisoned",
     "endpoints": [],
-    "fit": "fixed",
     "formula": null,
     "kind": "dot",
-    "scaling": "fixed"
+    "source": "allakhazam"
+  },
+  "Vexing Mordinia": {
+    "cap_ticks": 9,
+    "cast_on_other": "staggers under the curse of Vexing Mordinia",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "allakhazam"
   },
   "Walking Sleep": {
     "cap_ticks": 35,
@@ -624,9 +894,58 @@
         35
       ]
     ],
-    "fit": "ambiguous",
     "formula": "level_half_roundup",
     "kind": "slow",
-    "scaling": "level"
+    "source": "allakhazam"
+  },
+  "Wind of Tashani": {
+    "cap_ticks": 140,
+    "cast_on_other": "glances nervously about",
+    "endpoints": [
+      [
+        55,
+        120
+      ],
+      [
+        65,
+        140
+      ]
+    ],
+    "formula": "level_x2_plus10",
+    "kind": "resist",
+    "source": "allakhazam"
+  },
+  "Wind of Tashanian": {
+    "cap_ticks": 140,
+    "cast_on_other": "glances nervously about",
+    "endpoints": [
+      [
+        60,
+        130
+      ],
+      [
+        65,
+        140
+      ]
+    ],
+    "formula": "level_x2_plus10",
+    "kind": "resist",
+    "source": "allakhazam"
+  },
+  "Winged Death": {
+    "cap_ticks": 9,
+    "cast_on_other": "is engulfed by a swarm of deadly insects",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "allakhazam"
+  },
+  "Zevfeer's Theft of Vitae": {
+    "cap_ticks": 9,
+    "cast_on_other": "staggers as a rush of blood leaves their body",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "allakhazam"
   }
 }

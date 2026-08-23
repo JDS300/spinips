@@ -62,22 +62,28 @@ class DebuffCatalogTests(unittest.TestCase):
         kinds = {}
         for spell in DEBUFF_SPELLS:
             kinds[spell.kind] = kinds.get(spell.kind, 0) + 1
-        self.assertEqual(kinds["slow"], 8)
-        self.assertEqual(kinds["resist"], 6)
-        self.assertGreaterEqual(kinds["dot"], 30)
+        self.assertGreaterEqual(kinds["slow"], 13)
+        self.assertGreaterEqual(kinds["resist"], 16)
+        self.assertGreaterEqual(kinds["dot"], 48)
 
     def test_fixed_duration_spells_ignore_caster_level(self):
         sicken = resolve_debuff_spell("Sicken").spell
         self.assertEqual(duration_ticks(sicken, 10), 14)
         self.assertEqual(duration_ticks(sicken, 60), 14)
 
-    def test_every_slow_shares_one_formula(self):
-        formulas = {s.duration_formula for s in DEBUFF_SPELLS if s.kind == "slow"}
-        self.assertEqual(formulas, {"level_half_roundup"})
+    def test_slow_and_resist_use_only_known_formulas(self):
+        """A typo in the table would surface as an unrecognised formula."""
+        for kind, allowed in (
+                ("slow", {"level_half_roundup", "level"}),
+                ("resist", {"level_x2_plus10", "level_x3_plus10", "level", None})):
+            found = {s.duration_formula for s in DEBUFF_SPELLS if s.kind == kind}
+            self.assertTrue(found <= allowed, f"{kind}: unexpected {found - allowed}")
 
-    def test_every_resist_shares_one_formula(self):
-        formulas = {s.duration_formula for s in DEBUFF_SPELLS if s.kind == "resist"}
-        self.assertEqual(formulas, {"level_x2_plus10"})
+    def test_every_formula_named_in_the_table_exists(self):
+        from debuff_timer import DURATION_FORMULAS
+        for spell in DEBUFF_SPELLS:
+            if spell.duration_formula is not None:
+                self.assertIn(spell.duration_formula, DURATION_FORMULAS, spell.name)
 
     def test_cap_applies_before_rank_scaling(self):
         tagars = resolve_debuff_spell("Tagar's Insects").spell
@@ -105,9 +111,32 @@ class DebuffCatalogTests(unittest.TestCase):
         self.assertEqual(resolve_debuff_spell("Malaise").duration_confidence,
                          "conservative")
 
-    def test_the_shared_yawns_family_holds_four_slows(self):
+    def test_the_shared_yawns_family_holds_the_whole_insect_line(self):
+        """Six slows print the same line; correlation is what tells them apart."""
         self.assertEqual(DEBUFF_LANDING_COMPATIBILITY["yawns"], frozenset({
-            "Drowsy", "Walking Sleep", "Tagar's Insects", "Togor's Insects"}))
+            "Drowsy", "Walking Sleep", "Tagar's Insects", "Togor's Insects",
+            "Tigir's Insects", "Turgur's Insects"}))
+
+    def test_a_shared_family_spans_meaningfully_different_durations(self):
+        """If they all lasted the same, correlating to the cast would be moot."""
+        ticks = {resolve_debuff_spell(name, 60).duration_ticks
+                 for name in DEBUFF_LANDING_COMPATIBILITY["yawns"]}
+        self.assertGreater(max(ticks) - min(ticks), 20)
+
+    def test_the_level_60_tier_is_present(self):
+        """The spells a level 60 character actually casts, which 0.5.0 missed."""
+        for name, kind in (("Tashanian", "resist"), ("Forlorn Deeds", "slow"),
+                           ("Torment of Argli", "dot"), ("Asphyxiate", "dot"),
+                           ("Turgur's Insects", "slow"), ("Malo", "resist")):
+            resolved = resolve_debuff_spell(name)
+            self.assertIsNotNone(resolved, name)
+            self.assertEqual(resolved.kind, kind, name)
+
+    def test_no_beneficial_or_self_only_spell_is_tracked(self):
+        """Torpor and the Lich line drain the caster, not the mob."""
+        for name in ("Torpor", "Arch Lich", "Demi Lich",
+                     "Ancient Master of Death"):
+            self.assertIsNone(resolve_debuff_spell(name), name)
 
     def test_every_landing_family_is_reachable_from_the_table(self):
         declared = {s.landing_family for s in DEBUFF_SPELLS if s.landing_family}
