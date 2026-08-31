@@ -1,14 +1,16 @@
+import os
 import sys
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest import mock
 
 
 LOREMASTER_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(LOREMASTER_DIR))
 
-from desktop_worker import HeadlessEngine  # noqa: E402
+from desktop_worker import HeadlessEngine, JsonLineWorker  # noqa: E402
 
 
 class DesktopWorkerTests(unittest.TestCase):
@@ -588,3 +590,52 @@ class DesktopWorkerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MoteDeckDesktopTests(unittest.TestCase):
+    """The desktop never saw motes at all; the counters stopped at the engine."""
+
+    LINES = (
+        "[Thu Aug 13 18:00:00 2026] You looted a Mote of Major Potential from "
+        "a rock golem's corpse and stored it in your currency",
+        "[Thu Aug 13 18:00:01 2026] Welcome to EverQuest Legends!",
+        "[Thu Aug 13 18:00:02 2026] You looted a Mote of Greater Potential "
+        "from a rock golem's corpse and stored it in your currency",
+    )
+
+    def test_a_login_starts_a_new_mote_session_without_clearing_the_ledger(self):
+        with tempfile.TemporaryDirectory() as root:
+            engine = HeadlessEngine(data_dir=root)
+            try:
+                engine.stats.character = "Spin"
+                for line in self.LINES:
+                    engine.process_line(line)
+                snapshot = engine.snapshot_event(
+                    datetime(2026, 8, 13, 18, 0, 3))["snapshot"]
+            finally:
+                engine.close()
+            self.assertEqual(tuple(snapshot["motes"]["counts"]),
+                             (0, 0, 0, 0, 0, 1, 0, 0, 0, 0))
+            self.assertEqual(snapshot["motes"]["potential"], 6)
+            self.assertEqual(snapshot["motes"]["labels"][4], "Major")
+            # The loot ledger records every acquisition; only the mote count
+            # is scoped to the session.
+            self.assertEqual(snapshot["lootTotalCount"], 2)
+
+    def test_the_reset_motes_command_clears_only_the_mote_deck(self):
+        with tempfile.TemporaryDirectory() as root:
+            with mock.patch.dict(os.environ,
+                                 {"LOREMASTER_APP_DATA_DIR": root}):
+                worker = JsonLineWorker()
+            try:
+                worker.engine.stats.character = "Spin"
+                for line in self.LINES:
+                    worker.engine.process_line(line)
+                worker._handle({"type": "engine.reset-motes"})
+                snapshot = worker.engine.snapshot_event(
+                    datetime(2026, 8, 13, 18, 0, 3))["snapshot"]
+            finally:
+                worker.engine.close()
+            self.assertEqual(tuple(snapshot["motes"]["counts"]), (0,) * 10)
+            self.assertEqual(snapshot["motes"]["potential"], 0)
+            self.assertEqual(snapshot["lootTotalCount"], 2)

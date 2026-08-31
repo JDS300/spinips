@@ -246,6 +246,37 @@ def audit_debuff_surface_geometry() -> None:
              f"styles.css says {css_header.group(1)}px")
 
 
+def audit_mote_tracker_wiring() -> None:
+    """A reset button is four files wide, and three of them typecheck without it.
+
+    The renderer calls `resetMotes`, preload forwards it, main sends the worker
+    command, and the Python worker answers it. Miss any one and the button is
+    inert with nothing to report -- the same silent failure the settings map
+    has. The engine already counted motes long before any of this existed, so
+    the deck also has to reach a surface at all.
+    """
+
+    protocol = read("loremaster-desktop/src/protocol.ts")
+    preload = read("loremaster-desktop/electron/preload.ts")
+    electron = read("loremaster-desktop/electron/main.ts")
+    app = read("loremaster-desktop/src/App.tsx")
+    styles = read("loremaster-desktop/src/styles.css")
+    worker = read("loremaster/desktop_worker.py")
+
+    require(protocol, ("MoteDeckView", "isMoteDeck", "motes?: MoteDeckView"),
+            "protocol.ts mote deck")
+    require(app, ("MoteCard", "resetMotes", "mote-grid"), "App.tsx mote card")
+    require(styles, (".mote-card", ".mote-grid", ".mote-reset"),
+            "styles.css mote card")
+    # Quoted, so a renamed channel fails here rather than passing on a prefix.
+    for owner, source in (("electron/preload.ts", preload),
+                          ("electron/main.ts", electron)):
+        require(source, ('"engine:reset-motes"',), f"{owner} mote reset channel")
+    require(electron, ('"engine.reset-motes"',), "main.ts worker mote command")
+    require(worker, ('"engine.reset-motes"', "reset_motes"),
+            "desktop_worker.py mote reset command")
+
+
 def audit_retired_lockout_ocr() -> None:
     runtime_sources = {
         "Electron main": read("loremaster-desktop/electron/main.ts"),
@@ -279,6 +310,7 @@ def main() -> int:
         audit_theme_contract()
         audit_debuff_surface_geometry()
         audit_retired_lockout_ocr()
+        audit_mote_tracker_wiring()
     except AuditFailure as exc:
         print(f"Loremaster desktop audit: FAIL\n  {exc}", file=sys.stderr)
         return 1
@@ -287,6 +319,7 @@ def main() -> int:
     print("  verified portable + isolated skin updates | rollback-safe settings workflow")
     print("  no Instance Information OCR or reserved Ctrl+Shift+Z shortcut")
     print("  debuff deck reaches the seed overlay, sized from the CSS it renders with")
+    print("  mote tracker reaches the HUD, and its reset spans renderer to worker")
     return 0
 
 

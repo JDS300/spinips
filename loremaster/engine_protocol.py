@@ -17,6 +17,11 @@ from typing import Any, Literal, TypeAlias
 
 PROTOCOL_VERSION = 1
 
+# Potential motes come in ten grades, lowest first. The engine owns the grade
+# names and the exp each is worth; the boundary carries only the order, so a
+# renderer never has to re-derive the table.
+MOTE_GRADE_COUNT = 10
+
 CombatAbilityCategory: TypeAlias = Literal[
     "melee",
     "spell",
@@ -76,8 +81,16 @@ def classify_combat_ability_category(
 
 
 def _timestamp(value: datetime) -> str:
+    """Encode one instant, matching ``adventure_journal.utc_timestamp``.
+
+    EverQuest logs carry naive local wall clock. Stamping one with a UTC label
+    rather than converting it names an instant that is wrong by the local
+    offset -- and the durable journal converts correctly, so the live and
+    stored halves of one encounter disagreed and the Combat Archive, which
+    de-duplicates by parsing both, could never match them.
+    """
     if value.tzinfo is None:
-        value = value.replace(tzinfo=timezone.utc)
+        value = value.astimezone()
     return value.astimezone(timezone.utc).isoformat(
         timespec="milliseconds").replace("+00:00", "Z")
 
@@ -267,6 +280,16 @@ class DebuffDeckView:
 
 
 @dataclass(frozen=True)
+class MoteDeckView:
+    """Potential motes acquired since the mote session began."""
+
+    counts: tuple[int, ...]
+    labels: tuple[str, ...]
+    potential: int
+    started_at: str
+
+
+@dataclass(frozen=True)
 class ControlTimerView:
     kind: str
     state: str
@@ -300,6 +323,7 @@ class EngineSnapshot:
     loot_event_count: int
     loot_total_count: int
     loot_unique_count: int
+    motes: MoteDeckView
     journal_encounters: tuple[JournalEncounterView, ...]
     controls: tuple[ControlTimerView, ...]
     debuffs: DebuffDeckView
@@ -341,6 +365,7 @@ class EngineEvent:
         snapshot["lootEventCount"] = snapshot.pop("loot_event_count")
         snapshot["lootTotalCount"] = snapshot.pop("loot_total_count")
         snapshot["lootUniqueCount"] = snapshot.pop("loot_unique_count")
+        snapshot["motes"]["startedAt"] = snapshot["motes"].pop("started_at")
         snapshot["journalEncounters"] = snapshot.pop("journal_encounters")
         for loot in snapshot["loot"]:
             for old, new in (
@@ -739,6 +764,18 @@ def build_engine_snapshot(*, sequence: int, observed_at: datetime,
       if isinstance(row, dict))
     summary = loot_summary if isinstance(loot_summary, dict) else {}
 
+    mote_counts = tuple(
+        max(0, int(value or 0))
+        for value in (stats_snapshot.get("motes") or ()))[:MOTE_GRADE_COUNT]
+    mote_started_at = stats_snapshot.get("motes_started_at")
+    motes = MoteDeckView(
+        counts=mote_counts + (0,) * (MOTE_GRADE_COUNT - len(mote_counts)),
+        labels=tuple(str(label) for label in
+                     (stats_snapshot.get("mote_labels") or ())
+                     )[:MOTE_GRADE_COUNT],
+        potential=max(0, int(stats_snapshot.get("mote_potential") or 0)),
+        started_at=_timestamp(mote_started_at) if mote_started_at else "")
+
     breakdown = CombatBreakdownView(
         sources=metric_rows(
             stats_snapshot.get("fight_sources"), abilities=True),
@@ -794,6 +831,7 @@ def build_engine_snapshot(*, sequence: int, observed_at: datetime,
             row.quantity for row in loot))),
         loot_unique_count=max(0, int(summary.get("unique_items") or len({
             row.item_key for row in loot}))),
+        motes=motes,
         journal_encounters=journal,
         controls=controls,
         debuffs=debuffs,
@@ -825,6 +863,8 @@ __all__ = [
     "CombatBreakdownView",
     "CombatActorView",
     "EncounterView",
+    "MOTE_GRADE_COUNT",
+    "MoteDeckView",
     "ItemInfoView",
     "LootEventView",
     "JournalEncounterView",

@@ -64,7 +64,7 @@ class DebuffCatalogTests(unittest.TestCase):
             kinds[spell.kind] = kinds.get(spell.kind, 0) + 1
         self.assertGreaterEqual(kinds["slow"], 13)
         self.assertGreaterEqual(kinds["resist"], 16)
-        self.assertGreaterEqual(kinds["dot"], 56)
+        self.assertGreaterEqual(kinds["dot"], 58)
 
     def test_fixed_duration_spells_ignore_caster_level(self):
         sicken = resolve_debuff_spell("Sicken").spell
@@ -147,6 +147,23 @@ class DebuffCatalogTests(unittest.TestCase):
             self.assertIsNotNone(resolved, name)
             self.assertEqual(resolved.kind, "dot", name)
             self.assertEqual(resolved.duration_ticks, ticks, name)
+
+    def test_the_shaman_curse_line_is_tracked(self):
+        """Curse and Odium are EQL-only; Allakhazam's Live data has neither."""
+        for name, level in (("Curse", 34), ("Odium", 43)):
+            resolved = resolve_debuff_spell(name, level)
+            self.assertIsNotNone(resolved, name)
+            self.assertEqual(resolved.kind, "dot", name)
+            self.assertEqual(resolved.duration_ticks, 5, name)
+
+    def test_the_curse_line_is_flat_thirty_seconds(self):
+        """EQL publishes one duration per spell, so level must not change it."""
+        for name in ("Curse", "Odium"):
+            spell = resolve_debuff_spell(name).spell
+            self.assertIsNone(spell.duration_formula, name)
+            for level in (34, 43, 50):
+                self.assertEqual(duration_ticks(spell, level), 5,
+                                 f"{name} @L{level}")
 
     def test_tashan_is_tracked_from_measured_data(self):
         """Absent from Allakhazam; duration measured from a real Quarm log."""

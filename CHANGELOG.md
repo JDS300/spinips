@@ -7,8 +7,10 @@ promoted to resolve to the same entry.
 
 ## 0.5.1
 
-Fixes debuff timers for characters past level 50, and AppImage update
-information, which has never worked.
+Fixes debuff timers for characters past level 50, encounter times that were
+wrong by the local UTC offset, and AppImage update information, which has
+never worked. Adds the shaman Curse line and a per-session potential-mote
+tracker.
 
 ### Fork-specific
 
@@ -21,6 +23,42 @@ information, which has never worked.
   **Heat Blood is 36 seconds flat**, not the level-scaled duration Allakhazam
   publishes. EQL lists one duration per spell; the scraped figure was Live
   behaviour and ran six seconds short at levels 10 and 11.
+
+- **Live encounter times were wrong by the local UTC offset.** EverQuest logs
+  carry naive local wall clock. The durable journal has always converted that
+  correctly, but the protocol boundary stamped the same wall clock with a UTC
+  label instead of converting it, so an 8:46 AM fight reached the app as
+  8:46 AM *UTC* and the Combat Archive printed 4:46 AM in EDT.
+
+  It was not only cosmetic. The archive de-duplicates a live encounter against
+  its journal row by parsing both stamps, and because only one of the two
+  halves was converted they could never match -- so one fight could be listed
+  twice, at two different times. The boundary now uses the journal's
+  conversion, and a test asserts the two agree rather than asserting a literal
+  string, so it holds on a UTC build runner as well as locally.
+
+  Loot times were never affected: they are read straight from the journal.
+  Neither were alerts, which serialize local time without a UTC label.
+
+- **The shaman Curse line is tracked.** Curse and Odium, the two EQL-only
+  shaman damage-over-time spells, were missing for the reason the necromancer
+  line was: they are not in Allakhazam's Live data, which is where the rest of
+  the table came from. Both run 30 seconds flat -- five ticks, no level
+  scaling -- taken from the EQL wiki, which publishes one duration per spell.
+
+- **Potential motes are counted per play session, on the desktop.** The engine
+  has recognized all ten mote grades since the Rune Seed shipped, but nothing
+  carried them across the boundary, so the Electron app could not show a
+  farming session at all. The expanded HUD now has a mote deck: every grade,
+  the exp the counts are worth, and when the count started.
+
+  **Logging in starts a new count.** A mote total answers "how did this farm
+  go", not "how long has the app been open", and the log announces every login
+  outright -- 32 of them in one real 87 MB log -- so no idle-gap guessing is
+  needed. The reset is deliberately narrow: damage, kills, XP and the loot
+  chronicle all carry on across a relog, and a manual RESET COUNT button clears
+  the motes alone. The Tk ledger's MOTES card gains the same boundary and shows
+  what time the count started.
 
 - **Tashan is tracked.** It exists on Project Quarm but not in Allakhazam's
   database, so there is no published duration to derive. Its 60 ticks come from

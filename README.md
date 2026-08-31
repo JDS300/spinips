@@ -219,6 +219,7 @@ Loremaster turns the text log EverQuest already writes into a live **Adventurer'
 | **Spoils Chronicle** | Stores and searches observed loot across restarts, including stacks, storage, currency, auto-sales, merges, and ranked upgrades; filters by item, source, zone, owner, and raid tier. |
 | **Item intelligence** | Shows optional cached EQL Wiki stats, drops, quests, and notes beside the original loot evidence. Network lookup can be disabled without losing the local ledger or cached cards. |
 | **Adventure ledger** | XP/hour, time to level, kills, loot, all ten mote grades, coin and plat/hour, factions, skills, zones, and a bounded death recap. |
+| **Mote tracker** *(fork-only)* | All ten potential grades and the exp they are worth, on a deck in the expanded HUD, counted from the last login. A manual reset clears the count without disturbing anything else. |
 | **Pets and charms** | Credits summoned pets and conservatively claimed charmed creatures; same-name charm totals are included but clearly labeled as estimates when the text log cannot distinguish actor IDs. |
 | **Optional DPS attribution** | Keeps total personal DPS unchanged while optionally exposing separate Self, Charmed pet, and Summoned pet damage/DPS rows for both the current encounter and session. |
 | **Debuff timers** *(fork-only)* | Countdowns for your own DoTs, slows and resist debuffs, grouped by mob, on a deck below the mez and lull control stack. Shaman, enchanter, beastlord, necromancer and druid to level 50. |
@@ -457,7 +458,7 @@ This architecture supports a transparent non-injecting workflow. As with any com
 | **STANDING** | faction count | per-faction positive and negative movement |
 | **JOURNEY** | deaths | zone chain, final-20-second death recap, recent Sky discoveries, and the selected Sky farm target |
 
-Motes are session acquisitions, not a bag scan. Loremaster recognizes all ten potential grades and the supported corpse, stack, receive, gain, acquire, and found line formats.
+Motes are session acquisitions, not a bag scan. Loremaster recognizes all ten potential grades and the supported corpse, stack, receive, gain, acquire, and found line formats. **Logging in starts a new count** — the log announces every login, so a farming total answers "this session" rather than "however long the app has been open". Damage, kills and the loot chronicle deliberately carry on across a relog.
 
 ### Alerts and custom rules
 

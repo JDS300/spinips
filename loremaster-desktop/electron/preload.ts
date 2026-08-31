@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld("loremasterDesktop", {
   chooseUpdateEqRoot: () => ipcRenderer.invoke("updates:choose-eq-root"),
   installUpdates: (ids: readonly string[]) => ipcRenderer.invoke("updates:install", ids),
   resetEngine: () => ipcRenderer.send("engine:reset"),
+  resetMotes: () => ipcRenderer.send("engine:reset-motes"),
   testAlert: () => ipcRenderer.send("alerts:test"),
   chooseAlertSound: (kind: string) => ipcRenderer.invoke("alerts:choose-sound", kind),
   readAlertSound: (kind: string) => ipcRenderer.invoke("alerts:read-sound", kind),

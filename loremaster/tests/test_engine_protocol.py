@@ -8,8 +8,10 @@ from pathlib import Path
 LOREMASTER_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(LOREMASTER_DIR))
 
+from adventure_journal import utc_timestamp  # noqa: E402
 from control_snapshot import merge_control_snapshots  # noqa: E402
 from engine_protocol import (  # noqa: E402
+    MOTE_GRADE_COUNT,
     PROTOCOL_VERSION,
     build_engine_snapshot,
     classify_combat_ability_category,
@@ -256,3 +258,100 @@ class EngineProtocolTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MoteDeckProtocolTests(unittest.TestCase):
+    """Potential motes are tracked by the engine and never reached the desktop.
+
+    The counters have existed since the Rune Seed shipped, but nothing carried
+    them across the boundary, so the Electron app could not show a farming
+    session at all.
+    """
+
+    LABELS = ("Infinitesimal", "Minor", "Lesser", "Potential", "Major",
+              "Greater", "Superior", "Grand", "Ascendant", "Infinite")
+
+    def build(self, **stats):
+        controls = merge_control_snapshots(
+            MezTracker().snapshot(NOW), LullTracker().snapshot(NOW), limit=None)
+        return build_engine_snapshot(
+            sequence=1, observed_at=NOW,
+            stats_snapshot={"character": "Spin", **stats},
+            control_snapshot=controls)
+
+    def test_the_deck_carries_every_grade_and_its_earned_potential(self):
+        snapshot = self.build(
+            motes=[0, 0, 0, 0, 2, 1, 0, 0, 0, 0],
+            mote_labels=self.LABELS,
+            mote_potential=16,
+            motes_started_at=datetime(2026, 8, 6, 18, 0, tzinfo=timezone.utc))
+        self.assertEqual(snapshot.motes.counts, (0, 0, 0, 0, 2, 1, 0, 0, 0, 0))
+        self.assertEqual(snapshot.motes.labels, self.LABELS)
+        self.assertEqual(snapshot.motes.potential, 16)
+        self.assertEqual(snapshot.motes.started_at,
+                         "2026-08-06T18:00:00.000Z")
+
+    def test_an_engine_without_motes_still_reports_ten_empty_grades(self):
+        snapshot = self.build()
+        self.assertEqual(snapshot.motes.counts, (0,) * MOTE_GRADE_COUNT)
+        self.assertEqual(snapshot.motes.potential, 0)
+        self.assertEqual(snapshot.motes.started_at, "")
+
+    def test_a_short_or_ragged_count_list_is_padded_to_ten(self):
+        snapshot = self.build(motes=[3, 1])
+        self.assertEqual(snapshot.motes.counts, (3, 1) + (0,) * 8)
+
+    def test_the_deck_is_camel_cased_for_typescript(self):
+        payload = snapshot_event(self.build(
+            motes=[1] * 10, mote_labels=self.LABELS, mote_potential=53,
+            motes_started_at=datetime(2026, 8, 6, 18, 0, tzinfo=timezone.utc),
+        )).to_dict()["snapshot"]["motes"]
+        self.assertEqual(payload["startedAt"], "2026-08-06T18:00:00.000Z")
+        self.assertNotIn("started_at", payload)
+        self.assertEqual(payload["potential"], 53)
+        json.dumps(payload)
+
+
+class BoundaryClockTests(unittest.TestCase):
+    """Log timestamps are naive local wall clock, and must be read as such.
+
+    The durable journal has always converted them correctly. The protocol
+    boundary instead stamped the same wall clock with a UTC label, so every
+    time it published named an instant four hours off in EDT. That is not only
+    a display shift: the Combat Archive de-duplicates a live encounter against
+    its journal row by parsing both stamps, and the two never matched.
+    """
+
+    NAIVE = datetime(2026, 8, 6, 18, 30)
+
+    def build(self, **stats):
+        controls = merge_control_snapshots(
+            MezTracker().snapshot(NOW), LullTracker().snapshot(NOW), limit=None)
+        return build_engine_snapshot(
+            sequence=1, observed_at=self.NAIVE,
+            stats_snapshot={"character": "Spin", **stats},
+            control_snapshot=controls)
+
+    def test_a_naive_stamp_names_the_same_instant_as_the_journal(self):
+        self.assertEqual(self.build().observed_at, utc_timestamp(self.NAIVE))
+
+    def test_an_aware_stamp_is_unchanged(self):
+        aware = datetime(2026, 8, 6, 18, 30, tzinfo=timezone.utc)
+        snapshot = build_engine_snapshot(
+            sequence=1, observed_at=aware,
+            stats_snapshot={"character": "Spin"},
+            control_snapshot=merge_control_snapshots(
+                MezTracker().snapshot(NOW), LullTracker().snapshot(NOW),
+                limit=None))
+        self.assertEqual(snapshot.observed_at, "2026-08-06T18:30:00.000Z")
+
+    def test_a_live_encounter_and_its_journal_row_agree(self):
+        """The archive de-duplicates on these two strings parsing equal."""
+        start = datetime(2026, 8, 6, 18, 0)
+        snapshot = self.build(fights=[{
+            "name": "a rock golem", "start": start,
+            "end": datetime(2026, 8, 6, 18, 1), "seconds": 60.0,
+            "damage": 6000, "dps": 100, "kills": 1,
+        }])
+        self.assertEqual(snapshot.encounters[0].started_at,
+                         utc_timestamp(start))

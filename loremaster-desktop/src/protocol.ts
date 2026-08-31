@@ -226,6 +226,19 @@ export interface DebuffDeckView {
   overflow: number;
 }
 
+/**
+ * Potential motes acquired since the mote session began. The engine owns the
+ * grade table, so `labels` arrives with the counts rather than being mirrored
+ * here — the two can never drift apart.
+ */
+export interface MoteDeckView {
+  counts: readonly number[];
+  labels: readonly string[];
+  potential: number;
+  /** ISO stamp of the login that started this count; "" before any log. */
+  startedAt: string;
+}
+
 export interface EngineSnapshot {
   protocolVersion: typeof PROTOCOL_VERSION;
   sequence: number;
@@ -239,6 +252,7 @@ export interface EngineSnapshot {
   lootEventCount?: number;
   lootTotalCount?: number;
   lootUniqueCount?: number;
+  motes?: MoteDeckView;
   journalEncounters?: readonly JournalEncounterView[];
   controls: readonly ControlTimerView[];
   debuffs?: DebuffDeckView;
@@ -484,8 +498,19 @@ export function isEngineSnapshotEvent(value: unknown): value is EngineSnapshotEv
     snapshot.character && typeof snapshot.character.name === "string" &&
     snapshot.combat && typeof snapshot.combat.fightDps === "number" &&
     Array.isArray(snapshot.controls) &&
-    isDebuffDeck(snapshot.debuffs),
+    isDebuffDeck(snapshot.debuffs) &&
+    isMoteDeck(snapshot.motes),
   );
+}
+
+/** A malformed deck is rejected rather than rendered; absent is fine. */
+function isMoteDeck(value: unknown): boolean {
+  if (value === undefined || value === null) return true;
+  if (typeof value !== "object") return false;
+  const deck = value as Partial<MoteDeckView>;
+  return typeof deck.potential === "number" && typeof deck.startedAt === "string" &&
+    Array.isArray(deck.counts) && deck.counts.every((count) => typeof count === "number") &&
+    Array.isArray(deck.labels) && deck.labels.every((label) => typeof label === "string");
 }
 
 /** A malformed deck is rejected rather than rendered; absent is fine. */

@@ -145,6 +145,14 @@
     "kind": "dot",
     "source": "allakhazam"
   },
+  "Curse": {
+    "cap_ticks": 5,
+    "cast_on_other": "has been cursed",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "eqlwiki"
+  },
   "Dark Soul": {
     "cap_ticks": 5,
     "cast_on_other": null,
@@ -539,6 +547,14 @@
   "Negation of Life": {
     "cap_ticks": 15,
     "cast_on_other": "doubles over in pain",
+    "endpoints": [],
+    "formula": null,
+    "kind": "dot",
+    "source": "eqlwiki"
+  },
+  "Odium": {
+    "cap_ticks": 5,
+    "cast_on_other": "staggers under a dark curse",
     "endpoints": [],
     "formula": null,
     "kind": "dot",

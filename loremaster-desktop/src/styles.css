@@ -729,6 +729,24 @@ body.alert-window { background: transparent; }
 .spoils-preview em { margin-left:auto; color:var(--cyan); font:700 8px Georgia,serif; }
 .spoils-card>footer { margin-top:6px; color:#667d8d; }
 
+/* Potential motes ------------------------------------------------------- */
+.mote-card { margin-top:9px; overflow:hidden; border:1px solid rgba(214,173,103,.28); border-radius:10px; padding:9px 10px; background:linear-gradient(145deg,rgba(34,26,17,.74),rgba(9,15,20,.86)); }
+.mote-card summary { list-style:none; display:flex; align-items:center; gap:10px; }
+.mote-card summary::-webkit-details-marker { display:none; }
+.mote-card summary small { color:var(--gold); font-size:8px; letter-spacing:.11em; }
+.mote-card h2 { margin:2px 0 0; color:#eee6d9; font:700 11px Georgia,serif; letter-spacing:.06em; }
+.mote-card-hint { margin-left:auto; color:var(--dim); font:700 8px "Segoe UI Variable Text","Segoe UI",sans-serif; letter-spacing:.1em; }
+.mote-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:3px; margin-top:8px; }
+.mote-grid article { min-width:0; display:grid; gap:2px; justify-items:center; border:1px solid rgba(214,173,103,.2); border-radius:7px; padding:6px 3px; background:linear-gradient(145deg,rgba(41,31,18,.6),rgba(11,15,21,.78)); }
+.mote-grid article.empty { border-color:rgba(91,123,151,.16); background:rgba(9,13,19,.5); }
+.mote-grid small { overflow:hidden; max-width:100%; color:var(--gold); font:700 7px Georgia,serif; letter-spacing:.07em; text-overflow:ellipsis; white-space:nowrap; }
+.mote-grid article.empty small { color:#66798a; }
+.mote-grid strong { color:#f1d6a5; font:700 13px Georgia,serif; }
+.mote-grid article.empty strong { color:#5d7183; }
+.mote-reset { width:100%; margin-top:7px; border:1px solid rgba(214,173,103,.34); border-radius:6px; padding:7px 8px; color:var(--gold); background:rgba(214,173,103,.06); font:700 9px Georgia,serif; cursor:pointer; }
+.mote-reset:hover,.mote-reset:focus-visible { border-color:var(--gold); outline:0; background:rgba(214,173,103,.12); }
+.mote-card>footer { margin-top:6px; color:#667d8d; font-size:8px; line-height:1.45; }
+
 /* Spoils Chronicle ------------------------------------------------------ */
 .loot-shell { --loot-surface:rgba(8,13,20,.96); --loot-raised:rgba(18,26,35,.82); --loot-accent:#61d7d0; --loot-muted:#91a7b6; --loot-subtle:#768d9e; width:100%; height:100%; overflow:hidden; display:grid; grid-template-rows:60px auto minmax(0,1fr) 28px; color:#dce9f1; border:1px solid rgba(214,173,103,.62); border-radius:15px; background:radial-gradient(circle at 12% -15%,rgba(57,128,143,.22),transparent 32%),radial-gradient(circle at 92% 0%,rgba(129,85,35,.18),transparent 28%),linear-gradient(145deg,rgba(8,13,20,.997),rgba(4,7,11,.999)); box-shadow:inset 0 1px rgba(255,255,255,.07),0 18px 55px rgba(0,0,0,.44); font-family:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif; }
 .loot-masthead { -webkit-app-region:drag; display:flex; align-items:center; gap:11px; padding:8px 13px; border-bottom:1px solid rgba(91,123,151,.3); background:linear-gradient(100deg,rgba(18,28,39,.99),rgba(8,12,19,.99) 58%,rgba(33,25,15,.97)); box-shadow:0 8px 28px rgba(0,0,0,.34),inset 0 1px rgba(255,255,255,.055); }
