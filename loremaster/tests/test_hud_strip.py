@@ -116,6 +116,33 @@ class MoteTrackerTests(unittest.TestCase):
             [i for i, g in enumerate(LOREMASTER.MOTE_GRADES) if not g], [3])
 
 
+class DetailActionRowTests(unittest.TestCase):
+    """A detail row can carry an action, following the meter row's encoding.
+
+    Detail rows are plain ``(kind, left, right)`` data with no channel for a
+    callback, so the action name rides in the kind the way a meter's fill
+    percentage already does. A malformed or unknown kind must read as "no
+    action" rather than building a button that does nothing when clicked.
+    """
+
+    def test_an_action_row_names_its_action(self):
+        self.assertEqual(
+            LOREMASTER.detail_action_name("action:reset-motes"), "reset-motes")
+
+    def test_an_ordinary_row_names_no_action(self):
+        for kind in ("row", "head", "line", "meter:0.5", "", None):
+            with self.subTest(kind=kind):
+                self.assertEqual(LOREMASTER.detail_action_name(kind), "")
+
+    def test_an_action_without_a_name_is_not_an_action(self):
+        for kind in ("action:", "action:   "):
+            with self.subTest(kind=kind):
+                self.assertEqual(LOREMASTER.detail_action_name(kind), "")
+
+    def test_the_mote_card_offers_a_reset(self):
+        self.assertEqual(LOREMASTER.MOTE_RESET_ACTION, "reset-motes")
+
+
 class SecondaryWindowPlacementTests(unittest.TestCase):
     def test_tall_settings_surface_stays_inside_owners_monitor(self):
         position = LOREMASTER.adjacent_window_position(
