@@ -317,6 +317,23 @@ HUD_MORPH_MS = 240
 HUD_MORPH_FRAME_MS = 16
 RUNE_ALERT_SECONDS = 2.0
 
+# A detail row is plain ("kind", left, right) data with nowhere to hang a
+# callback, so an actionable row names its action inside the kind -- the same
+# encoding a meter row already uses for its fill percentage. An unrecognized
+# or empty name reads as "not an action", so a malformed row renders as
+# nothing rather than as a button that does nothing.
+DETAIL_ACTION_PREFIX = "action:"
+MOTE_RESET_ACTION = "reset-motes"
+
+
+def detail_action_name(kind) -> str:
+    """Return the action a detail row triggers, or "" when it triggers none."""
+    text = str(kind or "")
+    if not text.startswith(DETAIL_ACTION_PREFIX):
+        return ""
+    return text[len(DETAIL_ACTION_PREFIX):].strip()
+
+
 MINI_CARD_LABELS = {
     "combat": "COMBAT",
     "kills": "SLAYING",
@@ -6656,6 +6673,8 @@ def run_gui(args):
                                     "new count; the rest of the ledger keeps "
                                     "going. The grades are listed lowest "
                                     "first.", ""))
+            out.append((DETAIL_ACTION_PREFIX + MOTE_RESET_ACTION,
+                        "RESET MOTE COUNT", ""))
         elif key == "money":
             out.append(("row", "Total", fmt_coins(snap["copper"])))
             out.append(("row", "Plat / hour", f"{snap['plat_hr']:.1f}p"))
@@ -7478,6 +7497,12 @@ def run_gui(args):
 
         fade()
 
+    def do_reset_motes():
+        """Start the mote count over. A login does this automatically."""
+        stats.reset_motes(datetime.now())
+
+    detail_actions = {MOTE_RESET_ACTION: do_reset_motes}
+
     def do_reset():
         stats.reset()
         mez_tracker.clear()
@@ -7722,6 +7747,8 @@ def run_gui(args):
         return "STALE", T["ember"]
 
     def _detail_kind(kind):
+        if detail_action_name(kind):
+            return "action"
         return "meter" if kind.startswith("meter:") else kind
 
     def _set_widget(widget, **options):
@@ -7808,6 +7835,16 @@ def run_gui(args):
                                   font=FONT_S, anchor="w", justify="left")
             left_label.pack(side="left")
             control["left"] = left_label
+        elif base_kind == "action":
+            button = tk.Label(row, fg=T["gold"], bg=T["raised"], font=FONT_S,
+                              cursor="hand2", padx=6, pady=3)
+            button.pack(fill="x", pady=(5, 1))
+            # The command is rebound on every update, so the handler reads it
+            # at click time rather than closing over whichever action this row
+            # happened to carry when the widget was built.
+            button.bind("<Button-1>",
+                        lambda _e, c=control: (c.get("command") or (lambda: None))())
+            control.update(left=button, command=None)
         else:
             left_label = tk.Label(row, fg=T["text"], bg=T["bg"],
                                   font=FONT_S, anchor="w")
@@ -7846,6 +7883,9 @@ def run_gui(args):
                 meter._lore_right = right
                 _draw_detail_meter(meter)
             else:
+                if control["kind"] == "action":
+                    control["command"] = detail_actions.get(
+                        detail_action_name(kind))
                 _set_text(control["left"], left)
                 if "right" in control:
                     _set_text(control["right"], right)

@@ -57,8 +57,14 @@ tracker.
   outright -- 32 of them in one real 87 MB log -- so no idle-gap guessing is
   needed. The reset is deliberately narrow: damage, kills, XP and the loot
   chronicle all carry on across a relog, and a manual RESET COUNT button clears
-  the motes alone. The Tk ledger's MOTES card gains the same boundary and shows
-  what time the count started.
+  the motes alone. The Tk ledger's MOTES card gains the same boundary, shows
+  what time the count started, and carries its own RESET MOTE COUNT row.
+
+  Tk detail rows are plain data with nowhere to hang a callback, so an
+  actionable row names its action inside its kind -- the encoding a meter row
+  already uses for its fill percentage. An unrecognized or empty name reads as
+  "not an action", so a malformed row renders as nothing rather than as a
+  button that does nothing when clicked.
 
 - **Tashan is tracked.** It exists on Project Quarm but not in Allakhazam's
   database, so there is no published duration to derive. Its 60 ticks come from
