@@ -8,6 +8,7 @@ from pathlib import Path
 LOREMASTER_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(LOREMASTER_DIR))
 
+from adventure_journal import utc_timestamp  # noqa: E402
 from control_snapshot import merge_control_snapshots  # noqa: E402
 from engine_protocol import (  # noqa: E402
     MOTE_GRADE_COUNT,
@@ -309,3 +310,48 @@ class MoteDeckProtocolTests(unittest.TestCase):
         self.assertNotIn("started_at", payload)
         self.assertEqual(payload["potential"], 53)
         json.dumps(payload)
+
+
+class BoundaryClockTests(unittest.TestCase):
+    """Log timestamps are naive local wall clock, and must be read as such.
+
+    The durable journal has always converted them correctly. The protocol
+    boundary instead stamped the same wall clock with a UTC label, so every
+    time it published named an instant four hours off in EDT. That is not only
+    a display shift: the Combat Archive de-duplicates a live encounter against
+    its journal row by parsing both stamps, and the two never matched.
+    """
+
+    NAIVE = datetime(2026, 8, 6, 18, 30)
+
+    def build(self, **stats):
+        controls = merge_control_snapshots(
+            MezTracker().snapshot(NOW), LullTracker().snapshot(NOW), limit=None)
+        return build_engine_snapshot(
+            sequence=1, observed_at=self.NAIVE,
+            stats_snapshot={"character": "Spin", **stats},
+            control_snapshot=controls)
+
+    def test_a_naive_stamp_names_the_same_instant_as_the_journal(self):
+        self.assertEqual(self.build().observed_at, utc_timestamp(self.NAIVE))
+
+    def test_an_aware_stamp_is_unchanged(self):
+        aware = datetime(2026, 8, 6, 18, 30, tzinfo=timezone.utc)
+        snapshot = build_engine_snapshot(
+            sequence=1, observed_at=aware,
+            stats_snapshot={"character": "Spin"},
+            control_snapshot=merge_control_snapshots(
+                MezTracker().snapshot(NOW), LullTracker().snapshot(NOW),
+                limit=None))
+        self.assertEqual(snapshot.observed_at, "2026-08-06T18:30:00.000Z")
+
+    def test_a_live_encounter_and_its_journal_row_agree(self):
+        """The archive de-duplicates on these two strings parsing equal."""
+        start = datetime(2026, 8, 6, 18, 0)
+        snapshot = self.build(fights=[{
+            "name": "a rock golem", "start": start,
+            "end": datetime(2026, 8, 6, 18, 1), "seconds": 60.0,
+            "damage": 6000, "dps": 100, "kills": 1,
+        }])
+        self.assertEqual(snapshot.encounters[0].started_at,
+                         utc_timestamp(start))

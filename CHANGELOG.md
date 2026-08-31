@@ -23,6 +23,19 @@ per-session potential-mote tracker.
   publishes. EQL lists one duration per spell; the scraped figure was Live
   behaviour and ran six seconds short at levels 10 and 11.
 
+- **Every timestamp the desktop showed was wrong by the local UTC offset.**
+  EverQuest logs carry naive local wall clock. The durable journal has always
+  converted that correctly, but the protocol boundary stamped the same wall
+  clock with a UTC label instead of converting it, so an 8:46 AM login reached
+  the app as 8:46 AM *UTC* and rendered as 4:46 AM in EDT. Every loot time,
+  encounter time and alert stamp was shifted the same way.
+
+  It was not only cosmetic. The Combat Archive de-duplicates a live encounter
+  against its journal row by parsing both stamps, and because only one of the
+  two halves was converted they could never match. The boundary now uses the
+  journal's conversion, and a test asserts the two agree rather than asserting
+  a literal string, so it holds on a UTC build runner as well as locally.
+
 - **The shaman Curse line is tracked.** Curse and Odium, the two EQL-only
   shaman damage-over-time spells, were missing for the reason the necromancer
   line was: they are not in Allakhazam's Live data, which is where the rest of

@@ -81,8 +81,15 @@ def classify_combat_ability_category(
 
 
 def _timestamp(value: datetime) -> str:
+    """Encode one instant, matching ``adventure_journal.utc_timestamp``.
+
+    EverQuest logs carry naive local wall clock. Stamping one with a UTC label
+    rather than converting it names an instant that is wrong by the local
+    offset -- and the durable journal converts correctly, so the two halves of
+    the same encounter disagreed and the Combat Archive could not match them.
+    """
     if value.tzinfo is None:
-        value = value.replace(tzinfo=timezone.utc)
+        value = value.astimezone()
     return value.astimezone(timezone.utc).isoformat(
         timespec="milliseconds").replace("+00:00", "Z")
 

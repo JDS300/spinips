@@ -255,19 +255,11 @@ function DebuffDeck({ deck }: { deck: DebuffDeckView | undefined }) {
   );
 }
 
-/**
- * Read the login stamp as the log wrote it.
- *
- * Engine stamps carry the log's own wall clock but are labelled UTC at the
- * boundary, so handing one to `Date` and formatting it locally shifts it by
- * the timezone offset - a 8:46 AM login reads as 4:46 AM in EDT. The mote
- * count is answering "since when", so it quotes the log clock verbatim.
- */
 function formatMoteSessionStart(value: string): string {
-  const clock = /T(\d{2}):(\d{2})/.exec(value);
-  if (!clock) return value ? "SESSION OPEN" : "NO LOG YET";
-  const hour = Number(clock[1]);
-  return `SINCE ${hour % 12 === 0 ? 12 : hour % 12}:${clock[2]} ${hour < 12 ? "AM" : "PM"}`;
+  if (!value) return "NO LOG YET";
+  const started = new Date(value);
+  if (Number.isNaN(started.getTime())) return "SESSION OPEN";
+  return `SINCE ${started.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).toUpperCase()}`;
 }
 
 /**
