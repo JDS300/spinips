@@ -7,9 +7,10 @@ promoted to resolve to the same entry.
 
 ## 0.5.1
 
-Fixes debuff timers for characters past level 50, and AppImage update
-information, which has never worked. Adds the shaman Curse line and a
-per-session potential-mote tracker.
+Fixes debuff timers for characters past level 50, encounter times that were
+wrong by the local UTC offset, and AppImage update information, which has
+never worked. Adds the shaman Curse line and a per-session potential-mote
+tracker.
 
 ### Fork-specific
 
