@@ -903,6 +903,12 @@ PATTERNS: list[tuple[str, re.Pattern]] = [
         rf"^(?P<attacker>.+?) hit (?P<target>.+?) for (?P<dmg>\d+) points? of \w+ damage by (?P<spell>.+?)\.{CRIT}$")),
     ("miss_third", re.compile(
         r"^(?P<attacker>.+?) tries to \w+(?: on)? (?P<target>.+?), but (?P<reason>.+)!$")),
+    # --- session boundary ---------------------------------------------------
+    # The client prints this line once per login and nothing else in the log
+    # marks a session as plainly. A mote count answers "this session", so a
+    # login starts it over; damage, kills and loot deliberately survive a
+    # relog. Anchored, so the same words typed in chat are never a login.
+    ("login", re.compile(r"^Welcome to EverQuest(?: Legends)?!?$", re.I)),
     # --- potential motes: last resort ---------------------------------------
     # Motes are a progression currency, and Legends does not always announce
     # one with the corpse-loot sentence the ledger above understands - it can
@@ -1501,6 +1507,7 @@ class SessionStats:
         # Motes are counted here rather than derived from the loot ledger,
         # because not every way a mote arrives produces a loot line.
         self.motes: list[int] = [0] * len(MOTE_TIERS)
+        self.motes_started_at: datetime | None = None
         self.faction: dict[str, int] = defaultdict(int)
         self.skillups: dict[str, int] = defaultdict(int)
         self.aa_points = 0
@@ -1738,6 +1745,12 @@ class SessionStats:
         self._record_actor_damage(actor, dmg, role)
         self.fight.observed_targets[normalize_mob(target)] += dmg
         self.fight.add_timeline(ts, "out", dmg)
+
+    def reset_motes(self, occurred_at: datetime | None = None) -> None:
+        """Start the mote count over, leaving the rest of the ledger alone."""
+        self.motes = [0] * len(MOTE_TIERS)
+        self.motes_started_at = (
+            occurred_at or self.last_event or self.session_start)
 
     def _count_motes(self, g: dict) -> None:
         """Add one acquisition line's motes to the session tally."""
@@ -1986,6 +1999,8 @@ class SessionStats:
                 self._count_motes(g)
             if kind == "loot_auto_sale" and g.get("coins"):
                 self.copper += parse_coins(g["coins"])
+        elif kind == "login":
+            self.reset_motes(ts)
         elif kind == "mote_gain":
             # Only reached by acquisition sentences no loot pattern claimed, so
             # a mote is never counted twice for one line.
@@ -2245,6 +2260,9 @@ class SessionStats:
             "plat_hr": (self.copper / 1000.0) / hours if hours else 0.0,
             "loot": dict(self.loot),
             "motes": list(self.motes),
+            "motes_started_at": self.motes_started_at or self.session_start,
+            "mote_labels": MOTE_TIER_LABELS,
+            "mote_potential": mote_exp_total(self.motes),
             "hours": hours,
             "lifetime": self.lifetime,
         }
@@ -6627,11 +6645,17 @@ def run_gui(args):
                 out.append(("row", f"{label} · {exp} xp", str(count)))
             out.append(("row", "Motes this session", str(sum(counts))))
             out.append(("row", "Potential earned", f"{mote_exp_total(counts)} xp"))
+            if snap["motes_started_at"]:
+                out.append(("row", "Counting since",
+                            snap["motes_started_at"].strftime(
+                                "%I:%M %p").lstrip("0")))
             if not any(counts):
                 out.append(("line", "No potential motes have dropped yet. "
                                     "Counts are what this session looted, not "
-                                    "what your bags hold. The ledger lists the "
-                                    "grades in this order, lowest first.", ""))
+                                    "what your bags hold. Logging in starts a "
+                                    "new count; the rest of the ledger keeps "
+                                    "going. The grades are listed lowest "
+                                    "first.", ""))
         elif key == "money":
             out.append(("row", "Total", fmt_coins(snap["copper"])))
             out.append(("row", "Plat / hour", f"{snap['plat_hr']:.1f}p"))

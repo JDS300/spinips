@@ -218,6 +218,10 @@ class HeadlessEngine:
         self._persisted_encounter_ids.clear()
         self._clear_pending_raid_kill()
 
+    def reset_motes(self) -> None:
+        """Start the mote count over, leaving the rest of the session alone."""
+        self.stats.reset_motes(self.last_observed_at)
+
     def set_alert_config(self, value) -> None:
         if not isinstance(value, dict):
             return
@@ -829,6 +833,8 @@ class JsonLineWorker:
             item = command.get("item")
             if isinstance(item, dict):
                 self.engine.cache_item(item)
+        elif kind == "engine.reset-motes":
+            self.engine.reset_motes()
         elif kind == "engine.reset":
             self.engine.reset()
         elif kind == "engine.shutdown":

@@ -33,6 +33,7 @@ declare global {
       chooseUpdateEqRoot: () => Promise<UpdateCenterState | null>;
       installUpdates: (ids: readonly UpdateComponentId[]) => Promise<UpdateCenterState>;
       resetEngine: () => void;
+      resetMotes: () => void;
       testAlert: () => void;
       chooseAlertSound: (kind: AlertSoundKind) => Promise<DesktopSettings | null>;
       readAlertSound: (kind: AlertSoundKind) => Promise<{

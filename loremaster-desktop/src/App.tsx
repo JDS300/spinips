@@ -23,6 +23,7 @@ import {
   type DebuffDeckView,
   type DebuffGroupView,
   type DebuffRowView,
+  type MoteDeckView,
 } from "./protocol";
 import { CombatArchive } from "./CombatArchive";
 import { LootChronicle } from "./LootChronicle";
@@ -251,6 +252,52 @@ function DebuffDeck({ deck }: { deck: DebuffDeckView | undefined }) {
       </div>
       {(deck?.overflow ?? 0) > 0 && <footer><span>+{deck?.overflow} more mob{deck?.overflow === 1 ? "" : "s"}</span></footer>}
     </section>
+  );
+}
+
+/**
+ * Read the login stamp as the log wrote it.
+ *
+ * Engine stamps carry the log's own wall clock but are labelled UTC at the
+ * boundary, so handing one to `Date` and formatting it locally shifts it by
+ * the timezone offset - a 8:46 AM login reads as 4:46 AM in EDT. The mote
+ * count is answering "since when", so it quotes the log clock verbatim.
+ */
+function formatMoteSessionStart(value: string): string {
+  const clock = /T(\d{2}):(\d{2})/.exec(value);
+  if (!clock) return value ? "SESSION OPEN" : "NO LOG YET";
+  const hour = Number(clock[1]);
+  return `SINCE ${hour % 12 === 0 ? 12 : hour % 12}:${clock[2]} ${hour < 12 ? "AM" : "PM"}`;
+}
+
+/**
+ * Potential motes looted this session, one tile per grade.
+ *
+ * The count answers "how did this farm go", so it starts over at every login
+ * rather than accumulating for as long as the app happens to stay open. The
+ * loot chronicle keeps the individual acquisitions either way.
+ */
+function MoteCard({ deck }: { deck: MoteDeckView | undefined }) {
+  if (!deck) return null;
+  const total = deck.counts.reduce((sum, count) => sum + count, 0);
+  return (
+    <details className="mote-card">
+      <summary>
+        <div><small>POTENTIAL CURRENCY · THIS SESSION</small><h2>{total} MOTE{total === 1 ? "" : "S"} · {deck.potential.toLocaleString()} XP</h2></div>
+        <span className="mote-card-hint">{formatMoteSessionStart(deck.startedAt)}</span>
+      </summary>
+      <div className="mote-grid" aria-label="Potential motes by grade, lowest first">
+        {deck.labels.map((label, index) => {
+          const count = deck.counts[index] ?? 0;
+          return <article className={count > 0 ? "" : "empty"} key={label}>
+            <small>{label.toUpperCase()}</small><strong>{count}</strong>
+          </article>;
+        })}
+      </div>
+      <button className="mote-reset" type="button"
+        onClick={() => window.loremasterDesktop?.resetMotes()}>RESET COUNT</button>
+      <footer>Logging in starts a new count. Damage, kills and the loot chronicle carry on across a relog.</footer>
+    </details>
   );
 }
 
@@ -1379,6 +1426,8 @@ function MainApp() {
           </div> : <p>No observed loot yet. Loremaster will preserve announced loot as it appears in your local log.</p>}
           <footer>Evidence-backed · unopened or filtered corpse contents are never guessed.</footer>
         </details>
+
+        <MoteCard deck={snapshot.motes} />
 
         {weekly && <details className="weekly-card">
           <summary>

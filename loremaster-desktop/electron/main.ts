@@ -1298,6 +1298,10 @@ class EngineSupervisor {
     this.send({ type: "engine.reset" });
   }
 
+  resetMotes(): void {
+    this.send({ type: "engine.reset-motes" });
+  }
+
   stop(): void {
     this.stopping = true;
     if (this.restartTimer) clearTimeout(this.restartTimer);
@@ -2196,6 +2200,7 @@ ipcMain.handle("engine:set-raid-completion", (_event, target: unknown, difficult
   return true;
 });
 ipcMain.on("engine:reset", () => engine?.reset());
+ipcMain.on("engine:reset-motes", () => engine?.resetMotes());
 ipcMain.on("alerts:test", () => {
   positionAlertWindow();
   alertWindow?.webContents.send("alerts:test", {

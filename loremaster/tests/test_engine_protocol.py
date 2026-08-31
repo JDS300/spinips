@@ -10,6 +10,7 @@ sys.path.insert(0, str(LOREMASTER_DIR))
 
 from control_snapshot import merge_control_snapshots  # noqa: E402
 from engine_protocol import (  # noqa: E402
+    MOTE_GRADE_COUNT,
     PROTOCOL_VERSION,
     build_engine_snapshot,
     classify_combat_ability_category,
@@ -256,3 +257,55 @@ class EngineProtocolTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MoteDeckProtocolTests(unittest.TestCase):
+    """Potential motes are tracked by the engine and never reached the desktop.
+
+    The counters have existed since the Rune Seed shipped, but nothing carried
+    them across the boundary, so the Electron app could not show a farming
+    session at all.
+    """
+
+    LABELS = ("Infinitesimal", "Minor", "Lesser", "Potential", "Major",
+              "Greater", "Superior", "Grand", "Ascendant", "Infinite")
+
+    def build(self, **stats):
+        controls = merge_control_snapshots(
+            MezTracker().snapshot(NOW), LullTracker().snapshot(NOW), limit=None)
+        return build_engine_snapshot(
+            sequence=1, observed_at=NOW,
+            stats_snapshot={"character": "Spin", **stats},
+            control_snapshot=controls)
+
+    def test_the_deck_carries_every_grade_and_its_earned_potential(self):
+        snapshot = self.build(
+            motes=[0, 0, 0, 0, 2, 1, 0, 0, 0, 0],
+            mote_labels=self.LABELS,
+            mote_potential=16,
+            motes_started_at=datetime(2026, 8, 6, 18, 0, tzinfo=timezone.utc))
+        self.assertEqual(snapshot.motes.counts, (0, 0, 0, 0, 2, 1, 0, 0, 0, 0))
+        self.assertEqual(snapshot.motes.labels, self.LABELS)
+        self.assertEqual(snapshot.motes.potential, 16)
+        self.assertEqual(snapshot.motes.started_at,
+                         "2026-08-06T18:00:00.000Z")
+
+    def test_an_engine_without_motes_still_reports_ten_empty_grades(self):
+        snapshot = self.build()
+        self.assertEqual(snapshot.motes.counts, (0,) * MOTE_GRADE_COUNT)
+        self.assertEqual(snapshot.motes.potential, 0)
+        self.assertEqual(snapshot.motes.started_at, "")
+
+    def test_a_short_or_ragged_count_list_is_padded_to_ten(self):
+        snapshot = self.build(motes=[3, 1])
+        self.assertEqual(snapshot.motes.counts, (3, 1) + (0,) * 8)
+
+    def test_the_deck_is_camel_cased_for_typescript(self):
+        payload = snapshot_event(self.build(
+            motes=[1] * 10, mote_labels=self.LABELS, mote_potential=53,
+            motes_started_at=datetime(2026, 8, 6, 18, 0, tzinfo=timezone.utc),
+        )).to_dict()["snapshot"]["motes"]
+        self.assertEqual(payload["startedAt"], "2026-08-06T18:00:00.000Z")
+        self.assertNotIn("started_at", payload)
+        self.assertEqual(payload["potential"], 53)
+        json.dumps(payload)

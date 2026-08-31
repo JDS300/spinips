@@ -5,6 +5,7 @@ import json
 import sys
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
 
 
@@ -203,6 +204,82 @@ class MoteAcquisitionTests(unittest.TestCase):
         stats.apply(*parsed)
         self.assertEqual(stats.loot["Froglok Fine Mesh"], 1)
         self.assertEqual(stats.motes, [0] * 10)
+
+
+class MoteSessionResetTests(unittest.TestCase):
+    """A mote count answers "this session", so a login has to start it over.
+
+    The count is a farming readout, not a lifetime total. Logging back in is
+    the one boundary the log states outright, and it must not disturb the rest
+    of the ledger: damage, kills and loot deliberately survive a relog.
+    """
+
+    LOGIN = "Welcome to EverQuest Legends!"
+    MOTE = "--You have looted a Mote of Major Potential.--"
+
+    def feed(self, *messages):
+        stats = LOREMASTER.SessionStats("Spin")
+        for index, message in enumerate(messages):
+            parsed = LOREMASTER.parse_line(
+                f"[Wed Jul 30 01:00:{index:02d} 2026] {message}")
+            if parsed:
+                stats.apply(*parsed)
+        return stats
+
+    def test_a_login_clears_motes_gathered_before_it(self):
+        self.assertEqual(self.feed(self.MOTE, self.LOGIN).motes, [0] * 10)
+
+    def test_motes_looted_after_a_login_are_counted(self):
+        stats = self.feed(self.MOTE, self.LOGIN, self.MOTE, self.MOTE)
+        self.assertEqual(stats.motes, [0, 0, 0, 0, 2] + [0] * 5)
+
+    def test_the_plain_everquest_login_line_also_starts_a_session(self):
+        self.assertEqual(
+            self.feed(self.MOTE, "Welcome to EverQuest!").motes, [0] * 10)
+
+    def test_a_login_leaves_the_rest_of_the_ledger_alone(self):
+        stats = self.feed(
+            "You slash a rat for 5 points of damage.",
+            "--You have looted a Rusty Dagger from a rat's corpse.--",
+            self.MOTE,
+            self.LOGIN)
+        self.assertEqual(stats.motes, [0] * 10)
+        self.assertEqual(stats.snapshot()["melee_dealt"], 5)
+        self.assertEqual(stats.loot["Rusty Dagger"], 1)
+
+    def test_someone_saying_the_login_line_in_chat_is_not_a_login(self):
+        for message in (
+            "Aria tells you, 'Welcome to EverQuest Legends!'",
+            "You say, 'Welcome to EverQuest Legends!'",
+        ):
+            with self.subTest(message=message):
+                self.assertEqual(
+                    self.feed(self.MOTE, message).motes,
+                    [0, 0, 0, 0, 1] + [0] * 5)
+
+    def test_a_manual_reset_clears_only_the_motes(self):
+        stats = self.feed("You slash a rat for 5 points of damage.", self.MOTE)
+        stats.reset_motes()
+        self.assertEqual(stats.motes, [0] * 10)
+        self.assertEqual(stats.snapshot()["melee_dealt"], 5)
+
+    def test_the_mote_session_stamp_moves_to_the_login(self):
+        stats = self.feed(self.MOTE, self.LOGIN)
+        self.assertEqual(
+            stats.snapshot()["motes_started_at"],
+            datetime(2026, 7, 30, 1, 0, 1))
+
+    def test_the_snapshot_describes_the_deck_it_carries(self):
+        """A renderer must not need a second copy of the grade table."""
+        snap = self.feed(self.MOTE, self.MOTE).snapshot()
+        self.assertEqual(snap["mote_labels"], LOREMASTER.MOTE_TIER_LABELS)
+        self.assertEqual(snap["mote_potential"], 10)
+
+    def test_the_mote_session_stamp_starts_with_the_session(self):
+        stats = self.feed(self.MOTE)
+        self.assertEqual(
+            stats.snapshot()["motes_started_at"],
+            stats.snapshot()["session_start"])
 
 
 class RuneSeedGeometryTests(unittest.TestCase):
