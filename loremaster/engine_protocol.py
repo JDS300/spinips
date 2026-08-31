@@ -85,8 +85,9 @@ def _timestamp(value: datetime) -> str:
 
     EverQuest logs carry naive local wall clock. Stamping one with a UTC label
     rather than converting it names an instant that is wrong by the local
-    offset -- and the durable journal converts correctly, so the two halves of
-    the same encounter disagreed and the Combat Archive could not match them.
+    offset -- and the durable journal converts correctly, so the live and
+    stored halves of one encounter disagreed and the Combat Archive, which
+    de-duplicates by parsing both, could never match them.
     """
     if value.tzinfo is None:
         value = value.astimezone()
