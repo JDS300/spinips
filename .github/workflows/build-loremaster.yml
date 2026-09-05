@@ -677,7 +677,7 @@ jobs:
             "",
             "## Installing",
             "",
-            "**Linux** -- download ``$appImage``, ``chmod +x`` it, and run it. There is no self-update on Linux, so new builds always come from this page.",
+            "**Linux** -- download ``$appImage``, ``chmod +x`` it, and run it. Loremaster does not update itself on Linux, but the AppImage now carries update information, so a manager such as Gear Lever offers new builds on its own. That only works from a build that carries it: on anything older than 0.5.1 the panel stays empty, and this page is where you replace it, once.",
             "",
             "**Skins** -- extract ``SpinUI-Manual.zip`` for the classic ``spinui_reloaded`` skin, the optional ``spinui_glass`` skin, layout profiles and the manual guide.",
             "",
