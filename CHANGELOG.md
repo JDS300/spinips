@@ -143,6 +143,16 @@ tracker.
   CI now writes the section after the build and verifies it by reading it back,
   so a silent regression fails the build rather than shipping.
 
+  **This one has to be installed by hand; every release after it does not.**
+  An update manager reads that section out of the copy you already have, not
+  out of the one it would be offering you, and every build before this one
+  carries the zeroed placeholder. So Gear Lever finds no update source for an
+  existing install, shows an empty panel, and will keep doing so no matter how
+  many releases follow -- there is nothing a release can do from its end to be
+  discovered by a build that predates the fix. Download the AppImage from this
+  page and add it to Gear Lever once, replacing the existing entry when it
+  asks. From then on it updates itself.
+
 - **Candidates track candidates, releases track releases.** GitHub's
   `/releases/latest` excludes prereleases, so a release candidate could never
   have found a newer candidate through it. Candidates now advertise the
