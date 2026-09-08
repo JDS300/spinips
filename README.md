@@ -7,13 +7,13 @@
 <p align="center"><strong>See more of Norrath. Read every fight. Natively, on Linux.</strong></p>
 
 <p align="center">
-  <a href="https://github.com/itsspin/spinips">itsspin's</a> EverQuest Legends interface and companion — two complete skins, a combat cockpit, and a log-driven encounter lab — running natively on Linux. This fork adds the platform support, and a small number of fork-only features on top.
+  <a href="https://github.com/itsspin/spinips">itsspin's</a> EverQuest Legends interface and companion — two complete skins, a combat cockpit, and a log-driven encounter lab — running natively on Linux. This fork adds the platform support, plus features of its own that upstream does not have.
 </p>
 
 <p align="center">
   <a href="https://github.com/JDS300/spinips/releases/latest"><strong>Download the Linux release</strong></a>
   · <a href="#running-on-linux">Running on Linux</a>
-  · <a href="#what-is-tested">What is tested</a>
+  · <a href="#what-this-fork-adds">What this fork adds</a>
   · <a href="docs/LINUX.md">Linux notes</a>
   · <a href="docs/LINUX_UPSTREAM.md">Full account</a>
   <br>
@@ -32,11 +32,14 @@
 >
 > This fork began for one purpose: to add native Linux support and offer it
 > back upstream. It adds platform plumbing — process launch, log discovery
-> inside Wine and Proton prefixes, X11 screen capture, packaging — and changes
-> no Windows behaviour.
+> inside Wine and Proton prefixes, packaging — and changes no Windows
+> behaviour.
 >
-> It now also carries a small number of **fork-only features** that upstream
-> does not have, listed under [what this fork adds](#what-this-fork-adds).
+> **It has since diverged, and it is no longer at parity with upstream in
+> either direction.** It carries [features of its own](#what-this-fork-adds)
+> that upstream does not have, and large parts of this repository are carried
+> rather than maintained here — see
+> [what this fork does not maintain](#what-this-fork-does-not-maintain).
 >
 > **On Windows, use [the original project](https://github.com/itsspin/spinips)
 > and its releases.** Nothing here improves on it for you.
@@ -50,9 +53,8 @@
 ## Running on Linux
 
 Loremaster runs **natively** on Linux. Only EverQuest itself runs under Wine or
-Proton. There is no injection and no game-memory access — it reads ordinary EQ
-log files, and for the Alt+Z lockout scan it performs one user-triggered screen
-capture of the verified game window.
+Proton. There is no injection, no game-memory access and no screen capture: the
+Linux application reads the ordinary EQ text log and nothing else.
 
 **[Download the latest Linux release](https://github.com/JDS300/spinips/releases/latest)** —
 AppImage or tar.gz.
@@ -80,52 +82,115 @@ it from an application menu or an AppImage manager needs no arguments. The flag
 above is only for running the binary straight from a shell, which bypasses the
 desktop entry. The tar.gz selects X11 on its own.
 
-### What is tested
+### Where it is developed
 
-Verified against a real EverQuest Legends install on Arch (CachyOS), KDE Plasma
-on Wayland, NVIDIA, three displays with fractional scaling, EverQuest under
-Proton via Lutris with the prefix on a separate drive.
+Against a real EverQuest Legends install on Arch (CachyOS), KDE Plasma on
+Wayland, NVIDIA, three displays with fractional scaling, EverQuest under Proton
+via Lutris with the prefix on a separate drive. The game played is
+[Project Quarm](https://www.projectquarm.com/) — classic through Velious, level
+cap 60 — so anything that only exists on Live is not exercised here.
 
-| Feature | Linux | Notes |
-| --- | --- | --- |
-| Both skins, all layout profiles | ✅ tested | `/loadskin` renders clean; ~500 XML and ~2,800 textures survive a case-sensitive filesystem |
-| Skin installer | ✅ tested | Headless CLI; finds EverQuest inside Wine, Proton, Lutris and Steam prefixes |
-| Log auto-discovery | ✅ tested | Reads Lutris's own config, so prefixes outside `$HOME` are found |
-| Combat parsing, DPS, pet attribution | ✅ tested | Against a 690,000-line log and live combat |
-| Charm-break alert | ✅ tested | |
-| Mez timers | ✅ tested | Warning, countdown and wake window all behave |
-| Alt+Z lockout scan | ✅ tested | Reads the panel and marks raid completions |
-| Window placement | ✅ tested | Drag it, quit, it returns. No compositor rules needed |
-| Self-update | ✅ tested | AppImage carries update information |
-| Compact lockout timer column | ⚠️ untested | Needs a live lockout timer on screen |
-| Lull timers, weekly ledger | ⚠️ untested | Needs raid content |
-| Live DPS during a fight | ✅ tested | Updates live, not only after the fact |
-| Overlay above a fullscreen game | ⚠️ untested | An X11 capability, now reachable, not yet exercised |
-| Long-session stability | ✅ tested | No orphaned engine process left after quitting |
+Two consequences worth stating plainly:
+
+- **Overlay behaviour above a fullscreen game, and click-through, are not
+  tested and will not be**, because this machine runs Wayland. Both are X11
+  capabilities the application can reach; nobody here has exercised them.
+- The [in-game test plan](docs/LINUX_INGAME_TESTPLAN.md) is the checklist, and
+  [docs/LINUX_UPSTREAM.md](docs/LINUX_UPSTREAM.md) is where a claim is marked
+  verified or unverified with the evidence behind it. Those are kept current;
+  a summary table in a README is not.
 
 ### Requirements
 
 | Requirement | For |
 | --- | --- |
 | Python 3.10+ | The parser engine — standard library only, no pip packages |
-| X11 or XWayland | Window placement and screen capture |
-| `tesseract` **and its English data** | The Alt+Z lockout scan only |
+| X11 or XWayland | Window placement |
 
-Installing `tesseract` is not enough on most distributions — the language pack
-is separate (`tesseract-data-eng`, `tesseract-ocr-eng`,
-`tesseract-langpack-eng`). Loremaster names the package at startup.
+**No OCR runtime is needed.** `tesseract` was required only by the Alt+Z
+instance-lockout scan, which upstream retired and this fork followed; weekly
+raid lockouts now come from the log instead. `loremaster/hover_ocr.py` and
+`loremaster/linux_capture.py` still exist because the Tk application uses them
+for Lore Lens, but the Electron desktop that ships in the Linux release never
+loads either one.
 
 ### Keeping it updated
 
-Optional: the AppImage carries update information, so a manager such as
-[Gear Lever](https://github.com/mijorus/gearlever) will offer new releases and
-apply them. Point it at this repository if it asks; the asset pattern is
-`Loremaster-*-x86_64.AppImage.zsync`. Downloading each release by hand works
-just as well.
+Loremaster does not update itself, but from **0.5.1** the AppImage carries
+update information, so a manager such as
+[Gear Lever](https://github.com/mijorus/gearlever) reads the pointer out of the
+installed file and offers new releases on its own. Downloading each release by
+hand works just as well.
+
+> [!IMPORTANT]
+> **Coming from 0.4.0 or older is a one-time manual step.** A manager reads the
+> pointer from the *installed* image, and no release before 0.5.1 carried one —
+> so an old install can never discover a new one, whatever the release side
+> does. Install 0.5.1 by hand once; every later update is offered
+> automatically.
+
+If a manager asks for an asset pattern, use
+`Loremaster-[0-9]*-x86_64.AppImage.zsync`. The leading digit matters: a bare
+`Loremaster-*` also matches the `Loremaster-RC-*` candidates, which publish on
+a separate `latest-pre` channel and must not be offered as releases.
 
 Full detail: **[docs/LINUX.md](docs/LINUX.md)** · what is and is not verified,
 written for upstream review: **[docs/LINUX_UPSTREAM.md](docs/LINUX_UPSTREAM.md)**
 · in-game test plan: **[docs/LINUX_INGAME_TESTPLAN.md](docs/LINUX_INGAME_TESTPLAN.md)**
+
+## What this fork adds
+
+Everything in this section exists only here. Upstream builds for Windows and
+has none of it.
+
+### Linux as the target platform
+
+- **Native Electron AppImage and tar.gz**, X11 by default, with a guard that
+  still shows the window when renderer setup fails — a blank screen you can
+  quit beats no application at all.
+- **Log auto-discovery inside Wine, Proton, Lutris and Steam prefixes**,
+  reading Lutris's own configuration so a prefix outside `$HOME` is still
+  found. The skin installer resolves EverQuest the same way, headlessly.
+- **Window naming a Wayland compositor can match**, so placement survives a
+  restart without hand-written KDE or GNOME rules.
+- **AppImage update information that actually works.** electron-builder writes
+  none: the 1 KB `.upd_info` section ships zeroed inside the AppImage runtime,
+  so every release through 0.4.0 left Gear Lever's update panel blank and the
+  `.zsync` files CI produced were orphans. `tools/appimage_update_info.py`
+  patches the section in place — never with `objcopy`, which destroys the
+  appended squashfs — on separate `latest` and `latest-pre` channels so a
+  release candidate can never be offered as a release. See
+  [keeping it updated](#keeping-it-updated).
+
+### Features upstream does not have
+
+| Feature | What it is |
+|---|---|
+| **Debuff timers** | Live countdowns for your own DoTs, slows and resist debuffs, one block per mob, on a deck below the mez and lull stack. 77 spells across 13 landing families, levels 1–60. DoTs are confirmed from their own tick lines; slows and resist debuffs are correlated estimates, marked `EST`. [Detail below](#debuff-timers-fork-only). |
+| **Potential-mote tracker** | All ten grades and the exp they are worth, counted from your last login rather than from app launch, with a manual reset that clears the motes and nothing else. On the Electron HUD and the Tk MOTES card. |
+| **EQ Legends and Project Quarm spell data** | The necromancer Negation of Life line, the shaman Curse line, and Tashan — none of which appear in the Allakhazam data the rest of the table was built from. Tashan carries no published duration at all, so its 60 ticks were measured from 30 clean landing-to-fade pairs in a real log. |
+| **A diagnostic for a timer that never appears** | `tools/diagnose_debuff_timers.py` finds your log inside its prefix and reports which of your casts the table recognises and which it does not. A missing debuff fails silently by nature — no row, no error. |
+| **Multi-kill raid fix** | `PendingRaidKill` in `loremaster/desktop_worker.py`. A cross-platform defect upstream still carries, where a second kill inside one instance dropped the pending raid target. |
+
+Player-facing detail for every release is in [CHANGELOG.md](CHANGELOG.md),
+under each version's **Fork-specific** heading.
+
+## What this fork does not maintain
+
+This fork is a Linux build of the Loremaster desktop, plus the features above.
+The rest of the repository is upstream's work, carried along so a release stays
+whole rather than developed here. **Everything from
+[The complete system, live](#the-complete-system-live) onward describes
+upstream's project**, and is accurate about it; it is not a claim that this
+fork tests or improves any of it.
+
+| Area | Status here |
+|---|---|
+| **The skins** — `spinui_reloaded`, `spinui_glass`, `layouts/profiles/`, `UI_Spin_*.ini` | Carried unchanged. Touched only when an EQ patch breaks a window and the client starts logging `Could not find child` into `UIErrors.txt`. No visual work happens in this fork. |
+| **The Tk application** — `loremaster/loremaster.py` | Never run here; `libtk8.6` is not even installed on the development machine. Its Windows-only surfaces — Lore Lens, the notification-area icon, the global hotkeys — cannot load. Shared *engine* changes reach it and are covered by tests, but the Tk UI around them is unverified by this fork. |
+| **The Windows installer and `Loremaster.exe`** — `installer/` | Built and tested in CI, deliberately never published from here. Use [upstream's releases](https://github.com/itsspin/spinips/releases/latest) on Windows. |
+| **SpinFOURKAYYY and SpinTexture** | Separate Windows-only projects with their own repositories. Described below because upstream describes them; nothing in this fork touches them. |
+| **Lore Lens** | Present in the Tk application only. The Electron desktop the Linux release ships contains no OCR and no screen capture path at all. |
 
 ## The complete system, live
 
@@ -135,7 +200,7 @@ written for upstream review: **[docs/LINUX_UPSTREAM.md](docs/LINUX_UPSTREAM.md)*
 
 | SpinUI | Layout profiles | Spin's Loremaster |
 |---|---|---|
-| Shared chrome gives native windows one leather, brass, ember, and spirit-blue visual language. | Seven resolutions and three play styles, generated and checked in all 21 combinations. | Live combat, progression, loot, travel, Lore Lens, and alerts from ordinary EQ logs plus one-shot, user-triggered screen OCR. |
+| Shared chrome gives native windows one leather, brass, ember, and spirit-blue visual language. | Seven resolutions and three play styles, generated and checked in all 21 combinations. | Live combat, progression, loot, travel, and alerts from the ordinary EQ text log. |
 
 SpinUI is more than a recolor. It re-composes EverQuest's native XML, textures, and layout data into a single cockpit: the world stays open, the combat loop stays on one eye-line, and information appears where it earns the space.
 
@@ -222,10 +287,10 @@ Loremaster turns the text log EverQuest already writes into a live **Adventurer'
 | **Mote tracker** *(fork-only)* | All ten potential grades and the exp they are worth, on a deck in the expanded HUD, counted from the last login. A manual reset clears the count without disturbing anything else. |
 | **Pets and charms** | Credits summoned pets and conservatively claimed charmed creatures; same-name charm totals are included but clearly labeled as estimates when the text log cannot distinguish actor IDs. |
 | **Optional DPS attribution** | Keeps total personal DPS unchanged while optionally exposing separate Self, Charmed pet, and Summoned pet damage/DPS rows for both the current encounter and session. |
-| **Debuff timers** *(fork-only)* | Countdowns for your own DoTs, slows and resist debuffs, grouped by mob, on a deck below the mez and lull control stack. Shaman, enchanter, beastlord, necromancer and druid to level 50. |
+| **Debuff timers** *(fork-only)* | Countdowns for your own DoTs, slows and resist debuffs, grouped by mob, on a deck below the mez and lull control stack. Shaman, enchanter, beastlord, necromancer and druid, levels 1–60. |
 | **Mez control** | Starts a sleek target countdown only after your own recognized mez actually lands. Ranked durations use EQL's whole-tick scaling; identical mob names group honestly, and `LAST TICK` exposes the server-tick uncertainty instead of inventing an exact wake-up second. |
 | **Rune Seed HUD** | A rounded 92×48 combat capsule pairs the generated SpinUI brass cog with a separate, overlap-free DPS lane. DPS is its only seeded metric; players can deliberately star up to four ledger cards to create a scrollable wheel. LIVE, READY, STALE, and ALERT use restrained trim motion; click to morph into the full parser, drag when unlocked, or right-click for settings. |
-| **Lore Lens** | One-shot hovered-item OCR, exact EQL Wiki validation, cached results, and a configurable `Ctrl+Shift+E` shortcut. |
+| **Lore Lens** *(Tk app only)* | One-shot hovered-item OCR, exact EQL Wiki validation, cached results, and a configurable `Ctrl+Shift+E` shortcut. Not present in the Electron desktop the Linux release ships. |
 | **Plane of Sky journey planner** | Optionally recognizes looted turn-ins, privately imports `/outputfile inventory`, shows reward/class use, tracks missing pieces, recommends the remaining islands or bosses, and can place the selected island on EQ map layer 3. |
 | **Alerts** | Opt-in banners and sound for tells, summons, deaths, charm breaks, big hits, name calls, and fight completion. Compact banners stay beside the Rune Seed with edge-safe Auto, Right, Left, Above, and Below placement choices. |
 | **Character continuity** | Follows standard `eqlog_*.txt` activity and supports manual log-folder selection. Packaged builds store selected records and settings under `%LOCALAPPDATA%\SpinsLoremaster`; source runs keep state beside `loremaster.py`. |
@@ -246,11 +311,9 @@ The global alert switch ships **off**. The **Charmed pet breaks** and **Play ale
 
 Loremaster recognizes the Enchanter mez line plus supported Bard and Necromancer control songs/spells directly from the normal EQ text log. A cast alone never starts a timer: the target-specific success line must follow your own recent cast. The same evidence rule now covers Pacify, Calm, Lull, Soothe, Calm Animal, and Pacification. Harmony and Lull Animal do not expose a target-specific success line in EQL, so Loremaster labels those casts **UNCONFIRMED** instead of inventing a timer.
 
-<a id="what-this-fork-adds"></a>
-
 #### Debuff timers (fork-only)
 
-Alongside mez and lull, Loremaster tracks your own **damage-over-time spells, slows, and resist debuffs** as live countdowns, grouped one block per mob. Coverage is shaman, enchanter and beastlord for slows, shaman and enchanter for resist debuffs, and shaman, enchanter, beastlord, necromancer and druid for DoTs, to level 50.
+Alongside mez and lull, Loremaster tracks your own **damage-over-time spells, slows, and resist debuffs** as live countdowns, grouped one block per mob. Coverage is shaman, enchanter and beastlord for slows, shaman and enchanter for resist debuffs, and shaman, enchanter, beastlord, necromancer and druid for DoTs — 77 spells across 13 landing families, levels 1 through 60.
 
 The two families are tracked by different evidence, and the deck says which is which:
 
@@ -274,6 +337,11 @@ EQ applies spell durations in six-second server ticks, but the log does not reve
 - Session mode aggregates the current launch or manual reset, starts fresh on character switch, and can optionally reset after a configured idle period. Records deliberately preserve only durable character records instead of pretending volatile damage, coin, or XP totals are meaningful lifetime statistics.
 
 ### Lore Lens: item intelligence on demand
+
+> [!NOTE]
+> Lore Lens lives in the Tk application only. **The Linux release does not have
+> it**, and captures nothing. This section describes upstream's Windows
+> feature.
 
 Hover an item and press **Ctrl+Shift+E** by default. Lore Lens freezes one bounded region around the cursor, runs Windows OCR after the keypress, ranks up to four likely titles, and validates them against exact [EQL Wiki](https://eqlwiki.com/) pages.
 
@@ -424,7 +492,7 @@ Download **`SpinUI-Manual.zip`** from the same release. It contains both UI skin
 
 - **The UI is normal EQ skin content:** SIDL XML, TGA textures, and layout INIs.
 - **Loremaster is non-injecting:** combat and journey tracking come from text logs; it never reads EverQuest process memory.
-- **Hover Scan is explicit:** one bounded cursor region is captured only when the Lore Lens shortcut is pressed. OCR and wiki work then run outside the game's process.
+- **Hover Scan is explicit:** in the Tk application, one bounded cursor region is captured only when the Lore Lens shortcut is pressed, and OCR and wiki work then run outside the game's process. The Linux release captures nothing at all.
 - **Network behavior is visible:** EQL Wiki lookup can be disabled; cached results still work, and LIVE/CACHED/STALE states remain labeled.
 - **Local state stays local:** packaged Loremaster settings, cache, and selected records live under `%LOCALAPPDATA%\SpinsLoremaster`; source runs keep them beside `loremaster.py`.
 - **Manual layout changes are recoverable:** the release guide makes skin-only installation the default and requires a backup before an optional character-layout INI is replaced.
@@ -435,6 +503,11 @@ This architecture supports a transparent non-injecting workflow. As with any com
 ## Loremaster reference
 
 ### Running and controlling the overlay
+
+> [!NOTE]
+> Steps 7 and 8 describe the Tk application. Its click-through recovery
+> shortcut and notification-area icon are Windows-only and are absent from the
+> Linux release.
 
 1. On Linux, run the AppImage from the release. On Windows, this repository builds and tests `Loremaster.exe` in CI but does not publish it, so build it from source.
 2. Type `/log on` in game. Loremaster follows the newest standard EQ log it can find; **Settings → Change EverQuest Folder** or **CHANGE / LOCATE LOG** can point it to an EverQuest root or `Logs` directory.
@@ -479,7 +552,11 @@ Invalid patterns are reported once when the config loads and are ignored safely 
 
 Settings include a high-contrast palette, text scaling from **85–140%**, and reduced motion. Reduced motion makes the Rune Seed transition instant and removes seed, timer, and alert animation; high-contrast and text-scale changes marked in Settings take effect on the next launch.
 
-### Run Loremaster from source
+### Run the Tk application from source
+
+This is upstream's original Windows desktop, not the application the Linux
+release ships. It needs `tkinter`, and this fork does not exercise it — see
+[what this fork does not maintain](#what-this-fork-does-not-maintain).
 
 ```bat
 :: Python 3.10+ with tkinter
@@ -560,6 +637,9 @@ python3 tools/release_quality_gate.py
 
 ### Loremaster and Lore Lens
 
+The `Ctrl+Alt+L`, notification-area and `Ctrl+Shift+E` rows below apply to the
+Tk application on Windows. The Linux release has none of those controls.
+
 | Symptom | Fix |
 |---|---|
 | Loremaster awaits a log | Type `/log on`, then use **CHANGE / LOCATE LOG** and select the EverQuest root or `Logs` folder. |
@@ -575,14 +655,15 @@ python3 tools/release_quality_gate.py
 
 ```text
 spinips/
-├── spinui_reloaded/          themed SIDL XML, textures, and skin defaults
-├── spinui_glass/             generated Midnight Frost alternate skin
-├── layouts/profiles/         seven resolutions × three play styles
-├── loremaster/               encounter tracker, Lore Lens, alerts, and tests
-├── installer/                legacy installer source and manual-install guide
+├── loremaster-desktop/       Electron + React desktop — what the Linux release is
+├── loremaster/               parser engine, Tk application, Lore Lens, and tests
+├── spinui_reloaded/          themed SIDL XML, textures, and skin defaults    (carried)
+├── spinui_glass/             generated Midnight Frost alternate skin         (carried)
+├── layouts/profiles/         seven resolutions × three play styles           (carried)
+├── installer/                legacy installer source and manual-install guide (carried)
 ├── tools/                    generators, restylers, audits, and release gates
-├── docs/                     live screenshots and deterministic previews
-└── .github/workflows/        public Windows build and packaging automation
+├── docs/                     Linux notes, test plan, screenshots, previews
+└── .github/workflows/        Linux AppImage/tar.gz release build; Windows build gate
 ```
 
 ---
